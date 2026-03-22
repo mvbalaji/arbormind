@@ -68,7 +68,7 @@ export function setupPassport() {
                 updatedAt: new Date(),
               })
               .where(eq(allowedUsersTable.email, email));
-            user = { ...user, googleId: profile.id, name: profile.displayName, avatarUrl: profile.photos?.[0]?.value };
+            user = { ...user, googleId: profile.id, name: profile.displayName, avatarUrl: profile.photos?.[0]?.value ?? null };
           }
 
           return done(null, {
@@ -76,7 +76,7 @@ export function setupPassport() {
             email: user.email,
             name: user.name ?? profile.displayName,
             role: user.role,
-            avatarUrl: user.avatarUrl ?? profile.photos?.[0]?.value,
+            avatarUrl: user.avatarUrl ?? profile.photos?.[0]?.value ?? null,
           });
         } catch (err) {
           return done(err as Error, undefined);
@@ -93,7 +93,8 @@ const router = Router();
 
 router.get("/auth/google", (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return res.status(503).json({ error: "Google OAuth not configured" });
+    res.status(503).json({ error: "Google OAuth not configured" });
+    return;
   }
   passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
 });
@@ -103,19 +104,20 @@ router.get(
   (req, res, next) => {
     passport.authenticate("google", { failureRedirect: "/?error=unauthorized" })(req, res, next);
   },
-  (req, res) => {
+  (_req, res) => {
     res.redirect("/");
   }
 );
 
 router.get("/auth/me", (req, res) => {
   if (req.isAuthenticated && req.isAuthenticated() && req.user) {
-    return res.json({ user: req.user });
+    res.json({ user: req.user });
+    return;
   }
   // When Google OAuth is not configured, return a dev-mode admin user
-  // so the CRM is accessible without credentials during development.
+  // so the CRM remains accessible during development without credentials.
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return res.json({
+    res.json({
       user: {
         id: 0,
         email: "dev@crmai.local",
@@ -124,13 +126,17 @@ router.get("/auth/me", (req, res) => {
         avatarUrl: null,
       },
     });
+    return;
   }
   res.status(401).json({ user: null });
 });
 
 router.post("/auth/logout", (req, res) => {
   req.logout((err) => {
-    if (err) return res.status(500).json({ error: "Logout failed" });
+    if (err) {
+      res.status(500).json({ error: "Logout failed" });
+      return;
+    }
     req.session.destroy(() => {
       res.json({ success: true });
     });
@@ -139,28 +145,39 @@ router.post("/auth/logout", (req, res) => {
 
 router.get("/auth/users", async (req, res) => {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
-    return res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
   const u = req.user as { role?: string } | undefined;
-  if (u?.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+  if (u?.role !== "admin") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
 
   try {
     const users = await db.select().from(allowedUsersTable).orderBy(allowedUsersTable.createdAt);
     res.json({ users });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch users" });
   }
 });
 
 router.post("/auth/users", async (req, res) => {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
-    return res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
   const u = req.user as { role?: string; email?: string } | undefined;
-  if (u?.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+  if (u?.role !== "admin") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
 
   const { email, name, role } = req.body as { email: string; name?: string; role?: string };
-  if (!email) return res.status(400).json({ error: "Email required" });
+  if (!email) {
+    res.status(400).json({ error: "Email required" });
+    return;
+  }
 
   try {
     const [user] = await db
@@ -177,17 +194,21 @@ router.post("/auth/users", async (req, res) => {
       })
       .returning();
     res.status(201).json({ user });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to add user" });
   }
 });
 
 router.delete("/auth/users/:id", async (req, res) => {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
-    return res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
   const u = req.user as { role?: string } | undefined;
-  if (u?.role !== "admin") return res.status(403).json({ error: "Forbidden" });
+  if (u?.role !== "admin") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
 
   const id = parseInt(req.params.id);
   try {
@@ -196,7 +217,7 @@ router.delete("/auth/users/:id", async (req, res) => {
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(allowedUsersTable.id, id));
     res.json({ success: true });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to remove user" });
   }
 });

@@ -9,7 +9,14 @@ import { setupPassport } from "./routes/auth";
 
 setupPassport();
 
-const SESSION_SECRET = process.env.SESSION_SECRET || "crmai-dev-secret-change-in-production";
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET) {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET must be set in production");
+  }
+  console.warn("[Auth] SESSION_SECRET not set — using insecure default for development only");
+}
+const sessionSecret = SESSION_SECRET || "crmai-dev-secret-change-in-production";
 
 const app: Express = express();
 
@@ -36,7 +43,7 @@ app.use(
 
 app.use(
   session({
-    secret: SESSION_SECRET,
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
