@@ -92,7 +92,8 @@ router.get("/quotes", async (req, res) => {
       itemsByQuote.get(item.quoteId)!.push(formatItem(item));
     }
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(quotesTable);
+    const quoteWhere = opportunityId ? eq(quotesTable.opportunityId, parseInt(opportunityId)) : undefined;
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(quotesTable).where(quoteWhere);
     res.json({
       data: rawData.map(q => formatQuote(q, itemsByQuote.get(q.id) ?? [])),
       total: Number(countResult.count),

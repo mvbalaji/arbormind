@@ -17,7 +17,8 @@ router.get("/products", async (req, res) => {
       : db.select().from(productsTable)
     ).limit(limitNum).offset(offset);
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(productsTable);
+    const searchWhere = search ? ilike(productsTable.name, `%${search}%`) : undefined;
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(productsTable).where(searchWhere);
     res.json({
       data: data.map(p => ({ ...p, unitPrice: Number(p.unitPrice) })),
       total: Number(countResult.count),

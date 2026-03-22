@@ -34,16 +34,18 @@ app.use(
   }),
 );
 
-const allowedOrigins: string[] = process.env.REPLIT_DOMAINS
-  ? process.env.REPLIT_DOMAINS.split(",").map((d) => `https://${d.trim()}`)
-  : [];
+const allowedOrigins: Set<string> = new Set(
+  process.env.REPLIT_DOMAINS
+    ? process.env.REPLIT_DOMAINS.split(",").map((d) => `https://${d.trim()}`)
+    : []
+);
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) { callback(null, true); return; }
       if (process.env.NODE_ENV !== "production") { callback(null, true); return; }
-      if (allowedOrigins.some((a) => origin === a || origin.startsWith(a))) {
+      if (allowedOrigins.has(origin)) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
