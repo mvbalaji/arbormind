@@ -19,8 +19,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Phone, Mail, Calendar, CheckSquare, FileText, Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { format } from "date-fns";
+import { Phone, Mail, Calendar, CheckSquare, FileText, Plus, MoreHorizontal, Pencil, Trash2, List } from "lucide-react";
+import { format, startOfWeek, addDays, isSameDay, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -47,11 +47,70 @@ const defaultFormData: ActivityFormData = {
   type: "call", subject: "", dueDate: "", status: "planned", description: "",
 };
 
+function WeekCalendar({ activities }: { activities: Array<{ id: number; type: string; subject: string; dueDate: string | null; status: string; contactName?: string | null }> }) {
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => setWeekStart((d) => addDays(d, -7))}
+          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+        >
+          ← Prev
+        </button>
+        <span className="text-sm font-medium text-white">
+          {format(days[0], "MMM d")} – {format(days[6], "MMM d, yyyy")}
+        </span>
+        <button
+          onClick={() => setWeekStart((d) => addDays(d, 7))}
+          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+        >
+          Next →
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-2">
+        {days.map((day) => {
+          const dayActivities = activities.filter(
+            (a) => a.dueDate && isSameDay(parseISO(a.dueDate), day)
+          );
+          const isToday = isSameDay(day, new Date());
+          return (
+            <div key={day.toISOString()} className="min-h-32">
+              <div className={`text-center py-2 rounded-t-lg mb-1 ${isToday ? "bg-primary/20 text-primary font-semibold" : "text-muted-foreground"}`}>
+                <div className="text-xs uppercase tracking-wide">{format(day, "EEE")}</div>
+                <div className={`text-lg font-bold leading-none mt-0.5 ${isToday ? "text-primary" : "text-white"}`}>{format(day, "d")}</div>
+              </div>
+              <div className="flex flex-col gap-1">
+                {dayActivities.map((act) => {
+                  const Icon = TYPE_ICONS[act.type] ?? CheckSquare;
+                  return (
+                    <div
+                      key={act.id}
+                      className={`px-2 py-1.5 rounded-md text-xs truncate cursor-default ${TYPE_COLORS[act.type] ?? "text-gray-400 bg-gray-500/10"} ${act.status === "completed" ? "opacity-50 line-through" : ""}`}
+                      title={act.subject}
+                    >
+                      <Icon className="w-3 h-3 inline mr-1 opacity-70" />
+                      {act.subject}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Activities() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<{ id: number } & ActivityFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const { data, isLoading } = useListActivities({ limit: 50 });
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const { data, isLoading } = useListActivities({ limit: 200 });
 
   return (
     <Layout>
@@ -61,14 +120,44 @@ export default function Activities() {
             <h1 className="text-3xl font-display font-bold text-white tracking-tight">Activities</h1>
             <p className="text-muted-foreground mt-1 text-sm">Calls, emails, meetings, and tasks.</p>
           </div>
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
-          >
-            <Plus className="w-4 h-4 mr-2" /> Log Activity
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center border border-white/10 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-white"}`}
+              >
+                <List className="w-4 h-4" /> List
+              </button>
+              <button
+                onClick={() => setViewMode("calendar")}
+                className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors border-l border-white/10 ${viewMode === "calendar" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-white"}`}
+              >
+                <Calendar className="w-4 h-4" /> Calendar
+              </button>
+            </div>
+            <Button
+              onClick={() => setIsCreateOpen(true)}
+              className="bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Log Activity
+            </Button>
+          </div>
         </div>
 
+        {viewMode === "calendar" && !isLoading && (
+          <Card className="glass-panel border-white/5 p-6">
+            <WeekCalendar activities={(data?.data ?? []).map((a) => ({
+              id: a.id,
+              type: a.type,
+              subject: a.subject,
+              dueDate: a.dueDate ?? null,
+              status: a.status,
+              contactName: (a as { contactName?: string | null }).contactName ?? null,
+            }))} />
+          </Card>
+        )}
+
+        {viewMode === "list" && (
         <Card className="glass-panel border-white/5">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -153,6 +242,7 @@ export default function Activities() {
             </table>
           </div>
         </Card>
+        )}
       </div>
 
       <ActivityFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} mode="create" />

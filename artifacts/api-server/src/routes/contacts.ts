@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { contactsTable, usersTable, accountsTable } from "@workspace/db";
+import { contactsTable, usersTable, accountsTable, activitiesTable, opportunitiesTable } from "@workspace/db";
 import { eq, ilike, or, sql, and } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -117,6 +117,39 @@ router.delete("/contacts/:id", async (req, res) => {
     const id = parseInt(req.params.id);
     await db.delete(contactsTable).where(eq(contactsTable.id, id));
     res.json({ success: true, id });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Relationship: activities for a contact
+router.get("/contacts/:id/activities", async (req, res) => {
+  try {
+    const contactId = parseInt(req.params.id);
+    const data = await db
+      .select()
+      .from(activitiesTable)
+      .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id))
+      .where(eq(activitiesTable.contactId, contactId))
+      .orderBy(activitiesTable.dueDate);
+    res.json({ data: data.map((r) => ({ ...r.activities, opportunityName: r.opportunities?.name ?? null })) });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Relationship: opportunities for a contact
+router.get("/contacts/:id/opportunities", async (req, res) => {
+  try {
+    const contactId = parseInt(req.params.id);
+    const data = await db
+      .select()
+      .from(opportunitiesTable)
+      .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
+      .where(eq(opportunitiesTable.contactId, contactId));
+    res.json({ data: data.map((r) => ({ ...r.opportunities, accountName: r.accounts?.name ?? null })) });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

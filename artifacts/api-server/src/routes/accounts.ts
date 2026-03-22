@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { accountsTable, usersTable, contactsTable, opportunitiesTable } from "@workspace/db";
+import { accountsTable, usersTable, contactsTable, opportunitiesTable, activitiesTable } from "@workspace/db";
 import { eq, ilike, sql, and } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -153,6 +153,54 @@ router.delete("/accounts/:id", async (req, res) => {
     const id = parseInt(req.params.id);
     await db.delete(accountsTable).where(eq(accountsTable.id, id));
     res.json({ success: true, id });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Relationship: contacts for an account
+router.get("/accounts/:id/contacts", async (req, res) => {
+  try {
+    const accountId = parseInt(req.params.id);
+    const data = await db
+      .select()
+      .from(contactsTable)
+      .where(eq(contactsTable.accountId, accountId))
+      .orderBy(contactsTable.firstName);
+    res.json({ data });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Relationship: opportunities for an account
+router.get("/accounts/:id/opportunities", async (req, res) => {
+  try {
+    const accountId = parseInt(req.params.id);
+    const data = await db
+      .select()
+      .from(opportunitiesTable)
+      .where(eq(opportunitiesTable.accountId, accountId))
+      .orderBy(opportunitiesTable.closeDate);
+    res.json({ data: data.map((o) => ({ ...o, amount: o.amount ? Number(o.amount) : null })) });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Relationship: activities for an account
+router.get("/accounts/:id/activities", async (req, res) => {
+  try {
+    const accountId = parseInt(req.params.id);
+    const data = await db
+      .select()
+      .from(activitiesTable)
+      .where(eq(activitiesTable.accountId, accountId))
+      .orderBy(activitiesTable.dueDate);
+    res.json({ data });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

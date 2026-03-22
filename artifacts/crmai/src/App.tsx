@@ -8,9 +8,11 @@ import Landing from "@/pages/landing";
 
 import Dashboard from "./pages/dashboard";
 import Contacts from "./pages/contacts";
+import ContactDetail from "./pages/contact-detail";
 import Leads from "./pages/leads";
 import Accounts from "./pages/accounts";
 import Opportunities from "./pages/opportunities";
+import OpportunityDetail from "./pages/opportunity-detail";
 import Activities from "./pages/activities";
 import Products from "./pages/products";
 import Cases from "./pages/cases";
@@ -33,9 +35,11 @@ function CRMRoutes() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/contacts" component={Contacts} />
+      <Route path="/contacts/:id" component={ContactDetail} />
       <Route path="/leads" component={Leads} />
       <Route path="/accounts" component={Accounts} />
       <Route path="/opportunities" component={Opportunities} />
+      <Route path="/opportunities/:id" component={OpportunityDetail} />
       <Route path="/activities" component={Activities} />
       <Route path="/products" component={Products} />
       <Route path="/cases" component={Cases} />

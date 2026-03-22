@@ -20,7 +20,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Mail, Phone, Building2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Mail, Phone, Building2, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -113,7 +114,12 @@ export default function Contacts() {
                             {contact.firstName[0]}{contact.lastName[0]}
                           </div>
                           <div>
-                            <div className="font-medium text-white">{contact.firstName} {contact.lastName}</div>
+                            <Link href={`/contacts/${contact.id}`}>
+                              <div className="font-medium text-white hover:text-primary transition-colors cursor-pointer flex items-center gap-1 group/link">
+                                {contact.firstName} {contact.lastName}
+                                <ExternalLink className="w-3 h-3 opacity-0 group-hover/link:opacity-60 transition-opacity" />
+                              </div>
+                            </Link>
                             <div className="text-xs text-muted-foreground">Added {format(new Date(contact.createdAt), "MMM d, yyyy")}</div>
                           </div>
                         </div>

@@ -4,7 +4,8 @@ import type { Opportunity, UpdateOpportunityInputStage } from "@workspace/api-cl
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import { Plus, DollarSign, Calendar } from "lucide-react";
+import { Plus, DollarSign, Calendar, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
 import { format } from "date-fns";
@@ -142,7 +143,12 @@ export default function Opportunities() {
                                         : "border-white/10 hover:border-white/20 hover:shadow-lg"
                                     }`}
                                   >
-                                    <div className="font-medium text-white mb-1">{opp.name}</div>
+                                    <Link href={`/opportunities/${opp.id}`}>
+                                      <div className="font-medium text-white mb-1 hover:text-primary transition-colors flex items-center gap-1 group/opp cursor-pointer">
+                                        {opp.name}
+                                        <ExternalLink className="w-3 h-3 opacity-0 group-hover/opp:opacity-60 transition-opacity shrink-0" />
+                                      </div>
+                                    </Link>
                                     <div className="text-xs text-muted-foreground mb-3">
                                       {opp.accountName ?? "No Account"}
                                     </div>
