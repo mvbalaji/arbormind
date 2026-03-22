@@ -7,3 +7,4 @@ export * from "./activities";
 export * from "./products";
 export * from "./cases";
 export * from "./quotes";
+export * from "./allowed-users";

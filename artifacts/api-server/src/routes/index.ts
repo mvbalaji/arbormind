@@ -10,10 +10,12 @@ import productsRouter from "./products";
 import casesRouter from "./cases";
 import quotesRouter from "./quotes";
 import reportsRouter from "./reports";
+import authRouter from "./auth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(authRouter);
 router.use(usersRouter);
 router.use(accountsRouter);
 router.use(contactsRouter);

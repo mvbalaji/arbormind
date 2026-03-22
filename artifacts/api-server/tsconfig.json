@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node", "passport", "express-session", "passport-google-oauth20"]
   },
   "include": ["src"],
   "references": [

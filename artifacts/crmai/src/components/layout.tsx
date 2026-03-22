@@ -16,13 +16,23 @@ import {
   Bell,
   Search,
   Menu,
-  X
+  X,
+  LogOut,
+  ChevronDown
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { useAuth } from "@/context/auth";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -45,6 +55,11 @@ const NAV_ITEMS = [
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+
+  const initials = user?.name
+    ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "U";
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
@@ -95,16 +110,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
         
         <div className="p-4 border-t border-border mt-auto">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
-            <Avatar className="w-9 h-9 border border-white/10 shadow-md">
-              <AvatarImage src="https://i.pravatar.cc/150?u=admin" />
-              <AvatarFallback className="bg-primary/20 text-primary">AD</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-              <span className="text-sm font-medium leading-none">Admin User</span>
-              <span className="text-xs text-muted-foreground mt-1">System Admin</span>
-            </div>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer text-left">
+                <Avatar className="w-9 h-9 border border-white/10 shadow-md flex-shrink-0">
+                  {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
+                  <AvatarFallback className="bg-primary/20 text-primary">{initials}</AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-sm font-medium leading-none truncate">{user?.name ?? "User"}</span>
+                  <span className="text-xs text-muted-foreground mt-1 capitalize">{user?.role ?? "sales"}</span>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="top" align="start" className="w-56 mb-1">
+              <div className="px-2 py-1.5 text-xs text-muted-foreground truncate">{user?.email}</div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-500 focus:text-red-500 cursor-pointer"
+                onClick={() => void logout()}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
 
