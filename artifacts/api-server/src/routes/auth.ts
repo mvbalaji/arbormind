@@ -8,9 +8,10 @@ import { eq } from "drizzle-orm";
 const ADMIN_EMAIL = "balaji.venkateswaran@gmail.com";
 
 function getCallbackUrl() {
+  if (process.env.GOOGLE_CALLBACK_URL) return process.env.GOOGLE_CALLBACK_URL;
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.CUSTOM_DOMAIN;
   if (domain) return `https://${domain}/api/auth/google/callback`;
-  return process.env.GOOGLE_CALLBACK_URL || "http://localhost:8080/api/auth/google/callback";
+  return "http://localhost:8080/api/auth/google/callback";
 }
 
 export function setupPassport() {
