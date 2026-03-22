@@ -1,11 +1,39 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { casesTable, usersTable, contactsTable, accountsTable } from "@workspace/db/schema";
-import { eq, ilike, sql } from "drizzle-orm";
+import { casesTable, usersTable, contactsTable, accountsTable } from "@workspace/db";
+import { eq, ilike, sql, and } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-let caseCounter = 1000;
+const caseFields = {
+  id: casesTable.id,
+  caseNumber: casesTable.caseNumber,
+  subject: casesTable.subject,
+  description: casesTable.description,
+  status: casesTable.status,
+  priority: casesTable.priority,
+  type: casesTable.type,
+  origin: casesTable.origin,
+  contactId: casesTable.contactId,
+  contactFirstName: contactsTable.firstName,
+  contactLastName: contactsTable.lastName,
+  accountId: casesTable.accountId,
+  accountName: accountsTable.name,
+  assignedTo: casesTable.assignedTo,
+  assignedToName: usersTable.name,
+  resolution: casesTable.resolution,
+  resolvedAt: casesTable.resolvedAt,
+  createdAt: casesTable.createdAt,
+  updatedAt: casesTable.updatedAt,
+};
+
+function formatCase(c: { contactFirstName: string | null; contactLastName: string | null; [key: string]: unknown }) {
+  const { contactFirstName, contactLastName, ...rest } = c;
+  return {
+    ...rest,
+    contactName: contactFirstName ? `${contactFirstName} ${contactLastName}` : null,
+  };
+}
 
 router.get("/cases", async (req, res) => {
   try {
@@ -15,52 +43,27 @@ router.get("/cases", async (req, res) => {
     const offset = (pageNum - 1) * limitNum;
 
     const baseQuery = db
-      .select({
-        id: casesTable.id,
-        caseNumber: casesTable.caseNumber,
-        subject: casesTable.subject,
-        description: casesTable.description,
-        status: casesTable.status,
-        priority: casesTable.priority,
-        type: casesTable.type,
-        origin: casesTable.origin,
-        contactId: casesTable.contactId,
-        contactFirstName: contactsTable.firstName,
-        contactLastName: contactsTable.lastName,
-        accountId: casesTable.accountId,
-        accountName: accountsTable.name,
-        assignedTo: casesTable.assignedTo,
-        assignedToName: usersTable.name,
-        resolution: casesTable.resolution,
-        resolvedAt: casesTable.resolvedAt,
-        createdAt: casesTable.createdAt,
-        updatedAt: casesTable.updatedAt,
-      })
+      .select(caseFields)
       .from(casesTable)
       .leftJoin(usersTable, eq(casesTable.assignedTo, usersTable.id))
       .leftJoin(contactsTable, eq(casesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(casesTable.accountId, accountsTable.id));
 
-    let data: any[];
-    if (search) {
-      data = await baseQuery.where(ilike(casesTable.subject, `%${search}%`)).limit(limitNum).offset(offset);
-    } else if (status) {
-      data = await baseQuery.where(eq(casesTable.status, status)).limit(limitNum).offset(offset);
-    } else if (priority) {
-      data = await baseQuery.where(eq(casesTable.priority, priority)).limit(limitNum).offset(offset);
-    } else {
-      data = await baseQuery.limit(limitNum).offset(offset);
-    }
+    const conditions = [];
+    if (search) conditions.push(ilike(casesTable.subject, `%${search}%`));
+    if (status) conditions.push(eq(casesTable.status, status));
+    if (priority) conditions.push(eq(casesTable.priority, priority));
+    if (contactId) conditions.push(eq(casesTable.contactId, parseInt(contactId)));
+    if (accountId) conditions.push(eq(casesTable.accountId, parseInt(accountId)));
+    if (assignedTo) conditions.push(eq(casesTable.assignedTo, parseInt(assignedTo)));
+
+    const data = await (conditions.length > 0
+      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      : baseQuery
+    ).limit(limitNum).offset(offset);
 
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(casesTable);
-    const enriched = data.map(c => ({
-      ...c,
-      contactName: c.contactFirstName ? `${c.contactFirstName} ${c.contactLastName}` : null,
-      contactFirstName: undefined,
-      contactLastName: undefined,
-    }));
-
-    res.json({ data: enriched, total: Number(countResult.count), page: pageNum, limit: limitNum });
+    res.json({ data: data.map(formatCase), total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -70,7 +73,7 @@ router.get("/cases", async (req, res) => {
 router.post("/cases", async (req, res) => {
   try {
     const [maxCase] = await db.select({ maxNum: sql<string>`max(case_number)` }).from(casesTable);
-    const nextNum = maxCase?.maxNum ? parseInt(maxCase.maxNum.replace('CASE-', '')) + 1 : 1001;
+    const nextNum = maxCase?.maxNum ? parseInt(maxCase.maxNum.replace("CASE-", "")) + 1 : 1001;
     const caseNumber = `CASE-${nextNum}`;
 
     const [caseRecord] = await db.insert(casesTable).values({ ...req.body, caseNumber }).returning();
@@ -89,38 +92,18 @@ router.post("/cases", async (req, res) => {
 router.get("/cases/:id", async (req, res) => {
   try {
     const [caseRecord] = await db
-      .select({
-        id: casesTable.id,
-        caseNumber: casesTable.caseNumber,
-        subject: casesTable.subject,
-        description: casesTable.description,
-        status: casesTable.status,
-        priority: casesTable.priority,
-        type: casesTable.type,
-        origin: casesTable.origin,
-        contactId: casesTable.contactId,
-        contactFirstName: contactsTable.firstName,
-        contactLastName: contactsTable.lastName,
-        accountId: casesTable.accountId,
-        accountName: accountsTable.name,
-        assignedTo: casesTable.assignedTo,
-        assignedToName: usersTable.name,
-        resolution: casesTable.resolution,
-        resolvedAt: casesTable.resolvedAt,
-        createdAt: casesTable.createdAt,
-        updatedAt: casesTable.updatedAt,
-      })
+      .select(caseFields)
       .from(casesTable)
       .leftJoin(usersTable, eq(casesTable.assignedTo, usersTable.id))
       .leftJoin(contactsTable, eq(casesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(casesTable.accountId, accountsTable.id))
       .where(eq(casesTable.id, parseInt(req.params.id)));
 
-    if (!caseRecord) return res.status(404).json({ error: "Case not found" });
-    res.json({
-      ...caseRecord,
-      contactName: caseRecord.contactFirstName ? `${caseRecord.contactFirstName} ${caseRecord.contactLastName}` : null,
-    });
+    if (!caseRecord) {
+      res.status(404).json({ error: "Case not found" });
+    } else {
+      res.json(formatCase(caseRecord));
+    }
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -133,8 +116,11 @@ router.put("/cases/:id", async (req, res) => {
       .set({ ...req.body, updatedAt: new Date() })
       .where(eq(casesTable.id, parseInt(req.params.id)))
       .returning();
-    if (!caseRecord) return res.status(404).json({ error: "Case not found" });
-    res.json({ ...caseRecord, contactName: null, accountName: null, assignedToName: null });
+    if (!caseRecord) {
+      res.status(404).json({ error: "Case not found" });
+    } else {
+      res.json({ ...caseRecord, contactName: null, accountName: null, assignedToName: null });
+    }
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

@@ -1,9 +1,31 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { contactsTable, usersTable, accountsTable } from "@workspace/db/schema";
-import { eq, ilike, or, sql } from "drizzle-orm";
+import { contactsTable, usersTable, accountsTable } from "@workspace/db";
+import { eq, ilike, or, sql, and } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+const contactFields = {
+  id: contactsTable.id,
+  firstName: contactsTable.firstName,
+  lastName: contactsTable.lastName,
+  email: contactsTable.email,
+  phone: contactsTable.phone,
+  mobile: contactsTable.mobile,
+  title: contactsTable.title,
+  department: contactsTable.department,
+  accountId: contactsTable.accountId,
+  accountName: accountsTable.name,
+  ownerId: contactsTable.ownerId,
+  ownerName: usersTable.name,
+  leadSource: contactsTable.leadSource,
+  address: contactsTable.address,
+  city: contactsTable.city,
+  country: contactsTable.country,
+  description: contactsTable.description,
+  createdAt: contactsTable.createdAt,
+  updatedAt: contactsTable.updatedAt,
+};
 
 router.get("/contacts", async (req, res) => {
   try {
@@ -13,45 +35,27 @@ router.get("/contacts", async (req, res) => {
     const offset = (pageNum - 1) * limitNum;
 
     const baseQuery = db
-      .select({
-        id: contactsTable.id,
-        firstName: contactsTable.firstName,
-        lastName: contactsTable.lastName,
-        email: contactsTable.email,
-        phone: contactsTable.phone,
-        mobile: contactsTable.mobile,
-        title: contactsTable.title,
-        department: contactsTable.department,
-        accountId: contactsTable.accountId,
-        accountName: accountsTable.name,
-        ownerId: contactsTable.ownerId,
-        ownerName: usersTable.name,
-        leadSource: contactsTable.leadSource,
-        address: contactsTable.address,
-        city: contactsTable.city,
-        country: contactsTable.country,
-        description: contactsTable.description,
-        createdAt: contactsTable.createdAt,
-        updatedAt: contactsTable.updatedAt,
-      })
+      .select(contactFields)
       .from(contactsTable)
       .leftJoin(usersTable, eq(contactsTable.ownerId, usersTable.id))
       .leftJoin(accountsTable, eq(contactsTable.accountId, accountsTable.id));
 
-    let data: any[];
+    const conditions = [];
     if (search) {
-      data = await baseQuery.where(
-        or(
-          ilike(contactsTable.firstName, `%${search}%`),
-          ilike(contactsTable.lastName, `%${search}%`),
-          ilike(contactsTable.email, `%${search}%`)
-        )!
-      ).limit(limitNum).offset(offset);
-    } else if (accountId) {
-      data = await baseQuery.where(eq(contactsTable.accountId, parseInt(accountId))).limit(limitNum).offset(offset);
-    } else {
-      data = await baseQuery.limit(limitNum).offset(offset);
+      conditions.push(or(
+        ilike(contactsTable.firstName, `%${search}%`),
+        ilike(contactsTable.lastName, `%${search}%`),
+        ilike(contactsTable.email, `%${search}%`)
+      )!);
     }
+    if (accountId) {
+      conditions.push(eq(contactsTable.accountId, parseInt(accountId)));
+    }
+
+    const data = await (conditions.length > 0
+      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      : baseQuery
+    ).limit(limitNum).offset(offset);
 
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(contactsTable);
     res.json({ data, total: Number(countResult.count), page: pageNum, limit: limitNum });
@@ -74,34 +78,17 @@ router.post("/contacts", async (req, res) => {
 router.get("/contacts/:id", async (req, res) => {
   try {
     const [contact] = await db
-      .select({
-        id: contactsTable.id,
-        firstName: contactsTable.firstName,
-        lastName: contactsTable.lastName,
-        email: contactsTable.email,
-        phone: contactsTable.phone,
-        mobile: contactsTable.mobile,
-        title: contactsTable.title,
-        department: contactsTable.department,
-        accountId: contactsTable.accountId,
-        accountName: accountsTable.name,
-        ownerId: contactsTable.ownerId,
-        ownerName: usersTable.name,
-        leadSource: contactsTable.leadSource,
-        address: contactsTable.address,
-        city: contactsTable.city,
-        country: contactsTable.country,
-        description: contactsTable.description,
-        createdAt: contactsTable.createdAt,
-        updatedAt: contactsTable.updatedAt,
-      })
+      .select(contactFields)
       .from(contactsTable)
       .leftJoin(usersTable, eq(contactsTable.ownerId, usersTable.id))
       .leftJoin(accountsTable, eq(contactsTable.accountId, accountsTable.id))
       .where(eq(contactsTable.id, parseInt(req.params.id)));
 
-    if (!contact) return res.status(404).json({ error: "Contact not found" });
-    res.json(contact);
+    if (!contact) {
+      res.status(404).json({ error: "Contact not found" });
+    } else {
+      res.json(contact);
+    }
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -114,8 +101,11 @@ router.put("/contacts/:id", async (req, res) => {
       .set({ ...req.body, updatedAt: new Date() })
       .where(eq(contactsTable.id, parseInt(req.params.id)))
       .returning();
-    if (!contact) return res.status(404).json({ error: "Contact not found" });
-    res.json(contact);
+    if (!contact) {
+      res.status(404).json({ error: "Contact not found" });
+    } else {
+      res.json(contact);
+    }
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

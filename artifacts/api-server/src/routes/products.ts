@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { productsTable } from "@workspace/db/schema";
+import { productsTable } from "@workspace/db";
 import { eq, ilike, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -12,16 +12,18 @@ router.get("/products", async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    let data: any[];
-    if (search) {
-      data = await db.select().from(productsTable).where(ilike(productsTable.name, `%${search}%`)).limit(limitNum).offset(offset);
-    } else {
-      data = await db.select().from(productsTable).limit(limitNum).offset(offset);
-    }
+    const data = await (search
+      ? db.select().from(productsTable).where(ilike(productsTable.name, `%${search}%`))
+      : db.select().from(productsTable)
+    ).limit(limitNum).offset(offset);
 
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(productsTable);
-    const enriched = data.map(p => ({ ...p, unitPrice: Number(p.unitPrice) }));
-    res.json({ data: enriched, total: Number(countResult.count), page: pageNum, limit: limitNum });
+    res.json({
+      data: data.map(p => ({ ...p, unitPrice: Number(p.unitPrice) })),
+      total: Number(countResult.count),
+      page: pageNum,
+      limit: limitNum,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -41,8 +43,11 @@ router.post("/products", async (req, res) => {
 router.get("/products/:id", async (req, res) => {
   try {
     const [product] = await db.select().from(productsTable).where(eq(productsTable.id, parseInt(req.params.id)));
-    if (!product) return res.status(404).json({ error: "Product not found" });
-    res.json({ ...product, unitPrice: Number(product.unitPrice) });
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+    } else {
+      res.json({ ...product, unitPrice: Number(product.unitPrice) });
+    }
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -55,8 +60,11 @@ router.put("/products/:id", async (req, res) => {
       .set({ ...req.body, updatedAt: new Date() })
       .where(eq(productsTable.id, parseInt(req.params.id)))
       .returning();
-    if (!product) return res.status(404).json({ error: "Product not found" });
-    res.json({ ...product, unitPrice: Number(product.unitPrice) });
+    if (!product) {
+      res.status(404).json({ error: "Product not found" });
+    } else {
+      res.json({ ...product, unitPrice: Number(product.unitPrice) });
+    }
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

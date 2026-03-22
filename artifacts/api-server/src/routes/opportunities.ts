@@ -1,9 +1,44 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { opportunitiesTable, usersTable, accountsTable, contactsTable } from "@workspace/db/schema";
-import { eq, ilike, sql } from "drizzle-orm";
+import { opportunitiesTable, usersTable, accountsTable, contactsTable } from "@workspace/db";
+import { eq, ilike, sql, and } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+const oppFields = {
+  id: opportunitiesTable.id,
+  name: opportunitiesTable.name,
+  accountId: opportunitiesTable.accountId,
+  accountName: accountsTable.name,
+  contactId: opportunitiesTable.contactId,
+  contactFirstName: contactsTable.firstName,
+  contactLastName: contactsTable.lastName,
+  stage: opportunitiesTable.stage,
+  amount: opportunitiesTable.amount,
+  probability: opportunitiesTable.probability,
+  closeDate: opportunitiesTable.closeDate,
+  description: opportunitiesTable.description,
+  assignedTo: opportunitiesTable.assignedTo,
+  assignedToName: usersTable.name,
+  leadSource: opportunitiesTable.leadSource,
+  nextStep: opportunitiesTable.nextStep,
+  createdAt: opportunitiesTable.createdAt,
+  updatedAt: opportunitiesTable.updatedAt,
+};
+
+function formatOpp(o: {
+  amount: string | null;
+  contactFirstName: string | null;
+  contactLastName: string | null;
+  [key: string]: unknown;
+}) {
+  const { contactFirstName, contactLastName, ...rest } = o;
+  return {
+    ...rest,
+    amount: o.amount ? Number(o.amount) : null,
+    contactName: contactFirstName ? `${contactFirstName} ${contactLastName}` : null,
+  };
+}
 
 router.get("/opportunities", async (req, res) => {
   try {
@@ -13,54 +48,25 @@ router.get("/opportunities", async (req, res) => {
     const offset = (pageNum - 1) * limitNum;
 
     const baseQuery = db
-      .select({
-        id: opportunitiesTable.id,
-        name: opportunitiesTable.name,
-        accountId: opportunitiesTable.accountId,
-        accountName: accountsTable.name,
-        contactId: opportunitiesTable.contactId,
-        contactFirstName: contactsTable.firstName,
-        contactLastName: contactsTable.lastName,
-        stage: opportunitiesTable.stage,
-        amount: opportunitiesTable.amount,
-        probability: opportunitiesTable.probability,
-        closeDate: opportunitiesTable.closeDate,
-        description: opportunitiesTable.description,
-        assignedTo: opportunitiesTable.assignedTo,
-        assignedToName: usersTable.name,
-        leadSource: opportunitiesTable.leadSource,
-        nextStep: opportunitiesTable.nextStep,
-        createdAt: opportunitiesTable.createdAt,
-        updatedAt: opportunitiesTable.updatedAt,
-      })
+      .select(oppFields)
       .from(opportunitiesTable)
       .leftJoin(usersTable, eq(opportunitiesTable.assignedTo, usersTable.id))
       .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
       .leftJoin(contactsTable, eq(opportunitiesTable.contactId, contactsTable.id));
 
-    let data: any[];
-    if (search) {
-      data = await baseQuery.where(ilike(opportunitiesTable.name, `%${search}%`)).limit(limitNum).offset(offset);
-    } else if (stage) {
-      data = await baseQuery.where(eq(opportunitiesTable.stage, stage)).limit(limitNum).offset(offset);
-    } else if (accountId) {
-      data = await baseQuery.where(eq(opportunitiesTable.accountId, parseInt(accountId))).limit(limitNum).offset(offset);
-    } else if (assignedTo) {
-      data = await baseQuery.where(eq(opportunitiesTable.assignedTo, parseInt(assignedTo))).limit(limitNum).offset(offset);
-    } else {
-      data = await baseQuery.limit(limitNum).offset(offset);
-    }
+    const conditions = [];
+    if (search) conditions.push(ilike(opportunitiesTable.name, `%${search}%`));
+    if (stage) conditions.push(eq(opportunitiesTable.stage, stage));
+    if (accountId) conditions.push(eq(opportunitiesTable.accountId, parseInt(accountId)));
+    if (assignedTo) conditions.push(eq(opportunitiesTable.assignedTo, parseInt(assignedTo)));
+
+    const data = await (conditions.length > 0
+      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      : baseQuery
+    ).limit(limitNum).offset(offset);
 
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opportunitiesTable);
-    const enriched = data.map(o => ({
-      ...o,
-      amount: o.amount ? Number(o.amount) : null,
-      contactName: o.contactFirstName ? `${o.contactFirstName} ${o.contactLastName}` : null,
-      contactFirstName: undefined,
-      contactLastName: undefined,
-    }));
-
-    res.json({ data: enriched, total: Number(countResult.count), page: pageNum, limit: limitNum });
+    res.json({ data: data.map(formatOpp), total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -80,40 +86,18 @@ router.post("/opportunities", async (req, res) => {
 router.get("/opportunities/:id", async (req, res) => {
   try {
     const [opportunity] = await db
-      .select({
-        id: opportunitiesTable.id,
-        name: opportunitiesTable.name,
-        accountId: opportunitiesTable.accountId,
-        accountName: accountsTable.name,
-        contactId: opportunitiesTable.contactId,
-        contactFirstName: contactsTable.firstName,
-        contactLastName: contactsTable.lastName,
-        stage: opportunitiesTable.stage,
-        amount: opportunitiesTable.amount,
-        probability: opportunitiesTable.probability,
-        closeDate: opportunitiesTable.closeDate,
-        description: opportunitiesTable.description,
-        assignedTo: opportunitiesTable.assignedTo,
-        assignedToName: usersTable.name,
-        leadSource: opportunitiesTable.leadSource,
-        nextStep: opportunitiesTable.nextStep,
-        createdAt: opportunitiesTable.createdAt,
-        updatedAt: opportunitiesTable.updatedAt,
-      })
+      .select(oppFields)
       .from(opportunitiesTable)
       .leftJoin(usersTable, eq(opportunitiesTable.assignedTo, usersTable.id))
       .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
       .leftJoin(contactsTable, eq(opportunitiesTable.contactId, contactsTable.id))
       .where(eq(opportunitiesTable.id, parseInt(req.params.id)));
 
-    if (!opportunity) return res.status(404).json({ error: "Opportunity not found" });
-    res.json({
-      ...opportunity,
-      amount: opportunity.amount ? Number(opportunity.amount) : null,
-      contactName: opportunity.contactFirstName ? `${opportunity.contactFirstName} ${opportunity.contactLastName}` : null,
-      contactFirstName: undefined,
-      contactLastName: undefined,
-    });
+    if (!opportunity) {
+      res.status(404).json({ error: "Opportunity not found" });
+    } else {
+      res.json(formatOpp(opportunity));
+    }
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -126,8 +110,11 @@ router.put("/opportunities/:id", async (req, res) => {
       .set({ ...req.body, updatedAt: new Date() })
       .where(eq(opportunitiesTable.id, parseInt(req.params.id)))
       .returning();
-    if (!opportunity) return res.status(404).json({ error: "Opportunity not found" });
-    res.json({ ...opportunity, amount: opportunity.amount ? Number(opportunity.amount) : null });
+    if (!opportunity) {
+      res.status(404).json({ error: "Opportunity not found" });
+    } else {
+      res.json({ ...opportunity, amount: opportunity.amount ? Number(opportunity.amount) : null });
+    }
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

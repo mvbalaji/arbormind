@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import {
   contactsTable, leadsTable, accountsTable, opportunitiesTable,
   activitiesTable, casesTable
-} from "@workspace/db/schema";
+} from "@workspace/db";
 import { eq, sql, gte, lt, and } from "drizzle-orm";
 
 const router: IRouter = Router();

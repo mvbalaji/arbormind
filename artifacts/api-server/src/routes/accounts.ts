@@ -1,9 +1,54 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { accountsTable, usersTable, contactsTable, opportunitiesTable } from "@workspace/db/schema";
-import { eq, ilike, sql } from "drizzle-orm";
+import { accountsTable, usersTable, contactsTable, opportunitiesTable } from "@workspace/db";
+import { eq, ilike, sql, and } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+const accountFields = {
+  id: accountsTable.id,
+  name: accountsTable.name,
+  industry: accountsTable.industry,
+  website: accountsTable.website,
+  phone: accountsTable.phone,
+  email: accountsTable.email,
+  address: accountsTable.address,
+  city: accountsTable.city,
+  country: accountsTable.country,
+  employees: accountsTable.employees,
+  annualRevenue: accountsTable.annualRevenue,
+  description: accountsTable.description,
+  ownerId: accountsTable.ownerId,
+  ownerName: usersTable.name,
+  createdAt: accountsTable.createdAt,
+  updatedAt: accountsTable.updatedAt,
+};
+
+async function enrichAccounts(data: Array<{ id: number; annualRevenue: string | null; [key: string]: unknown }>) {
+  const accountIds = data.map(a => a.id);
+  if (accountIds.length === 0) return data.map(a => ({ ...a, contactCount: 0, dealCount: 0, annualRevenue: a.annualRevenue ? Number(a.annualRevenue) : null }));
+
+  const [contactCounts, dealCounts] = await Promise.all([
+    db.select({ accountId: contactsTable.accountId, count: sql<number>`count(*)` })
+      .from(contactsTable)
+      .where(sql`${contactsTable.accountId} = ANY(ARRAY[${sql.raw(accountIds.join(","))}]::int[])`)
+      .groupBy(contactsTable.accountId),
+    db.select({ accountId: opportunitiesTable.accountId, count: sql<number>`count(*)` })
+      .from(opportunitiesTable)
+      .where(sql`${opportunitiesTable.accountId} = ANY(ARRAY[${sql.raw(accountIds.join(","))}]::int[])`)
+      .groupBy(opportunitiesTable.accountId),
+  ]);
+
+  const contactCountMap = new Map(contactCounts.map(c => [c.accountId, Number(c.count)]));
+  const dealCountMap = new Map(dealCounts.map(d => [d.accountId, Number(d.count)]));
+
+  return data.map(a => ({
+    ...a,
+    annualRevenue: a.annualRevenue ? Number(a.annualRevenue) : null,
+    contactCount: contactCountMap.get(a.id) ?? 0,
+    dealCount: dealCountMap.get(a.id) ?? 0,
+  }));
+}
 
 router.get("/accounts", async (req, res) => {
   try {
@@ -13,61 +58,23 @@ router.get("/accounts", async (req, res) => {
     const offset = (pageNum - 1) * limitNum;
 
     const baseQuery = db
-      .select({
-        id: accountsTable.id,
-        name: accountsTable.name,
-        industry: accountsTable.industry,
-        website: accountsTable.website,
-        phone: accountsTable.phone,
-        email: accountsTable.email,
-        address: accountsTable.address,
-        city: accountsTable.city,
-        country: accountsTable.country,
-        employees: accountsTable.employees,
-        annualRevenue: accountsTable.annualRevenue,
-        description: accountsTable.description,
-        ownerId: accountsTable.ownerId,
-        ownerName: usersTable.name,
-        createdAt: accountsTable.createdAt,
-        updatedAt: accountsTable.updatedAt,
-      })
+      .select(accountFields)
       .from(accountsTable)
       .leftJoin(usersTable, eq(accountsTable.ownerId, usersTable.id));
 
-    let data: any[];
-    if (search) {
-      data = await baseQuery.where(ilike(accountsTable.name, `%${search}%`)).limit(limitNum).offset(offset);
-    } else if (industry) {
-      data = await baseQuery.where(eq(accountsTable.industry, industry)).limit(limitNum).offset(offset);
-    } else {
-      data = await baseQuery.limit(limitNum).offset(offset);
-    }
+    const conditions = [];
+    if (search) conditions.push(ilike(accountsTable.name, `%${search}%`));
+    if (industry) conditions.push(eq(accountsTable.industry, industry));
 
-    // Count contacts and opportunities per account
-    const accountIds = data.map(a => a.id);
-    const [contactCounts, dealCounts, countResult] = await Promise.all([
-      accountIds.length > 0 ? db.select({
-        accountId: contactsTable.accountId,
-        count: sql<number>`count(*)`
-      }).from(contactsTable).where(sql`${contactsTable.accountId} = ANY(${sql.raw(`ARRAY[${accountIds.join(',')}]::int[]`)})`).groupBy(contactsTable.accountId) : [],
-      accountIds.length > 0 ? db.select({
-        accountId: opportunitiesTable.accountId,
-        count: sql<number>`count(*)`
-      }).from(opportunitiesTable).where(sql`${opportunitiesTable.accountId} = ANY(${sql.raw(`ARRAY[${accountIds.join(',')}]::int[]`)})`).groupBy(opportunitiesTable.accountId) : [],
-      db.select({ count: sql<number>`count(*)` }).from(accountsTable)
-    ]);
+    const data = await (conditions.length > 0
+      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      : baseQuery
+    ).limit(limitNum).offset(offset);
 
-    const contactCountMap = new Map(contactCounts.map(c => [c.accountId, Number(c.count)]));
-    const dealCountMap = new Map(dealCounts.map(d => [d.accountId, Number(d.count)]));
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(accountsTable);
+    const enriched = await enrichAccounts(data);
 
-    const enriched = data.map(a => ({
-      ...a,
-      annualRevenue: a.annualRevenue ? Number(a.annualRevenue) : null,
-      contactCount: contactCountMap.get(a.id) || 0,
-      dealCount: dealCountMap.get(a.id) || 0,
-    }));
-
-    res.json({ data: enriched, total: Number(countResult[0].count), page: pageNum, limit: limitNum });
+    res.json({ data: enriched, total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -77,7 +84,12 @@ router.get("/accounts", async (req, res) => {
 router.post("/accounts", async (req, res) => {
   try {
     const [account] = await db.insert(accountsTable).values(req.body).returning();
-    res.status(201).json({ ...account, contactCount: 0, dealCount: 0, annualRevenue: account.annualRevenue ? Number(account.annualRevenue) : null });
+    res.status(201).json({
+      ...account,
+      annualRevenue: account.annualRevenue ? Number(account.annualRevenue) : null,
+      contactCount: 0,
+      dealCount: 0,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -87,33 +99,19 @@ router.post("/accounts", async (req, res) => {
 router.get("/accounts/:id", async (req, res) => {
   try {
     const [account] = await db
-      .select({
-        id: accountsTable.id,
-        name: accountsTable.name,
-        industry: accountsTable.industry,
-        website: accountsTable.website,
-        phone: accountsTable.phone,
-        email: accountsTable.email,
-        address: accountsTable.address,
-        city: accountsTable.city,
-        country: accountsTable.country,
-        employees: accountsTable.employees,
-        annualRevenue: accountsTable.annualRevenue,
-        description: accountsTable.description,
-        ownerId: accountsTable.ownerId,
-        ownerName: usersTable.name,
-        createdAt: accountsTable.createdAt,
-        updatedAt: accountsTable.updatedAt,
-      })
+      .select(accountFields)
       .from(accountsTable)
       .leftJoin(usersTable, eq(accountsTable.ownerId, usersTable.id))
       .where(eq(accountsTable.id, parseInt(req.params.id)));
 
-    if (!account) return res.status(404).json({ error: "Account not found" });
+    if (!account) {
+      res.status(404).json({ error: "Account not found" });
+      return;
+    }
 
     const [contactCounts, dealCounts] = await Promise.all([
       db.select({ count: sql<number>`count(*)` }).from(contactsTable).where(eq(contactsTable.accountId, account.id)),
-      db.select({ count: sql<number>`count(*)` }).from(opportunitiesTable).where(eq(opportunitiesTable.accountId, account.id))
+      db.select({ count: sql<number>`count(*)` }).from(opportunitiesTable).where(eq(opportunitiesTable.accountId, account.id)),
     ]);
 
     res.json({
@@ -134,8 +132,16 @@ router.put("/accounts/:id", async (req, res) => {
       .set({ ...req.body, updatedAt: new Date() })
       .where(eq(accountsTable.id, parseInt(req.params.id)))
       .returning();
-    if (!account) return res.status(404).json({ error: "Account not found" });
-    res.json({ ...account, annualRevenue: account.annualRevenue ? Number(account.annualRevenue) : null, contactCount: 0, dealCount: 0 });
+    if (!account) {
+      res.status(404).json({ error: "Account not found" });
+    } else {
+      res.json({
+        ...account,
+        annualRevenue: account.annualRevenue ? Number(account.annualRevenue) : null,
+        contactCount: 0,
+        dealCount: 0,
+      });
+    }
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
