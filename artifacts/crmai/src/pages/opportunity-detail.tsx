@@ -1,15 +1,22 @@
 import React, { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useListQuotes, useCreateQuote, useListProducts, getListQuotesQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   ArrowLeft, DollarSign, Calendar, Activity, Building2,
   Phone, Mail, Users, Briefcase, CheckCircle2, Clock, TrendingUp,
+  FileText, Plus, Package, X,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface OpportunityDetail {
   id: number;
@@ -56,12 +63,243 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
   demo: Briefcase,
 };
 
-type Tab = "activities" | "about";
+type Tab = "activities" | "quotes" | "about";
+
+interface OppQuote {
+  id: number;
+  name: string;
+  quoteNumber: string;
+  status: string;
+  total: number;
+  validUntil: string | null;
+}
+
+interface QuickQuoteItem {
+  productId: number | null;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+}
+
+const DEFAULT_ITEM: QuickQuoteItem = { productId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 };
+
+const QUOTE_STATUS_COLORS: Record<string, string> = {
+  draft: "border-white/10 text-muted-foreground",
+  sent: "border-blue-500/30 text-blue-400 bg-blue-500/5",
+  accepted: "border-green-500/30 text-green-400 bg-green-500/5",
+  rejected: "border-red-500/30 text-red-400 bg-red-500/5",
+  expired: "border-orange-500/30 text-orange-400 bg-orange-500/5",
+};
+
+function QuickQuoteDialog({
+  open, onOpenChange, opportunityId, opportunityName,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  opportunityId: number;
+  opportunityName: string;
+}) {
+  const [name, setName] = useState(opportunityName + " Quote");
+  const [status, setStatus] = useState<string>("draft");
+  const [validUntil, setValidUntil] = useState("");
+  const [discount, setDiscount] = useState("0");
+  const [tax, setTax] = useState("0");
+  const [items, setItems] = useState<QuickQuoteItem[]>([]);
+  const { data: productsData } = useListProducts({ limit: 200 });
+  const products = productsData?.data ?? [];
+  const createMutation = useCreateQuote();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (open) {
+      setName(opportunityName + " Quote");
+      setStatus("draft");
+      setValidUntil("");
+      setDiscount("0");
+      setTax("0");
+      setItems([]);
+    }
+  }, [open, opportunityName]);
+
+  const lineTotal = (item: QuickQuoteItem) => item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100);
+  const subtotal = items.reduce((sum, it) => sum + lineTotal(it), 0);
+  const discountAmt = subtotal * (parseFloat(discount) || 0) / 100;
+  const taxAmt = (subtotal - discountAmt) * (parseFloat(tax) || 0) / 100;
+  const total = subtotal - discountAmt + taxAmt;
+
+  const addItem = () => setItems(prev => [...prev, { ...DEFAULT_ITEM }]);
+  const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, changes: Partial<QuickQuoteItem>) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...changes } : it));
+
+  const pickProduct = (idx: number, productId: number) => {
+    const prod = products.find(p => p.id === productId);
+    if (prod) updateItem(idx, { productId: prod.id, productName: prod.name, unitPrice: prod.unitPrice, discount: 0 });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name) return;
+    const quoteItems: CreateQuoteItemInput[] = items.filter(it => it.productName).map(it => ({
+      productId: it.productId || null,
+      productName: it.productName,
+      quantity: it.quantity || 1,
+      unitPrice: it.unitPrice || 0,
+      discount: it.discount || 0,
+    }));
+    const payload: CreateQuoteInput = {
+      name,
+      opportunityId,
+      status: status as CreateQuoteInputStatus,
+      validUntil: validUntil || null,
+      discount: parseFloat(discount) || 0,
+      tax: parseFloat(tax) || 0,
+      items: quoteItems,
+    };
+    try {
+      await createMutation.mutateAsync({ data: payload });
+      await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: ["opportunity-quotes", String(opportunityId)] });
+      toast({ title: "Quote created", description: `${name} linked to this opportunity.` });
+      onOpenChange(false);
+    } catch {
+      toast({ title: "Error", description: "Could not create quote.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-white/10 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create Quote for this Opportunity</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2 col-span-2">
+              <Label>Quote Name *</Label>
+              <Input required className="bg-black/20 border-white/10"
+                value={name} onChange={e => setName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <select className="w-full h-10 px-3 rounded-md bg-black/20 border border-white/10 text-white text-sm"
+                value={status} onChange={e => setStatus(e.target.value)}>
+                {Object.keys(CreateQuoteInputStatus).map(s => (
+                  <option key={s} value={s} className="bg-card capitalize">{s}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Valid Until</Label>
+              <Input type="date" className="bg-black/20 border-white/10"
+                value={validUntil} onChange={e => setValidUntil(e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-sm font-semibold">Products / Line Items</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-white/10 text-xs">
+                <Plus className="w-3 h-3 mr-1" /> Add Item
+              </Button>
+            </div>
+            {items.length === 0 ? (
+              <div className="border border-dashed border-white/10 rounded-lg p-5 text-center text-muted-foreground text-sm cursor-pointer hover:border-primary/30 transition-colors" onClick={addItem}>
+                <Package className="w-5 h-5 mx-auto mb-1.5 opacity-40" />
+                Click to add products
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-12 gap-1 text-xs text-muted-foreground uppercase px-1">
+                  <span className="col-span-4">Product</span>
+                  <span className="col-span-2 text-right">Qty</span>
+                  <span className="col-span-2 text-right">Price</span>
+                  <span className="col-span-2 text-right">Disc%</span>
+                  <span className="col-span-1 text-right">Total</span>
+                  <span className="col-span-1"></span>
+                </div>
+                {items.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-1 items-center bg-white/5 rounded-lg p-2">
+                    <div className="col-span-4">
+                      <select className="w-full h-8 px-2 rounded-md bg-black/30 border border-white/10 text-white text-sm"
+                        value={item.productId ?? ""} onChange={e => {
+                          const val = e.target.value;
+                          val === "" ? updateItem(idx, { productId: null, productName: "", unitPrice: 0 }) : pickProduct(idx, parseInt(val));
+                        }}>
+                        <option value="" className="bg-card">Custom</option>
+                        {products.map(p => <option key={p.id} value={p.id} className="bg-card">{p.name}</option>)}
+                      </select>
+                      {!item.productId && (
+                        <Input className="mt-1 h-7 text-xs bg-black/30 border-white/10" placeholder="Name..."
+                          value={item.productName} onChange={e => updateItem(idx, { productName: e.target.value })} />
+                      )}
+                    </div>
+                    <div className="col-span-2">
+                      <Input type="number" min="1" className="h-8 bg-black/30 border-white/10 text-right text-sm"
+                        value={item.quantity} onChange={e => updateItem(idx, { quantity: parseFloat(e.target.value) || 1 })} />
+                    </div>
+                    <div className="col-span-2">
+                      <Input type="number" min="0" step="0.01" className="h-8 bg-black/30 border-white/10 text-right text-sm"
+                        value={item.unitPrice} onChange={e => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                    <div className="col-span-2">
+                      <Input type="number" min="0" max="100" className="h-8 bg-black/30 border-white/10 text-right text-sm"
+                        value={item.discount} onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                    <div className="col-span-1 text-right text-xs font-medium text-white">
+                      ${lineTotal(item).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </div>
+                    <div className="col-span-1 flex justify-end">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-400" onClick={() => removeItem(idx)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {items.length > 0 && (
+            <div className="border border-white/5 rounded-lg p-3 space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Discount %</Label>
+                  <Input type="number" min="0" max="100" className="h-8 bg-black/20 border-white/10 text-sm"
+                    value={discount} onChange={e => setDiscount(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Tax %</Label>
+                  <Input type="number" min="0" className="h-8 bg-black/20 border-white/10 text-sm"
+                    value={tax} onChange={e => setTax(e.target.value)} />
+                </div>
+              </div>
+              <div className="flex justify-between font-bold text-white border-t border-white/10 pt-2">
+                <span>Total</span>
+                <span>${total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
+            <Button type="submit" disabled={createMutation.isPending} className="bg-primary hover:bg-primary/90 text-white">
+              {createMutation.isPending ? "Creating..." : "Create Quote"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function OpportunityDetail() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [activeTab, setActiveTab] = useState<Tab>("activities");
+  const [isQuoteOpen, setIsQuoteOpen] = useState(false);
 
   const { data: opp, isLoading } = useQuery<OpportunityDetail>({
     queryKey: ["opportunity", id],
@@ -81,6 +319,10 @@ export default function OpportunityDetail() {
     },
     enabled: !!id,
   });
+
+  const numericId = id ? parseInt(id) : undefined;
+  const { data: quotesData } = useListQuotes(numericId ? { opportunityId: numericId } : undefined);
+  const oppQuotes: OppQuote[] = (quotesData?.data ?? []) as OppQuote[];
 
   if (isLoading) {
     return (
@@ -109,6 +351,7 @@ export default function OpportunityDetail() {
 
   const TABS: { id: Tab; label: string; count?: number }[] = [
     { id: "activities", label: "Activities", count: activitiesData?.data.length },
+    { id: "quotes", label: "Quotes", count: oppQuotes.length },
     { id: "about", label: "Details" },
   ];
 
@@ -278,6 +521,53 @@ export default function OpportunityDetail() {
           </div>
         )}
 
+        {/* Quotes Tab */}
+        {activeTab === "quotes" && (
+          <div className="flex flex-col gap-3">
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setIsQuoteOpen(true)} className="bg-primary text-white hover:bg-primary/90">
+                <Plus className="w-4 h-4 mr-1.5" /> New Quote
+              </Button>
+            </div>
+            {oppQuotes.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                No quotes for this opportunity yet.
+                <div className="mt-2">
+                  <Button variant="outline" size="sm" onClick={() => setIsQuoteOpen(true)} className="border-white/10 text-sm">
+                    Create first quote
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              oppQuotes.map(q => (
+                <Card key={q.id} className="glass-panel border-white/5 p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <FileText className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-white text-sm">{q.name}</div>
+                      <div className="text-xs text-muted-foreground font-mono mt-0.5">{q.quoteNumber}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {q.validUntil && (
+                      <span className="text-xs text-muted-foreground hidden sm:block">
+                        Valid until {format(new Date(q.validUntil), "MMM d, yyyy")}
+                      </span>
+                    )}
+                    <span className="font-semibold text-white text-sm">${q.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <Badge variant="outline" className={`capitalize text-xs ${QUOTE_STATUS_COLORS[q.status] ?? ""}`}>
+                      {q.status}
+                    </Badge>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
+
         {/* Details Tab */}
         {activeTab === "about" && (
           <Card className="glass-panel border-white/5 p-6">
@@ -310,6 +600,14 @@ export default function OpportunityDetail() {
           </Card>
         )}
       </div>
+      {numericId && (
+        <QuickQuoteDialog
+          open={isQuoteOpen}
+          onOpenChange={setIsQuoteOpen}
+          opportunityId={numericId}
+          opportunityName={opp.name}
+        />
+      )}
     </Layout>
   );
 }
