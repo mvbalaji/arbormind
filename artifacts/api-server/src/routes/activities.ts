@@ -68,7 +68,8 @@ router.get("/activities", async (req, res) => {
       : baseQuery
     ).orderBy(activitiesTable.createdAt).limit(limitNum).offset(offset);
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(activitiesTable);
+    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(activitiesTable).where(whereClause);
     res.json({ data: data.map(formatActivity), total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
     req.log.error(err);

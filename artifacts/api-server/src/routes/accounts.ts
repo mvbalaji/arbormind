@@ -71,7 +71,8 @@ router.get("/accounts", async (req, res) => {
       : baseQuery
     ).limit(limitNum).offset(offset);
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(accountsTable);
+    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(accountsTable).where(whereClause);
     const enriched = await enrichAccounts(data);
 
     res.json({ data: enriched, total: Number(countResult.count), page: pageNum, limit: limitNum });

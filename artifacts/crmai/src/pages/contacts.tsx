@@ -31,11 +31,10 @@ interface ContactFormData {
   email: string;
   phone: string;
   title: string;
-  company: string;
 }
 
 const defaultFormData: ContactFormData = {
-  firstName: "", lastName: "", email: "", phone: "", title: "", company: "",
+  firstName: "", lastName: "", email: "", phone: "", title: "",
 };
 
 export default function Contacts() {
@@ -162,7 +161,6 @@ export default function Contacts() {
                                 email: contact.email ?? "",
                                 phone: contact.phone ?? "",
                                 title: contact.title ?? "",
-                                company: contact.accountName ?? "",
                               })}
                               className="cursor-pointer hover:bg-white/10"
                             >
@@ -284,10 +282,6 @@ function ContactFormDialog({
           <div className="space-y-2">
             <Label htmlFor="title">Job Title</Label>
             <Input id="title" className="bg-black/20 border-white/10" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="company">Company</Label>
-            <Input id="company" className="bg-black/20 border-white/10" value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} />
           </div>
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>

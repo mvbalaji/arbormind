@@ -57,7 +57,8 @@ router.get("/contacts", async (req, res) => {
       : baseQuery
     ).limit(limitNum).offset(offset);
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(contactsTable);
+    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(contactsTable).where(whereClause);
     res.json({ data, total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
     req.log.error(err);
