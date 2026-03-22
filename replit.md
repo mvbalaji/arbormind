@@ -2,6 +2,8 @@
 
 ## Overview
 
+CRMAI — A comprehensive CRM application built with React-Vite frontend + Express API + PostgreSQL. Modeled after Salesforce and Zoho CRM.
+
 pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
 
 ## Stack
@@ -10,29 +12,66 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Node.js version**: 24
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
+- **Frontend**: React + Vite + TailwindCSS + shadcn/ui + Recharts + @hello-pangea/dnd
 - **API framework**: Express 5
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
 
+## CRM Modules
+
+All modules are fully implemented with real data:
+
+1. **Dashboard** — KPI cards (revenue, deals, leads, win rate), pipeline bar chart, upcoming activities
+2. **Contacts** — searchable table with add contact modal, account & owner info
+3. **Leads** — table with lead scoring badges, status filters, convert-to-contact action
+4. **Accounts** — company cards with website, industry, location, contact/deal counts
+5. **Opportunities** — Kanban pipeline board with drag-and-drop across stages
+6. **Activities** — log of calls, emails, meetings, tasks, notes with due dates
+7. **Products** — product catalog with pricing and categories
+8. **Quotes** — quotes with line items, totals, status tracking (Draft/Sent/Accepted)
+9. **Cases/Support** — case management with priority/status badges
+10. **Reports** — pipeline by stage bar chart, lead sources, revenue forecast charts
+11. **AI Assistant** — UI panel with mock insights and chat interface
+12. **Users** — user management table with roles and teams
+
+## Database Schema (9 tables)
+
+- `users` — CRM users with roles (admin/manager/rep)
+- `accounts` — Company accounts with industry, revenue, employees
+- `contacts` — Individual contacts linked to accounts
+- `leads` — Leads with scoring (0-100), source, status tracking
+- `opportunities` — Deals with stages, amounts, probabilities, close dates
+- `activities` — Activities (call/email/meeting/task/note) linked to contacts/opportunities
+- `products` — Product catalog with pricing
+- `cases` — Support cases with priority/status/type
+- `quotes` + `quote_items` — Quotes linked to opportunities with line item details
+
+## Seed Data
+
+Run with: `pnpm --filter @workspace/scripts run seed-crm`
+
+Seeds: 8 users, 20 accounts, 28 contacts, 20 leads, 30 opportunities, 12 products, 20 activities, 15 cases, 3 quotes
+
 ## Structure
 
 ```text
 artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+├── artifacts/
+│   ├── api-server/         # Express API server (port 8080)
+│   └── crmai/              # React-Vite CRM frontend
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
 │   ├── api-zod/            # Generated Zod schemas from OpenAPI
 │   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
+├── scripts/                # Utility scripts
+│   └── src/seed-crm.ts     # Database seeder
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+├── tsconfig.json
+└── package.json
 ```
 
 ## TypeScript & Composite Projects
@@ -56,41 +95,35 @@ Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` 
 
 - Entry: `src/index.ts` — reads `PORT`, starts Express
 - App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /health` (full path: `/api/health`)
+- Routes: `src/routes/index.ts` mounts sub-routers for all CRM resources
 - Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
+
+API routes: `/api/users`, `/api/accounts`, `/api/contacts`, `/api/leads` (+ `/api/leads/:id/convert`), `/api/opportunities`, `/api/activities`, `/api/products`, `/api/cases`, `/api/quotes`, `/api/reports/dashboard`, `/api/reports/pipeline`, `/api/reports/lead-sources`, `/api/reports/activities-summary`, `/api/reports/revenue-forecast`
+
+### `artifacts/crmai` (`@workspace/crmai`)
+
+React-Vite CRM frontend application. Uses shadcn/ui components, TailwindCSS (dark theme), Recharts for analytics, @hello-pangea/dnd for Kanban drag-and-drop.
+
+- `src/pages/` — one file per CRM module
+- `src/components/layout.tsx` — sidebar navigation layout
+- `src/components/ui/` — shadcn/ui components
+- `src/lib/utils.ts` — `cn()` utility
 
 ### `lib/db` (`@workspace/db`)
 
 Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
 
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas (no models definitions exist right now)
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
-
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
+- `src/schema/index.ts` — all 9 CRM table definitions
 
 ### `lib/api-spec` (`@workspace/api-spec`)
 
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
-
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
+Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages.
 
 Run codegen: `pnpm --filter @workspace/api-spec run codegen`
 
-### `lib/api-zod` (`@workspace/api-zod`)
-
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
-
 ### `scripts` (`@workspace/scripts`)
 
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+Utility scripts package. Run with `pnpm --filter @workspace/scripts run <script>`.
+
+Available scripts:
+- `seed-crm` — Seeds the database with realistic CRM data

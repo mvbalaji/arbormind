@@ -1,22 +1,40 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: CRMAI - Full Featured CRM API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: contacts
+    description: Contact management
+  - name: leads
+    description: Lead management
+  - name: accounts
+    description: Account management
+  - name: opportunities
+    description: Opportunity/Deal management
+  - name: activities
+    description: Activity management
+  - name: products
+    description: Product catalog
+  - name: cases
+    description: Support case management
+  - name: users
+    description: User management
+  - name: quotes
+    description: Quote management
+  - name: reports
+    description: Reporting and analytics
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +42,1135 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # CONTACTS
+  /contacts:
+    get:
+      operationId: listContacts
+      tags: [contacts]
+      summary: List contacts
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of contacts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactList"
+    post:
+      operationId: createContact
+      tags: [contacts]
+      summary: Create contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContactInput"
+      responses:
+        "201":
+          description: Created contact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+
+  /contacts/{id}:
+    get:
+      operationId: getContact
+      tags: [contacts]
+      summary: Get contact by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Contact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateContact
+      tags: [contacts]
+      summary: Update contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContactInput"
+      responses:
+        "200":
+          description: Updated contact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contact"
+    delete:
+      operationId: deleteContact
+      tags: [contacts]
+      summary: Delete contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  # LEADS
+  /leads:
+    get:
+      operationId: listLeads
+      tags: [leads]
+      summary: List leads
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: assignedTo
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of leads
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadList"
+    post:
+      operationId: createLead
+      tags: [leads]
+      summary: Create lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeadInput"
+      responses:
+        "201":
+          description: Created lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+
+  /leads/{id}:
+    get:
+      operationId: getLead
+      tags: [leads]
+      summary: Get lead by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateLead
+      tags: [leads]
+      summary: Update lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeadInput"
+      responses:
+        "200":
+          description: Updated lead
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+    delete:
+      operationId: deleteLead
+      tags: [leads]
+      summary: Delete lead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /leads/{id}/convert:
+    post:
+      operationId: convertLead
+      tags: [leads]
+      summary: Convert lead to contact/account/opportunity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConvertLeadInput"
+      responses:
+        "200":
+          description: Conversion result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConvertLeadResult"
+
+  # ACCOUNTS
+  /accounts:
+    get:
+      operationId: listAccounts
+      tags: [accounts]
+      summary: List accounts
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: industry
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountList"
+    post:
+      operationId: createAccount
+      tags: [accounts]
+      summary: Create account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountInput"
+      responses:
+        "201":
+          description: Created account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+
+  /accounts/{id}:
+    get:
+      operationId: getAccount
+      tags: [accounts]
+      summary: Get account by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateAccount
+      tags: [accounts]
+      summary: Update account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAccountInput"
+      responses:
+        "200":
+          description: Updated account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+    delete:
+      operationId: deleteAccount
+      tags: [accounts]
+      summary: Delete account
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  # OPPORTUNITIES
+  /opportunities:
+    get:
+      operationId: listOpportunities
+      tags: [opportunities]
+      summary: List opportunities
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: stage
+          in: query
+          schema:
+            type: string
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+        - name: assignedTo
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: List of opportunities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpportunityList"
+    post:
+      operationId: createOpportunity
+      tags: [opportunities]
+      summary: Create opportunity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOpportunityInput"
+      responses:
+        "201":
+          description: Created opportunity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Opportunity"
+
+  /opportunities/{id}:
+    get:
+      operationId: getOpportunity
+      tags: [opportunities]
+      summary: Get opportunity by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Opportunity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Opportunity"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: updateOpportunity
+      tags: [opportunities]
+      summary: Update opportunity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOpportunityInput"
+      responses:
+        "200":
+          description: Updated opportunity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Opportunity"
+    delete:
+      operationId: deleteOpportunity
+      tags: [opportunities]
+      summary: Delete opportunity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  # ACTIVITIES
+  /activities:
+    get:
+      operationId: listActivities
+      tags: [activities]
+      summary: List activities
+      parameters:
+        - name: contactId
+          in: query
+          schema:
+            type: integer
+        - name: opportunityId
+          in: query
+          schema:
+            type: integer
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: assignedTo
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of activities
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityList"
+    post:
+      operationId: createActivity
+      tags: [activities]
+      summary: Create activity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateActivityInput"
+      responses:
+        "201":
+          description: Created activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+
+  /activities/{id}:
+    get:
+      operationId: getActivity
+      tags: [activities]
+      summary: Get activity by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+    put:
+      operationId: updateActivity
+      tags: [activities]
+      summary: Update activity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateActivityInput"
+      responses:
+        "200":
+          description: Updated activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Activity"
+    delete:
+      operationId: deleteActivity
+      tags: [activities]
+      summary: Delete activity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  # PRODUCTS
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List products
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductList"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    put:
+      operationId: updateProduct
+      tags: [products]
+      summary: Update product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductInput"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      summary: Delete product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  # CASES
+  /cases:
+    get:
+      operationId: listCases
+      tags: [cases]
+      summary: List cases
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: priority
+          in: query
+          schema:
+            type: string
+        - name: contactId
+          in: query
+          schema:
+            type: integer
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+        - name: assignedTo
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of cases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CaseList"
+    post:
+      operationId: createCase
+      tags: [cases]
+      summary: Create case
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCaseInput"
+      responses:
+        "201":
+          description: Created case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+
+  /cases/{id}:
+    get:
+      operationId: getCase
+      tags: [cases]
+      summary: Get case by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+    put:
+      operationId: updateCase
+      tags: [cases]
+      summary: Update case
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCaseInput"
+      responses:
+        "200":
+          description: Updated case
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Case"
+    delete:
+      operationId: deleteCase
+      tags: [cases]
+      summary: Delete case
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  # USERS
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: role
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserInput"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    put:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  # QUOTES
+  /quotes:
+    get:
+      operationId: listQuotes
+      tags: [quotes]
+      summary: List quotes
+      parameters:
+        - name: opportunityId
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of quotes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteList"
+    post:
+      operationId: createQuote
+      tags: [quotes]
+      summary: Create quote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteInput"
+      responses:
+        "201":
+          description: Created quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+
+  /quotes/{id}:
+    get:
+      operationId: getQuote
+      tags: [quotes]
+      summary: Get quote by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+    put:
+      operationId: updateQuote
+      tags: [quotes]
+      summary: Update quote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateQuoteInput"
+      responses:
+        "200":
+          description: Updated quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+    delete:
+      operationId: deleteQuote
+      tags: [quotes]
+      summary: Delete quote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  # REPORTS / DASHBOARD
+  /reports/dashboard:
+    get:
+      operationId: getDashboardStats
+      tags: [reports]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /reports/pipeline:
+    get:
+      operationId: getPipelineReport
+      tags: [reports]
+      summary: Get pipeline report by stage
+      responses:
+        "200":
+          description: Pipeline report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineReport"
+
+  /reports/lead-sources:
+    get:
+      operationId: getLeadSourcesReport
+      tags: [reports]
+      summary: Get lead sources breakdown
+      responses:
+        "200":
+          description: Lead sources report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadSourcesReport"
+
+  /reports/activities-summary:
+    get:
+      operationId: getActivitiesSummary
+      tags: [reports]
+      summary: Get activities summary
+      responses:
+        "200":
+          description: Activities summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivitiesSummary"
+
+  /reports/revenue-forecast:
+    get:
+      operationId: getRevenueForecast
+      tags: [reports]
+      summary: Get monthly revenue forecast
+      responses:
+        "200":
+          description: Revenue forecast
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueForecast"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +1181,1613 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        id:
+          type: integer
+      required:
+        - success
+        - id
+
+    # USER
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, rep]
+        team:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - role
+        - isActive
+        - createdAt
+        - updatedAt
+
+    UserList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateUserInput:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, rep]
+        team:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+      required:
+        - name
+        - email
+        - role
+
+    UpdateUserInput:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, manager, rep]
+        team:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+
+    # ACCOUNT
+    Account:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        industry:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        employees:
+          type: integer
+          nullable: true
+        annualRevenue:
+          type: number
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        ownerId:
+          type: integer
+          nullable: true
+        ownerName:
+          type: string
+          nullable: true
+        contactCount:
+          type: integer
+        dealCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - contactCount
+        - dealCount
+        - createdAt
+        - updatedAt
+
+    AccountList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Account"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateAccountInput:
+      type: object
+      properties:
+        name:
+          type: string
+        industry:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        employees:
+          type: integer
+          nullable: true
+        annualRevenue:
+          type: number
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        ownerId:
+          type: integer
+          nullable: true
+      required:
+        - name
+
+    UpdateAccountInput:
+      type: object
+      properties:
+        name:
+          type: string
+        industry:
+          type: string
+          nullable: true
+        website:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        employees:
+          type: integer
+          nullable: true
+        annualRevenue:
+          type: number
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        ownerId:
+          type: integer
+          nullable: true
+
+    # CONTACT
+    Contact:
+      type: object
+      properties:
+        id:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        accountName:
+          type: string
+          nullable: true
+        ownerId:
+          type: integer
+          nullable: true
+        ownerName:
+          type: string
+          nullable: true
+        leadSource:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - firstName
+        - lastName
+        - createdAt
+        - updatedAt
+
+    ContactList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Contact"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateContactInput:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        ownerId:
+          type: integer
+          nullable: true
+        leadSource:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+      required:
+        - firstName
+        - lastName
+
+    UpdateContactInput:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        mobile:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        ownerId:
+          type: integer
+          nullable: true
+        leadSource:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        country:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+
+    # LEAD
+    Lead:
+      type: object
+      properties:
+        id:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [new, contacted, qualified, unqualified, converted]
+        source:
+          type: string
+          nullable: true
+        score:
+          type: integer
+          nullable: true
+        annualRevenue:
+          type: number
+          nullable: true
+        employees:
+          type: integer
+          nullable: true
+        industry:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+        assignedToName:
+          type: string
+          nullable: true
+        isConverted:
+          type: boolean
+        convertedContactId:
+          type: integer
+          nullable: true
+        convertedAccountId:
+          type: integer
+          nullable: true
+        convertedOpportunityId:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - firstName
+        - lastName
+        - status
+        - isConverted
+        - createdAt
+        - updatedAt
+
+    LeadList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lead"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateLeadInput:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [new, contacted, qualified, unqualified, converted]
+          default: new
+        source:
+          type: string
+          nullable: true
+        score:
+          type: integer
+          nullable: true
+        annualRevenue:
+          type: number
+          nullable: true
+        employees:
+          type: integer
+          nullable: true
+        industry:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+      required:
+        - firstName
+        - lastName
+
+    UpdateLeadInput:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        company:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [new, contacted, qualified, unqualified, converted]
+        source:
+          type: string
+          nullable: true
+        score:
+          type: integer
+          nullable: true
+        annualRevenue:
+          type: number
+          nullable: true
+        employees:
+          type: integer
+          nullable: true
+        industry:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+
+    ConvertLeadInput:
+      type: object
+      properties:
+        createContact:
+          type: boolean
+          default: true
+        createAccount:
+          type: boolean
+          default: true
+        createOpportunity:
+          type: boolean
+          default: false
+        opportunityName:
+          type: string
+          nullable: true
+        opportunityAmount:
+          type: number
+          nullable: true
+      required:
+        - createContact
+        - createAccount
+        - createOpportunity
+
+    ConvertLeadResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        contactId:
+          type: integer
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+      required:
+        - success
+
+    # OPPORTUNITY
+    Opportunity:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        accountId:
+          type: integer
+          nullable: true
+        accountName:
+          type: string
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+        stage:
+          type: string
+          enum: [prospecting, qualification, proposal, negotiation, closed_won, closed_lost]
+        amount:
+          type: number
+          nullable: true
+        probability:
+          type: integer
+          nullable: true
+        closeDate:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+        assignedToName:
+          type: string
+          nullable: true
+        leadSource:
+          type: string
+          nullable: true
+        nextStep:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - stage
+        - createdAt
+        - updatedAt
+
+    OpportunityList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Opportunity"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateOpportunityInput:
+      type: object
+      properties:
+        name:
+          type: string
+        accountId:
+          type: integer
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        stage:
+          type: string
+          enum: [prospecting, qualification, proposal, negotiation, closed_won, closed_lost]
+          default: prospecting
+        amount:
+          type: number
+          nullable: true
+        probability:
+          type: integer
+          nullable: true
+        closeDate:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+        leadSource:
+          type: string
+          nullable: true
+        nextStep:
+          type: string
+          nullable: true
+      required:
+        - name
+
+    UpdateOpportunityInput:
+      type: object
+      properties:
+        name:
+          type: string
+        accountId:
+          type: integer
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        stage:
+          type: string
+          enum: [prospecting, qualification, proposal, negotiation, closed_won, closed_lost]
+        amount:
+          type: number
+          nullable: true
+        probability:
+          type: integer
+          nullable: true
+        closeDate:
+          type: string
+          format: date-time
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+        leadSource:
+          type: string
+          nullable: true
+        nextStep:
+          type: string
+          nullable: true
+
+    # ACTIVITY
+    Activity:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [call, email, meeting, task, note]
+        subject:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [planned, completed, cancelled]
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+        opportunityName:
+          type: string
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        accountName:
+          type: string
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+        assignedToName:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - subject
+        - status
+        - createdAt
+        - updatedAt
+
+    ActivityList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Activity"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateActivityInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [call, email, meeting, task, note]
+        subject:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [planned, completed, cancelled]
+          default: planned
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+      required:
+        - type
+        - subject
+
+    UpdateActivityInput:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [call, email, meeting, task, note]
+        subject:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [planned, completed, cancelled]
+        dueDate:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+
+    # PRODUCT
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        unitPrice:
+          type: number
+        currency:
+          type: string
+        category:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - unitPrice
+        - currency
+        - isActive
+        - createdAt
+        - updatedAt
+
+    ProductList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateProductInput:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        unitPrice:
+          type: number
+        currency:
+          type: string
+          default: USD
+        category:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          default: true
+      required:
+        - name
+        - unitPrice
+
+    UpdateProductInput:
+      type: object
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        unitPrice:
+          type: number
+        currency:
+          type: string
+        category:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+
+    # CASE
+    Case:
+      type: object
+      properties:
+        id:
+          type: integer
+        caseNumber:
+          type: string
+        subject:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [new, in_progress, pending, resolved, closed]
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        type:
+          type: string
+          nullable: true
+        origin:
+          type: string
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        accountName:
+          type: string
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+        assignedToName:
+          type: string
+          nullable: true
+        resolution:
+          type: string
+          nullable: true
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - caseNumber
+        - subject
+        - status
+        - priority
+        - createdAt
+        - updatedAt
+
+    CaseList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Case"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateCaseInput:
+      type: object
+      properties:
+        subject:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [new, in_progress, pending, resolved, closed]
+          default: new
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+          default: medium
+        type:
+          type: string
+          nullable: true
+        origin:
+          type: string
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+      required:
+        - subject
+
+    UpdateCaseInput:
+      type: object
+      properties:
+        subject:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [new, in_progress, pending, resolved, closed]
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+        type:
+          type: string
+          nullable: true
+        origin:
+          type: string
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        assignedTo:
+          type: integer
+          nullable: true
+        resolution:
+          type: string
+          nullable: true
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    # QUOTE
+    Quote:
+      type: object
+      properties:
+        id:
+          type: integer
+        quoteNumber:
+          type: string
+        name:
+          type: string
+        opportunityId:
+          type: integer
+          nullable: true
+        opportunityName:
+          type: string
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        accountName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, sent, accepted, rejected, expired]
+        validUntil:
+          type: string
+          format: date-time
+          nullable: true
+        subtotal:
+          type: number
+        discount:
+          type: number
+        tax:
+          type: number
+        total:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteItem"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - quoteNumber
+        - name
+        - status
+        - subtotal
+        - discount
+        - tax
+        - total
+        - items
+        - createdAt
+        - updatedAt
+
+    QuoteItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+          nullable: true
+        productName:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
+      required:
+        - id
+        - productName
+        - quantity
+        - unitPrice
+        - discount
+        - total
+
+    QuoteList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Quote"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateQuoteInput:
+      type: object
+      properties:
+        name:
+          type: string
+        opportunityId:
+          type: integer
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [draft, sent, accepted, rejected, expired]
+          default: draft
+        validUntil:
+          type: string
+          format: date-time
+          nullable: true
+        discount:
+          type: number
+          default: 0
+        tax:
+          type: number
+          default: 0
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateQuoteItemInput"
+      required:
+        - name
+
+    CreateQuoteItemInput:
+      type: object
+      properties:
+        productId:
+          type: integer
+          nullable: true
+        productName:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        discount:
+          type: number
+          default: 0
+      required:
+        - productName
+        - quantity
+        - unitPrice
+
+    UpdateQuoteInput:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [draft, sent, accepted, rejected, expired]
+        validUntil:
+          type: string
+          format: date-time
+          nullable: true
+        discount:
+          type: number
+        tax:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateQuoteItemInput"
+
+    # REPORTS
+    DashboardStats:
+      type: object
+      properties:
+        totalContacts:
+          type: integer
+        totalLeads:
+          type: integer
+        totalAccounts:
+          type: integer
+        openOpportunities:
+          type: integer
+        totalPipelineValue:
+          type: number
+        wonDealsThisMonth:
+          type: integer
+        revenueThisMonth:
+          type: number
+        openCases:
+          type: integer
+        activitiesThisWeek:
+          type: integer
+        winRate:
+          type: number
+        recentActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Activity"
+        upcomingActivities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Activity"
+        recentLeads:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lead"
+      required:
+        - totalContacts
+        - totalLeads
+        - totalAccounts
+        - openOpportunities
+        - totalPipelineValue
+        - wonDealsThisMonth
+        - revenueThisMonth
+        - openCases
+        - activitiesThisWeek
+        - winRate
+        - recentActivities
+        - upcomingActivities
+        - recentLeads
+
+    PipelineStage:
+      type: object
+      properties:
+        stage:
+          type: string
+        count:
+          type: integer
+        totalValue:
+          type: number
+        avgProbability:
+          type: number
+      required:
+        - stage
+        - count
+        - totalValue
+        - avgProbability
+
+    PipelineReport:
+      type: object
+      properties:
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/PipelineStage"
+        totalValue:
+          type: number
+        totalDeals:
+          type: integer
+      required:
+        - stages
+        - totalValue
+        - totalDeals
+
+    LeadSource:
+      type: object
+      properties:
+        source:
+          type: string
+        count:
+          type: integer
+        percentage:
+          type: number
+      required:
+        - source
+        - count
+        - percentage
+
+    LeadSourcesReport:
+      type: object
+      properties:
+        sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/LeadSource"
+        total:
+          type: integer
+      required:
+        - sources
+        - total
+
+    ActivityTypeSummary:
+      type: object
+      properties:
+        type:
+          type: string
+        completed:
+          type: integer
+        planned:
+          type: integer
+      required:
+        - type
+        - completed
+        - planned
+
+    ActivitiesSummary:
+      type: object
+      properties:
+        byType:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityTypeSummary"
+        totalCompleted:
+          type: integer
+        totalPlanned:
+          type: integer
+      required:
+        - byType
+        - totalCompleted
+        - totalPlanned
+
+    MonthlyRevenue:
+      type: object
+      properties:
+        month:
+          type: string
+        revenue:
+          type: number
+        forecast:
+          type: number
+      required:
+        - month
+        - revenue
+        - forecast
+
+    RevenueForecast:
+      type: object
+      properties:
+        months:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyRevenue"
+        totalForecast:
+          type: number
+        totalActual:
+          type: number
+      required:
+        - months
+        - totalForecast
+        - totalActual
