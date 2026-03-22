@@ -34,14 +34,6 @@ function formatActivity(a: { contactFirstName: string | null; contactLastName: s
   };
 }
 
-const baseJoins = (query: ReturnType<typeof db.select>) =>
-  query
-    .from(activitiesTable)
-    .leftJoin(usersTable, eq(activitiesTable.assignedTo, usersTable.id))
-    .leftJoin(contactsTable, eq(activitiesTable.contactId, contactsTable.id))
-    .leftJoin(accountsTable, eq(activitiesTable.accountId, accountsTable.id))
-    .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id));
-
 router.get("/activities", async (req, res) => {
   try {
     const { contactId, opportunityId, accountId, type, assignedTo, page = "1", limit = "50" } = req.query as Record<string, string>;

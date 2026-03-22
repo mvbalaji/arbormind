@@ -139,56 +139,60 @@ router.post("/leads/:id/convert", async (req, res) => {
       return;
     }
 
-    let contactId: number | null = null;
-    let accountId: number | null = null;
-    let opportunityId: number | null = null;
+    const result = await db.transaction(async (tx) => {
+      let contactId: number | null = null;
+      let accountId: number | null = null;
+      let opportunityId: number | null = null;
 
-    if (createAccount && lead.company) {
-      const [account] = await db.insert(accountsTable).values({
-        name: lead.company,
-        industry: lead.industry ?? null,
-        employees: lead.employees ?? null,
-        annualRevenue: lead.annualRevenue ?? null,
-      }).returning();
-      accountId = account.id;
-    }
+      if (createAccount && lead.company) {
+        const [account] = await tx.insert(accountsTable).values({
+          name: lead.company,
+          industry: lead.industry ?? null,
+          employees: lead.employees ?? null,
+          annualRevenue: lead.annualRevenue ?? null,
+        }).returning();
+        accountId = account.id;
+      }
 
-    if (createContact) {
-      const [contact] = await db.insert(contactsTable).values({
-        firstName: lead.firstName,
-        lastName: lead.lastName,
-        email: lead.email ?? null,
-        phone: lead.phone ?? null,
-        title: lead.title ?? null,
-        accountId: accountId,
-        leadSource: lead.source ?? null,
-      }).returning();
-      contactId = contact.id;
-    }
+      if (createContact) {
+        const [contact] = await tx.insert(contactsTable).values({
+          firstName: lead.firstName,
+          lastName: lead.lastName,
+          email: lead.email ?? null,
+          phone: lead.phone ?? null,
+          title: lead.title ?? null,
+          accountId: accountId,
+          leadSource: lead.source ?? null,
+        }).returning();
+        contactId = contact.id;
+      }
 
-    if (createOpportunity) {
-      const [opportunity] = await db.insert(opportunitiesTable).values({
-        name: opportunityName || `${lead.firstName} ${lead.lastName} Opportunity`,
-        accountId: accountId,
-        contactId: contactId,
-        amount: opportunityAmount ?? null,
-        stage: "prospecting",
-      }).returning();
-      opportunityId = opportunity.id;
-    }
+      if (createOpportunity) {
+        const [opportunity] = await tx.insert(opportunitiesTable).values({
+          name: opportunityName || `${lead.firstName} ${lead.lastName} Opportunity`,
+          accountId: accountId,
+          contactId: contactId,
+          amount: opportunityAmount ?? null,
+          stage: "prospecting",
+        }).returning();
+        opportunityId = opportunity.id;
+      }
 
-    await db.update(leadsTable)
-      .set({
-        isConverted: true,
-        status: "converted",
-        convertedContactId: contactId,
-        convertedAccountId: accountId,
-        convertedOpportunityId: opportunityId,
-        updatedAt: new Date(),
-      })
-      .where(eq(leadsTable.id, leadId));
+      await tx.update(leadsTable)
+        .set({
+          isConverted: true,
+          status: "converted",
+          convertedContactId: contactId,
+          convertedAccountId: accountId,
+          convertedOpportunityId: opportunityId,
+          updatedAt: new Date(),
+        })
+        .where(eq(leadsTable.id, leadId));
 
-    res.json({ success: true, contactId, accountId, opportunityId });
+      return { contactId, accountId, opportunityId };
+    });
+
+    res.json({ success: true, ...result });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

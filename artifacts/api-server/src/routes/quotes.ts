@@ -122,7 +122,6 @@ router.post("/quotes", async (req, res) => {
     const taxPct = Number(quoteData.tax) || 0;
     const total = subtotal * (1 - discountPct / 100) * (1 + taxPct / 100);
 
-    type QuoteInsert = Parameters<typeof db.insert>[0] extends infer T ? T : never;
     const insertData = {
       name: (quoteData.name as string) ?? "",
       opportunityId: quoteData.opportunityId as number | null ?? null,
