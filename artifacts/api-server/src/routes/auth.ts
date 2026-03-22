@@ -110,10 +110,22 @@ router.get(
 
 router.get("/auth/me", (req, res) => {
   if (req.isAuthenticated && req.isAuthenticated() && req.user) {
-    res.json({ user: req.user });
-  } else {
-    res.status(401).json({ user: null });
+    return res.json({ user: req.user });
   }
+  // When Google OAuth is not configured, return a dev-mode admin user
+  // so the CRM is accessible without credentials during development.
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.json({
+      user: {
+        id: 0,
+        email: "dev@crmai.local",
+        name: "Dev Admin",
+        role: "admin",
+        avatarUrl: null,
+      },
+    });
+  }
+  res.status(401).json({ user: null });
 });
 
 router.post("/auth/logout", (req, res) => {
