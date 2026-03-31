@@ -120,19 +120,29 @@ export default function Landing() {
 
       {/* NAV */}
       <nav
-        className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5 border-b"
-        style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}
+        className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-12 py-5 border-b backdrop-blur-xl"
+        style={{ 
+          borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+          background: isDark ? "rgba(15,23,42,0.8)" : "rgba(255,255,255,0.8)"
+        }}
       >
         <div className="flex items-center gap-2.5">
           <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden"
+            className="w-11 h-11 rounded-lg flex items-center justify-center overflow-hidden"
             style={{ background: isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.05)" }}
           >
-            <img src="/arbormind-logo.png" alt="arbormind.in" className="w-7 h-7 object-cover" />
+            <img src="/arbormind-logo.png" alt="arbormind.in" className="w-9 h-9 object-cover" />
           </div>
           <span className="font-bold text-xl tracking-tight" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
             arbormind.in
           </span>
+        </div>
+
+        <div className="hidden md:flex items-center gap-8">
+          <a href="#features" className="text-sm font-medium transition-colors" style={{ color: isDark ? "#94a3b8" : "#475569" }}>Features</a>
+          <a href="#dashboard" className="text-sm font-medium transition-colors" style={{ color: isDark ? "#94a3b8" : "#475569" }}>Dashboard</a>
+          <a href="#testimonials" className="text-sm font-medium transition-colors" style={{ color: isDark ? "#94a3b8" : "#475569" }}>Testimonials</a>
+          <a href="#pricing" className="text-sm font-medium transition-colors" style={{ color: isDark ? "#94a3b8" : "#475569" }}>Pricing</a>
         </div>
 
         <div className="flex items-center gap-3">
@@ -322,7 +332,7 @@ export default function Landing() {
         </section>
 
         {/* DASHBOARD SCREENSHOT */}
-        <section className="px-6 md:px-12 py-20 max-w-6xl mx-auto">
+        <section id="dashboard" className="px-6 md:px-12 py-20 max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2
               className="text-3xl md:text-4xl font-bold mb-4"
@@ -343,7 +353,7 @@ export default function Landing() {
         </section>
 
         {/* TESTIMONIALS */}
-        <section className="px-6 md:px-12 py-20 max-w-5xl mx-auto">
+        <section id="testimonials" className="px-6 md:px-12 py-20 max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <h2
               className="text-3xl md:text-4xl font-bold mb-4"
@@ -397,7 +407,7 @@ export default function Landing() {
         </section>
 
         {/* CTA */}
-        <section className="px-6 md:px-12 py-20">
+        <section id="pricing" className="px-6 md:px-12 py-20">
           <div
             className="max-w-3xl mx-auto rounded-3xl p-12 text-center relative overflow-hidden"
             style={{
