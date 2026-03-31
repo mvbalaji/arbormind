@@ -1,0 +1,20 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "IkATLZbAe6UxpYOeharvr"
+uri = "file://artifacts/crmai/public/logo.png"
+type = "image"
+title = "arbormind.in tech-tree logo"
+
+[[generated]]
+id = "ofiRC3TKYgtvJMvI3SOSI"
+uri = "file://artifacts/crmai/public/favicon-32.png"
+type = "image"
+title = "arbormind.in favicon 32px"
+
+[[generated]]
+id = "Z5PrnOA2pIkC8bh8jBDoq"
+uri = "file://artifacts/crmai/public/dashboard-screenshot.png"
+type = "image"
+title = "arbormind CRM dashboard screenshot"

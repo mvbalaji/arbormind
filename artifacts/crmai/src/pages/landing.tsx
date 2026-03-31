@@ -40,11 +40,32 @@ const STATS = [
   { value: "100%", label: "Data ownership" },
 ];
 
+const TESTIMONIALS = [
+  {
+    name: "Sarah Chen",
+    role: "VP Sales, TechFlow Inc",
+    quote: "arbormind.in transformed our sales process. We closed 40% more deals in 3 months with the pipeline intelligence.",
+    avatar: "SC",
+  },
+  {
+    name: "Marcus Johnson",
+    role: "Sales Manager, CloudScale",
+    quote: "The AI assistant is a game-changer. It drafts follow-ups, summarizes deals, and suggests next actions automatically.",
+    avatar: "MJ",
+  },
+  {
+    name: "Priya Patel",
+    role: "Founder, GrowthLabs",
+    quote: "Finally, a CRM built for speed. Google OAuth integration, real-time analytics, and it just works. No bloat.",
+    avatar: "PP",
+  },
+];
+
 type Theme = "dark" | "light";
 
 export default function Landing() {
   const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem("crmai-theme");
+    const stored = localStorage.getItem("arbormind-theme");
     return (stored as Theme) || "dark";
   });
 
@@ -59,7 +80,7 @@ export default function Landing() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("light-mode", theme === "light");
-    localStorage.setItem("crmai-theme", theme);
+    localStorage.setItem("arbormind-theme", theme);
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
@@ -103,14 +124,9 @@ export default function Landing() {
         style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}
       >
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-lg shadow-lg"
-            style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)" }}
-          >
-            C
-          </div>
+          <img src="/logo.png" alt="arbormind.in" className="w-9 h-9" />
           <span className="font-bold text-xl tracking-tight" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
-            CRMAI
+            arbormind.in
           </span>
         </div>
 
@@ -190,7 +206,7 @@ export default function Landing() {
             className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
             style={{ color: isDark ? "#94a3b8" : "#475569" }}
           >
-            CRMAI is the modern CRM built for high-velocity sales teams. Contacts, pipeline,
+            arbormind.in is the modern CRM built for high-velocity sales teams. Contacts, pipeline,
             AI assistant and real-time analytics — all in one beautiful workspace.
           </p>
 
@@ -300,6 +316,81 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* DASHBOARD SCREENSHOT */}
+        <section className="px-6 md:px-12 py-20 max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2
+              className="text-3xl md:text-4xl font-bold mb-4"
+              style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
+            >
+              Built for the Modern Sales Team
+            </h2>
+            <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+              Real-time analytics, AI-powered insights, and seamless collaboration—all in one intuitive dashboard.
+            </p>
+          </div>
+          <div
+            className="rounded-2xl overflow-hidden border"
+            style={{ border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}
+          >
+            <img src="/dashboard-screenshot.png" alt="arbormind.in Dashboard" className="w-full h-auto" />
+          </div>
+        </section>
+
+        {/* TESTIMONIALS */}
+        <section className="px-6 md:px-12 py-20 max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <h2
+              className="text-3xl md:text-4xl font-bold mb-4"
+              style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
+            >
+              Trusted by Sales Leaders
+            </h2>
+            <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+              See how top sales teams use arbormind.in to close bigger deals, faster.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {TESTIMONIALS.map((t) => (
+              <div
+                key={t.name}
+                className="p-6 rounded-2xl flex flex-col"
+                style={{
+                  background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.8)",
+                  border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
+                  backdropFilter: "blur(12px)",
+                }}
+              >
+                <div className="flex gap-1 mb-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-sm mb-5 flex-1 leading-relaxed" style={{ color: isDark ? "#cbd5e1" : "#1e293b" }}>
+                  "{t.quote}"
+                </p>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+                    style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)" }}
+                  >
+                    {t.avatar}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
+                      {t.name}
+                    </div>
+                    <div className="text-xs" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+                      {t.role}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* CTA */}
         <section className="px-6 md:px-12 py-20">
           <div
@@ -328,7 +419,7 @@ export default function Landing() {
                 Ready to transform your sales?
               </h2>
               <p className="mb-8 text-base" style={{ color: isDark ? "#94a3b8" : "#475569" }}>
-                Sign in with your Google account to access the CRMAI dashboard.
+                Sign in with your Google account to access the arbormind.in dashboard.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <a
@@ -369,7 +460,7 @@ export default function Landing() {
           color: isDark ? "#475569" : "#94a3b8",
         }}
       >
-        © {new Date().getFullYear()} CRMAI — Built with AI for modern sales teams
+        © {new Date().getFullYear()} arbormind.in — Built with AI for modern sales teams
       </footer>
     </div>
   );

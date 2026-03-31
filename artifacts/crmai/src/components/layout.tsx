@@ -67,10 +67,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card/50 backdrop-blur-xl z-20 relative">
         <div className="h-16 flex items-center px-6 border-b border-border">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="font-display font-bold text-white text-lg">C</span>
-            </div>
-            <span className="font-display font-bold text-xl tracking-wide">CRMAI</span>
+            <img src="/logo.png" alt="arbormind.in" className="w-8 h-8" />
+            <span className="font-display font-bold text-xl tracking-wide">arbormind.in</span>
           </div>
         </div>
         
@@ -144,7 +142,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
           <aside className="w-64 h-full bg-card border-r border-border flex flex-col shadow-2xl animate-in slide-in-from-left-full duration-200" onClick={e => e.stopPropagation()}>
             <div className="h-16 flex items-center justify-between px-6 border-b border-border">
-              <span className="font-display font-bold text-xl">CRMAI</span>
+              <div className="flex items-center gap-2">
+                <img src="/logo.png" alt="arbormind.in" className="w-6 h-6" />
+                <span className="font-display font-bold text-sm">arbormind.in</span>
+              </div>
               <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
                 <X className="w-5 h-5" />
               </Button>

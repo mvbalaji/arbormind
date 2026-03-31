@@ -114,7 +114,7 @@ export default function AIAssistant() {
                 </div>
                 <div className="flex-1 flex flex-col">
                   <div className="flex-1 bg-black/30 rounded-xl border border-white/5 p-6 font-mono text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                    Subject: Checking in on our proposal - CRMAI{'\n\n'}
+                    Subject: Checking in on our proposal - arbormind.in{'\n\n'}
                     Hi Sarah,{'\n\n'}
                     I hope this email finds you well.{'\n\n'}
                     I'm writing to follow up on the proposal I sent over on Tuesday. I wanted to see if you had any questions or needed further clarification on the Enterprise tier features we discussed.{'\n\n'}

@@ -59,12 +59,7 @@ function AppContent() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white text-2xl shadow-lg"
-            style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)" }}
-          >
-            C
-          </div>
+          <img src="/logo.png" alt="arbormind.in" className="w-12 h-12 shadow-lg" />
           <div className="flex gap-1.5">
             {[0, 1, 2].map((i) => (
               <div
