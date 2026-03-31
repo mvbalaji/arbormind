@@ -124,7 +124,12 @@ export default function Landing() {
         style={{ borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)" }}
       >
         <div className="flex items-center gap-2.5">
-          <img src="/logo.png" alt="arbormind.in" className="w-9 h-9" />
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden"
+            style={{ background: isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.05)" }}
+          >
+            <img src="/arbormind-logo.png" alt="arbormind.in" className="w-7 h-7 object-cover" />
+          </div>
           <span className="font-bold text-xl tracking-tight" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
             arbormind.in
           </span>
