@@ -28,4 +28,4 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.production]
-GOOGLE_CALLBACK_URL = "https://crmai.replit.app/api/auth/google/callback"
+GOOGLE_CALLBACK_URL = "https://arbormind.in/api/auth/google/callback"
