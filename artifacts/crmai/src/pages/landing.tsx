@@ -194,7 +194,7 @@ export default function Landing() {
             className="text-5xl md:text-7xl font-extrabold leading-tight mb-6 tracking-tight"
             style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
           >
-            Close Deals
+            AI-Powered Sales
             <br />
             <span
               style={{
@@ -203,7 +203,7 @@ export default function Landing() {
                 WebkitTextFillColor: "transparent",
               }}
             >
-              Predict. Personalize. Grow.
+              Intelligence
             </span>
           </h1>
 
