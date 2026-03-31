@@ -282,7 +282,7 @@ export default function Landing() {
               className="text-3xl md:text-4xl font-bold mb-4"
               style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
             >
-              Predict. Personalize. Grow.
+              Everything your sales team needs
             </h2>
             <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
               A complete platform that replaces five separate tools — built for the modern AI-first sales workflow.
@@ -328,7 +328,7 @@ export default function Landing() {
               className="text-3xl md:text-4xl font-bold mb-4"
               style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
             >
-              Predict. Personalize. Grow.
+              See arbormind in action
             </h2>
             <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
               Real-time analytics, AI-powered insights, and seamless collaboration—all in one intuitive dashboard.
