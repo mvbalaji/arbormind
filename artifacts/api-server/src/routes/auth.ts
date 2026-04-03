@@ -105,18 +105,9 @@ router.get("/auth/google", (req, res, next) => {
 
 router.get(
   "/auth/google/callback",
-  (req, res, next) => {
-    passport.authenticate("google", { failureRedirect: "/?error=unauthorized" })(req, res, next);
-  },
-  (req, res) => {
-    req.session.save((err) => {
-      if (err) {
-        console.error("Session save error:", err);
-        res.redirect("/?error=session-error");
-        return;
-      }
-      res.redirect("/");
-    });
+  passport.authenticate("google", { failureRedirect: "/?error=unauthorized" }),
+  (_req, res) => {
+    res.redirect("/");
   }
 );
 
