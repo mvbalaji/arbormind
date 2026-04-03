@@ -3,6 +3,7 @@ import cors from "cors";
 import session from "express-session";
 import passport from "passport";
 import pinoHttp from "pino-http";
+import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { setupPassport } from "./routes/auth";
@@ -120,7 +121,24 @@ app.use(passport.session());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve frontend static files
+const frontendPath = path.resolve(__dirname, "../../crmai/dist/public");
+console.log("[Static] Serving frontend from:", frontendPath);
+app.use(express.static(frontendPath));
+
+// API routes
 app.use("/api", router);
+
+// SPA fallback: serve index.html for all non-API routes
+app.get(/^(?!\/api).*$/, (req, res) => {
+  const indexPath = path.resolve(frontendPath, "index.html");
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      console.error("[SPA Fallback] Failed to serve index.html:", err);
+      res.status(404).json({ error: "Not found" });
+    }
+  });
+});
 
 // Global error handler
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
