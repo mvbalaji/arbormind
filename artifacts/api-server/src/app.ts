@@ -34,10 +34,16 @@ app.use(
   }),
 );
 
+// Detect if running in production by checking for production domain
+function isProductionMode() {
+  if (process.env.NODE_ENV === "production") return true;
+  // Also check if GOOGLE_CALLBACK_URL points to production domain
+  if (process.env.GOOGLE_CALLBACK_URL?.includes("arbormind.in")) return true;
+  return false;
+}
+
 // Extract domain from Google callback URL or use REPLIT_DOMAINS
 function getCookieDomain() {
-  if (process.env.NODE_ENV !== "production") return undefined;
-  
   // Try to extract domain from Google callback URL
   if (process.env.GOOGLE_CALLBACK_URL) {
     try {
@@ -62,6 +68,12 @@ const allowedOrigins: Set<string> = new Set(
 
 // In production, also allow the domain from callback URL
 const callbackDomain = getCookieDomain();
+const inProduction = isProductionMode();
+
+console.log("[Session] Production mode detected:", inProduction);
+console.log("[Session] Cookie domain:", callbackDomain);
+console.log("[Session] Cookie settings - secure:", inProduction, "sameSite:", inProduction ? "none" : "lax");
+
 if (callbackDomain && process.env.GOOGLE_CALLBACK_URL) {
   try {
     const url = new URL(process.env.GOOGLE_CALLBACK_URL);
@@ -94,8 +106,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: inProduction,
+      sameSite: inProduction ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
       domain: callbackDomain,
     },

@@ -28,4 +28,6 @@ timeoutMs = 20000
 [userenv]
 
 [userenv.production]
+
+[userenv.shared]
 GOOGLE_CALLBACK_URL = "https://arbormind.in/api/auth/google/callback"

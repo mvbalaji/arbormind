@@ -146,11 +146,12 @@ router.get("/auth/google", (req, res, next) => {
 router.get(
   "/auth/google/callback",
   (req, res, next) => {
-    console.log("[OAuth Callback] Hit - session exists:", !!req.session?.id);
+    console.log("[OAuth Callback] Hit - session exists:", !!req.session?.id, "cookies:", req.headers.cookie);
     passport.authenticate("google", { failureRedirect: "/?error=unauthorized" })(req, res, next);
   },
   (req, res) => {
-    console.log("[OAuth Callback] After authenticate - user:", !!req.user);
+    console.log("[OAuth Callback] After authenticate - user:", !!req.user, "req.isAuthenticated:", req.isAuthenticated?.());
+    console.log("[OAuth Callback] Session before save:", { sessionId: req.session.id, userId: (req.user as any)?.id });
     // Ensure session is saved before redirecting
     req.session.save((err) => {
       if (err) {
@@ -158,13 +159,14 @@ router.get(
         res.redirect("/?error=session-save-failed");
         return;
       }
-      console.log("[OAuth Callback] User authenticated:", { userId: (req.user as any)?.id, email: (req.user as any)?.email, sessionId: req.session.id });
+      console.log("[OAuth Callback] Session saved successfully, redirecting to /", { sessionId: req.session.id, userId: (req.user as any)?.id, headers: res.getHeaders() });
       res.redirect("/");
     });
   }
 );
 
 router.get("/auth/me", (req, res) => {
+  console.log("[Auth/Me] Request - session:", { sessionId: req.session?.id, cookie: req.headers.cookie?.substring(0, 100), isAuth: req.isAuthenticated?.(), user: !!(req.user) });
   if (req.isAuthenticated && req.isAuthenticated() && req.user) {
     res.json({ user: req.user });
     return;
