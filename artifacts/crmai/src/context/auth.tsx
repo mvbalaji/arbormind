@@ -47,10 +47,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { 
     void fetchUser();
     
+    // Poll for auth changes (important for OAuth redirects)
+    const pollInterval = setInterval(() => {
+      void fetchUser();
+    }, 2000); // Check every 2 seconds
+    
     // Also refetch when window/tab comes into focus (useful after OAuth redirect)
     const handleFocus = () => void fetchUser();
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+    
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   const logout = async () => {

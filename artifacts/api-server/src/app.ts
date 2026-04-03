@@ -34,11 +34,42 @@ app.use(
   }),
 );
 
+// Extract domain from Google callback URL or use REPLIT_DOMAINS
+function getCookieDomain() {
+  if (process.env.NODE_ENV !== "production") return undefined;
+  
+  // Try to extract domain from Google callback URL
+  if (process.env.GOOGLE_CALLBACK_URL) {
+    try {
+      const url = new URL(process.env.GOOGLE_CALLBACK_URL);
+      return `.${url.hostname}`;
+    } catch (e) {
+      console.warn("[Session] Failed to parse GOOGLE_CALLBACK_URL");
+    }
+  }
+  
+  // Fallback to CUSTOM_DOMAIN
+  if (process.env.CUSTOM_DOMAIN) return `.${process.env.CUSTOM_DOMAIN}`;
+  
+  return undefined;
+}
+
 const allowedOrigins: Set<string> = new Set(
   process.env.REPLIT_DOMAINS
     ? process.env.REPLIT_DOMAINS.split(",").map((d) => `https://${d.trim()}`)
     : []
 );
+
+// In production, also allow the domain from callback URL
+const callbackDomain = getCookieDomain();
+if (callbackDomain && process.env.GOOGLE_CALLBACK_URL) {
+  try {
+    const url = new URL(process.env.GOOGLE_CALLBACK_URL);
+    allowedOrigins.add(`https://${url.hostname}`);
+  } catch (e) {
+    console.warn("[CORS] Failed to add callback domain");
+  }
+}
 
 app.use(
   cors({
@@ -48,6 +79,7 @@ app.use(
       if (allowedOrigins.has(origin)) {
         callback(null, true);
       } else {
+        console.warn("[CORS] Blocked origin:", origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -65,8 +97,7 @@ app.use(
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      // In production, explicitly set domain for cross-subdomain cookies
-      domain: process.env.NODE_ENV === "production" ? (process.env.CUSTOM_DOMAIN ? `.${process.env.CUSTOM_DOMAIN}` : undefined) : undefined,
+      domain: callbackDomain,
     },
   }),
 );
