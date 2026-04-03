@@ -126,15 +126,19 @@ export function setupPassport() {
 const router = Router();
 
 router.get("/auth/google", (req, res, next) => {
+  console.log("[Auth/Google] Endpoint hit - initiating OAuth flow");
+  console.log("[Auth/Google] Callback URL will be:", getCallbackUrl());
+  
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    console.error("[Auth] Google OAuth not configured - missing CLIENT_ID or SECRET");
+    console.error("[Auth/Google] Google OAuth not configured - missing CLIENT_ID or SECRET");
     res.status(503).json({ error: "Google OAuth not configured" });
     return;
   }
   try {
+    console.log("[Auth/Google] Calling passport.authenticate");
     passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
   } catch (err) {
-    console.error("[Auth] Google auth error:", err);
+    console.error("[Auth/Google] Passport error:", err);
     res.status(500).json({ error: "Authentication failed" });
   }
 });
