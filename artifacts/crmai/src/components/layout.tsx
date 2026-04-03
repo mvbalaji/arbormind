@@ -67,14 +67,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-background text-foreground overflow-hidden">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 border-r border-border bg-card/50 backdrop-blur-xl z-20 relative">
-        <div className="h-16 flex items-center px-6 border-b border-border">
+        <Link href="/" className="h-16 flex items-center px-6 border-b border-border hover:bg-white/5 transition-colors cursor-pointer">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden bg-black/20">
               <img src="/arbormind-logo.png" alt="arbormind.in" className="w-8 h-8 object-cover" />
             </div>
             <span className="font-display font-bold text-xl tracking-wide">arbormind.in</span>
           </div>
-        </div>
+        </Link>
         
         <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col gap-1 custom-scrollbar">
           {NAV_ITEMS.map((item) => {
@@ -146,12 +146,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
           <aside className="w-64 h-full bg-card border-r border-border flex flex-col shadow-2xl animate-in slide-in-from-left-full duration-200" onClick={e => e.stopPropagation()}>
             <div className="h-16 flex items-center justify-between px-6 border-b border-border">
-              <div className="flex items-center gap-2">
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden bg-black/20">
                   <img src="/arbormind-logo.png" alt="arbormind.in" className="w-6 h-6 object-cover" />
                 </div>
                 <span className="font-display font-bold text-sm">arbormind.in</span>
-              </div>
+              </Link>
               <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(false)}>
                 <X className="w-5 h-5" />
               </Button>
