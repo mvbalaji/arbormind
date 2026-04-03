@@ -18,7 +18,8 @@ import {
   Menu,
   X,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Mail
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ const NAV_ITEMS = [
   { label: "Quotes", href: "/quotes", icon: FileText },
   { label: "Cases", href: "/cases", icon: LifeBuoy },
   { label: "Reports", href: "/reports", icon: BarChart3 },
+  { label: "Support", href: "/support", icon: Mail, adminOnly: true },
   { label: "Users", href: "/users", icon: Settings },
 ];
 

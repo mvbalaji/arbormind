@@ -12,12 +12,14 @@ import quotesRouter from "./quotes";
 import reportsRouter from "./reports";
 import authRouter from "./auth";
 import enquiriesRouter from "./enquiries";
+import emailsRouter from "./emails";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
 router.use(enquiriesRouter);
+router.use(emailsRouter);
 router.use(usersRouter);
 router.use(accountsRouter);
 router.use(contactsRouter);

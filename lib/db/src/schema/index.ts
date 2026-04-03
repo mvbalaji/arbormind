@@ -9,3 +9,4 @@ export * from "./cases";
 export * from "./quotes";
 export * from "./allowed-users";
 export * from "./enquiries";
+export * from "./emails";
