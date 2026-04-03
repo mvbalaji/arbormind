@@ -40,6 +40,135 @@ const STATS = [
   { value: "100%", label: "Data ownership" },
 ];
 
+function EnquiryForm({ isDark }: { isDark: boolean }) {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    company: "",
+    message: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/enquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) {
+        setSubmitted(true);
+        setFormData({ name: "", email: "", phone: "", company: "", message: "" });
+        setTimeout(() => setSubmitted(false), 3000);
+      }
+    } catch (err) {
+      console.error("Submission error:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input
+          type="text"
+          name="name"
+          placeholder="Your Name"
+          value={formData.name}
+          onChange={handleChange}
+          required
+          className="px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2"
+          style={{
+            background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
+            borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+            color: isDark ? "#f1f5f9" : "#0f172a",
+          }}
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Your Email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          className="px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2"
+          style={{
+            background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
+            borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+            color: isDark ? "#f1f5f9" : "#0f172a",
+          }}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input
+          type="tel"
+          name="phone"
+          placeholder="Phone (optional)"
+          value={formData.phone}
+          onChange={handleChange}
+          className="px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2"
+          style={{
+            background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
+            borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+            color: isDark ? "#f1f5f9" : "#0f172a",
+          }}
+        />
+        <input
+          type="text"
+          name="company"
+          placeholder="Company (optional)"
+          value={formData.company}
+          onChange={handleChange}
+          className="px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2"
+          style={{
+            background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
+            borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+            color: isDark ? "#f1f5f9" : "#0f172a",
+          }}
+        />
+      </div>
+
+      <textarea
+        name="message"
+        placeholder="Tell us more about your enquiry..."
+        value={formData.message}
+        onChange={handleChange}
+        required
+        rows={4}
+        className="w-full px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2 resize-none"
+        style={{
+          background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
+          borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+          color: isDark ? "#f1f5f9" : "#0f172a",
+        }}
+      />
+
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="w-full py-3.5 rounded-xl font-semibold transition-all hover:-translate-y-0.5 disabled:opacity-50"
+        style={{
+          background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+          color: "white",
+          boxShadow: "0 4px 14px rgba(99,102,241,0.3)",
+        }}
+      >
+        {isSubmitting ? "Submitting..." : submitted ? "✓ Submitted!" : "Send Enquiry"}
+      </button>
+    </form>
+  );
+}
+
 const TESTIMONIALS = [
   {
     name: "Sarah Chen",
@@ -404,6 +533,23 @@ export default function Landing() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* ENQUIRY FORM */}
+        <section className="px-6 md:px-12 py-20 max-w-2xl mx-auto">
+          <div className="text-center mb-12">
+            <h2
+              className="text-3xl md:text-4xl font-bold mb-4"
+              style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
+            >
+              Get in Touch
+            </h2>
+            <p className="text-base" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+              Have questions? We'd love to hear from you. Fill out the form below and our team will get back to you shortly.
+            </p>
+          </div>
+
+          <EnquiryForm isDark={isDark} />
         </section>
 
         {/* CTA */}
