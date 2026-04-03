@@ -535,6 +535,22 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* ENQUIRY FORM */}
+        <section className="px-6 md:px-12 py-20 max-w-2xl mx-auto">
+          <div className="text-center mb-12">
+            <h2
+              className="text-3xl md:text-4xl font-bold mb-4"
+              style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
+            >
+              Get in Touch
+            </h2>
+            <p className="text-base" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+              Have questions? We'd love to hear from you. Fill out the form below and our team will get back to you shortly.
+            </p>
+          </div>
+
+          <EnquiryForm isDark={isDark} />
+        </section>
 
         {/* CTA */}
         <section id="pricing" className="px-6 md:px-12 py-20">
