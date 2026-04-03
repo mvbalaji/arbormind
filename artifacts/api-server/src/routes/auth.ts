@@ -105,8 +105,15 @@ router.get(
   (req, res, next) => {
     passport.authenticate("google", { failureRedirect: "/?error=unauthorized" })(req, res, next);
   },
-  (_req, res) => {
-    res.redirect("/");
+  (req, res) => {
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        res.redirect("/?error=session-error");
+        return;
+      }
+      res.redirect("/");
+    });
   }
 );
 
