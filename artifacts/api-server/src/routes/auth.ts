@@ -32,7 +32,6 @@ export function setupPassport() {
         clientID,
         clientSecret,
         callbackURL: getCallbackUrl(),
-        scope: ["profile", "email"],
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {
@@ -93,24 +92,33 @@ export function setupPassport() {
     done(null, (user as any).id);
   });
 
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (id: any, done) => {
     try {
+      if (!id || typeof id !== 'number') {
+        return done(null, false);
+      }
+
       const [user] = await db
         .select()
         .from(allowedUsersTable)
         .where(eq(allowedUsersTable.id, id));
       
-      if (!user) return done(null, false);
+      if (!user) {
+        return done(null, false);
+      }
       
-      done(null, {
+      const userData = {
         id: user.id,
         email: user.email,
         name: user.name,
         role: user.role,
         avatarUrl: user.avatarUrl,
-      });
+      };
+
+      done(null, userData);
     } catch (err) {
-      done(err as Error, undefined);
+      console.error("[Passport] Deserialize error:", err);
+      done(null, false);
     }
   });
 }
@@ -119,10 +127,16 @@ const router = Router();
 
 router.get("/auth/google", (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    console.error("[Auth] Google OAuth not configured - missing CLIENT_ID or SECRET");
     res.status(503).json({ error: "Google OAuth not configured" });
     return;
   }
-  passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+  try {
+    passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+  } catch (err) {
+    console.error("[Auth] Google auth error:", err);
+    res.status(500).json({ error: "Authentication failed" });
+  }
 });
 
 router.get(

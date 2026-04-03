@@ -79,4 +79,20 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
 
+// Global error handler
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("[Error Handler]", err);
+  
+  // Handle CORS errors
+  if (err.message === "Not allowed by CORS") {
+    res.status(403).json({ error: "CORS not allowed" });
+    return;
+  }
+  
+  // Default error response
+  res.status(err.statusCode || 500).json({
+    error: err.message || "Internal server error",
+  });
+});
+
 export default app;
