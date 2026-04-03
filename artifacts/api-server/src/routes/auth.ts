@@ -141,16 +141,20 @@ router.get("/auth/google", (req, res, next) => {
 
 router.get(
   "/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: "/?error=unauthorized" }),
+  (req, res, next) => {
+    console.log("[OAuth Callback] Hit - session exists:", !!req.session?.id);
+    passport.authenticate("google", { failureRedirect: "/?error=unauthorized" })(req, res, next);
+  },
   (req, res) => {
+    console.log("[OAuth Callback] After authenticate - user:", !!req.user);
     // Ensure session is saved before redirecting
     req.session.save((err) => {
       if (err) {
-        console.error("Session save failed:", err);
+        console.error("[OAuth Callback] Session save failed:", err);
         res.redirect("/?error=session-save-failed");
         return;
       }
-      console.log("User authenticated:", { userId: (req.user as any)?.id, email: (req.user as any)?.email });
+      console.log("[OAuth Callback] User authenticated:", { userId: (req.user as any)?.id, email: (req.user as any)?.email, sessionId: req.session.id });
       res.redirect("/");
     });
   }
