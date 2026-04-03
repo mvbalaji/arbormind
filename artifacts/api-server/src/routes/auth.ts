@@ -5,7 +5,10 @@ import { db } from "@workspace/db";
 import { allowedUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
-const ADMIN_EMAIL = "balaji.venkateswaran@gmail.com";
+const ADMIN_EMAILS = [
+  "balaji.venkateswaran@gmail.com",
+  "parthasarathisoundarrajan@gmail.com",
+];
 
 function getCallbackUrl() {
   if (process.env.GOOGLE_CALLBACK_URL) return process.env.GOOGLE_CALLBACK_URL;
@@ -36,7 +39,7 @@ export function setupPassport() {
           const email = profile.emails?.[0]?.value;
           if (!email) return done(new Error("No email from Google"), undefined);
 
-          const isAdmin = email === ADMIN_EMAIL;
+          const isAdmin = ADMIN_EMAILS.includes(email);
 
           let [user] = await db
             .select()
