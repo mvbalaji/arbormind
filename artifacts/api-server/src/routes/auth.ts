@@ -89,8 +89,30 @@ export function setupPassport() {
     )
   );
 
-  passport.serializeUser((user, done) => done(null, user));
-  passport.deserializeUser((user, done) => done(null, user as Express.User));
+  passport.serializeUser((user, done) => {
+    done(null, (user as any).id);
+  });
+
+  passport.deserializeUser(async (id: number, done) => {
+    try {
+      const [user] = await db
+        .select()
+        .from(allowedUsersTable)
+        .where(eq(allowedUsersTable.id, id));
+      
+      if (!user) return done(null, false);
+      
+      done(null, {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+      });
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+  });
 }
 
 const router = Router();
@@ -106,8 +128,17 @@ router.get("/auth/google", (req, res, next) => {
 router.get(
   "/auth/google/callback",
   passport.authenticate("google", { failureRedirect: "/?error=unauthorized" }),
-  (_req, res) => {
-    res.redirect("/");
+  (req, res) => {
+    // Ensure session is saved before redirecting
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save failed:", err);
+        res.redirect("/?error=session-save-failed");
+        return;
+      }
+      console.log("User authenticated:", { userId: (req.user as any)?.id, email: (req.user as any)?.email });
+      res.redirect("/");
+    });
   }
 );
 

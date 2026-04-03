@@ -44,7 +44,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  useEffect(() => { void fetchUser(); }, []);
+  useEffect(() => { 
+    void fetchUser();
+    
+    // Also refetch when window/tab comes into focus (useful after OAuth redirect)
+    const handleFocus = () => void fetchUser();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, []);
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
