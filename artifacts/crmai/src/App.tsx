@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/context/auth";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
 
 import Dashboard from "./pages/dashboard";
 import Contacts from "./pages/contacts";
@@ -35,6 +36,7 @@ function CRMRoutes() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/login" component={Login} />
       <Route path="/contacts" component={Contacts} />
       <Route path="/contacts/:id" component={ContactDetail} />
       <Route path="/leads" component={Leads} />
