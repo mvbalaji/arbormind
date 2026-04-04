@@ -116,6 +116,18 @@ export function setupPassport() {
         return done(null, false);
       }
 
+      // Handle demo user (id: 1) without database lookup
+      if (id === 1) {
+        return done(null, {
+          id: 1,
+          email: DEMO_USERNAME,
+          name: "Demo User",
+          role: "admin",
+          avatarUrl: null,
+          username: DEMO_USERNAME,
+        });
+      }
+
       const [user] = await db
         .select()
         .from(allowedUsersTable)
