@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Sun, Moon, Zap, BarChart3, Users, Shield, ArrowRight, Star, CheckCircle, Globe } from "lucide-react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/auth";
 
 const FEATURES = [
@@ -296,9 +296,9 @@ export default function Landing() {
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          <button onClick={handleLoginClick} className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border" style={{ borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+          <Link href="/login" className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border" style={{ borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", color: isDark ? "#f1f5f9" : "#0f172a" }}>
             Log in
-          </button>
+          </Link>
           <button
             onClick={handleDemoLogin}
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border-0 bg-gradient-to-r"
