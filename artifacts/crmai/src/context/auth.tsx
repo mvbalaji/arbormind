@@ -16,6 +16,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   refetch: () => Promise<void>;
   signIn: (credentials?: { username: string; password: string }) => Promise<boolean>;
+  signInAndGoToDashboard: (credentials?: { username: string; password: string }) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextValue>({
   logout: async () => {},
   refetch: async () => {},
   signIn: async () => false,
+  signInAndGoToDashboard: async () => false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -84,8 +86,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
+  const signInAndGoToDashboard = async (credentials?: { username: string; password: string }) => {
+    const ok = await signIn(credentials);
+    if (ok) {
+      await fetchUser();
+      window.location.href = "/";
+    }
+    return ok;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, logout, refetch: fetchUser, signIn }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, logout, refetch: fetchUser, signIn, signInAndGoToDashboard }}>
       {children}
     </AuthContext.Provider>
   );
