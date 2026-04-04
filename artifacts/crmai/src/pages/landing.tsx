@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Sun, Moon, Zap, BarChart3, Users, Shield, ArrowRight, Star, CheckCircle, Globe } from "lucide-react";
+import { useAuth } from "@/context/auth";
 
 const FEATURES = [
   {
@@ -193,6 +194,7 @@ const TESTIMONIALS = [
 type Theme = "dark" | "light";
 
 export default function Landing() {
+  const { signIn } = useAuth();
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem("arbormind-theme");
     return (stored as Theme) || "dark";
@@ -287,7 +289,7 @@ export default function Landing() {
           </button>
 
           <button
-            onClick={() => { window.location.href = "/api/auth/google?redirect=/dashboard"; }}
+            onClick={signIn}
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border-0 bg-gradient-to-r"
             style={{
               background: "linear-gradient(135deg, #6366f1, #4f46e5)",
@@ -360,7 +362,7 @@ export default function Landing() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
-              onClick={() => { window.location.href = "/api/auth/google?redirect=/dashboard"; }}
+              onClick={signIn}
               className="flex items-center gap-3 px-7 py-3.5 rounded-2xl font-semibold text-base transition-all hover:-translate-y-1 hover:shadow-2xl cursor-pointer border-0"
               style={{
                 background: "linear-gradient(135deg, #6366f1, #4f46e5)",
@@ -594,7 +596,7 @@ export default function Landing() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
-                  onClick={() => { window.location.href = "/api/auth/google?redirect=/dashboard"; }}
+                  onClick={signIn}
                   className="flex items-center gap-3 px-8 py-3.5 rounded-2xl font-semibold transition-all hover:-translate-y-1 hover:shadow-2xl cursor-pointer border-0"
                   style={{
                     background: "linear-gradient(135deg, #6366f1, #4f46e5)",

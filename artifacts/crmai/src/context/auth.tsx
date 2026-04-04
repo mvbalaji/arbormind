@@ -14,6 +14,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   logout: () => Promise<void>;
   refetch: () => Promise<void>;
+  signIn: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextValue>({
   isAuthenticated: false,
   logout: async () => {},
   refetch: async () => {},
+  signIn: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -67,8 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const signIn = () => {
+    window.location.href = "/api/auth/google";
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, logout, refetch: fetchUser }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, logout, refetch: fetchUser, signIn }}>
       {children}
     </AuthContext.Provider>
   );
