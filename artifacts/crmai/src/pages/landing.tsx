@@ -194,10 +194,7 @@ const TESTIMONIALS = [
 type Theme = "dark" | "light";
 
 export default function Landing() {
-  const { signIn, signInAndGoToDashboard } = useAuth();
-  const [username, setUsername] = useState("demo@arbormind.in");
-  const [password, setPassword] = useState("demo1234");
-  const [loginError, setLoginError] = useState("");
+  const { signInAndGoToDashboard } = useAuth();
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem("arbormind-theme");
     return (stored as Theme) || "dark";
@@ -218,15 +215,11 @@ export default function Landing() {
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
-  const handleLogin = async () => {
-    setLoginError("");
-    const ok = await signIn({ username, password });
-    if (!ok) setLoginError("Invalid username or password");
-  };
   const handleDemoLogin = async () => {
-    setLoginError("");
-    const ok = await signInAndGoToDashboard({ username: "demo@arbormind.in", password: "demo1234" });
-    if (!ok) setLoginError("Invalid username or password");
+    await signInAndGoToDashboard({ username: "demo@arbormind.in", password: "demo1234" });
+  };
+  const handleLoginClick = async () => {
+    window.location.href = "/login";
   };
 
   const isDark = theme === "dark";
@@ -301,8 +294,11 @@ export default function Landing() {
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
+          <button onClick={handleLoginClick} className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border" style={{ borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+            Log in
+          </button>
           <button
-            onClick={handleLogin}
+            onClick={handleDemoLogin}
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border-0 bg-gradient-to-r"
             style={{
               background: "linear-gradient(135deg, #6366f1, #4f46e5)",
@@ -373,21 +369,7 @@ export default function Landing() {
             AI assistant and real-time analytics — all in one beautiful workspace.
           </p>
 
-          <div className="max-w-md mx-auto grid gap-4 text-left rounded-2xl p-6" style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.85)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
-            <div className="grid gap-3">
-              <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" className="px-4 py-3 rounded-xl border" />
-              <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" className="px-4 py-3 rounded-xl border" />
-              <div className="flex gap-3">
-                <button type="button" onClick={handleLogin} className="px-4 py-3 rounded-xl font-semibold text-white flex-1" style={{ background: "linear-gradient(135deg, #6366f1, #4f46e5)" }}>
-                  Sign in
-                </button>
-                <button type="button" onClick={handleDemoLogin} className="px-4 py-3 rounded-xl font-semibold border flex-1" style={{ borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", color: isDark ? "#f1f5f9" : "#0f172a" }}>
-                  Log in
-                </button>
-              </div>
-              {loginError && <div className="text-sm text-red-500">{loginError}</div>}
-            </div>
-          </div>
+          <div />
         </section>
 
         {/* STATS */}
@@ -538,23 +520,6 @@ export default function Landing() {
               </div>
             ))}
           </div>
-        </section>
-
-        {/* ENQUIRY FORM */}
-        <section className="px-6 md:px-12 py-20 max-w-2xl mx-auto">
-          <div className="text-center mb-12">
-            <h2
-              className="text-3xl md:text-4xl font-bold mb-4"
-              style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
-            >
-              Get in Touch
-            </h2>
-            <p className="text-base" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
-              Have questions? We'd love to hear from you. Fill out the form below and our team will get back to you shortly.
-            </p>
-          </div>
-
-          <EnquiryForm isDark={isDark} />
         </section>
 
         {/* CTA */}
