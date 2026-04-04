@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import pinoHttp from "pino-http";
 import path from "path";
@@ -21,6 +22,9 @@ const sessionSecret = SESSION_SECRET || "crmai-dev-secret-change-in-production";
 
 const app: Express = express();
 
+// Trust Replit's reverse proxy so secure cookies & req.protocol work correctly
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
@@ -40,47 +44,15 @@ function isProductionMode() {
   return process.env.NODE_ENV === "production";
 }
 
-// Extract domain from Google callback URL or use REPLIT_DOMAINS
-function getCookieDomain() {
-  // Only use callback domain in production
-  if (isProductionMode() && process.env.GOOGLE_CALLBACK_URL) {
-    try {
-      const url = new URL(process.env.GOOGLE_CALLBACK_URL);
-      return `.${url.hostname}`;
-    } catch (e) {
-      console.warn("[Session] Failed to parse GOOGLE_CALLBACK_URL");
-    }
-  }
-  
-  // Fallback to CUSTOM_DOMAIN (only in production)
-  if (isProductionMode() && process.env.CUSTOM_DOMAIN) return `.${process.env.CUSTOM_DOMAIN}`;
-  
-  // In development, don't set a domain so cookie works on any domain
-  return undefined;
-}
+const inProduction = isProductionMode();
+console.log("[Session] Production mode detected:", inProduction);
+console.log("[Session] Cookie settings - secure:", inProduction, "sameSite:", inProduction ? "none" : "lax");
 
 const allowedOrigins: Set<string> = new Set(
   process.env.REPLIT_DOMAINS
     ? process.env.REPLIT_DOMAINS.split(",").map((d) => `https://${d.trim()}`)
     : []
 );
-
-// In production, also allow the domain from callback URL
-const callbackDomain = getCookieDomain();
-const inProduction = isProductionMode();
-
-console.log("[Session] Production mode detected:", inProduction);
-console.log("[Session] Cookie domain:", callbackDomain);
-console.log("[Session] Cookie settings - secure:", inProduction, "sameSite:", inProduction ? "none" : "lax");
-
-if (callbackDomain && process.env.GOOGLE_CALLBACK_URL) {
-  try {
-    const url = new URL(process.env.GOOGLE_CALLBACK_URL);
-    allowedOrigins.add(`https://${url.hostname}`);
-  } catch (e) {
-    console.warn("[CORS] Failed to add callback domain");
-  }
-}
 
 app.use(
   cors({
@@ -98,17 +70,24 @@ app.use(
   }),
 );
 
+// Set up PostgreSQL-backed session store for persistence across restarts/deployments
+const PgSession = connectPgSimple(session);
+
 app.use(
   session({
+    store: new PgSession({
+      conString: process.env.DATABASE_URL,
+      tableName: "session",
+      createTableIfMissing: true,
+    }),
     secret: sessionSecret,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
       httpOnly: true,
       secure: inProduction,
       sameSite: inProduction ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: callbackDomain || undefined,
     },
   }),
 );
