@@ -36,7 +36,6 @@ function CRMRoutes() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
-      <Route path="/login" component={Login} />
       <Route path="/contacts" component={Contacts} />
       <Route path="/contacts/:id" component={ContactDetail} />
       <Route path="/leads" component={Leads} />
@@ -79,7 +78,12 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <Landing />;
+    return (
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route component={Landing} />
+      </Switch>
+    );
   }
 
   return <CRMRoutes />;

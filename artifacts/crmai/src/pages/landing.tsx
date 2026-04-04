@@ -220,9 +220,6 @@ export default function Landing() {
   const handleDemoLogin = async () => {
     await signInAndGoToDashboard({ username: "demo@arbormind.in", password: "demo1234" });
   };
-  const handleLoginClick = async () => {
-    setLocation("/login");
-  };
 
   const isDark = theme === "dark";
 
