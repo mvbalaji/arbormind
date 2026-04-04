@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/context/auth";
 
 export default function Login() {
   const { signIn } = useAuth();
+  const [, setLocation] = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,7 +16,7 @@ export default function Login() {
     setLoading(true);
     const ok = await signIn({ username, password });
     if (ok) {
-      window.location.href = "/";
+      setLocation("/");
       return;
     }
     setError("Invalid username or password");

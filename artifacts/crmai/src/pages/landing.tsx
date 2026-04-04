@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Sun, Moon, Zap, BarChart3, Users, Shield, ArrowRight, Star, CheckCircle, Globe } from "lucide-react";
+import { useLocation } from "wouter";
 import { useAuth } from "@/context/auth";
 
 const FEATURES = [
@@ -195,6 +196,7 @@ type Theme = "dark" | "light";
 
 export default function Landing() {
   const { signInAndGoToDashboard } = useAuth();
+  const [, setLocation] = useLocation();
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem("arbormind-theme");
     return (stored as Theme) || "dark";
@@ -219,7 +221,7 @@ export default function Landing() {
     await signInAndGoToDashboard({ username: "demo@arbormind.in", password: "demo1234" });
   };
   const handleLoginClick = async () => {
-    window.location.href = "/login";
+    setLocation("/login");
   };
 
   const isDark = theme === "dark";

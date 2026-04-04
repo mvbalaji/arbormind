@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const ok = await signIn(credentials);
     if (ok) {
       await fetchUser();
-      window.location.href = "/";
+      window.location.href = "/#/dashboard";
     }
     return ok;
   };
