@@ -35,12 +35,9 @@ app.use(
   }),
 );
 
-// Detect if running in production by checking for production domain
+// Detect if running in production
 function isProductionMode() {
-  if (process.env.NODE_ENV === "production") return true;
-  // Also check if GOOGLE_CALLBACK_URL points to production domain
-  if (process.env.GOOGLE_CALLBACK_URL?.includes("arbormind.in")) return true;
-  return false;
+  return process.env.NODE_ENV === "production";
 }
 
 // Extract domain from Google callback URL or use REPLIT_DOMAINS
