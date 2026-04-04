@@ -136,7 +136,11 @@ router.get("/auth/google", (req, res, next) => {
   }
   try {
     console.log("[Auth/Google] Calling passport.authenticate");
-    passport.authenticate("google", { scope: ["profile", "email"], state: req.query.redirect ? String(req.query.redirect) : "/dashboard" })(req, res, next);
+    const redirectTo = typeof req.query.redirect === "string" && req.query.redirect.startsWith("/") ? req.query.redirect : "/dashboard";
+    req.session.returnTo = redirectTo;
+    req.session.save(() => {
+      passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+    });
   } catch (err) {
     console.error("[Auth/Google] Passport error:", err);
     res.status(500).json({ error: "Authentication failed" });
@@ -159,8 +163,9 @@ router.get(
         res.redirect("/?error=session-save-failed");
         return;
       }
-      const redirectTo = typeof req.query.state === "string" && req.query.state.startsWith("/") ? req.query.state : "/dashboard";
+      const redirectTo = typeof req.session.returnTo === "string" && req.session.returnTo.startsWith("/") ? req.session.returnTo : "/dashboard";
       console.log("[OAuth Callback] Session saved successfully, redirecting to", redirectTo, { sessionId: req.session.id, userId: (req.user as any)?.id, headers: res.getHeaders() });
+      delete req.session.returnTo;
       res.redirect(redirectTo);
     });
   }
