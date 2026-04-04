@@ -42,8 +42,8 @@ function isProductionMode() {
 
 // Extract domain from Google callback URL or use REPLIT_DOMAINS
 function getCookieDomain() {
-  // Try to extract domain from Google callback URL
-  if (process.env.GOOGLE_CALLBACK_URL) {
+  // Only use callback domain in production
+  if (isProductionMode() && process.env.GOOGLE_CALLBACK_URL) {
     try {
       const url = new URL(process.env.GOOGLE_CALLBACK_URL);
       return `.${url.hostname}`;
@@ -52,9 +52,10 @@ function getCookieDomain() {
     }
   }
   
-  // Fallback to CUSTOM_DOMAIN
-  if (process.env.CUSTOM_DOMAIN) return `.${process.env.CUSTOM_DOMAIN}`;
+  // Fallback to CUSTOM_DOMAIN (only in production)
+  if (isProductionMode() && process.env.CUSTOM_DOMAIN) return `.${process.env.CUSTOM_DOMAIN}`;
   
+  // In development, don't set a domain so cookie works on any domain
   return undefined;
 }
 
