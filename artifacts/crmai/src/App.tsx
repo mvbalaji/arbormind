@@ -56,6 +56,9 @@ function CRMRoutes() {
 
 function AppContent() {
   const { isLoading, isAuthenticated } = useAuth();
+  if (import.meta.env.DEV) {
+    return <CRMRoutes />;
+  }
 
   if (isLoading) {
     return (
