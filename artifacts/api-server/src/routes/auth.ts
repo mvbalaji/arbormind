@@ -215,22 +215,25 @@ router.get("/auth/me", (req, res) => {
 router.post("/auth/login", (req, res) => {
   const { username, password } = req.body as { username?: string; password?: string };
   if (username === DEMO_USERNAME && password === DEMO_PASSWORD) {
-    req.session.regenerate((err) => {
+    const user = {
+      id: 1,
+      email: DEMO_USERNAME,
+      name: "Demo User",
+      role: "admin",
+      avatarUrl: null,
+      username: DEMO_USERNAME,
+    };
+    req.session.user = user;
+    (req as any).user = user;
+    console.log("[Auth/Login] Session user set:", req.session.id, user.email);
+    req.session.save((err) => {
       if (err) {
+        console.error("[Auth/Login] Session save failed:", err);
         res.status(500).json({ error: "Login failed" });
         return;
       }
-      const user = {
-        id: 1,
-        email: DEMO_USERNAME,
-        name: "Demo User",
-        role: "admin",
-        avatarUrl: null,
-        username: DEMO_USERNAME,
-      };
-      req.session.user = user;
-      (req as any).user = user;
-      req.session.save(() => res.json({ user }));
+      console.log("[Auth/Login] Session saved successfully:", req.session.id);
+      res.json({ user });
     });
     return;
   }

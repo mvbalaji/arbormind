@@ -102,13 +102,13 @@ app.use(
   session({
     secret: sessionSecret,
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     cookie: {
       httpOnly: true,
       secure: inProduction,
       sameSite: inProduction ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      domain: callbackDomain,
+      domain: callbackDomain || undefined,
     },
   }),
 );
