@@ -220,7 +220,7 @@ router.post("/auth/login", (req, res) => {
         res.status(500).json({ error: "Login failed" });
         return;
       }
-      req.session.user = {
+      const user = {
         id: 1,
         email: DEMO_USERNAME,
         name: "Demo User",
@@ -228,7 +228,9 @@ router.post("/auth/login", (req, res) => {
         avatarUrl: null,
         username: DEMO_USERNAME,
       };
-      req.session.save(() => res.json({ user: req.session.user }));
+      req.session.user = user;
+      (req as any).user = user;
+      req.session.save(() => res.json({ user }));
     });
     return;
   }
