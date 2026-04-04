@@ -14,13 +14,18 @@ export default function Login() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const ok = await signIn({ username, password });
-    if (ok) {
-      setLocation("/");
-      return;
+    try {
+      const ok = await signIn({ username, password });
+      if (ok) {
+        // Wait a bit for auth context to update, then redirect
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setLocation("/");
+        return;
+      }
+      setError("Invalid username or password");
+    } finally {
+      setLoading(false);
     }
-    setError("Invalid username or password");
-    setLoading(false);
   };
 
   return (

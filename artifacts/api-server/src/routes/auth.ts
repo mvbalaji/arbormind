@@ -202,9 +202,15 @@ router.get(
 );
 
 router.get("/auth/me", (req, res) => {
-  console.log("[Auth/Me] Request - session:", { sessionId: req.session?.id, cookie: req.headers.cookie?.substring(0, 100), isAuth: req.isAuthenticated?.(), user: !!(req.user) });
-  if (req.isAuthenticated && req.isAuthenticated() && req.user) {
-    res.json({ user: req.user });
+  const isAuth = req.isAuthenticated?.();
+  const hasUser = !!(req.user);
+  const sessionUser = !!(req.session?.user);
+  console.log("[Auth/Me] Request - session:", { sessionId: req.session?.id, cookie: req.headers.cookie?.substring(0, 100), isAuth, hasUser, sessionUser, user: req.session?.user?.email || req.user || "none" });
+  
+  // If session has user but req.user doesn't, use session user
+  if ((isAuth && req.user) || req.session?.user) {
+    const userData = req.user || req.session.user;
+    res.json({ user: userData });
     return;
   }
   // When Google OAuth is not configured, return a dev-mode admin user
