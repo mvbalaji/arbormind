@@ -13,6 +13,7 @@ import reportsRouter from "./reports";
 import authRouter from "./auth";
 import enquiriesRouter from "./enquiries";
 import emailsRouter from "./emails";
+import campaignsRouter from "./campaigns";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(productsRouter);
 router.use(casesRouter);
 router.use(quotesRouter);
 router.use(reportsRouter);
+router.use(campaignsRouter);
 
 export default router;

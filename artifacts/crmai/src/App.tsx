@@ -22,6 +22,7 @@ import Reports from "./pages/reports";
 import Users from "./pages/users";
 import Support from "./pages/support";
 import AIAssistant from "./pages/ai-assistant";
+import Campaigns from "./pages/campaigns";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +44,7 @@ function CRMRoutes() {
       <Route path="/opportunities" component={Opportunities} />
       <Route path="/opportunities/:id" component={OpportunityDetail} />
       <Route path="/activities" component={Activities} />
+      <Route path="/campaigns" component={Campaigns} />
       <Route path="/products" component={Products} />
       <Route path="/cases" component={Cases} />
       <Route path="/quotes" component={Quotes} />

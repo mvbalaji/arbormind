@@ -19,7 +19,9 @@ import {
   X,
   LogOut,
   ChevronDown,
-  Mail
+  Mail,
+  Megaphone,
+  Plus,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,7 @@ const NAV_ITEMS = [
   { label: "Accounts", href: "/accounts", icon: Building2 },
   { label: "Opportunities", href: "/opportunities", icon: Briefcase },
   { label: "Activities", href: "/activities", icon: Activity },
+  { label: "Campaigns", href: "/campaigns", icon: Megaphone },
   { label: "Products", href: "/products", icon: Package },
   { label: "Quotes", href: "/quotes", icon: FileText },
   { label: "Cases", href: "/cases", icon: LifeBuoy },
@@ -202,9 +205,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Bell className="w-4 h-4 text-muted-foreground" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full animate-pulse"></span>
             </Button>
-            <Button variant="default" className="hidden sm:flex rounded-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity border-0 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-              + Quick Add
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="default" className="hidden sm:flex rounded-full bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity border-0 shadow-[0_0_20px_rgba(59,130,246,0.3)] gap-1.5">
+                  <Plus className="w-4 h-4" /> Quick Add
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44 bg-card border-white/10 text-white">
+                {[
+                  { label: "Lead", href: "/leads", icon: UserPlus },
+                  { label: "Contact", href: "/contacts", icon: Users },
+                  { label: "Account", href: "/accounts", icon: Building2 },
+                  { label: "Deal", href: "/opportunities", icon: Briefcase },
+                  { label: "Campaign", href: "/campaigns", icon: Megaphone },
+                ].map(item => (
+                  <DropdownMenuItem key={item.href} asChild className="cursor-pointer hover:bg-white/10">
+                    <Link href={item.href} className="flex items-center gap-2">
+                      <item.icon className="w-4 h-4 text-muted-foreground" />
+                      {item.label}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 

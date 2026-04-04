@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   useListLeads, useCreateLead, useUpdateLead, useDeleteLead,
-  useConvertLead, getListLeadsQueryKey, CreateLeadInputStatus,
+  useConvertLead, useListUsers, getListLeadsQueryKey, CreateLeadInputStatus,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -37,10 +37,13 @@ interface LeadFormData {
   company: string;
   source: string;
   status: string;
+  assignedTo: string;
+  score: string;
 }
 
 const defaultFormData: LeadFormData = {
-  firstName: "", lastName: "", email: "", phone: "", company: "", source: "", status: "new",
+  firstName: "", lastName: "", email: "", phone: "", company: "",
+  source: "", status: "new", assignedTo: "", score: "",
 };
 
 export default function Leads() {
@@ -150,6 +153,8 @@ export default function Leads() {
                                   company: lead.company ?? "",
                                   source: lead.source ?? "",
                                   status: lead.status,
+                                  assignedTo: (lead.assignedTo?.toString()) ?? "",
+                                  score: (lead.score?.toString()) ?? "",
                                 })}
                                 className="cursor-pointer hover:bg-white/10"
                               >
@@ -242,6 +247,7 @@ function LeadFormDialog({
   const queryClient = useQueryClient();
   const createMutation = useCreateLead();
   const updateMutation = useUpdateLead();
+  const { data: usersData } = useListUsers({ limit: 50 });
   const [formData, setFormData] = useState<LeadFormData>(initialData ?? defaultFormData);
 
   React.useEffect(() => {
@@ -253,6 +259,8 @@ function LeadFormDialog({
     const payload = {
       ...formData,
       status: formData.status as CreateLeadInputStatus,
+      assignedTo: formData.assignedTo ? parseInt(formData.assignedTo) : undefined,
+      score: formData.score ? parseInt(formData.score) : undefined,
     };
     const invalidate = () => queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
     if (mode === "create") {
@@ -272,9 +280,11 @@ function LeadFormDialog({
   const f = (field: keyof LeadFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setFormData({ ...formData, [field]: e.target.value });
 
+  const selectClass = "w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[500px]">
+      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "Create Lead" : "Edit Lead"}
@@ -308,11 +318,7 @@ function LeadFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Source</Label>
-              <select
-                className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm"
-                value={formData.source}
-                onChange={f("source")}
-              >
+              <select className={selectClass} value={formData.source} onChange={f("source")}>
                 <option value="">Select source</option>
                 <option value="website">Website</option>
                 <option value="referral">Referral</option>
@@ -325,16 +331,33 @@ function LeadFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <select
-                className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm"
-                value={formData.status}
-                onChange={f("status")}
-              >
+              <select className={selectClass} value={formData.status} onChange={f("status")}>
                 <option value="new">New</option>
                 <option value="contacted">Contacted</option>
                 <option value="qualified">Qualified</option>
                 <option value="unqualified">Unqualified</option>
               </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Assign To Rep</Label>
+              <select className={selectClass} value={formData.assignedTo} onChange={f("assignedTo")}>
+                <option value="">Unassigned</option>
+                {usersData?.data?.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Lead Score (0–100)</Label>
+              <Input
+                type="number" min="0" max="100"
+                className="bg-black/20 border-white/10"
+                value={formData.score}
+                onChange={f("score")}
+                placeholder="Auto-calculated"
+              />
             </div>
           </div>
           <DialogFooter className="pt-2">

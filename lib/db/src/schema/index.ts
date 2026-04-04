@@ -10,3 +10,4 @@ export * from "./quotes";
 export * from "./allowed-users";
 export * from "./enquiries";
 export * from "./emails";
+export * from "./campaigns";
