@@ -6,6 +6,7 @@ export interface AuthUser {
   name: string;
   role: string;
   avatarUrl?: string | null;
+  username?: string;
 }
 
 interface AuthContextValue {
@@ -14,7 +15,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   logout: () => Promise<void>;
   refetch: () => Promise<void>;
-  signIn: () => void;
+  signIn: (credentials?: { username: string; password: string }) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -23,7 +24,7 @@ const AuthContext = createContext<AuthContextValue>({
   isAuthenticated: false,
   logout: async () => {},
   refetch: async () => {},
-  signIn: () => {},
+  signIn: async () => false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -69,8 +70,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
-  const signIn = () => {
-    window.location.href = "/api/auth/google";
+  const signIn = async (credentials?: { username: string; password: string }) => {
+    if (!credentials) return false;
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(credentials),
+    });
+    if (!res.ok) return false;
+    await fetchUser();
+    return true;
   };
 
   return (

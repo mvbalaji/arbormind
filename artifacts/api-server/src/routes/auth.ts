@@ -10,6 +10,9 @@ const ADMIN_EMAILS = [
   "parthasarathisoundarrajan@gmail.com",
 ];
 
+const DEMO_USERNAME = "demo@arbormind.in";
+const DEMO_PASSWORD = "demo1234";
+
 function getCallbackUrl() {
   if (process.env.NODE_ENV === "production" && process.env.GOOGLE_CALLBACK_URL) return process.env.GOOGLE_CALLBACK_URL;
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.CUSTOM_DOMAIN;
@@ -192,6 +195,29 @@ router.get("/auth/me", (req, res) => {
     return;
   }
   res.status(401).json({ user: null });
+});
+
+router.post("/auth/login", (req, res) => {
+  const { username, password } = req.body as { username?: string; password?: string };
+  if (username === DEMO_USERNAME && password === DEMO_PASSWORD) {
+    req.session.regenerate((err) => {
+      if (err) {
+        res.status(500).json({ error: "Login failed" });
+        return;
+      }
+      req.session.user = {
+        id: 1,
+        email: DEMO_USERNAME,
+        name: "Demo User",
+        role: "admin",
+        avatarUrl: null,
+        username: DEMO_USERNAME,
+      };
+      req.session.save(() => res.json({ user: req.session.user }));
+    });
+    return;
+  }
+  res.status(401).json({ error: "Invalid credentials" });
 });
 
 router.post("/auth/logout", (req, res) => {

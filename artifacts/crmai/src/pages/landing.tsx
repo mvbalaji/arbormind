@@ -195,6 +195,9 @@ type Theme = "dark" | "light";
 
 export default function Landing() {
   const { signIn } = useAuth();
+  const [username, setUsername] = useState("demo@arbormind.in");
+  const [password, setPassword] = useState("demo1234");
+  const [loginError, setLoginError] = useState("");
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem("arbormind-theme");
     return (stored as Theme) || "dark";
@@ -215,6 +218,11 @@ export default function Landing() {
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+  const handleLogin = async () => {
+    setLoginError("");
+    const ok = await signIn({ username, password });
+    if (!ok) setLoginError("Invalid username or password");
+  };
 
   const isDark = theme === "dark";
 
@@ -289,7 +297,7 @@ export default function Landing() {
           </button>
 
           <button
-            onClick={signIn}
+            onClick={handleLogin}
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border-0 bg-gradient-to-r"
             style={{
               background: "linear-gradient(135deg, #6366f1, #4f46e5)",
@@ -301,7 +309,7 @@ export default function Landing() {
               gap: "0.5rem",
             }}
           >
-            Sign in with Google
+            Sign in
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -360,40 +368,18 @@ export default function Landing() {
             AI assistant and real-time analytics — all in one beautiful workspace.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              onClick={signIn}
-              className="flex items-center gap-3 px-7 py-3.5 rounded-2xl font-semibold text-base transition-all hover:-translate-y-1 hover:shadow-2xl cursor-pointer border-0"
-              style={{
-                background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-                color: "white",
-                boxShadow: "0 8px 24px rgba(99,102,241,0.35)",
-                textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                border: "none",
-                padding: "0.875rem 1.75rem",
-              }}
-            >
-              <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-              </svg>
-              Continue with Google
-            </button>
-            <a
-              href="#features"
-              className="flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold text-sm transition-all hover:opacity-80"
-              style={{
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-                color: isDark ? "#94a3b8" : "#64748b",
-              }}
-            >
-              See features
-            </a>
+          <div className="max-w-md mx-auto grid gap-4 text-left rounded-2xl p-6" style={{ background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.85)", border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
+            <div className="grid gap-3">
+              <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" className="px-4 py-3 rounded-xl border" />
+              <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" className="px-4 py-3 rounded-xl border" />
+              <button onClick={handleLogin} className="px-4 py-3 rounded-xl font-semibold text-white" style={{ background: "linear-gradient(135deg, #6366f1, #4f46e5)" }}>
+                Log in
+              </button>
+              <div className="text-sm" style={{ color: isDark ? "#94a3b8" : "#64748b" }}>
+                Demo account: <b>demo@arbormind.in</b> / <b>demo1234</b>
+              </div>
+              {loginError && <div className="text-sm text-red-500">{loginError}</div>}
+            </div>
           </div>
         </section>
 
