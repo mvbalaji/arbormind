@@ -555,7 +555,7 @@ export default function Landing() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
                   type="button"
-                  onClick={handleLogin}
+                  onClick={handleDemoLogin}
                   className="flex items-center gap-3 px-8 py-3.5 rounded-2xl font-semibold transition-all hover:-translate-y-1 hover:shadow-2xl cursor-pointer border-0"
                   style={{
                     background: "linear-gradient(135deg, #6366f1, #4f46e5)",
