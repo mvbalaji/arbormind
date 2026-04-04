@@ -21,9 +21,6 @@ const sessionSecret = SESSION_SECRET || "crmai-dev-secret-change-in-production";
 
 const app: Express = express();
 
-// Trust Replit's reverse proxy so secure cookies & req.protocol work correctly
-app.set("trust proxy", 1);
-
 app.use(
   pinoHttp({
     logger,
@@ -76,8 +73,8 @@ app.use(
     saveUninitialized: true,
     cookie: {
       httpOnly: true,
-      secure: inProduction,
-      sameSite: inProduction ? "none" : "lax",
+      secure: false,
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   }),
