@@ -1,7 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import pinoHttp from "pino-http";
 import path from "path";
@@ -70,19 +69,11 @@ app.use(
   }),
 );
 
-// Set up PostgreSQL-backed session store for persistence across restarts/deployments
-const PgSession = connectPgSimple(session);
-
 app.use(
   session({
-    store: new PgSession({
-      conString: process.env.DATABASE_URL,
-      tableName: "session",
-      createTableIfMissing: true,
-    }),
     secret: sessionSecret,
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true,
     cookie: {
       httpOnly: true,
       secure: inProduction,
