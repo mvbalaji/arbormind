@@ -4,6 +4,21 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { db } from "@workspace/db";
 import { allowedUsersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import type { SessionData } from "express-session";
+
+declare module "express-session" {
+  interface SessionData {
+    returnTo?: string;
+    user?: {
+      id: number;
+      email: string;
+      name: string;
+      role: string;
+      avatarUrl: string | null;
+      username?: string;
+    };
+  }
+}
 
 const ADMIN_EMAILS = [
   "balaji.venkateswaran@gmail.com",
