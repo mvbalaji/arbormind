@@ -11,7 +11,7 @@ const ADMIN_EMAILS = [
 ];
 
 function getCallbackUrl() {
-  if (process.env.GOOGLE_CALLBACK_URL) return process.env.GOOGLE_CALLBACK_URL;
+  if (process.env.NODE_ENV === "production" && process.env.GOOGLE_CALLBACK_URL) return process.env.GOOGLE_CALLBACK_URL;
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.CUSTOM_DOMAIN;
   if (domain) return `https://${domain}/api/auth/google/callback`;
   return "http://localhost:8080/api/auth/google/callback";
