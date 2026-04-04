@@ -1,9 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { Mail, Eye, EyeOff, MessageCircle, User, Calendar } from "lucide-react";
+import React, { useEffect, useState, useCallback } from "react";
+import {
+  Mail, RefreshCw, CheckCircle2, Clock, User, Calendar,
+  Inbox, ExternalLink, Tag, AlertCircle, Info, Webhook,
+} from "lucide-react";
 import { Layout } from "@/components/layout";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/context/auth";
+import { useToast } from "@/hooks/use-toast";
+import { format, formatDistanceToNow } from "date-fns";
 
-interface Email {
+interface SupportEmail {
   id: number;
   fromEmail: string;
   fromName: string;
@@ -17,200 +24,326 @@ interface Email {
   createdAt: string;
 }
 
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+  new:      { label: "New",     color: "bg-blue-500/20 text-blue-400 border-blue-500/20",   icon: <Inbox className="w-3 h-3" /> },
+  replied:  { label: "Replied", color: "bg-green-500/20 text-green-400 border-green-500/20", icon: <CheckCircle2 className="w-3 h-3" /> },
+  assigned: { label: "Assigned", color: "bg-purple-500/20 text-purple-400 border-purple-500/20", icon: <User className="w-3 h-3" /> },
+  pending:  { label: "Pending",  color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/20", icon: <Clock className="w-3 h-3" /> },
+};
+
 export default function Support() {
   const { user, isLoading } = useAuth();
-  const [emails, setEmails] = useState<Email[]>([]);
-  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
-  const [fetchLoading, setFetchLoading] = useState(true);
+  const { toast } = useToast();
+  const [emails, setEmails] = useState<SupportEmail[]>([]);
+  const [selected, setSelected] = useState<SupportEmail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (!isLoading && user) {
-      fetchEmails();
-    }
-  }, [isLoading, user]);
-
-  const fetchEmails = async () => {
+  const fetchEmails = useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) setRefreshing(true);
+    else setLoading(true);
     try {
       const res = await fetch("/api/emails", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
-        setEmails(data.emails || []);
+        setEmails(data.emails ?? []);
+      } else {
+        toast({ title: "Could not load inbox", variant: "destructive" });
       }
-    } catch (err) {
-      console.error("Error fetching emails:", err);
+    } catch {
+      toast({ title: "Network error", variant: "destructive" });
     } finally {
-      setFetchLoading(false);
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (!isLoading && user) fetchEmails();
+  }, [isLoading, user, fetchEmails]);
+
+  const updateStatus = async (id: number, status: string) => {
+    setUpdatingId(id);
+    try {
+      const res = await fetch(`/api/emails/${id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        const { email: updated } = await res.json();
+        setEmails(prev => prev.map(e => e.id === id ? updated : e));
+        if (selected?.id === id) setSelected(updated);
+        toast({ title: `Marked as ${status}` });
+      }
+    } finally {
+      setUpdatingId(null);
     }
   };
 
-  if (isLoading || !user || user.role !== "admin") {
+  if (isLoading) return <Layout><div className="p-8 text-center text-muted-foreground">Loading…</div></Layout>;
+
+  if (!user || user.role !== "admin") {
     return (
       <Layout>
-        <div className="p-8 text-center">
-          <p className="text-red-500">Admin access required</p>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+            <p className="text-red-400 font-medium">Admin access required</p>
+            <p className="text-muted-foreground text-sm mt-1">Contact your administrator to access the support inbox.</p>
+          </div>
         </div>
       </Layout>
     );
   }
 
+  const newCount = emails.filter(e => e.status === "new").length;
+
   return (
     <Layout>
-      <div className="h-full flex flex-col">
+      <div className="flex flex-col h-[calc(100vh-8rem)] gap-0">
         {/* Header */}
-        <div className="px-8 py-6 border-b border-border">
-          <div className="flex items-center gap-3 mb-2">
-            <Mail className="w-6 h-6 text-primary" />
-            <h1 className="text-2xl font-bold">Support Inbox</h1>
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-white tracking-tight flex items-center gap-3">
+              <Mail className="w-7 h-7 text-primary" />
+              Support Inbox
+              {newCount > 0 && (
+                <span className="text-sm font-semibold bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                  {newCount} new
+                </span>
+              )}
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Emails sent to <span className="text-white font-medium">support@arbormind.in</span>
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Manage customer inquiries — auto-creates Leads (new) or Opportunities (known customers)
-          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/10 gap-2"
+            onClick={() => fetchEmails(true)}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
 
-        {/* Main Content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Email List */}
-          <div className="w-96 border-r border-border overflow-y-auto">
-            {fetchLoading ? (
-              <div className="p-4 text-center text-muted-foreground">Loading...</div>
-            ) : emails.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground">No emails yet</div>
-            ) : (
-              emails.map((email) => (
-                <button
-                  key={email.id}
-                  onClick={() => setSelectedEmail(email)}
-                  className={`w-full px-4 py-4 border-b border-border text-left transition-colors hover:bg-accent/50 ${
-                    selectedEmail?.id === email.id ? "bg-accent" : ""
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{email.fromName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{email.fromEmail}</p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {email.isKnownCustomer === "true" ? (
-                        <span className="inline-block w-2 h-2 rounded-full bg-green-500" title="Known Customer" />
-                      ) : (
-                        <span className="inline-block w-2 h-2 rounded-full bg-blue-500" title="New Customer" />
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-sm truncate text-foreground mb-2">{email.subject}</p>
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        email.status === "replied"
-                          ? "bg-green-500/20 text-green-700"
-                          : "bg-yellow-500/20 text-yellow-700"
-                      }`}
+        {/* Setup Banner (shown when inbox is empty) */}
+        {!loading && emails.length === 0 && (
+          <div className="mb-4 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+            <div className="flex-1 text-sm">
+              <p className="text-white font-medium mb-1">Connect your support inbox</p>
+              <p className="text-muted-foreground mb-3">
+                Forward emails from <strong className="text-white">support@arbormind.in</strong> to the webhook below, or use email routing (Cloudflare, Google Workspace, etc.) to POST incoming emails to the endpoint.
+              </p>
+              <div className="flex items-center gap-2 p-2 bg-black/30 rounded-lg font-mono text-xs text-green-400 border border-white/10">
+                <Webhook className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">POST {window.location.origin.replace("80", "8080")}/api/emails</span>
+              </div>
+              <p className="text-muted-foreground text-xs mt-2">
+                Accepts JSON: <code className="text-green-400">&#123; fromEmail, fromName, subject, message &#125;</code>
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Main split panel */}
+        <div className="flex flex-1 overflow-hidden rounded-2xl border border-white/5 bg-card/30">
+          {/* Email list */}
+          <div className="w-[340px] shrink-0 flex flex-col border-r border-white/5 overflow-hidden">
+            <div className="px-4 py-3 border-b border-white/5 bg-black/20">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {emails.length} ticket{emails.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {loading ? (
+                <div className="p-6 text-center text-muted-foreground text-sm">Loading inbox…</div>
+              ) : emails.length === 0 ? (
+                <div className="p-8 text-center">
+                  <Inbox className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+                  <p className="text-muted-foreground text-sm">No emails yet</p>
+                </div>
+              ) : (
+                emails.map((email) => {
+                  const statusCfg = STATUS_CONFIG[email.status] ?? STATUS_CONFIG.new;
+                  const isSelected = selected?.id === email.id;
+                  return (
+                    <button
+                      key={email.id}
+                      onClick={() => setSelected(email)}
+                      className={`w-full px-4 py-4 border-b border-white/5 text-left transition-all hover:bg-white/5 group ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "border-l-2 border-l-transparent"}`}
                     >
-                      {email.status}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(email.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </button>
-              ))
-            )}
+                      {/* From */}
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="min-w-0 flex-1">
+                          <p className={`font-semibold text-sm truncate ${isSelected ? "text-white" : "text-white/90"}`}>
+                            {email.fromName || email.fromEmail}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{email.fromEmail}</p>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-1.5 mt-0.5">
+                          {email.status === "new" && (
+                            <span className="w-2 h-2 rounded-full bg-primary" />
+                          )}
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full border flex items-center gap-1 ${statusCfg.color}`}>
+                            {statusCfg.icon}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Subject */}
+                      <p className="text-sm text-white/80 truncate mb-1.5 font-medium">{email.subject}</p>
+
+                      {/* Meta */}
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          email.isKnownCustomer === "true"
+                            ? "bg-green-500/10 text-green-400"
+                            : "bg-blue-500/10 text-blue-400"
+                        }`}>
+                          {email.isKnownCustomer === "true" ? "Known customer" : "New contact"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDistanceToNow(new Date(email.createdAt), { addSuffix: true })}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
 
-          {/* Email Detail */}
-          {selectedEmail ? (
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-8 max-w-3xl">
-                {/* Header */}
-                <div className="mb-8 pb-6 border-b border-border">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h2 className="text-2xl font-bold mb-2">{selectedEmail.subject}</h2>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <User className="w-4 h-4" />
-                        <span>{selectedEmail.fromName}</span>
-                        <span>•</span>
-                        <span>{selectedEmail.fromEmail}</span>
+          {/* Email detail */}
+          {selected ? (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Detail header */}
+              <div className="px-8 py-5 border-b border-white/5 bg-black/10 shrink-0">
+                <h2 className="text-xl font-bold text-white mb-3 leading-tight">{selected.subject}</h2>
+
+                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <User className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">
+                      <span className="text-white">{selected.fromName}</span>
+                      {selected.fromName && " "}
+                      <span className="text-muted-foreground">&lt;{selected.fromEmail}&gt;</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Tag className="w-3.5 h-3.5 shrink-0" />
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                      selected.isKnownCustomer === "true"
+                        ? "bg-green-500/10 text-green-400 border-green-500/20"
+                        : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                    }`}>
+                      {selected.isKnownCustomer === "true" ? "Known customer" : "New contact"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="w-3.5 h-3.5 shrink-0" />
+                    <span className="text-white">{format(new Date(selected.createdAt), "MMM d, yyyy 'at' h:mm a")}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5 shrink-0" />
+                    <span className="text-white capitalize">{STATUS_CONFIG[selected.status]?.label ?? selected.status}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Message body */}
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <div className="max-w-2xl">
+                  <div className="bg-black/20 rounded-xl border border-white/5 p-6 whitespace-pre-wrap text-sm leading-relaxed text-white/90">
+                    {selected.message}
+                  </div>
+
+                  {/* Auto-created records */}
+                  {(selected.relatedLeadId || selected.relatedOpportunityId) && (
+                    <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5">
+                      <p className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-green-400" /> Auto-created records
+                      </p>
+                      <div className="space-y-1.5 text-sm">
+                        {selected.relatedLeadId && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <User className="w-3.5 h-3.5 text-blue-400" />
+                            Lead #{selected.relatedLeadId} created — awaiting sales team assignment
+                          </div>
+                        )}
+                        {selected.relatedOpportunityId && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <ExternalLink className="w-3.5 h-3.5 text-green-400" />
+                            Opportunity #{selected.relatedOpportunityId} created — awaiting sales team assignment
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <span
-                        className={`text-xs px-3 py-1 rounded-full font-medium ${
-                          selectedEmail.isKnownCustomer === "true"
-                            ? "bg-green-500/20 text-green-700"
-                            : "bg-blue-500/20 text-blue-700"
-                        }`}
-                      >
-                        {selectedEmail.isKnownCustomer === "true" ? "Known Customer" : "New Customer"}
-                      </span>
-                      <span
-                        className={`text-xs px-3 py-1 rounded-full font-medium ${
-                          selectedEmail.status === "replied"
-                            ? "bg-green-500/20 text-green-700"
-                            : "bg-yellow-500/20 text-yellow-700"
-                        }`}
-                      >
-                        {selectedEmail.status}
-                      </span>
+                  )}
+
+                  {selected.notes && (
+                    <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/5 text-xs text-muted-foreground">
+                      Note: {selected.notes}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {new Date(selectedEmail.createdAt).toLocaleString()}
-                    </div>
-                  </div>
+                  )}
                 </div>
+              </div>
 
-                {/* Message */}
-                <div className="mb-8">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <MessageCircle className="w-4 h-4" />
-                    Message
-                  </h3>
-                  <div className="bg-card/50 p-6 rounded-lg border border-border whitespace-pre-wrap text-sm leading-relaxed">
-                    {selectedEmail.message}
-                  </div>
-                </div>
-
-                {/* Auto-Created Items */}
-                <div className="mb-8 p-6 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <h3 className="font-semibold mb-3 text-sm">Auto-Created Items</h3>
-                  <div className="space-y-2 text-sm">
-                    {selectedEmail.relatedLeadId && (
-                      <p>
-                        ✓ <strong>Lead</strong> created (ID: {selectedEmail.relatedLeadId}) —{" "}
-                        <span className="text-muted-foreground">Awaiting sales team assignment</span>
-                      </p>
-                    )}
-                    {selectedEmail.relatedOpportunityId && (
-                      <p>
-                        ✓ <strong>Opportunity</strong> created (ID: {selectedEmail.relatedOpportunityId}) —{" "}
-                        <span className="text-muted-foreground">Awaiting sales team assignment</span>
-                      </p>
-                    )}
-                    {selectedEmail.notes && (
-                      <p className="text-muted-foreground text-xs">Note: {selectedEmail.notes}</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Auto-Reply Sent */}
-                <div className="p-6 bg-green-500/10 border border-green-500/20 rounded-lg">
-                  <h3 className="font-semibold mb-3 text-sm">Auto-Reply Sent</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedEmail.isKnownCustomer === "true"
-                      ? '"New product inquiry — our sales team will get in touch with you shortly."'
-                      : '"Thank you for your inquiry — our sales team will get in touch with you shortly."'}
-                  </p>
-                </div>
+              {/* Actions footer */}
+              <div className="px-8 py-4 border-t border-white/5 bg-black/10 shrink-0 flex items-center gap-3">
+                {selected.status !== "replied" && (
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => updateStatus(selected.id, "replied")}
+                    disabled={updatingId === selected.id}
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                    Mark Replied
+                  </Button>
+                )}
+                {selected.status !== "assigned" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-white/10"
+                    onClick={() => updateStatus(selected.id, "assigned")}
+                    disabled={updatingId === selected.id}
+                  >
+                    <User className="w-3.5 h-3.5 mr-1.5" />
+                    Assign Rep
+                  </Button>
+                )}
+                {selected.status !== "pending" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-white/10"
+                    onClick={() => updateStatus(selected.id, "pending")}
+                    disabled={updatingId === selected.id}
+                  >
+                    <Clock className="w-3.5 h-3.5 mr-1.5" />
+                    Pending
+                  </Button>
+                )}
+                <span className="text-xs text-muted-foreground ml-auto">
+                  Received {format(new Date(selected.createdAt), "PPp")}
+                </span>
               </div>
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
-                <Mail className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Select an email to view details</p>
+                <Mail className="w-14 h-14 mx-auto mb-4 opacity-20" />
+                <p className="font-medium">Select a ticket to read</p>
+                <p className="text-sm mt-1 opacity-60">{emails.length} ticket{emails.length !== 1 ? "s" : ""} in inbox</p>
               </div>
             </div>
           )}
