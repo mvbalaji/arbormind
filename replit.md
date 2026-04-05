@@ -35,7 +35,8 @@ All modules are fully implemented with real data:
 10. **Cases/Support** — case management with priority/status badges; Support inbox with webhook-based emails (`POST /api/emails`)
 11. **Reports** — pipeline by stage bar chart, lead sources, revenue forecast charts
 12. **AI Assistant** — UI panel with mock insights and chat interface
-13. **Users** — user management table with roles and teams
+13. **Users / Team & Data** — user management table with roles and teams; includes **Data Import** tab for bulk Excel/CSV import of any entity
+14. **Bulk Data Import** — `/api/import/:entity` (POST) accepts JSON records for leads/contacts/accounts/opportunities/campaigns with smart column normalization (camelCase, snake_case, Title Case)
 
 ## Key Components
 

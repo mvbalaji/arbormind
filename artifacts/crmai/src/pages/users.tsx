@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useListUsers } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
-import { Settings, Shield, UserPlus, Trash2, Loader2, Users as UsersIcon } from "lucide-react";
+import { Settings, Shield, UserPlus, Trash2, Loader2, Users as UsersIcon, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
+import { DataImport } from "@/components/data-import";
+import { cn } from "@/lib/utils";
 
 interface AppUser {
   id: number;
@@ -38,6 +40,7 @@ export default function Users() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("sales");
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<"team" | "import">("team");
 
   const fetchAppUsers = async () => {
     if (!isAdmin) return;
@@ -96,10 +99,42 @@ export default function Users() {
   return (
     <Layout>
       <div className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-white tracking-tight">Team Settings</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Manage team members and app access control.</p>
+        <div className="flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Team & Data</h1>
+            <p className="text-muted-foreground mt-1 text-sm">Manage team members, access control, and bulk data imports.</p>
+          </div>
         </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 bg-white/5 rounded-xl w-fit border border-white/10">
+          {([
+            { id: "team", label: "Team Settings", icon: UsersIcon },
+            { id: "import", label: "Data Import", icon: Upload },
+          ] as const).map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                activeTab === tab.id
+                  ? "bg-primary text-white shadow-lg shadow-primary/20"
+                  : "text-muted-foreground hover:text-white"
+              )}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Data Import Tab */}
+        {activeTab === "import" && (
+          <DataImport />
+        )}
+
+        {/* Team Settings Tab */}
+        {activeTab === "team" && <>
 
         {/* App Access Management - Admin Only */}
         {isAdmin && (
@@ -243,6 +278,7 @@ export default function Users() {
             </table>
           </div>
         </Card>
+        </>}
       </div>
 
       {/* Add User Dialog */}

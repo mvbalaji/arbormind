@@ -14,6 +14,7 @@ import authRouter from "./auth";
 import enquiriesRouter from "./enquiries";
 import emailsRouter from "./emails";
 import campaignsRouter from "./campaigns";
+import importRouter from "./import";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(casesRouter);
 router.use(quotesRouter);
 router.use(reportsRouter);
 router.use(campaignsRouter);
+router.use(importRouter);
 
 export default router;

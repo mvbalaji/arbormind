@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "@hello-pangea/dnd": "^18.0.1"
+    "@hello-pangea/dnd": "^18.0.1",
+    "xlsx": "^0.18.5"
   }
 }
