@@ -18,6 +18,8 @@ export const opportunitiesTable = pgTable("opportunities", {
   assignedTo: integer("assigned_to").references(() => usersTable.id),
   leadSource: text("lead_source"),
   nextStep: text("next_step"),
+  forecastCategory: text("forecast_category"),
+  teamMembers: text("team_members"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

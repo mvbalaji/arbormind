@@ -13,6 +13,10 @@ export const campaignsTable = pgTable("campaigns", {
   actualCost: numeric("actual_cost", { precision: 15, scale: 2 }),
   expectedRevenue: numeric("expected_revenue", { precision: 15, scale: 2 }),
   description: text("description"),
+  targetAudience: text("target_audience"),
+  channels: text("channels"),
+  teamMembers: text("team_members"),
+  goals: text("goals"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

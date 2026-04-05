@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useListQuotes, useCreateQuote, useListProducts, getListQuotesQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AISummary } from "@/components/ai-summary";
 import { EmailCompose } from "@/components/email-compose";
 import {
-  ArrowLeft, DollarSign, Calendar, Activity, Building2,
+  ArrowLeft, ArrowRight, Pencil, DollarSign, Calendar, Activity, Building2,
   Phone, Mail, Users, Briefcase, CheckCircle2, Clock, TrendingUp,
   FileText, Plus, Package, X, Printer,
 } from "lucide-react";
@@ -32,9 +32,13 @@ interface OpportunityDetail {
   probability: number | null;
   closeDate: string | null;
   description: string | null;
-  source: string | null;
-  ownerName: string | null;
+  leadSource: string | null;
+  assignedToName: string | null;
+  nextStep: string | null;
+  forecastCategory: string | null;
+  teamMembers: string | null;
   createdAt: string;
+  updatedAt: string | null;
 }
 
 interface RelatedActivity {
@@ -385,6 +389,8 @@ export default function OpportunityDetail() {
   const [activeTab, setActiveTab] = useState<Tab>("activities");
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: opp, isLoading } = useQuery<OpportunityDetail>({
     queryKey: ["opportunity", id],
@@ -538,6 +544,9 @@ export default function OpportunityDetail() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
+                <Button size="sm" variant="outline" className="gap-1.5 border-white/10 hover:text-white" onClick={() => setIsEditOpen(true)}>
+                  <Pencil className="w-3.5 h-3.5" /> Edit Details
+                </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 border-white/10 hover:text-white" onClick={() => setIsEmailOpen(true)}>
                   <Mail className="w-3.5 h-3.5" /> Send Email
                 </Button>
@@ -677,34 +686,96 @@ export default function OpportunityDetail() {
 
         {/* Details Tab */}
         {activeTab === "about" && (
-          <Card className="glass-panel border-white/5 p-6">
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-              {[
-                { label: "Stage", value: stageConfig.label },
-                { label: "Amount", value: opp.amount !== null ? `$${opp.amount.toLocaleString()}` : null },
-                { label: "Probability", value: opp.probability !== null ? `${opp.probability}%` : null },
-                { label: "Close Date", value: opp.closeDate ? format(new Date(opp.closeDate), "MMM d, yyyy") : null },
-                { label: "Account", value: opp.accountName },
-                { label: "Contact", value: [opp.contactFirstName, opp.contactLastName].filter(Boolean).join(" ") || null },
-                { label: "Lead Source", value: opp.source },
-                { label: "Owner", value: opp.ownerName },
-                { label: "Created", value: opp.createdAt ? format(new Date(opp.createdAt), "MMM d, yyyy") : null },
-              ].map(({ label, value }) =>
-                value ? (
-                  <div key={label}>
-                    <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
-                    <dd className="text-sm text-white">{value}</dd>
+          <div className="flex flex-col gap-4">
+            {/* Next Step - Prominent Highlight */}
+            {opp.nextStep && (
+              <Card className="glass-panel border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <ArrowRight className="w-4 h-4 text-primary" />
                   </div>
-                ) : null
-              )}
-            </dl>
-            {opp.description && (
-              <div className="mt-6 pt-6 border-t border-white/5">
-                <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Description</dt>
-                <dd className="text-sm text-muted-foreground leading-relaxed">{opp.description}</dd>
-              </div>
+                  <div>
+                    <p className="text-xs text-primary/80 uppercase tracking-wide font-semibold mb-0.5">Next Step</p>
+                    <p className="text-sm text-white">{opp.nextStep}</p>
+                  </div>
+                </div>
+              </Card>
             )}
-          </Card>
+
+            {/* Forecast Category - Prominent */}
+            {opp.forecastCategory && (
+              <Card className="glass-panel border-white/5 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Forecast Category</p>
+                    <p className="text-sm font-semibold text-emerald-400 capitalize">{opp.forecastCategory}</p>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Main Details Grid */}
+            <Card className="glass-panel border-white/5 p-6">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+                {[
+                  { label: "Opportunity Name", value: opp.name },
+                  { label: "Account", value: opp.accountName },
+                  { label: "Stage", value: stageConfig.label },
+                  { label: "Contact", value: [opp.contactFirstName, opp.contactLastName].filter(Boolean).join(" ") || null },
+                  { label: "Amount", value: opp.amount !== null ? `$${opp.amount.toLocaleString()}` : null },
+                  { label: "Close Date", value: opp.closeDate ? format(new Date(opp.closeDate), "MMM d, yyyy") : null },
+                  { label: "Win Probability", value: opp.probability !== null ? `${opp.probability}%` : null },
+                  { label: "Lead Source", value: opp.leadSource },
+                  { label: "Opty Owner", value: opp.assignedToName },
+                  { label: "Forecast Category", value: opp.forecastCategory ?? (opp.forecastCategory === null && !opp.nextStep ? null : null) },
+                  { label: "Created By", value: opp.createdAt ? format(new Date(opp.createdAt), "MMM d, yyyy 'at' h:mm a") : null },
+                  { label: "Last Modified", value: opp.updatedAt ? format(new Date(opp.updatedAt), "MMM d, yyyy 'at' h:mm a") : null },
+                ].map(({ label, value }) =>
+                  value ? (
+                    <div key={label}>
+                      <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
+                      <dd className="text-sm text-white">{value}</dd>
+                    </div>
+                  ) : null
+                )}
+              </dl>
+              {opp.description && (
+                <div className="mt-6 pt-6 border-t border-white/5">
+                  <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Description</dt>
+                  <dd className="text-sm text-muted-foreground leading-relaxed">{opp.description}</dd>
+                </div>
+              )}
+            </Card>
+
+            {/* Opty Team */}
+            <Card className="glass-panel border-white/5">
+              <div className="flex items-center justify-between p-4 pb-3">
+                <p className="text-sm font-semibold text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" /> Opty Team
+                </p>
+              </div>
+              <div className="px-4 pb-4">
+                {opp.teamMembers ? (
+                  <div className="flex flex-wrap gap-2">
+                    {opp.teamMembers.split(",").map(m => m.trim()).filter(Boolean).map((member, i) => {
+                      const initials = member.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+                      return (
+                        <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
+                          <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">{initials}</div>
+                          <span className="text-sm text-white">{member}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No team members assigned. Edit the opportunity to add team members.</p>
+                )}
+              </div>
+            </Card>
+          </div>
         )}
       </div>
       {numericId && (
@@ -721,6 +792,139 @@ export default function OpportunityDetail() {
         defaultTo={opp.accountName ?? undefined}
         defaultSubject={`Re: ${opp.name}`}
       />
+      <OppEditDialog
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        opp={opp}
+        oppId={id ?? ""}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ["opportunity", id] })}
+      />
     </Layout>
+  );
+}
+
+function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  opp: OpportunityDetail;
+  oppId: string;
+  onSaved: () => void;
+}) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    name: opp.name ?? "",
+    stage: opp.stage ?? "prospecting",
+    amount: opp.amount?.toString() ?? "",
+    probability: opp.probability?.toString() ?? "",
+    closeDate: opp.closeDate?.slice(0, 10) ?? "",
+    leadSource: opp.leadSource ?? "",
+    nextStep: opp.nextStep ?? "",
+    forecastCategory: opp.forecastCategory ?? "",
+    teamMembers: opp.teamMembers ?? "",
+    description: opp.description ?? "",
+  });
+
+  React.useEffect(() => {
+    if (open) setForm({
+      name: opp.name ?? "", stage: opp.stage ?? "prospecting",
+      amount: opp.amount?.toString() ?? "", probability: opp.probability?.toString() ?? "",
+      closeDate: opp.closeDate?.slice(0, 10) ?? "", leadSource: opp.leadSource ?? "",
+      nextStep: opp.nextStep ?? "", forecastCategory: opp.forecastCategory ?? "",
+      teamMembers: opp.teamMembers ?? "", description: opp.description ?? "",
+    });
+  }, [open, opp]);
+
+  const mutation = useMutation({
+    mutationFn: async (data: typeof form) => {
+      const res = await fetch(`/api/opportunities/${oppId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          ...data,
+          amount: data.amount ? parseFloat(data.amount) : null,
+          probability: data.probability ? parseInt(data.probability) : null,
+          closeDate: data.closeDate || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Opportunity updated" });
+      onSaved();
+      onOpenChange(false);
+    },
+    onError: () => toast({ title: "Error", description: "Could not save.", variant: "destructive" }),
+  });
+
+  const f = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    setForm({ ...form, [field]: e.target.value });
+  const sc = "w-full h-9 px-3 rounded-md bg-black/20 border border-white/10 text-white text-sm";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl">Edit Opportunity</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(form); }} className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Opportunity Name *</Label>
+            <Input required className="bg-black/20 border-white/10 h-9" value={form.name} onChange={f("name")} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label className="text-xs">Stage</Label>
+              <select className={sc} value={form.stage} onChange={f("stage")}>
+                {["prospecting","qualification","proposal","negotiation","closed_won","closed_lost"].map(s =>
+                  <option key={s} value={s} className="bg-card capitalize">{s.replace("_", " ")}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5"><Label className="text-xs">Forecast Category</Label>
+              <select className={sc} value={form.forecastCategory} onChange={f("forecastCategory")}>
+                <option value="" className="bg-card">— Not set —</option>
+                {["pipeline","best case","commit","closed"].map(c =>
+                  <option key={c} value={c} className="bg-card capitalize">{c}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label className="text-xs">Amount ($)</Label>
+              <Input type="number" className="bg-black/20 border-white/10 h-9" value={form.amount} onChange={f("amount")} />
+            </div>
+            <div className="space-y-1.5"><Label className="text-xs">Win Probability (%)</Label>
+              <Input type="number" min="0" max="100" className="bg-black/20 border-white/10 h-9" value={form.probability} onChange={f("probability")} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label className="text-xs">Close Date</Label>
+              <Input type="date" className="bg-black/20 border-white/10 h-9" value={form.closeDate} onChange={f("closeDate")} />
+            </div>
+            <div className="space-y-1.5"><Label className="text-xs">Lead Source</Label>
+              <select className={sc} value={form.leadSource} onChange={f("leadSource")}>
+                <option value="" className="bg-card">— Not set —</option>
+                {["Website","Referral","Cold Call","LinkedIn","Email Campaign","Partner","Conference","Other"].map(s =>
+                  <option key={s} value={s} className="bg-card">{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5"><Label className="text-xs">Next Step</Label>
+            <Input className="bg-black/20 border-white/10 h-9" placeholder="e.g. Send proposal by Friday, Schedule demo with CTO" value={form.nextStep} onChange={f("nextStep")} />
+          </div>
+          <div className="space-y-1.5"><Label className="text-xs">Opty Team (comma-separated names)</Label>
+            <Input className="bg-black/20 border-white/10 h-9" placeholder="e.g. Sarah Johnson, Mike Chen" value={form.teamMembers} onChange={f("teamMembers")} />
+          </div>
+          <div className="space-y-1.5"><Label className="text-xs">Description</Label>
+            <textarea className="w-full px-3 py-2 rounded-md bg-black/20 border border-white/10 text-white text-sm min-h-[80px] resize-none" value={form.description} onChange={f("description")} />
+          </div>
+          <DialogFooter className="pt-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-white">
+              {mutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -22,6 +22,8 @@ const oppFields = {
   assignedToName: usersTable.name,
   leadSource: opportunitiesTable.leadSource,
   nextStep: opportunitiesTable.nextStep,
+  forecastCategory: opportunitiesTable.forecastCategory,
+  teamMembers: opportunitiesTable.teamMembers,
   createdAt: opportunitiesTable.createdAt,
   updatedAt: opportunitiesTable.updatedAt,
 };

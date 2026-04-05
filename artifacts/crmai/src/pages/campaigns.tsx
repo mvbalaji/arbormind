@@ -26,6 +26,10 @@ interface Campaign {
   actualCost: number | null;
   expectedRevenue: number | null;
   description: string | null;
+  goals: string | null;
+  targetAudience: string | null;
+  channels: string | null;
+  teamMembers: string | null;
   createdAt: string;
 }
 
@@ -38,11 +42,16 @@ interface CampaignFormData {
   budget: string;
   expectedRevenue: string;
   description: string;
+  goals: string;
+  targetAudience: string;
+  channels: string;
+  teamMembers: string;
 }
 
 const defaultForm: CampaignFormData = {
   name: "", type: "email", status: "planning", startDate: "", endDate: "",
-  budget: "", expectedRevenue: "", description: "",
+  budget: "", expectedRevenue: "", description: "", goals: "",
+  targetAudience: "", channels: "", teamMembers: "",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -341,30 +350,23 @@ function CampaignFormDialog({
   onSubmit: (data: Partial<CampaignFormData>) => void;
   isPending: boolean;
 }) {
-  const [form, setForm] = useState<CampaignFormData>(() => initialData ? {
-    name: initialData.name,
-    type: initialData.type,
-    status: initialData.status,
-    startDate: initialData.startDate ? initialData.startDate.slice(0, 10) : "",
-    endDate: initialData.endDate ? initialData.endDate.slice(0, 10) : "",
-    budget: initialData.budget != null ? String(initialData.budget) : "",
-    expectedRevenue: initialData.expectedRevenue != null ? String(initialData.expectedRevenue) : "",
-    description: initialData.description ?? "",
-  } : defaultForm);
+  const buildForm = (d?: Campaign): CampaignFormData => d ? {
+    name: d.name, type: d.type, status: d.status,
+    startDate: d.startDate ? d.startDate.slice(0, 10) : "",
+    endDate: d.endDate ? d.endDate.slice(0, 10) : "",
+    budget: d.budget != null ? String(d.budget) : "",
+    expectedRevenue: d.expectedRevenue != null ? String(d.expectedRevenue) : "",
+    description: d.description ?? "",
+    goals: d.goals ?? "",
+    targetAudience: d.targetAudience ?? "",
+    channels: d.channels ?? "",
+    teamMembers: d.teamMembers ?? "",
+  } : defaultForm;
+
+  const [form, setForm] = useState<CampaignFormData>(() => buildForm(initialData));
 
   React.useEffect(() => {
-    if (open) {
-      setForm(initialData ? {
-        name: initialData.name,
-        type: initialData.type,
-        status: initialData.status,
-        startDate: initialData.startDate ? initialData.startDate.slice(0, 10) : "",
-        endDate: initialData.endDate ? initialData.endDate.slice(0, 10) : "",
-        budget: initialData.budget != null ? String(initialData.budget) : "",
-        expectedRevenue: initialData.expectedRevenue != null ? String(initialData.expectedRevenue) : "",
-        description: initialData.description ?? "",
-      } : defaultForm);
-    }
+    if (open) setForm(buildForm(initialData));
   }, [open]);
 
   const f = (field: keyof CampaignFormData) =>
@@ -387,7 +389,7 @@ function CampaignFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[520px]">
+      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "New Campaign" : "Edit Campaign"}
@@ -443,6 +445,10 @@ function CampaignFormDialog({
             </div>
           </div>
           <div className="space-y-2">
+            <Label>Campaign Goals</Label>
+            <Input className="bg-black/20 border-white/10" value={form.goals} onChange={f("goals")} placeholder="e.g. Generate 50 MQLs, 10% pipeline contribution" />
+          </div>
+          <div className="space-y-2">
             <Label>Description</Label>
             <textarea
               className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm resize-none h-20"
@@ -450,6 +456,23 @@ function CampaignFormDialog({
               onChange={f("description")}
               placeholder="Campaign objective and notes..."
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Target Audience</Label>
+            <textarea
+              className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm resize-none h-16"
+              value={form.targetAudience}
+              onChange={f("targetAudience")}
+              placeholder="e.g. B2B decision-makers, VP Sales, 50-500 employee companies"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Channels (comma-separated)</Label>
+            <Input className="bg-black/20 border-white/10" value={form.channels} onChange={f("channels")} placeholder="e.g. Email, LinkedIn, Google Ads" />
+          </div>
+          <div className="space-y-2">
+            <Label>Campaign Team (comma-separated names)</Label>
+            <Input className="bg-black/20 border-white/10" value={form.teamMembers} onChange={f("teamMembers")} placeholder="e.g. Sarah Johnson, Mike Chen, Lisa Park" />
           </div>
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
