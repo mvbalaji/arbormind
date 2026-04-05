@@ -171,6 +171,156 @@ function EnquiryForm({ isDark }: { isDark: boolean }) {
   );
 }
 
+const CAROUSEL_SLIDES = [
+  { src: "/screenshots/dashboard.jpeg", label: "Dashboard", caption: "Real-time KPIs, pipeline health and activity feed" },
+  { src: "/screenshots/opportunities.jpeg", label: "Pipeline", caption: "Kanban deal board with AI win-probability scoring" },
+  { src: "/screenshots/contacts.jpeg", label: "Contacts", caption: "360° contact profiles with activity timeline" },
+  { src: "/screenshots/accounts.jpeg", label: "Accounts", caption: "Company-level insights, contacts and opportunities" },
+  { src: "/screenshots/leads.jpeg", label: "Leads", caption: "Lead scoring, status tracking and one-click conversion" },
+];
+
+function DashboardCarousel({ isDark }: { isDark: boolean }) {
+  const [current, setCurrent] = useState(0);
+  const [animating, setAnimating] = useState(false);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setAnimating(true);
+      setTimeout(() => {
+        setCurrent((c) => (c + 1) % CAROUSEL_SLIDES.length);
+        setAnimating(false);
+      }, 350);
+    }, 3500);
+    return () => clearInterval(t);
+  }, []);
+
+  const goTo = (i: number) => {
+    if (i === current) return;
+    setAnimating(true);
+    setTimeout(() => { setCurrent(i); setAnimating(false); }, 350);
+  };
+
+  const slide = CAROUSEL_SLIDES[current]!;
+
+  return (
+    <div className="relative select-none">
+      {/* Browser chrome mockup */}
+      <div
+        className="rounded-2xl overflow-hidden shadow-2xl"
+        style={{
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+          boxShadow: isDark
+            ? "0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)"
+            : "0 40px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)",
+        }}
+      >
+        {/* Title bar */}
+        <div
+          className="flex items-center gap-2 px-4 py-3"
+          style={{
+            background: isDark ? "#1e2a3a" : "#f1f5f9",
+            borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
+          }}
+        >
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full" style={{ background: "#ff5f57" }} />
+            <div className="w-3 h-3 rounded-full" style={{ background: "#febc2e" }} />
+            <div className="w-3 h-3 rounded-full" style={{ background: "#28c840" }} />
+          </div>
+          <div
+            className="flex-1 mx-4 py-1 px-3 rounded-md text-xs text-center font-mono"
+            style={{
+              background: isDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.8)",
+              color: isDark ? "#64748b" : "#94a3b8",
+              maxWidth: 280,
+              margin: "0 auto",
+            }}
+          >
+            arbormind.in/{slide.label.toLowerCase()}
+          </div>
+          <div
+            className="text-xs font-semibold px-2.5 py-1 rounded-full"
+            style={{
+              background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(6,182,212,0.2))",
+              color: "#818cf8",
+            }}
+          >
+            {slide.label}
+          </div>
+        </div>
+
+        {/* Screenshot */}
+        <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
+          <img
+            key={current}
+            src={slide.src}
+            alt={slide.label}
+            className="w-full h-full object-cover object-top transition-opacity duration-350"
+            style={{ opacity: animating ? 0 : 1, transition: "opacity 0.35s ease" }}
+          />
+          {/* Gradient overlay at bottom */}
+          <div
+            className="absolute inset-x-0 bottom-0 h-16"
+            style={{
+              background: isDark
+                ? "linear-gradient(to top, rgba(2,6,23,0.8), transparent)"
+                : "linear-gradient(to top, rgba(248,250,252,0.8), transparent)",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Caption + dots */}
+      <div className="mt-6 flex flex-col items-center gap-4">
+        <p
+          className="text-sm text-center transition-opacity duration-350"
+          style={{ color: isDark ? "#94a3b8" : "#64748b", opacity: animating ? 0 : 1 }}
+        >
+          {slide.caption}
+        </p>
+        <div className="flex items-center gap-2">
+          {CAROUSEL_SLIDES.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              className="transition-all duration-300"
+              style={{
+                width: i === current ? 28 : 8,
+                height: 8,
+                borderRadius: 4,
+                background: i === current
+                  ? "linear-gradient(135deg, #6366f1, #06b6d4)"
+                  : isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)",
+              }}
+              title={s.label}
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          {CAROUSEL_SLIDES.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              className="text-xs font-medium px-3 py-1 rounded-full transition-all duration-200"
+              style={{
+                background: i === current
+                  ? isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)"
+                  : "transparent",
+                color: i === current
+                  ? "#818cf8"
+                  : isDark ? "#475569" : "#94a3b8",
+                border: `1px solid ${i === current ? "rgba(99,102,241,0.3)" : "transparent"}`,
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const TESTIMONIALS = [
   {
     name: "Sarah Chen",
@@ -430,7 +580,7 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* DASHBOARD SCREENSHOT */}
+        {/* DASHBOARD CAROUSEL */}
         <section id="dashboard" className="px-6 md:px-12 py-20 max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2
@@ -440,15 +590,10 @@ export default function Landing() {
               See arbormind in action
             </h2>
             <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
-              Real-time analytics, AI-powered insights, and seamless collaboration—all in one intuitive dashboard.
+              Real-time analytics, AI-powered insights, and seamless collaboration — all in one intuitive platform.
             </p>
           </div>
-          <div
-            className="rounded-2xl overflow-hidden border"
-            style={{ border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}
-          >
-            <img src="/dashboard-screenshot.png" alt="arbormind.in Dashboard" className="w-full h-auto" />
-          </div>
+          <DashboardCarousel isDark={isDark} />
         </section>
 
         {/* TESTIMONIALS */}
