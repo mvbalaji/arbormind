@@ -17,7 +17,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Building2, Search, MapPin, Link as LinkIcon, Users, Briefcase, Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Building2, Search, MapPin, Link as LinkIcon, Users, Briefcase, Plus, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 interface AccountFormData {
@@ -92,7 +93,12 @@ export default function Accounts() {
                   data?.data?.map((acc) => (
                     <tr key={acc.id} className="hover:bg-white/5 transition-colors group">
                       <td className="px-6 py-4">
-                        <div className="font-medium text-white text-base">{acc.name}</div>
+                        <Link href={`/accounts/${acc.id}`}>
+                          <div className="font-medium text-white text-base hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
+                            {acc.name}
+                            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                          </div>
+                        </Link>
                         {acc.website && (
                           <div className="text-xs text-primary flex items-center gap-1 mt-1 hover:underline cursor-pointer">
                             <LinkIcon className="w-3 h-3" /> {acc.website}

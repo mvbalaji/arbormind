@@ -11,7 +11,9 @@ import Dashboard from "./pages/dashboard";
 import Contacts from "./pages/contacts";
 import ContactDetail from "./pages/contact-detail";
 import Leads from "./pages/leads";
+import LeadDetail from "./pages/lead-detail";
 import Accounts from "./pages/accounts";
+import AccountDetail from "./pages/account-detail";
 import Opportunities from "./pages/opportunities";
 import OpportunityDetail from "./pages/opportunity-detail";
 import Activities from "./pages/activities";
@@ -23,6 +25,7 @@ import Users from "./pages/users";
 import Support from "./pages/support";
 import AIAssistant from "./pages/ai-assistant";
 import Campaigns from "./pages/campaigns";
+import CampaignDetail from "./pages/campaign-detail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,11 +43,14 @@ function CRMRoutes() {
       <Route path="/contacts" component={Contacts} />
       <Route path="/contacts/:id" component={ContactDetail} />
       <Route path="/leads" component={Leads} />
+      <Route path="/leads/:id" component={LeadDetail} />
       <Route path="/accounts" component={Accounts} />
+      <Route path="/accounts/:id" component={AccountDetail} />
       <Route path="/opportunities" component={Opportunities} />
       <Route path="/opportunities/:id" component={OpportunityDetail} />
       <Route path="/activities" component={Activities} />
       <Route path="/campaigns" component={Campaigns} />
+      <Route path="/campaigns/:id" component={CampaignDetail} />
       <Route path="/products" component={Products} />
       <Route path="/cases" component={Cases} />
       <Route path="/quotes" component={Quotes} />

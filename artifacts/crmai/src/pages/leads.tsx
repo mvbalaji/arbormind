@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Link } from "wouter";
+import { Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -103,7 +104,12 @@ export default function Leads() {
                   data?.data?.map((lead) => (
                     <tr key={lead.id} className="hover:bg-white/5 transition-colors group">
                       <td className="px-6 py-4">
-                        <div className="font-medium text-white">{lead.firstName} {lead.lastName}</div>
+                        <Link href={`/leads/${lead.id}`}>
+                          <div className="font-medium text-white hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
+                            {lead.firstName} {lead.lastName}
+                            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                          </div>
+                        </Link>
                         <div className="text-xs text-muted-foreground">{lead.email ?? lead.phone ?? "No contact info"}</div>
                       </td>
                       <td className="px-6 py-4">

@@ -10,7 +10,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, MoreHorizontal, Pencil, Trash2, Megaphone, TrendingUp, DollarSign, Calendar } from "lucide-react";
+import { Search, Plus, MoreHorizontal, Pencil, Trash2, Megaphone, TrendingUp, DollarSign, Calendar, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -230,7 +231,12 @@ export default function Campaigns() {
                   campaigns.map((campaign) => (
                     <tr key={campaign.id} className="hover:bg-white/5 transition-colors group">
                       <td className="px-6 py-4">
-                        <div className="font-medium text-white">{campaign.name}</div>
+                        <Link href={`/campaigns/${campaign.id}`}>
+                          <div className="font-medium text-white hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
+                            {campaign.name}
+                            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                          </div>
+                        </Link>
                         {campaign.description && (
                           <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[260px]">{campaign.description}</div>
                         )}

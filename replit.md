@@ -23,18 +23,31 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 All modules are fully implemented with real data:
 
-1. **Dashboard** — KPI cards (revenue, deals, leads, win rate), pipeline bar chart, upcoming activities
-2. **Contacts** — searchable table with add contact modal, account & owner info
-3. **Leads** — table with lead scoring badges, status filters, convert-to-contact action
-4. **Accounts** — company cards with website, industry, location, contact/deal counts
-5. **Opportunities** — Kanban pipeline board with drag-and-drop across stages
-6. **Activities** — log of calls, emails, meetings, tasks, notes with due dates
-7. **Products** — product catalog with pricing and categories
-8. **Quotes** — quotes with line items, totals, status tracking (Draft/Sent/Accepted)
-9. **Cases/Support** — case management with priority/status badges
-10. **Reports** — pipeline by stage bar chart, lead sources, revenue forecast charts
-11. **AI Assistant** — UI panel with mock insights and chat interface
-12. **Users** — user management table with roles and teams
+1. **Dashboard** — "Sales Command Center" with 5 KPI cards, AI Insights banner, pipeline bar chart + win/loss donut, hot deals panel, recent leads click-through, upcoming activities feed
+2. **Contacts** — searchable table with add contact modal, account & owner info; Contact detail page
+3. **Leads** — table with lead scoring badges, click-through to `/leads/:id` detail page; Lead detail has score gauge, lifecycle stage stepper, convert flow, email compose, AI summary
+4. **Accounts** — company table, click-through to `/accounts/:id` detail page with 4 tabs (Contacts/Deals/Activities/About) + KPI row
+5. **Opportunities** — Kanban pipeline board with drag-and-drop; Opportunity detail page with AI summary, email compose, quote builder, PDF quote generator, tabs for Activities/Quotes/Details
+6. **Campaigns** — campaign table with click-through to `/campaigns/:id` detail page with status management, budget progress, simulated metrics, ROI display, AI summary
+7. **Activities** — log of calls, emails, meetings, tasks, notes with due dates
+8. **Products** — product catalog with pricing and categories
+9. **Quotes** — quotes with line items, totals, status tracking (Draft/Sent/Accepted)
+10. **Cases/Support** — case management with priority/status badges; Support inbox with webhook-based emails (`POST /api/emails`)
+11. **Reports** — pipeline by stage bar chart, lead sources, revenue forecast charts
+12. **AI Assistant** — UI panel with mock insights and chat interface
+13. **Users** — user management table with roles and teams
+
+## Key Components
+
+- `artifacts/crmai/src/components/ai-summary.tsx` — AI summary panel for all entity types (lead/contact/account/opportunity/campaign); generates insights + action bullets from live entity data
+- `artifacts/crmai/src/components/email-compose.tsx` — Email compose dialog with 5 built-in templates (Initial Outreach, Follow-up, Proposal, Quote Send, Meeting Request), CC support, mock send
+
+## Detail Pages
+
+- `/leads/:id` — Lead detail (score gauge, lifecycle stepper, convert to contact, edit, email compose, AI summary)
+- `/accounts/:id` — Account detail (4 tabs: contacts/opportunities/activities/about, KPI row, edit)
+- `/opportunities/:id` — Opportunity detail (stage pipeline progress, quotes tab with PDF generation, activities, email compose, AI summary)
+- `/campaigns/:id` — Campaign detail (status control: launch/pause/complete, budget progress, simulated metrics, ROI, edit)
 
 ## Database Schema (9 tables)
 
