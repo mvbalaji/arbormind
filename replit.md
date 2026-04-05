@@ -127,3 +127,15 @@ Utility scripts package. Run with `pnpm --filter @workspace/scripts run <script>
 
 Available scripts:
 - `seed-crm` — Seeds the database with realistic CRM data
+
+## Support Inbox (support@arbormind.in)
+
+The support inbox is powered by a **webhook model** — no Gmail OAuth needed.
+
+- **Endpoint**: `POST /api/emails` — accepts `{ fromEmail, fromName, subject, message }`
+- **How to connect**: Configure your domain's email routing (Cloudflare Email Routing, Google Workspace routing, SendGrid Inbound Parse, etc.) to forward emails from `support@arbormind.in` to this endpoint via HTTP POST.
+- **UI**: Accessible at `/support` (admin-only). Shows all tickets with from address, subject, datetime, and status.
+- **Auto-actions**: Known customers (matched by email in contacts table) → creates an Opportunity. New contacts → creates a Lead.
+- **Statuses**: `new` / `replied` / `assigned` / `pending` — can be updated via `PATCH /api/emails/:id`
+
+> Note: Gmail OAuth integration (`connector:ccfg_google-mail_B959E7249792448ABBA58D46AF`) was dismissed by the user. The inbox works without it — email routing to the webhook is the intended mechanism. If direct Gmail reading is needed in the future, use that connector ID to re-propose.
