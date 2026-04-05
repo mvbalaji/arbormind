@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "postgresql-16"]
 
 [[artifacts]]
 id = "artifacts/api-server"
@@ -31,3 +31,6 @@ timeoutMs = 20000
 
 [userenv.shared]
 GOOGLE_CALLBACK_URL = "https://arbormind.in/api/auth/google/callback"
+
+[nix]
+channel = "stable-25_05"

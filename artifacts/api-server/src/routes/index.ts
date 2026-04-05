@@ -15,6 +15,7 @@ import enquiriesRouter from "./enquiries";
 import emailsRouter from "./emails";
 import campaignsRouter from "./campaigns";
 import importRouter from "./import";
+import seedRouter from "./seed";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(quotesRouter);
 router.use(reportsRouter);
 router.use(campaignsRouter);
 router.use(importRouter);
+router.use(seedRouter);
 
 export default router;
