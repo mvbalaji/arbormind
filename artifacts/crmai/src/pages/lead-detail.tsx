@@ -131,11 +131,12 @@ export default function LeadDetail() {
   });
 
   const { data: activitiesData } = useQuery<{ data: LeadActivity[] }>({
-    queryKey: ["lead-activities", id],
+    queryKey: ["lead-activities", id, lead?.convertedContactId],
     queryFn: async () => {
-      const res = await fetch(`/api/activities?page=1&limit=50`, { credentials: "include" });
-      const json = await res.json() as { data: LeadActivity[] };
-      return json;
+      const params = new URLSearchParams({ page: "1", limit: "20" });
+      if (lead?.convertedContactId) params.set("contactId", String(lead.convertedContactId));
+      const res = await fetch(`/api/activities?${params}`, { credentials: "include" });
+      return res.json() as Promise<{ data: LeadActivity[] }>;
     },
     enabled: !!id,
   });
@@ -318,16 +319,52 @@ export default function LeadDetail() {
           )}
 
           {lead.isConverted && (
-            <div className="px-5 py-3 flex items-center gap-3 bg-green-50 border-t border-green-100">
-              <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-              <span className="text-sm text-green-700">
-                Lead converted successfully.
-              </span>
-              {lead.convertedOpportunityId && (
-                <Link href={`/opportunities/${lead.convertedOpportunityId}`}>
-                  <span className="text-xs text-primary underline underline-offset-2 cursor-pointer">View Opportunity →</span>
-                </Link>
-              )}
+            <div className="px-5 py-4 border-t border-green-100 bg-green-50">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <span className="text-sm font-medium text-green-700">Lead converted — linked records:</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {lead.convertedContactId && (
+                  <Link href={`/contacts/${lead.convertedContactId}`}>
+                    <div className="flex items-center gap-2.5 p-2.5 rounded-md bg-white border border-green-200 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
+                      <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <User className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">Contact</div>
+                        <div className="text-xs text-muted-foreground">View record →</div>
+                      </div>
+                    </div>
+                  </Link>
+                )}
+                {lead.convertedAccountId && (
+                  <Link href={`/accounts/${lead.convertedAccountId}`}>
+                    <div className="flex items-center gap-2.5 p-2.5 rounded-md bg-white border border-green-200 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
+                      <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">Account</div>
+                        <div className="text-xs text-muted-foreground">View record →</div>
+                      </div>
+                    </div>
+                  </Link>
+                )}
+                {lead.convertedOpportunityId && (
+                  <Link href={`/opportunities/${lead.convertedOpportunityId}`}>
+                    <div className="flex items-center gap-2.5 p-2.5 rounded-md bg-white border border-green-200 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
+                      <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Briefcase className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">Opportunity</div>
+                        <div className="text-xs text-muted-foreground">View record →</div>
+                      </div>
+                    </div>
+                  </Link>
+                )}
+              </div>
             </div>
           )}
         </div>

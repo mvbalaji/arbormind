@@ -136,7 +136,7 @@ export default function ContactDetail() {
         {/* Back + Header */}
         <div>
           <Link href="/contacts">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-4 hover:text-white">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-4 hover:text-foreground">
               <ArrowLeft className="w-4 h-4" />
               Back to Contacts
             </Button>
@@ -198,7 +198,7 @@ export default function ContactDetail() {
               className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-white"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               {tab.label}
@@ -227,7 +227,7 @@ export default function ContactDetail() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-white text-sm">{act.subject}</span>
+                        <span className="font-medium text-foreground text-sm">{act.subject}</span>
                         <Badge variant="outline" className={`capitalize text-xs ${
                           act.status === "completed" ? "border-green-500/30 text-green-600" :
                           act.status === "cancelled" ? "border-red-500/30 text-red-600" :

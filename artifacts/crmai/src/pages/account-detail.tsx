@@ -167,7 +167,7 @@ export default function AccountDetail() {
         {/* Back */}
         <div>
           <Link href="/accounts">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-3 hover:text-white">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-3 hover:text-foreground">
               <ArrowLeft className="w-4 h-4" /> Back to Accounts
             </Button>
           </Link>
@@ -266,7 +266,7 @@ export default function AccountDetail() {
               onClick={() => setActiveTab(tab.id)}
               className={cn(
                 "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px",
-                activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-white"
+                activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               {tab.label}
@@ -377,7 +377,7 @@ export default function AccountDetail() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-white text-sm">{act.subject}</span>
+                        <span className="font-medium text-foreground text-sm">{act.subject}</span>
                         <Badge variant="outline" className={cn("capitalize text-xs", act.status === "completed" ? "border-green-500/30 text-green-600" : "border-blue-500/30 text-blue-600")}>
                           {act.status}
                         </Badge>

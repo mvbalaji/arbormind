@@ -135,6 +135,47 @@ router.delete("/opportunities/:id", async (req, res) => {
   }
 });
 
+// Relationship: contacts related to an opportunity (primary contact + account contacts)
+router.get("/opportunities/:id/contacts", async (req, res) => {
+  try {
+    const opportunityId = parseInt(req.params.id);
+    const [opp] = await db
+      .select({ contactId: opportunitiesTable.contactId, accountId: opportunitiesTable.accountId })
+      .from(opportunitiesTable)
+      .where(eq(opportunitiesTable.id, opportunityId));
+
+    if (!opp) return res.status(404).json({ error: "Opportunity not found" });
+
+    // Collect contact IDs: primary contact + contacts from the same account
+    const conditions = [];
+    if (opp.contactId) conditions.push(eq(contactsTable.id, opp.contactId));
+    if (opp.accountId) conditions.push(eq(contactsTable.accountId, opp.accountId));
+
+    if (!conditions.length) return res.json({ data: [] });
+
+    const { or } = await import("drizzle-orm");
+    const data = await db
+      .select({
+        id: contactsTable.id,
+        firstName: contactsTable.firstName,
+        lastName: contactsTable.lastName,
+        email: contactsTable.email,
+        phone: contactsTable.phone,
+        title: contactsTable.title,
+        accountId: contactsTable.accountId,
+        accountName: accountsTable.name,
+      })
+      .from(contactsTable)
+      .leftJoin(accountsTable, eq(contactsTable.accountId, accountsTable.id))
+      .where(or(...conditions));
+
+    res.json({ data });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Relationship: activities for an opportunity
 router.get("/opportunities/:id/activities", async (req, res) => {
   try {

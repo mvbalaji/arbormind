@@ -69,7 +69,7 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
   demo: Briefcase,
 };
 
-type Tab = "activities" | "quotes" | "about";
+type Tab = "activities" | "quotes" | "contacts" | "about";
 
 interface OppQuote {
   id: number;
@@ -78,6 +78,17 @@ interface OppQuote {
   status: string;
   total: number;
   validUntil: string | null;
+}
+
+interface OppContact {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
+  title: string | null;
+  accountId: number | null;
+  accountName: string | null;
 }
 
 interface QuickQuoteItem {
@@ -177,7 +188,7 @@ function QuickQuoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-foreground max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Quote for this Opportunity</DialogTitle>
         </DialogHeader>
@@ -190,7 +201,7 @@ function QuickQuoteDialog({
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <select className="w-full h-10 px-3 rounded-md bg-muted border border-border text-white text-sm"
+              <select className="w-full h-10 px-3 rounded-md bg-muted border border-border text-sm"
                 value={status} onChange={e => setStatus(e.target.value)}>
                 {Object.keys(CreateQuoteInputStatus).map(s => (
                   <option key={s} value={s} className="bg-card capitalize">{s}</option>
@@ -229,7 +240,7 @@ function QuickQuoteDialog({
                 {items.map((item, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-1 items-center bg-muted/50 rounded-lg p-2">
                     <div className="col-span-4">
-                      <select className="w-full h-8 px-2 rounded-md bg-black/30 border border-border text-white text-sm"
+                      <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-sm"
                         value={item.productId ?? ""} onChange={e => {
                           const val = e.target.value;
                           val === "" ? updateItem(idx, { productId: null, productName: "", unitPrice: 0 }) : pickProduct(idx, parseInt(val));
@@ -282,7 +293,7 @@ function QuickQuoteDialog({
                     value={tax} onChange={e => setTax(e.target.value)} />
                 </div>
               </div>
-              <div className="flex justify-between font-bold text-white border-t border-border pt-2">
+              <div className="flex justify-between font-bold text-foreground border-t border-border pt-2">
                 <span>Total</span>
                 <span>${total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
               </div>
@@ -411,6 +422,15 @@ export default function OpportunityDetail() {
     enabled: !!id,
   });
 
+  const { data: contactsData } = useQuery<{ data: OppContact[] }>({
+    queryKey: ["opportunity-contacts", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/opportunities/${id}/contacts`, { credentials: "include" });
+      return res.json() as Promise<{ data: OppContact[] }>;
+    },
+    enabled: !!id,
+  });
+
   const numericId = id ? parseInt(id) : undefined;
   const { data: quotesData } = useListQuotes(numericId ? { opportunityId: numericId } : undefined);
   const oppQuotes: OppQuote[] = (quotesData?.data ?? []) as OppQuote[];
@@ -442,6 +462,7 @@ export default function OpportunityDetail() {
 
   const TABS: { id: Tab; label: string; count?: number }[] = [
     { id: "activities", label: "Activities", count: activitiesData?.data.length },
+    { id: "contacts", label: "Contacts", count: contactsData?.data.length },
     { id: "quotes", label: "Quotes", count: oppQuotes.length },
     { id: "about", label: "Details" },
   ];
@@ -451,7 +472,7 @@ export default function OpportunityDetail() {
       <div className="flex flex-col gap-6 max-w-5xl mx-auto">
         <div>
           <Link href="/opportunities">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-4 hover:text-white">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-4 hover:text-foreground">
               <ArrowLeft className="w-4 h-4" />
               Back to Pipeline
             </Button>
@@ -544,13 +565,13 @@ export default function OpportunityDetail() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-                <Button size="sm" variant="outline" className="gap-1.5 border-border hover:text-white" onClick={() => setIsEditOpen(true)}>
+                <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEditOpen(true)}>
                   <Pencil className="w-3.5 h-3.5" /> Edit Details
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 border-border hover:text-white" onClick={() => setIsEmailOpen(true)}>
+                <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEmailOpen(true)}>
                   <Mail className="w-3.5 h-3.5" /> Send Email
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 border-border hover:text-white" onClick={() => { setActiveTab("quotes"); setIsQuoteOpen(true); }}>
+                <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => { setActiveTab("quotes"); setIsQuoteOpen(true); }}>
                   <FileText className="w-3.5 h-3.5" /> Create Quote
                 </Button>
               </div>
@@ -570,7 +591,7 @@ export default function OpportunityDetail() {
               className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-white"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               {tab.label}
@@ -599,7 +620,7 @@ export default function OpportunityDetail() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-white text-sm">{act.subject}</span>
+                        <span className="font-medium text-foreground text-sm">{act.subject}</span>
                         <Badge variant="outline" className={`capitalize text-xs ${
                           act.status === "completed" ? "border-green-500/30 text-green-600" :
                           act.status === "cancelled" ? "border-red-500/30 text-red-600" :
@@ -622,6 +643,52 @@ export default function OpportunityDetail() {
                       </div>
                     </div>
                   </Card>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {/* Contacts Tab */}
+        {activeTab === "contacts" && (
+          <div className="flex flex-col gap-3">
+            {!contactsData?.data.length ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                No contacts linked to this opportunity.
+              </div>
+            ) : (
+              contactsData.data.map((contact) => {
+                const initials = `${contact.firstName[0] ?? ""}${contact.lastName[0] ?? ""}`.toUpperCase();
+                return (
+                  <Link key={contact.id} href={`/contacts/${contact.id}`}>
+                    <Card className="glass-panel border-border hover:border-primary/30 transition-all cursor-pointer group p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground group-hover:text-primary transition-colors">
+                            {contact.firstName} {contact.lastName}
+                          </p>
+                          {contact.title && (
+                            <p className="text-xs text-muted-foreground">{contact.title}</p>
+                          )}
+                          {contact.accountName && (
+                            <p className="text-xs text-muted-foreground">{contact.accountName}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {contact.email && (
+                            <span className="text-xs text-muted-foreground">{contact.email}</span>
+                          )}
+                          {contact.phone && (
+                            <span className="text-xs text-muted-foreground">{contact.phone}</span>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
                 );
               })
             )}
@@ -654,7 +721,7 @@ export default function OpportunityDetail() {
                       <FileText className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <div className="font-medium text-white text-sm">{q.name}</div>
+                      <div className="font-medium text-foreground text-sm">{q.name}</div>
                       <div className="text-xs text-muted-foreground font-mono mt-0.5">{q.quoteNumber}</div>
                     </div>
                   </div>
@@ -664,14 +731,14 @@ export default function OpportunityDetail() {
                         Valid until {format(new Date(q.validUntil), "MMM d, yyyy")}
                       </span>
                     )}
-                    <span className="font-semibold text-white text-sm">${q.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span className="font-semibold text-foreground text-sm">${q.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     <Badge variant="outline" className={`capitalize text-xs ${QUOTE_STATUS_COLORS[q.status] ?? ""}`}>
                       {q.status}
                     </Badge>
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="gap-1.5 text-muted-foreground hover:text-white h-7 px-2"
+                      className="gap-1.5 text-muted-foreground hover:text-foreground h-7 px-2"
                       title="Generate PDF Quote"
                       onClick={() => generateQuotePDF(q, opp)}
                     >
@@ -753,7 +820,7 @@ export default function OpportunityDetail() {
             {/* Opty Team */}
             <Card className="glass-panel border-border">
               <div className="flex items-center justify-between p-4 pb-3">
-                <p className="text-sm font-semibold text-white flex items-center gap-2">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" /> Opty Team
                 </p>
               </div>
@@ -860,11 +927,11 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
 
   const f = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [field]: e.target.value });
-  const sc = "w-full h-9 px-3 rounded-md bg-muted border border-border text-white text-sm";
+  const sc = "w-full h-9 px-3 rounded-md bg-muted border border-border text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-white sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Edit Opportunity</DialogTitle>
         </DialogHeader>
@@ -915,7 +982,7 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
             <Input className="bg-muted border-border h-9" placeholder="e.g. Sarah Johnson, Mike Chen" value={form.teamMembers} onChange={f("teamMembers")} />
           </div>
           <div className="space-y-1.5"><Label className="text-xs">Description</Label>
-            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-white text-sm min-h-[80px] resize-none" value={form.description} onChange={f("description")} />
+            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-sm min-h-[80px] resize-none" value={form.description} onChange={f("description")} />
           </div>
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
