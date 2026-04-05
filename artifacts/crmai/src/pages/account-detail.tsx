@@ -63,12 +63,12 @@ interface AccountActivity {
 }
 
 const STAGE_BADGE: Record<string, string> = {
-  prospecting: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-  qualification: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
-  proposal: "text-purple-400 bg-purple-500/10 border-purple-500/20",
-  negotiation: "text-orange-400 bg-orange-500/10 border-orange-500/20",
-  closed_won: "text-green-400 bg-green-500/10 border-green-500/20",
-  closed_lost: "text-red-400 bg-red-500/10 border-red-500/20",
+  prospecting: "text-blue-600 bg-blue-500/10 border-blue-200",
+  qualification: "text-indigo-400 bg-indigo-500/10 border-indigo-200",
+  proposal: "text-purple-600 bg-purple-500/10 border-purple-200",
+  negotiation: "text-orange-600 bg-orange-500/10 border-orange-200",
+  closed_won: "text-green-600 bg-green-500/10 border-green-200",
+  closed_lost: "text-red-600 bg-red-500/10 border-red-200",
 };
 
 const ACTIVITY_ICONS: Record<string, React.ElementType> = {
@@ -173,18 +173,18 @@ export default function AccountDetail() {
           </Link>
 
           {/* Header Card */}
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardContent className="p-5">
               <div className="flex flex-col sm:flex-row items-start gap-5">
                 {/* Logo placeholder */}
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/40 to-violet-500/40 border border-white/10 flex items-center justify-center text-2xl font-bold text-white shrink-0">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/40 to-violet-500/40 border border-border flex items-center justify-center text-2xl font-bold text-white shrink-0">
                   {account.name[0]?.toUpperCase()}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h1 className="text-2xl font-bold text-white">{account.name}</h1>
+                      <h1 className="text-2xl font-bold text-foreground">{account.name}</h1>
                       <div className="flex flex-wrap gap-3 mt-1.5">
                         {account.industry && <span className="text-sm text-muted-foreground">{account.industry}</span>}
                         {account.city && (
@@ -212,12 +212,12 @@ export default function AccountDetail() {
                   {/* Actions */}
                   <div className="flex flex-wrap gap-2 mt-4">
                     {account.email && (
-                      <Button size="sm" className="gap-1.5 bg-primary hover:bg-primary/90 text-white" onClick={() => setIsEmailOpen(true)}>
+                      <Button size="sm" className="gap-1.5 bg-primary hover:bg-primary/90 text-foreground" onClick={() => setIsEmailOpen(true)}>
                         <Send className="w-3.5 h-3.5" /> Send Email
                       </Button>
                     )}
                     <Link href="/opportunities">
-                      <Button size="sm" variant="outline" className="gap-1.5 border-accent/50 text-accent hover:bg-accent/10">
+                      <Button size="sm" variant="outline" className="gap-1.5 border-accent/50 text-primary hover:bg-accent/10">
                         <Briefcase className="w-3.5 h-3.5" /> New Opportunity
                       </Button>
                     </Link>
@@ -226,21 +226,21 @@ export default function AccountDetail() {
               </div>
 
               {/* KPI Row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-5 border-t border-white/5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-5 border-t border-border">
                 <div className="text-center">
-                  <div className="text-xl font-bold text-white">{contactsData?.data.length ?? account.contactCount}</div>
+                  <div className="text-xl font-bold text-foreground">{contactsData?.data.length ?? account.contactCount}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">Contacts</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-white">{openDeals.length}</div>
+                  <div className="text-xl font-bold text-foreground">{openDeals.length}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">Open Deals</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-emerald-400">{wonDeals.length}</div>
+                  <div className="text-xl font-bold text-emerald-600">{wonDeals.length}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">Won Deals</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-white">${(totalDealValue / 1000).toFixed(0)}k</div>
+                  <div className="text-xl font-bold text-foreground">${(totalDealValue / 1000).toFixed(0)}k</div>
                   <div className="text-xs text-muted-foreground mt-0.5">Pipeline Value</div>
                 </div>
               </div>
@@ -259,7 +259,7 @@ export default function AccountDetail() {
         />
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-white/5">
+        <div className="flex gap-1 border-b border-border">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -271,7 +271,7 @@ export default function AccountDetail() {
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span className="ml-2 text-xs bg-white/10 rounded-full px-1.5 py-0.5">{tab.count}</span>
+                <span className="ml-2 text-xs bg-muted rounded-full px-1.5 py-0.5">{tab.count}</span>
               )}
             </button>
           ))}
@@ -290,13 +290,13 @@ export default function AccountDetail() {
                 const initials = `${contact.firstName[0] ?? ""}${contact.lastName[0] ?? ""}`.toUpperCase();
                 return (
                   <Link key={contact.id} href={`/contacts/${contact.id}`}>
-                    <Card className="glass-panel border-white/5 hover:border-primary/30 transition-all cursor-pointer group p-4">
+                    <Card className="glass-panel border-border hover:border-primary/30 transition-all cursor-pointer group p-4">
                       <div className="flex items-center gap-4">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/70 to-accent/70 flex items-center justify-center text-white text-sm font-bold shrink-0">
                           {initials}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-white group-hover:text-primary transition-colors">
+                          <p className="font-medium text-foreground group-hover:text-primary transition-colors">
                             {contact.firstName} {contact.lastName}
                           </p>
                           <p className="text-xs text-muted-foreground">{contact.title ?? contact.email ?? "—"}</p>
@@ -326,11 +326,11 @@ export default function AccountDetail() {
             ) : (
               opportunitiesData.data.map((opp) => (
                 <Link key={opp.id} href={`/opportunities/${opp.id}`}>
-                  <Card className="glass-panel border-white/5 hover:border-primary/30 transition-all cursor-pointer group p-4">
+                  <Card className="glass-panel border-border hover:border-primary/30 transition-all cursor-pointer group p-4">
                     <div className="flex items-center gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-white group-hover:text-primary transition-colors truncate">{opp.name}</p>
+                          <p className="font-medium text-foreground group-hover:text-primary transition-colors truncate">{opp.name}</p>
                           <Badge variant="outline" className={cn("text-xs capitalize shrink-0", STAGE_BADGE[opp.stage] ?? "")}>
                             {opp.stage.replace("_", " ")}
                           </Badge>
@@ -342,13 +342,13 @@ export default function AccountDetail() {
                           </p>
                         )}
                         {opp.probability != null && (
-                          <div className="mt-2 w-full bg-white/5 rounded-full h-1">
+                          <div className="mt-2 w-full bg-muted/50 rounded-full h-1">
                             <div className="bg-primary h-1 rounded-full" style={{ width: `${opp.probability}%` }} />
                           </div>
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        {opp.amount != null && <p className="text-lg font-bold text-white">${opp.amount.toLocaleString()}</p>}
+                        {opp.amount != null && <p className="text-lg font-bold text-foreground">${opp.amount.toLocaleString()}</p>}
                         {opp.probability != null && <p className="text-xs text-muted-foreground">{opp.probability}% likely</p>}
                       </div>
                     </div>
@@ -371,14 +371,14 @@ export default function AccountDetail() {
               activitiesData.data.map((act) => {
                 const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
                 return (
-                  <Card key={act.id} className="glass-panel border-white/5 p-4 flex items-start gap-4">
+                  <Card key={act.id} className="glass-panel border-border p-4 flex items-start gap-4">
                     <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                       <Icon className="w-4 h-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium text-white text-sm">{act.subject}</span>
-                        <Badge variant="outline" className={cn("capitalize text-xs", act.status === "completed" ? "border-green-500/30 text-green-400" : "border-blue-500/30 text-blue-400")}>
+                        <Badge variant="outline" className={cn("capitalize text-xs", act.status === "completed" ? "border-green-500/30 text-green-600" : "border-blue-500/30 text-blue-600")}>
                           {act.status}
                         </Badge>
                       </div>
@@ -401,7 +401,7 @@ export default function AccountDetail() {
 
         {/* About Tab */}
         {activeTab === "about" && (
-          <Card className="glass-panel border-white/5 p-6">
+          <Card className="glass-panel border-border p-6">
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
               {[
                 { label: "Account Name", value: account.name },
@@ -421,13 +421,13 @@ export default function AccountDetail() {
                 value ? (
                   <div key={label}>
                     <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
-                    <dd className="text-sm text-white">{value}</dd>
+                    <dd className="text-sm text-foreground">{value}</dd>
                   </div>
                 ) : null
               )}
             </dl>
             {account.description && (
-              <div className="mt-6 pt-6 border-t border-white/5">
+              <div className="mt-6 pt-6 border-t border-border">
                 <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Description</dt>
                 <dd className="text-sm text-muted-foreground leading-relaxed">{account.description}</dd>
               </div>

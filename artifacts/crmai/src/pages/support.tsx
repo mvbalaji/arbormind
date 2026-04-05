@@ -25,10 +25,10 @@ interface SupportEmail {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  new:      { label: "New",     color: "bg-blue-500/20 text-blue-400 border-blue-500/20",   icon: <Inbox className="w-3 h-3" /> },
-  replied:  { label: "Replied", color: "bg-green-500/20 text-green-400 border-green-500/20", icon: <CheckCircle2 className="w-3 h-3" /> },
-  assigned: { label: "Assigned", color: "bg-purple-500/20 text-purple-400 border-purple-500/20", icon: <User className="w-3 h-3" /> },
-  pending:  { label: "Pending",  color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/20", icon: <Clock className="w-3 h-3" /> },
+  new:      { label: "New",     color: "bg-blue-500/20 text-blue-600 border-blue-200",   icon: <Inbox className="w-3 h-3" /> },
+  replied:  { label: "Replied", color: "bg-green-500/20 text-green-600 border-green-200", icon: <CheckCircle2 className="w-3 h-3" /> },
+  assigned: { label: "Assigned", color: "bg-purple-500/20 text-purple-600 border-purple-200", icon: <User className="w-3 h-3" /> },
+  pending:  { label: "Pending",  color: "bg-yellow-500/20 text-yellow-600 border-yellow-200", icon: <Clock className="w-3 h-3" /> },
 };
 
 export default function Support() {
@@ -91,7 +91,7 @@ export default function Support() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-            <p className="text-red-400 font-medium">Admin access required</p>
+            <p className="text-red-600 font-medium">Admin access required</p>
             <p className="text-muted-foreground text-sm mt-1">Contact your administrator to access the support inbox.</p>
           </div>
         </div>
@@ -107,7 +107,7 @@ export default function Support() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight flex items-center gap-3">
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight flex items-center gap-3">
               <Mail className="w-7 h-7 text-primary" />
               Support Inbox
               {newCount > 0 && (
@@ -123,7 +123,7 @@ export default function Support() {
           <Button
             variant="outline"
             size="sm"
-            className="border-white/10 gap-2"
+            className="border-border gap-2"
             onClick={() => fetchEmails(true)}
             disabled={refreshing}
           >
@@ -134,29 +134,29 @@ export default function Support() {
 
         {/* Setup Banner (shown when inbox is empty) */}
         {!loading && emails.length === 0 && (
-          <div className="mb-4 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+          <div className="mb-4 p-4 rounded-xl border border-blue-200 bg-blue-500/5 flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div className="flex-1 text-sm">
               <p className="text-white font-medium mb-1">Connect your support inbox</p>
               <p className="text-muted-foreground mb-3">
                 Forward emails from <strong className="text-white">support@arbormind.in</strong> to the webhook below, or use email routing (Cloudflare, Google Workspace, etc.) to POST incoming emails to the endpoint.
               </p>
-              <div className="flex items-center gap-2 p-2 bg-black/30 rounded-lg font-mono text-xs text-green-400 border border-white/10">
+              <div className="flex items-center gap-2 p-2 bg-black/30 rounded-lg font-mono text-xs text-green-600 border border-border">
                 <Webhook className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                 <span className="truncate">POST {window.location.origin.replace("80", "8080")}/api/emails</span>
               </div>
               <p className="text-muted-foreground text-xs mt-2">
-                Accepts JSON: <code className="text-green-400">&#123; fromEmail, fromName, subject, message &#125;</code>
+                Accepts JSON: <code className="text-green-600">&#123; fromEmail, fromName, subject, message &#125;</code>
               </p>
             </div>
           </div>
         )}
 
         {/* Main split panel */}
-        <div className="flex flex-1 overflow-hidden rounded-2xl border border-white/5 bg-card/30">
+        <div className="flex flex-1 overflow-hidden rounded-2xl border border-border bg-card/30">
           {/* Email list */}
-          <div className="w-[340px] shrink-0 flex flex-col border-r border-white/5 overflow-hidden">
-            <div className="px-4 py-3 border-b border-white/5 bg-black/20">
+          <div className="w-[340px] shrink-0 flex flex-col border-r border-border overflow-hidden">
+            <div className="px-4 py-3 border-b border-border bg-muted">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {emails.length} ticket{emails.length !== 1 ? "s" : ""}
               </p>
@@ -178,7 +178,7 @@ export default function Support() {
                     <button
                       key={email.id}
                       onClick={() => setSelected(email)}
-                      className={`w-full px-4 py-4 border-b border-white/5 text-left transition-all hover:bg-white/5 group ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "border-l-2 border-l-transparent"}`}
+                      className={`w-full px-4 py-4 border-b border-border text-left transition-all hover:bg-muted/50 group ${isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "border-l-2 border-l-transparent"}`}
                     >
                       {/* From */}
                       <div className="flex items-start justify-between gap-2 mb-1">
@@ -205,8 +205,8 @@ export default function Support() {
                       <div className="flex items-center justify-between">
                         <span className={`text-xs px-1.5 py-0.5 rounded-full ${
                           email.isKnownCustomer === "true"
-                            ? "bg-green-500/10 text-green-400"
-                            : "bg-blue-500/10 text-blue-400"
+                            ? "bg-green-50 text-green-700"
+                            : "bg-blue-50 text-blue-700"
                         }`}>
                           {email.isKnownCustomer === "true" ? "Known customer" : "New contact"}
                         </span>
@@ -225,7 +225,7 @@ export default function Support() {
           {selected ? (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Detail header */}
-              <div className="px-8 py-5 border-b border-white/5 bg-black/10 shrink-0">
+              <div className="px-8 py-5 border-b border-border bg-black/10 shrink-0">
                 <h2 className="text-xl font-bold text-white mb-3 leading-tight">{selected.subject}</h2>
 
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
@@ -241,8 +241,8 @@ export default function Support() {
                     <Tag className="w-3.5 h-3.5 shrink-0" />
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${
                       selected.isKnownCustomer === "true"
-                        ? "bg-green-500/10 text-green-400 border-green-500/20"
-                        : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
                     }`}>
                       {selected.isKnownCustomer === "true" ? "Known customer" : "New contact"}
                     </span>
@@ -261,7 +261,7 @@ export default function Support() {
               {/* Message body */}
               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                 <div className="max-w-2xl">
-                  <div className="bg-black/20 rounded-xl border border-white/5 p-6 whitespace-pre-wrap text-sm leading-relaxed text-white/90">
+                  <div className="bg-muted rounded-xl border border-border p-6 whitespace-pre-wrap text-sm leading-relaxed text-white/90">
                     {selected.message}
                   </div>
 
@@ -269,18 +269,18 @@ export default function Support() {
                   {(selected.relatedLeadId || selected.relatedOpportunityId) && (
                     <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5">
                       <p className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-400" /> Auto-created records
+                        <CheckCircle2 className="w-4 h-4 text-green-600" /> Auto-created records
                       </p>
                       <div className="space-y-1.5 text-sm">
                         {selected.relatedLeadId && (
                           <div className="flex items-center gap-2 text-muted-foreground">
-                            <User className="w-3.5 h-3.5 text-blue-400" />
+                            <User className="w-3.5 h-3.5 text-blue-600" />
                             Lead #{selected.relatedLeadId} created — awaiting sales team assignment
                           </div>
                         )}
                         {selected.relatedOpportunityId && (
                           <div className="flex items-center gap-2 text-muted-foreground">
-                            <ExternalLink className="w-3.5 h-3.5 text-green-400" />
+                            <ExternalLink className="w-3.5 h-3.5 text-green-600" />
                             Opportunity #{selected.relatedOpportunityId} created — awaiting sales team assignment
                           </div>
                         )}
@@ -289,7 +289,7 @@ export default function Support() {
                   )}
 
                   {selected.notes && (
-                    <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/5 text-xs text-muted-foreground">
+                    <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border text-xs text-muted-foreground">
                       Note: {selected.notes}
                     </div>
                   )}
@@ -297,11 +297,11 @@ export default function Support() {
               </div>
 
               {/* Actions footer */}
-              <div className="px-8 py-4 border-t border-white/5 bg-black/10 shrink-0 flex items-center gap-3">
+              <div className="px-8 py-4 border-t border-border bg-black/10 shrink-0 flex items-center gap-3">
                 {selected.status !== "replied" && (
                   <Button
                     size="sm"
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="bg-green-600 hover:bg-green-700 text-foreground"
                     onClick={() => updateStatus(selected.id, "replied")}
                     disabled={updatingId === selected.id}
                   >
@@ -313,7 +313,7 @@ export default function Support() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-white/10"
+                    className="border-border"
                     onClick={() => updateStatus(selected.id, "assigned")}
                     disabled={updatingId === selected.id}
                   >
@@ -325,7 +325,7 @@ export default function Support() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-white/10"
+                    className="border-border"
                     onClick={() => updateStatus(selected.id, "pending")}
                     disabled={updatingId === selected.id}
                   >

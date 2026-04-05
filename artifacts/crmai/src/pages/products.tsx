@@ -86,43 +86,43 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white max-w-lg">
+      <DialogContent className="bg-card border-border text-white max-w-lg">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Add Product" : "Edit Product"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-2">
             <Label htmlFor="p-name">Product Name *</Label>
-            <Input id="p-name" required className="bg-black/20 border-white/10"
+            <Input id="p-name" required className="bg-muted border-border"
               value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="p-code">Product Code</Label>
-              <Input id="p-code" className="bg-black/20 border-white/10"
+              <Input id="p-code" className="bg-muted border-border"
                 value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="p-category">Category</Label>
-              <Input id="p-category" className="bg-black/20 border-white/10"
+              <Input id="p-category" className="bg-muted border-border"
                 value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="p-price">Unit Price *</Label>
-              <Input id="p-price" type="number" min="0" step="0.01" required className="bg-black/20 border-white/10"
+              <Input id="p-price" type="number" min="0" step="0.01" required className="bg-muted border-border"
                 value={formData.unitPrice} onChange={e => setFormData({ ...formData, unitPrice: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="p-currency">Currency</Label>
-              <Input id="p-currency" className="bg-black/20 border-white/10"
+              <Input id="p-currency" className="bg-muted border-border"
                 value={formData.currency} onChange={e => setFormData({ ...formData, currency: e.target.value })} />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="p-desc">Description</Label>
-            <Input id="p-desc" className="bg-black/20 border-white/10"
+            <Input id="p-desc" className="bg-muted border-border"
               value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
           </div>
           <div className="flex items-center gap-2">
@@ -132,8 +132,8 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
             <Label htmlFor="p-active" className="cursor-pointer">Active (available for quoting)</Label>
           </div>
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">
               {isPending ? "Saving..." : mode === "create" ? "Add Product" : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -171,7 +171,7 @@ export default function Products() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Products</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Products</h1>
             <p className="text-muted-foreground mt-1 text-sm">Product catalog and pricing.</p>
           </div>
           <div className="flex gap-2">
@@ -179,21 +179,21 @@ export default function Products() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search products..."
-                className="pl-9 bg-black/20 border-white/10 w-56"
+                className="pl-9 bg-muted border-border w-56"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
-            <Button onClick={() => setIsCreateOpen(true)} className="bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20">
+            <Button onClick={() => setIsCreateOpen(true)} className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
               <Plus className="w-4 h-4 mr-2" /> Add Product
             </Button>
           </div>
         </div>
 
-        <Card className="glass-panel border-white/5">
+        <Card className="glass-panel border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-white/5 border-b border-white/5">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-medium">Name / Code</th>
                   <th className="px-6 py-4 font-medium">Category</th>
@@ -202,7 +202,7 @@ export default function Products() {
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.length === 0 ? (
@@ -211,7 +211,7 @@ export default function Products() {
                     No products found. Add your first product to start quoting.
                   </td></tr>
                 ) : data?.data?.map(prod => (
-                  <tr key={prod.id} className="hover:bg-white/5 transition-colors group">
+                  <tr key={prod.id} className="hover:bg-muted/50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="font-medium text-white flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -222,11 +222,11 @@ export default function Products() {
                       {prod.code && <div className="text-xs text-muted-foreground mt-1 ml-10 font-mono">{prod.code}</div>}
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">{prod.category || "-"}</td>
-                    <td className="px-6 py-4 text-right font-semibold text-white">
+                    <td className="px-6 py-4 text-right font-semibold text-foreground">
                       ${prod.unitPrice.toLocaleString()} <span className="text-xs text-muted-foreground">{prod.currency}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant="outline" className={prod.isActive ? "border-green-500/30 text-green-400 bg-green-500/5" : "border-white/10 text-muted-foreground"}>
+                      <Badge variant="outline" className={prod.isActive ? "border-green-500/30 text-green-600 bg-green-500/5" : "border-border text-muted-foreground"}>
                         {prod.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </td>
@@ -237,7 +237,7 @@ export default function Products() {
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-card border-white/10 text-white">
+                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
                           <DropdownMenuItem
                             onClick={() => setEditingProduct({
                               id: prod.id,
@@ -249,11 +249,11 @@ export default function Products() {
                               category: prod.category ?? "",
                               isActive: prod.isActive,
                             })}
-                            className="cursor-pointer hover:bg-white/10"
+                            className="cursor-pointer hover:bg-muted"
                           >
                             <Pencil className="w-4 h-4 mr-2" /> Edit
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-white/10" />
+                          <DropdownMenuSeparator className="bg-muted" />
                           <DropdownMenuItem
                             onClick={() => setDeletingId(prod.id)}
                             className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive"
@@ -279,7 +279,7 @@ export default function Products() {
         initialData={editingProduct ?? undefined}
       />
       <AlertDialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
-        <AlertDialogContent className="bg-card border-white/10 text-white">
+        <AlertDialogContent className="bg-card border-border text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Product?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
@@ -287,7 +287,7 @@ export default function Products() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-border hover:bg-muted/50">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/80">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

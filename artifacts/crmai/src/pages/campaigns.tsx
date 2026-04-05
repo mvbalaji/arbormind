@@ -55,11 +55,11 @@ const defaultForm: CampaignFormData = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  planning: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  active: "bg-green-500/10 text-green-400 border-green-500/20",
-  paused: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  completed: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-  cancelled: "bg-red-500/10 text-red-400 border-red-500/20",
+  planning: "bg-blue-50 text-blue-700 border-blue-200",
+  active: "bg-green-50 text-green-700 border-green-200",
+  paused: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  completed: "bg-gray-100 text-gray-600 border-gray-200",
+  cancelled: "bg-red-50 text-red-700 border-red-200",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -151,7 +151,7 @@ export default function Campaigns() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Campaigns</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Campaigns</h1>
             <p className="text-muted-foreground mt-1 text-sm">Manage marketing campaigns and track ROI.</p>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -161,7 +161,7 @@ export default function Campaigns() {
                 placeholder="Search campaigns..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-card border-white/10"
+                className="pl-9 bg-card border-border"
               />
             </div>
             <Button
@@ -175,33 +175,33 @@ export default function Campaigns() {
 
         {!isLoading && campaigns.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="glass-panel border-white/5 p-5 flex items-center gap-4">
+            <Card className="glass-panel border-border p-5 flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
                 <Megaphone className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Campaigns</p>
-                <p className="text-2xl font-bold text-white">{data?.total ?? 0}</p>
+                <p className="text-2xl font-bold text-foreground">{data?.total ?? 0}</p>
               </div>
             </Card>
-            <Card className="glass-panel border-white/5 p-5 flex items-center gap-4">
+            <Card className="glass-panel border-border p-5 flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
-                <TrendingUp className="w-5 h-5 text-green-400" />
+                <TrendingUp className="w-5 h-5 text-green-600" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-foreground">
                   {campaigns.filter(c => c.status === "active").length}
                 </p>
               </div>
             </Card>
-            <Card className="glass-panel border-white/5 p-5 flex items-center gap-4">
+            <Card className="glass-panel border-border p-5 flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center shrink-0">
-                <DollarSign className="w-5 h-5 text-accent" />
+                <DollarSign className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Expected Revenue</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-foreground">
                   ${campaigns.reduce((s, c) => s + (c.expectedRevenue ?? 0), 0).toLocaleString()}
                 </p>
               </div>
@@ -209,10 +209,10 @@ export default function Campaigns() {
           </div>
         )}
 
-        <Card className="glass-panel border-white/5 overflow-hidden">
+        <Card className="glass-panel border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-black/20 border-b border-white/5">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-medium">Campaign</th>
                   <th className="px-6 py-4 font-medium">Type</th>
@@ -222,7 +222,7 @@ export default function Campaigns() {
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
                     <div className="space-y-3">
@@ -238,10 +238,10 @@ export default function Campaigns() {
                   </td></tr>
                 ) : (
                   campaigns.map((campaign) => (
-                    <tr key={campaign.id} className="hover:bg-white/5 transition-colors group">
+                    <tr key={campaign.id} className="hover:bg-muted/50 transition-colors group">
                       <td className="px-6 py-4">
                         <Link href={`/campaigns/${campaign.id}`}>
-                          <div className="font-medium text-white hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
+                          <div className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
                             {campaign.name}
                             <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                           </div>
@@ -280,11 +280,11 @@ export default function Campaigns() {
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-card border-white/10 text-white">
-                            <DropdownMenuItem onClick={() => setEditingCampaign(campaign)} className="cursor-pointer hover:bg-white/10">
+                          <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
+                            <DropdownMenuItem onClick={() => setEditingCampaign(campaign)} className="cursor-pointer hover:bg-muted">
                               <Pencil className="w-4 h-4 mr-2" /> Edit
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-white/10" />
+                            <DropdownMenuSeparator className="bg-muted" />
                             <DropdownMenuItem onClick={() => setDeletingId(campaign.id)} className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive">
                               <Trash2 className="w-4 h-4 mr-2" /> Delete
                             </DropdownMenuItem>
@@ -320,16 +320,16 @@ export default function Campaigns() {
       )}
 
       <AlertDialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
-        <AlertDialogContent className="bg-card border-white/10 text-white">
+        <AlertDialogContent className="bg-card border-border text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Campaign?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">This action cannot be undone.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-border text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => { if (deletingId !== null) deleteMutation.mutate(deletingId); }}
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              className="bg-destructive hover:bg-destructive/90 text-foreground"
             >
               Delete
             </AlertDialogAction>
@@ -385,11 +385,11 @@ function CampaignFormDialog({
     onSubmit(payload);
   };
 
-  const selectClass = "w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm";
+  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-white sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "New Campaign" : "Edit Campaign"}
@@ -398,7 +398,7 @@ function CampaignFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
             <Label>Campaign Name *</Label>
-            <Input required className="bg-black/20 border-white/10" value={form.name} onChange={f("name")} placeholder="e.g. Q2 Email Blast" />
+            <Input required className="bg-muted border-border" value={form.name} onChange={f("name")} placeholder="e.g. Q2 Email Blast" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -427,31 +427,31 @@ function CampaignFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Date</Label>
-              <Input type="date" className="bg-black/20 border-white/10" value={form.startDate} onChange={f("startDate")} />
+              <Input type="date" className="bg-muted border-border" value={form.startDate} onChange={f("startDate")} />
             </div>
             <div className="space-y-2">
               <Label>End Date</Label>
-              <Input type="date" className="bg-black/20 border-white/10" value={form.endDate} onChange={f("endDate")} />
+              <Input type="date" className="bg-muted border-border" value={form.endDate} onChange={f("endDate")} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Budget ($)</Label>
-              <Input type="number" min="0" className="bg-black/20 border-white/10" value={form.budget} onChange={f("budget")} placeholder="0" />
+              <Input type="number" min="0" className="bg-muted border-border" value={form.budget} onChange={f("budget")} placeholder="0" />
             </div>
             <div className="space-y-2">
               <Label>Expected Revenue ($)</Label>
-              <Input type="number" min="0" className="bg-black/20 border-white/10" value={form.expectedRevenue} onChange={f("expectedRevenue")} placeholder="0" />
+              <Input type="number" min="0" className="bg-muted border-border" value={form.expectedRevenue} onChange={f("expectedRevenue")} placeholder="0" />
             </div>
           </div>
           <div className="space-y-2">
             <Label>Campaign Goals</Label>
-            <Input className="bg-black/20 border-white/10" value={form.goals} onChange={f("goals")} placeholder="e.g. Generate 50 MQLs, 10% pipeline contribution" />
+            <Input className="bg-muted border-border" value={form.goals} onChange={f("goals")} placeholder="e.g. Generate 50 MQLs, 10% pipeline contribution" />
           </div>
           <div className="space-y-2">
             <Label>Description</Label>
             <textarea
-              className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm resize-none h-20"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm resize-none h-20"
               value={form.description}
               onChange={f("description")}
               placeholder="Campaign objective and notes..."
@@ -460,7 +460,7 @@ function CampaignFormDialog({
           <div className="space-y-2">
             <Label>Target Audience</Label>
             <textarea
-              className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm resize-none h-16"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm resize-none h-16"
               value={form.targetAudience}
               onChange={f("targetAudience")}
               placeholder="e.g. B2B decision-makers, VP Sales, 50-500 employee companies"
@@ -468,15 +468,15 @@ function CampaignFormDialog({
           </div>
           <div className="space-y-2">
             <Label>Channels (comma-separated)</Label>
-            <Input className="bg-black/20 border-white/10" value={form.channels} onChange={f("channels")} placeholder="e.g. Email, LinkedIn, Google Ads" />
+            <Input className="bg-muted border-border" value={form.channels} onChange={f("channels")} placeholder="e.g. Email, LinkedIn, Google Ads" />
           </div>
           <div className="space-y-2">
             <Label>Campaign Team (comma-separated names)</Label>
-            <Input className="bg-black/20 border-white/10" value={form.teamMembers} onChange={f("teamMembers")} placeholder="e.g. Sarah Johnson, Mike Chen, Lisa Park" />
+            <Input className="bg-muted border-border" value={form.teamMembers} onChange={f("teamMembers")} placeholder="e.g. Sarah Johnson, Mike Chen, Lisa Park" />
           </div>
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">
               {isPending ? "Saving..." : mode === "create" ? "Create Campaign" : "Save Changes"}
             </Button>
           </DialogFooter>

@@ -101,13 +101,13 @@ export default function Users() {
       <div className="flex flex-col gap-6">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Team & Data</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Team & Data</h1>
             <p className="text-muted-foreground mt-1 text-sm">Manage team members, access control, and bulk data imports.</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-white/5 rounded-xl w-fit border border-white/10">
+        <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
           {([
             { id: "team", label: "Team Settings", icon: UsersIcon },
             { id: "import", label: "Data Import", icon: Upload },
@@ -138,18 +138,18 @@ export default function Users() {
 
         {/* App Access Management - Admin Only */}
         {isAdmin && (
-          <Card className="glass-panel border-white/5">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+          <Card className="glass-panel border-border">
+            <div className="p-6 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-accent" />
+                <Shield className="w-5 h-5 text-primary" />
                 <div>
-                  <h2 className="font-semibold text-white">App Access Control</h2>
+                  <h2 className="font-semibold text-foreground">App Access Control</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">Manage who can sign in with Google</p>
                 </div>
               </div>
               <Button
                 onClick={() => setAddDialogOpen(true)}
-                className="rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-white hover:opacity-90"
+                className="rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-foreground hover:opacity-90"
                 size="sm"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
@@ -158,7 +158,7 @@ export default function Users() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="text-xs text-muted-foreground uppercase bg-white/5 border-b border-white/5">
+                <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                   <tr>
                     <th className="px-6 py-4 font-medium">User</th>
                     <th className="px-6 py-4 font-medium">Role</th>
@@ -167,35 +167,35 @@ export default function Users() {
                     <th className="px-6 py-4 font-medium w-16"></th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border">
                   {appUsersLoading ? (
                     <tr><td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                   ) : appUsers.length === 0 ? (
                     <tr><td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">No users yet</td></tr>
                   ) : appUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                    <tr key={u.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <Avatar className="w-8 h-8 border border-white/10">
+                          <Avatar className="w-8 h-8 border border-border">
                             {u.avatarUrl && <img src={u.avatarUrl} alt={u.name ?? u.email} />}
                             <AvatarFallback className="bg-primary/20 text-primary text-xs">
                               {(u.name ?? u.email).substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-medium text-white">{u.name ?? "—"}</div>
+                            <div className="font-medium text-foreground">{u.name ?? "—"}</div>
                             <div className="text-xs text-muted-foreground">{u.email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <Badge variant="outline" className={`capitalize ${u.role === "admin" ? "border-accent/50 text-accent bg-accent/10" : "border-white/10 text-muted-foreground"}`}>
+                        <Badge variant="outline" className={`capitalize ${u.role === "admin" ? "border-accent/50 text-primary bg-accent/10" : "border-border text-muted-foreground"}`}>
                           {u.role === "admin" && <Shield className="w-3 h-3 mr-1" />}
                           {u.role}
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${u.isActive ? "text-green-400" : "text-muted-foreground"}`}>
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${u.isActive ? "text-green-600" : "text-muted-foreground"}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" : "bg-gray-500"}`} />
                           {u.isActive ? "Active" : "Revoked"}
                         </span>
@@ -208,7 +208,7 @@ export default function Users() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                            className="h-8 w-8 text-muted-foreground hover:text-red-600"
                             onClick={() => setRemoveId(u.id)}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -224,17 +224,17 @@ export default function Users() {
         )}
 
         {/* CRM Team Members */}
-        <Card className="glass-panel border-white/5">
-          <div className="p-6 border-b border-white/5 flex items-center gap-2">
+        <Card className="glass-panel border-border">
+          <div className="p-6 border-b border-border flex items-center gap-2">
             <UsersIcon className="w-5 h-5 text-primary" />
             <div>
-              <h2 className="font-semibold text-white">CRM Team Members</h2>
+              <h2 className="font-semibold text-foreground">CRM Team Members</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Sales reps, managers and their roles</p>
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-white/5 border-b border-white/5">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-medium">User</th>
                   <th className="px-6 py-4 font-medium">Role</th>
@@ -242,32 +242,32 @@ export default function Users() {
                   <th className="px-6 py-4 font-medium">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.map(user => (
-                  <tr key={user.id} className="hover:bg-white/5 transition-colors">
+                  <tr key={user.id} className="hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8 border border-white/10">
+                        <Avatar className="w-8 h-8 border border-border">
                           <AvatarImage src={user.avatarUrl || ''} />
                           <AvatarFallback className="bg-primary/20 text-primary text-xs">{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
-                          <div className="font-medium text-white">{user.name}</div>
+                          <div className="font-medium text-foreground">{user.name}</div>
                           <div className="text-xs text-muted-foreground">{user.email}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant="outline" className={`capitalize ${user.role === 'admin' ? 'border-accent/50 text-accent bg-accent/10' : 'border-white/10 text-muted-foreground bg-black/40'}`}>
+                      <Badge variant="outline" className={`capitalize ${user.role === 'admin' ? 'border-accent/50 text-primary bg-accent/10' : 'border-border text-muted-foreground bg-muted'}`}>
                         {user.role === 'admin' && <Shield className="w-3 h-3 mr-1" />}
                         {user.role}
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">{user.team || '-'}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.isActive ? 'text-green-400' : 'text-muted-foreground'}`}>
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-muted-foreground'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-gray-500'}`} />
                         {user.isActive ? 'Active' : 'Inactive'}
                       </span>

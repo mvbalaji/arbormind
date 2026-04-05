@@ -32,20 +32,20 @@ const STAGE_COLORS = [
 ];
 
 const LEAD_STATUS_COLORS: Record<string, string> = {
-  new: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  contacted: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  qualified: "bg-green-500/10 text-green-400 border-green-500/20",
-  unqualified: "bg-red-500/10 text-red-400 border-red-500/20",
-  converted: "bg-gray-500/10 text-gray-400 border-gray-500/20",
+  new: "bg-blue-50 text-blue-700 border-blue-200",
+  contacted: "bg-purple-50 text-purple-700 border-purple-200",
+  qualified: "bg-green-50 text-green-700 border-green-200",
+  unqualified: "bg-red-50 text-red-700 border-red-200",
+  converted: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
 const STAGE_BADGE: Record<string, string> = {
-  prospecting: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-  qualification: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
-  proposal: "text-purple-400 bg-purple-500/10 border-purple-500/20",
-  negotiation: "text-orange-400 bg-orange-500/10 border-orange-500/20",
-  closed_won: "text-green-400 bg-green-500/10 border-green-500/20",
-  closed_lost: "text-red-400 bg-red-500/10 border-red-500/20",
+  prospecting: "text-blue-600 bg-blue-50 border-blue-200",
+  qualification: "text-indigo-600 bg-indigo-500/10 border-indigo-200",
+  proposal: "text-purple-600 bg-purple-500/10 border-purple-200",
+  negotiation: "text-orange-600 bg-orange-500/10 border-orange-200",
+  closed_won: "text-green-600 bg-green-500/10 border-green-200",
+  closed_lost: "text-red-600 bg-red-500/10 border-red-200",
 };
 
 function KPICard({
@@ -55,14 +55,14 @@ function KPICard({
   icon: React.ElementType; color: string; trend?: string; trendUp?: boolean;
 }) {
   return (
-    <Card className="glass-panel border-white/5 overflow-hidden group hover:border-white/10 transition-all">
+    <Card className="glass-panel border-border overflow-hidden group hover:border-border transition-all">
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
-            <div className="mt-1.5 text-2xl font-bold text-white font-display">{value}</div>
+            <div className="mt-1.5 text-2xl font-bold text-foreground font-display">{value}</div>
             {trend && (
-              <p className={cn("text-xs mt-1 font-medium", trendUp ? "text-emerald-400" : "text-rose-400")}>
+              <p className={cn("text-xs mt-1 font-medium", trendUp ? "text-emerald-700" : "text-rose-600")}>
                 {trend}
               </p>
             )}
@@ -81,10 +81,10 @@ function AIInsightsBanner({ stats }: { stats: ReturnType<typeof useGetDashboardS
   if (!stats) return null;
   const insights: { icon: React.ElementType; color: string; text: string; type: "info" | "warn" | "success" }[] = [];
 
-  if ((stats.winRate ?? 0) < 30) insights.push({ icon: AlertCircle, color: "text-orange-400", type: "warn", text: `Win rate at ${stats.winRate}% — review lost deal reasons to improve conversion.` });
-  if ((stats.openCases ?? 0) > 5) insights.push({ icon: AlertCircle, color: "text-rose-400", type: "warn", text: `${stats.openCases} open support cases need attention.` });
-  if ((stats.wonDealsThisMonth ?? 0) > 0) insights.push({ icon: CheckCircle2, color: "text-emerald-400", type: "success", text: `${stats.wonDealsThisMonth} deals closed this month totaling $${(stats.revenueThisMonth ?? 0).toLocaleString()}.` });
-  if ((stats.totalLeads ?? 0) > 10) insights.push({ icon: Zap, color: "text-blue-400", type: "info", text: `${stats.totalLeads} leads in pipeline. Focus on top-scored leads for fastest conversion.` });
+  if ((stats.winRate ?? 0) < 30) insights.push({ icon: AlertCircle, color: "text-orange-600", type: "warn", text: `Win rate at ${stats.winRate}% — review lost deal reasons to improve conversion.` });
+  if ((stats.openCases ?? 0) > 5) insights.push({ icon: AlertCircle, color: "text-rose-600", type: "warn", text: `${stats.openCases} open support cases need attention.` });
+  if ((stats.wonDealsThisMonth ?? 0) > 0) insights.push({ icon: CheckCircle2, color: "text-emerald-700", type: "success", text: `${stats.wonDealsThisMonth} deals closed this month totaling $${(stats.revenueThisMonth ?? 0).toLocaleString()}.` });
+  if ((stats.totalLeads ?? 0) > 10) insights.push({ icon: Zap, color: "text-blue-600", type: "info", text: `${stats.totalLeads} leads in pipeline. Focus on top-scored leads for fastest conversion.` });
 
   if (insights.length === 0) return null;
 
@@ -97,7 +97,7 @@ function AIInsightsBanner({ stats }: { stats: ReturnType<typeof useGetDashboardS
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {insights.map((ins, i) => (
-            <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-white/5">
+            <div key={i} className="flex items-start gap-2 p-2 rounded-lg bg-muted/50">
               <ins.icon className={cn("w-4 h-4 mt-0.5 shrink-0", ins.color)} />
               <p className="text-xs text-muted-foreground leading-relaxed">{ins.text}</p>
             </div>
@@ -148,7 +148,7 @@ export default function Dashboard() {
         {/* Page Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-display font-bold tracking-tight text-white">
+            <h1 className="text-2xl font-display font-bold tracking-tight text-foreground">
               Sales Command Center
             </h1>
             <p className="text-muted-foreground text-sm mt-0.5">
@@ -157,7 +157,7 @@ export default function Dashboard() {
           </div>
           <div className="flex gap-2">
             <Link href="/leads">
-              <Button variant="outline" size="sm" className="border-white/10 text-white hover:bg-white/10 gap-1.5">
+              <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted gap-1.5">
                 <UserPlus className="w-4 h-4" /> Add Lead
               </Button>
             </Link>
@@ -177,14 +177,14 @@ export default function Dashboard() {
             trend={`↑ ${stats?.wonDealsThisMonth ?? 0} deals closed`}
             trendUp={true}
             icon={DollarSign}
-            color="text-emerald-400 bg-emerald-500/10"
+            color="text-emerald-700 bg-emerald-50"
           />
           <KPICard
             title="Pipeline Value"
             value={isLoading ? <Skeleton className="h-7 w-24" /> : `$${((stats?.totalPipelineValue ?? 0) / 1000).toFixed(0)}k`}
             subtitle={`${stats?.openOpportunities ?? 0} open deals`}
             icon={TrendingUp}
-            color="text-blue-400 bg-blue-500/10"
+            color="text-blue-600 bg-blue-50"
           />
           <KPICard
             title="Win Rate"
@@ -192,21 +192,21 @@ export default function Dashboard() {
             trend={(stats?.winRate ?? 0) >= 40 ? "↑ On target" : "↓ Below target"}
             trendUp={(stats?.winRate ?? 0) >= 40}
             icon={Target}
-            color="text-violet-400 bg-violet-500/10"
+            color="text-violet-600 bg-violet-50"
           />
           <KPICard
             title="Total Leads"
             value={isLoading ? <Skeleton className="h-7 w-16" /> : stats?.totalLeads ?? 0}
             subtitle={`${stats?.totalContacts ?? 0} contacts`}
             icon={UserPlus}
-            color="text-orange-400 bg-orange-500/10"
+            color="text-orange-600 bg-orange-500/10"
           />
           <KPICard
             title="Activities / Week"
             value={isLoading ? <Skeleton className="h-7 w-16" /> : stats?.activitiesThisWeek ?? 0}
             subtitle={`${stats?.openCases ?? 0} open cases`}
             icon={Activity}
-            color="text-rose-400 bg-rose-500/10"
+            color="text-rose-600 bg-rose-50"
           />
         </div>
 
@@ -216,7 +216,7 @@ export default function Dashboard() {
         {/* Main Content Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Pipeline Chart */}
-          <Card className="lg:col-span-2 glass-panel border-white/5">
+          <Card className="lg:col-span-2 glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="font-display font-semibold text-base flex items-center justify-between">
                 Pipeline by Stage
@@ -261,7 +261,7 @@ export default function Dashboard() {
           {/* Win/Loss + Quick Stats */}
           <div className="flex flex-col gap-4">
             {/* Win/Loss Donut */}
-            <Card className="glass-panel border-white/5 flex-1">
+            <Card className="glass-panel border-border flex-1">
               <CardHeader className="pb-1 pt-4">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Closed Deals</CardTitle>
               </CardHeader>
@@ -296,19 +296,19 @@ export default function Dashboard() {
             </Card>
 
             {/* Quick Stats */}
-            <Card className="glass-panel border-white/5">
+            <Card className="glass-panel border-border">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Total Accounts</span>
-                  <span className="font-bold text-white">{isLoading ? "—" : stats?.totalAccounts ?? 0}</span>
+                  <span className="font-bold text-foreground">{isLoading ? "—" : stats?.totalAccounts ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Total Contacts</span>
-                  <span className="font-bold text-white">{isLoading ? "—" : stats?.totalContacts ?? 0}</span>
+                  <span className="font-bold text-foreground">{isLoading ? "—" : stats?.totalContacts ?? 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Open Support Cases</span>
-                  <span className={cn("font-bold", (stats?.openCases ?? 0) > 0 ? "text-rose-400" : "text-white")}>
+                  <span className={cn("font-bold", (stats?.openCases ?? 0) > 0 ? "text-rose-600" : "text-white")}>
                     {isLoading ? "—" : stats?.openCases ?? 0}
                   </span>
                 </div>
@@ -320,7 +320,7 @@ export default function Dashboard() {
         {/* Bottom Row: Recent Leads + Deals in Negotiation + Upcoming Activities */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Recent Leads */}
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display font-semibold flex items-center justify-between">
                 Recent Leads
@@ -332,7 +332,7 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border">
                 {leadsLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="px-4 py-3 flex gap-3">
@@ -350,7 +350,7 @@ export default function Dashboard() {
                     const initials = `${lead.firstName[0] ?? ""}${lead.lastName[0] ?? ""}`.toUpperCase();
                     return (
                       <Link key={lead.id} href={`/leads/${lead.id}`}>
-                        <div className="px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer flex items-center gap-3">
+                        <div className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/70 to-accent/70 flex items-center justify-center text-white text-xs font-bold shrink-0">
                             {initials}
                           </div>
@@ -360,7 +360,7 @@ export default function Dashboard() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {lead.score != null && (
-                              <span className={cn("text-xs font-bold", lead.score >= 70 ? "text-emerald-400" : lead.score >= 40 ? "text-yellow-400" : "text-rose-400")}>
+                              <span className={cn("text-xs font-bold", lead.score >= 70 ? "text-emerald-700" : lead.score >= 40 ? "text-yellow-600" : "text-rose-600")}>
                                 {lead.score}
                               </span>
                             )}
@@ -378,7 +378,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Hot Deals */}
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display font-semibold flex items-center justify-between">
                 🔥 Hot Deals (Negotiation)
@@ -390,7 +390,7 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border">
                 {dealsLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="px-4 py-3 space-y-1.5">
@@ -403,14 +403,14 @@ export default function Dashboard() {
                 ) : (
                   dealsData.data.map((deal) => (
                     <Link key={deal.id} href={`/opportunities/${deal.id}`}>
-                      <div className="px-4 py-3 hover:bg-white/5 transition-colors cursor-pointer">
+                      <div className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-white truncate">{deal.name}</p>
                             <p className="text-xs text-muted-foreground">{deal.accountName ?? "—"}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-emerald-400">${(deal.amount ?? 0).toLocaleString()}</p>
+                            <p className="text-sm font-bold text-emerald-700">${(deal.amount ?? 0).toLocaleString()}</p>
                             {deal.closeDate && (
                               <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
                                 <Calendar className="w-3 h-3" />
@@ -421,7 +421,7 @@ export default function Dashboard() {
                         </div>
                         {deal.probability != null && (
                           <div className="mt-1.5">
-                            <div className="w-full bg-white/5 rounded-full h-1">
+                            <div className="w-full bg-muted/50 rounded-full h-1">
                               <div className="bg-orange-400 h-1 rounded-full" style={{ width: `${deal.probability}%` }} />
                             </div>
                           </div>
@@ -435,7 +435,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Upcoming Activities */}
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display font-semibold flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-primary" />
@@ -443,7 +443,7 @@ export default function Dashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="divide-y divide-white/5">
+              <div className="divide-y divide-border">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <div key={i} className="px-4 py-3 flex gap-3">
@@ -458,7 +458,7 @@ export default function Dashboard() {
                   <div className="px-4 py-8 text-center text-sm text-muted-foreground">No upcoming activities.</div>
                 ) : (
                   stats.upcomingActivities.map((activity) => (
-                    <div key={activity.id} className="px-4 py-3 flex items-start gap-3 hover:bg-white/5 transition-colors">
+                    <div key={activity.id} className="px-4 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors">
                       <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
                         <Clock className="w-3.5 h-3.5 text-primary" />
                       </div>
@@ -480,14 +480,14 @@ export default function Dashboard() {
 
         {/* Pipeline Funnel + Stage Table */}
         {!pipelineLoading && funnelData.length > 0 && (
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display font-semibold">Lead & Deal Stage Summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {pipelineData?.stages?.filter(s => s.stage !== "closed_lost").map((s, i) => (
-                  <div key={s.stage} className="text-center p-3 rounded-xl bg-white/5 border border-white/5">
+                  <div key={s.stage} className="text-center p-3 rounded-xl bg-muted/50 border border-border">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{STAGE_LABELS[s.stage]}</div>
                     <div className="text-xl font-bold font-display" style={{ color: STAGE_COLORS[i] }}>{s.count}</div>
                     <div className="text-xs text-muted-foreground mt-0.5">${(s.totalValue / 1000).toFixed(0)}k</div>

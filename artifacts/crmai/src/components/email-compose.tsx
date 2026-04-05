@@ -91,7 +91,7 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-white sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-lg flex items-center gap-2">
             <Send className="w-4 h-4 text-primary" />
@@ -107,17 +107,17 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
               variant="outline"
               size="sm"
               onClick={() => setShowTemplates(!showTemplates)}
-              className="border-white/10 text-xs gap-1.5"
+              className="border-border text-xs gap-1.5"
             >
               Use Template <ChevronDown className="w-3 h-3" />
             </Button>
             {showTemplates && (
-              <div className="absolute top-full mt-1 left-0 z-20 bg-card border border-white/10 rounded-lg shadow-xl min-w-[220px]">
+              <div className="absolute top-full mt-1 left-0 z-20 bg-card border border-border rounded-lg shadow-xl min-w-[220px]">
                 {EMAIL_TEMPLATES.map((t) => (
                   <button
                     key={t.label}
                     onClick={() => applyTemplate(t)}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-white/10 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors first:rounded-t-lg last:rounded-b-lg"
                   >
                     {t.label}
                   </button>
@@ -136,7 +136,7 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
             </div>
             <Input
               type="email"
-              className="bg-black/20 border-white/10 h-9"
+              className="bg-muted border-border h-9"
               placeholder="recipient@email.com"
               value={to}
               onChange={e => setTo(e.target.value)}
@@ -149,7 +149,7 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
               <Label className="text-xs text-muted-foreground uppercase">CC</Label>
               <Input
                 type="email"
-                className="bg-black/20 border-white/10 h-9"
+                className="bg-muted border-border h-9"
                 placeholder="cc@email.com"
                 value={cc}
                 onChange={e => setCc(e.target.value)}
@@ -161,7 +161,7 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground uppercase">Subject</Label>
             <Input
-              className="bg-black/20 border-white/10 h-9"
+              className="bg-muted border-border h-9"
               placeholder="Email subject"
               value={subject}
               onChange={e => setSubject(e.target.value)}
@@ -172,7 +172,7 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground uppercase">Message</Label>
             <Textarea
-              className="bg-black/20 border-white/10 min-h-[200px] text-sm leading-relaxed resize-none"
+              className="bg-muted border-border min-h-[200px] text-sm leading-relaxed resize-none"
               placeholder="Write your message..."
               value={body}
               onChange={e => setBody(e.target.value)}
@@ -189,7 +189,7 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
           <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5" disabled>
             <Paperclip className="w-4 h-4" /> Attach
           </Button>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">
             <X className="w-4 h-4 mr-1" /> Discard
           </Button>
           <Button

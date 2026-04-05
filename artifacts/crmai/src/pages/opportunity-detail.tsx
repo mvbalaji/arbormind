@@ -51,12 +51,12 @@ interface RelatedActivity {
 }
 
 const STAGE_CONFIG: Record<string, { label: string; color: string; step: number }> = {
-  prospecting: { label: "Prospecting", color: "text-blue-400 border-blue-500/30 bg-blue-500/10", step: 1 },
+  prospecting: { label: "Prospecting", color: "text-blue-600 border-blue-500/30 bg-blue-500/10", step: 1 },
   qualification: { label: "Qualification", color: "text-indigo-400 border-indigo-500/30 bg-indigo-500/10", step: 2 },
-  proposal: { label: "Proposal", color: "text-purple-400 border-purple-500/30 bg-purple-500/10", step: 3 },
-  negotiation: { label: "Negotiation", color: "text-orange-400 border-orange-500/30 bg-orange-500/10", step: 4 },
-  closed_won: { label: "Closed Won", color: "text-green-400 border-green-500/30 bg-green-500/10", step: 5 },
-  closed_lost: { label: "Closed Lost", color: "text-red-400 border-red-500/30 bg-red-500/10", step: 0 },
+  proposal: { label: "Proposal", color: "text-purple-600 border-purple-500/30 bg-purple-500/10", step: 3 },
+  negotiation: { label: "Negotiation", color: "text-orange-600 border-orange-500/30 bg-orange-500/10", step: 4 },
+  closed_won: { label: "Closed Won", color: "text-green-600 border-green-500/30 bg-green-500/10", step: 5 },
+  closed_lost: { label: "Closed Lost", color: "text-red-600 border-red-500/30 bg-red-500/10", step: 0 },
 };
 
 const STAGES_ORDERED = ["prospecting", "qualification", "proposal", "negotiation", "closed_won"];
@@ -91,11 +91,11 @@ interface QuickQuoteItem {
 const DEFAULT_ITEM: QuickQuoteItem = { productId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 };
 
 const QUOTE_STATUS_COLORS: Record<string, string> = {
-  draft: "border-white/10 text-muted-foreground",
-  sent: "border-blue-500/30 text-blue-400 bg-blue-500/5",
-  accepted: "border-green-500/30 text-green-400 bg-green-500/5",
-  rejected: "border-red-500/30 text-red-400 bg-red-500/5",
-  expired: "border-orange-500/30 text-orange-400 bg-orange-500/5",
+  draft: "border-border text-muted-foreground",
+  sent: "border-blue-500/30 text-blue-600 bg-blue-500/5",
+  accepted: "border-green-500/30 text-green-600 bg-green-500/5",
+  rejected: "border-red-500/30 text-red-600 bg-red-500/5",
+  expired: "border-orange-500/30 text-orange-600 bg-orange-500/5",
 };
 
 function QuickQuoteDialog({
@@ -177,7 +177,7 @@ function QuickQuoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-white max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Quote for this Opportunity</DialogTitle>
         </DialogHeader>
@@ -185,12 +185,12 @@ function QuickQuoteDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2 col-span-2">
               <Label>Quote Name *</Label>
-              <Input required className="bg-black/20 border-white/10"
+              <Input required className="bg-muted border-border"
                 value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <select className="w-full h-10 px-3 rounded-md bg-black/20 border border-white/10 text-white text-sm"
+              <select className="w-full h-10 px-3 rounded-md bg-muted border border-border text-white text-sm"
                 value={status} onChange={e => setStatus(e.target.value)}>
                 {Object.keys(CreateQuoteInputStatus).map(s => (
                   <option key={s} value={s} className="bg-card capitalize">{s}</option>
@@ -199,7 +199,7 @@ function QuickQuoteDialog({
             </div>
             <div className="space-y-2">
               <Label>Valid Until</Label>
-              <Input type="date" className="bg-black/20 border-white/10"
+              <Input type="date" className="bg-muted border-border"
                 value={validUntil} onChange={e => setValidUntil(e.target.value)} />
             </div>
           </div>
@@ -207,12 +207,12 @@ function QuickQuoteDialog({
           <div>
             <div className="flex items-center justify-between mb-2">
               <Label className="text-sm font-semibold">Products / Line Items</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-white/10 text-xs">
+              <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-border text-xs">
                 <Plus className="w-3 h-3 mr-1" /> Add Item
               </Button>
             </div>
             {items.length === 0 ? (
-              <div className="border border-dashed border-white/10 rounded-lg p-5 text-center text-muted-foreground text-sm cursor-pointer hover:border-primary/30 transition-colors" onClick={addItem}>
+              <div className="border border-dashed border-border rounded-lg p-5 text-center text-muted-foreground text-sm cursor-pointer hover:border-primary/30 transition-colors" onClick={addItem}>
                 <Package className="w-5 h-5 mx-auto mb-1.5 opacity-40" />
                 Click to add products
               </div>
@@ -227,9 +227,9 @@ function QuickQuoteDialog({
                   <span className="col-span-1"></span>
                 </div>
                 {items.map((item, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-1 items-center bg-white/5 rounded-lg p-2">
+                  <div key={idx} className="grid grid-cols-12 gap-1 items-center bg-muted/50 rounded-lg p-2">
                     <div className="col-span-4">
-                      <select className="w-full h-8 px-2 rounded-md bg-black/30 border border-white/10 text-white text-sm"
+                      <select className="w-full h-8 px-2 rounded-md bg-black/30 border border-border text-white text-sm"
                         value={item.productId ?? ""} onChange={e => {
                           const val = e.target.value;
                           val === "" ? updateItem(idx, { productId: null, productName: "", unitPrice: 0 }) : pickProduct(idx, parseInt(val));
@@ -238,27 +238,27 @@ function QuickQuoteDialog({
                         {products.map(p => <option key={p.id} value={p.id} className="bg-card">{p.name}</option>)}
                       </select>
                       {!item.productId && (
-                        <Input className="mt-1 h-7 text-xs bg-black/30 border-white/10" placeholder="Name..."
+                        <Input className="mt-1 h-7 text-xs bg-black/30 border-border" placeholder="Name..."
                           value={item.productName} onChange={e => updateItem(idx, { productName: e.target.value })} />
                       )}
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="1" className="h-8 bg-black/30 border-white/10 text-right text-sm"
+                      <Input type="number" min="1" className="h-8 bg-black/30 border-border text-right text-sm"
                         value={item.quantity} onChange={e => updateItem(idx, { quantity: parseFloat(e.target.value) || 1 })} />
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="0" step="0.01" className="h-8 bg-black/30 border-white/10 text-right text-sm"
+                      <Input type="number" min="0" step="0.01" className="h-8 bg-black/30 border-border text-right text-sm"
                         value={item.unitPrice} onChange={e => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="0" max="100" className="h-8 bg-black/30 border-white/10 text-right text-sm"
+                      <Input type="number" min="0" max="100" className="h-8 bg-black/30 border-border text-right text-sm"
                         value={item.discount} onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                     </div>
-                    <div className="col-span-1 text-right text-xs font-medium text-white">
+                    <div className="col-span-1 text-right text-xs font-medium text-foreground">
                       ${lineTotal(item).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </div>
                     <div className="col-span-1 flex justify-end">
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-400" onClick={() => removeItem(idx)}>
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600" onClick={() => removeItem(idx)}>
                         <X className="w-3 h-3" />
                       </Button>
                     </div>
@@ -269,20 +269,20 @@ function QuickQuoteDialog({
           </div>
 
           {items.length > 0 && (
-            <div className="border border-white/5 rounded-lg p-3 space-y-2">
+            <div className="border border-border rounded-lg p-3 space-y-2">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Discount %</Label>
-                  <Input type="number" min="0" max="100" className="h-8 bg-black/20 border-white/10 text-sm"
+                  <Input type="number" min="0" max="100" className="h-8 bg-muted border-border text-sm"
                     value={discount} onChange={e => setDiscount(e.target.value)} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Tax %</Label>
-                  <Input type="number" min="0" className="h-8 bg-black/20 border-white/10 text-sm"
+                  <Input type="number" min="0" className="h-8 bg-muted border-border text-sm"
                     value={tax} onChange={e => setTax(e.target.value)} />
                 </div>
               </div>
-              <div className="flex justify-between font-bold text-white border-t border-white/10 pt-2">
+              <div className="flex justify-between font-bold text-white border-t border-border pt-2">
                 <span>Total</span>
                 <span>${total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
               </div>
@@ -290,8 +290,8 @@ function QuickQuoteDialog({
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={createMutation.isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={createMutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground">
               {createMutation.isPending ? "Creating..." : "Create Quote"}
             </Button>
           </DialogFooter>
@@ -458,11 +458,11 @@ export default function OpportunityDetail() {
           </Link>
 
           {/* Header Card */}
-          <Card className="glass-panel border-white/5 p-6">
+          <Card className="glass-panel border-border p-6">
             <div className="flex flex-col gap-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-white">{opp.name}</h1>
+                  <h1 className="text-2xl font-bold text-foreground">{opp.name}</h1>
                   {opp.accountName && (
                     <div className="flex items-center gap-1.5 text-muted-foreground mt-1">
                       <Building2 className="w-4 h-4" />
@@ -478,35 +478,35 @@ export default function OpportunityDetail() {
               {/* Key Metrics Row */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {opp.amount !== null && (
-                  <div className="bg-white/5 rounded-xl p-3">
+                  <div className="bg-muted/50 rounded-xl p-3">
                     <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                       <DollarSign className="w-3 h-3" /> Value
                     </div>
-                    <div className="text-lg font-bold text-white">${opp.amount.toLocaleString()}</div>
+                    <div className="text-lg font-bold text-foreground">${opp.amount.toLocaleString()}</div>
                   </div>
                 )}
                 {opp.probability !== null && (
-                  <div className="bg-white/5 rounded-xl p-3">
+                  <div className="bg-muted/50 rounded-xl p-3">
                     <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3" /> Win Probability
                     </div>
-                    <div className="text-lg font-bold text-white">{opp.probability}%</div>
+                    <div className="text-lg font-bold text-foreground">{opp.probability}%</div>
                   </div>
                 )}
                 {opp.closeDate && (
-                  <div className="bg-white/5 rounded-xl p-3">
+                  <div className="bg-muted/50 rounded-xl p-3">
                     <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                       <Calendar className="w-3 h-3" /> Close Date
                     </div>
-                    <div className="text-sm font-semibold text-white">{format(new Date(opp.closeDate), "MMM d, yyyy")}</div>
+                    <div className="text-sm font-semibold text-foreground">{format(new Date(opp.closeDate), "MMM d, yyyy")}</div>
                   </div>
                 )}
                 {(opp.contactFirstName || opp.contactLastName) && (
-                  <div className="bg-white/5 rounded-xl p-3">
+                  <div className="bg-muted/50 rounded-xl p-3">
                     <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                       <Users className="w-3 h-3" /> Contact
                     </div>
-                    <div className="text-sm font-semibold text-white">
+                    <div className="text-sm font-semibold text-foreground">
                       {[opp.contactFirstName, opp.contactLastName].filter(Boolean).join(" ")}
                     </div>
                   </div>
@@ -525,7 +525,7 @@ export default function OpportunityDetail() {
                         <React.Fragment key={s}>
                           <div
                             className={`flex-1 h-1.5 rounded-full transition-all ${
-                              isActive ? "bg-primary" : "bg-white/10"
+                              isActive ? "bg-primary" : "bg-muted"
                             } ${isCurrent ? "shadow-[0_0_8px_rgba(99,102,241,0.6)]" : ""}`}
                           />
                         </React.Fragment>
@@ -543,14 +543,14 @@ export default function OpportunityDetail() {
               )}
 
               {/* Action Buttons */}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-white/5">
-                <Button size="sm" variant="outline" className="gap-1.5 border-white/10 hover:text-white" onClick={() => setIsEditOpen(true)}>
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+                <Button size="sm" variant="outline" className="gap-1.5 border-border hover:text-white" onClick={() => setIsEditOpen(true)}>
                   <Pencil className="w-3.5 h-3.5" /> Edit Details
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 border-white/10 hover:text-white" onClick={() => setIsEmailOpen(true)}>
+                <Button size="sm" variant="outline" className="gap-1.5 border-border hover:text-white" onClick={() => setIsEmailOpen(true)}>
                   <Mail className="w-3.5 h-3.5" /> Send Email
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 border-white/10 hover:text-white" onClick={() => { setActiveTab("quotes"); setIsQuoteOpen(true); }}>
+                <Button size="sm" variant="outline" className="gap-1.5 border-border hover:text-white" onClick={() => { setActiveTab("quotes"); setIsQuoteOpen(true); }}>
                   <FileText className="w-3.5 h-3.5" /> Create Quote
                 </Button>
               </div>
@@ -562,7 +562,7 @@ export default function OpportunityDetail() {
         <AISummary entityType="opportunity" entityData={opp as unknown as Record<string, unknown>} />
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-white/5">
+        <div className="flex gap-1 border-b border-border">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -575,7 +575,7 @@ export default function OpportunityDetail() {
             >
               {tab.label}
               {tab.count !== undefined && (
-                <span className="ml-2 text-xs bg-white/10 rounded-full px-1.5 py-0.5">{tab.count}</span>
+                <span className="ml-2 text-xs bg-muted rounded-full px-1.5 py-0.5">{tab.count}</span>
               )}
             </button>
           ))}
@@ -593,7 +593,7 @@ export default function OpportunityDetail() {
               activitiesData.data.map((act) => {
                 const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
                 return (
-                  <Card key={act.id} className="glass-panel border-white/5 p-4 flex items-start gap-4">
+                  <Card key={act.id} className="glass-panel border-border p-4 flex items-start gap-4">
                     <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                       <Icon className="w-4 h-4 text-primary" />
                     </div>
@@ -601,9 +601,9 @@ export default function OpportunityDetail() {
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium text-white text-sm">{act.subject}</span>
                         <Badge variant="outline" className={`capitalize text-xs ${
-                          act.status === "completed" ? "border-green-500/30 text-green-400" :
-                          act.status === "cancelled" ? "border-red-500/30 text-red-400" :
-                          "border-blue-500/30 text-blue-400"
+                          act.status === "completed" ? "border-green-500/30 text-green-600" :
+                          act.status === "cancelled" ? "border-red-500/30 text-red-600" :
+                          "border-blue-500/30 text-blue-600"
                         }`}>
                           {act.status}
                         </Badge>
@@ -632,7 +632,7 @@ export default function OpportunityDetail() {
         {activeTab === "quotes" && (
           <div className="flex flex-col gap-3">
             <div className="flex justify-end">
-              <Button size="sm" onClick={() => setIsQuoteOpen(true)} className="bg-primary text-white hover:bg-primary/90">
+              <Button size="sm" onClick={() => setIsQuoteOpen(true)} className="bg-primary text-foreground hover:bg-primary/90">
                 <Plus className="w-4 h-4 mr-1.5" /> New Quote
               </Button>
             </div>
@@ -641,14 +641,14 @@ export default function OpportunityDetail() {
                 <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
                 No quotes for this opportunity yet.
                 <div className="mt-2">
-                  <Button variant="outline" size="sm" onClick={() => setIsQuoteOpen(true)} className="border-white/10 text-sm">
+                  <Button variant="outline" size="sm" onClick={() => setIsQuoteOpen(true)} className="border-border text-sm">
                     Create first quote
                   </Button>
                 </div>
               </div>
             ) : (
               oppQuotes.map(q => (
-                <Card key={q.id} className="glass-panel border-white/5 p-4 flex items-center justify-between gap-4">
+                <Card key={q.id} className="glass-panel border-border p-4 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                       <FileText className="w-4 h-4 text-primary" />
@@ -696,7 +696,7 @@ export default function OpportunityDetail() {
                   </div>
                   <div>
                     <p className="text-xs text-primary/80 uppercase tracking-wide font-semibold mb-0.5">Next Step</p>
-                    <p className="text-sm text-white">{opp.nextStep}</p>
+                    <p className="text-sm text-foreground">{opp.nextStep}</p>
                   </div>
                 </div>
               </Card>
@@ -704,21 +704,21 @@ export default function OpportunityDetail() {
 
             {/* Forecast Category - Prominent */}
             {opp.forecastCategory && (
-              <Card className="glass-panel border-white/5 p-4">
+              <Card className="glass-panel border-border p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
-                    <TrendingUp className="w-4 h-4 text-emerald-400" />
+                    <TrendingUp className="w-4 h-4 text-emerald-600" />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">Forecast Category</p>
-                    <p className="text-sm font-semibold text-emerald-400 capitalize">{opp.forecastCategory}</p>
+                    <p className="text-sm font-semibold text-emerald-600 capitalize">{opp.forecastCategory}</p>
                   </div>
                 </div>
               </Card>
             )}
 
             {/* Main Details Grid */}
-            <Card className="glass-panel border-white/5 p-6">
+            <Card className="glass-panel border-border p-6">
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
                 {[
                   { label: "Opportunity Name", value: opp.name },
@@ -737,13 +737,13 @@ export default function OpportunityDetail() {
                   value ? (
                     <div key={label}>
                       <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
-                      <dd className="text-sm text-white">{value}</dd>
+                      <dd className="text-sm text-foreground">{value}</dd>
                     </div>
                   ) : null
                 )}
               </dl>
               {opp.description && (
-                <div className="mt-6 pt-6 border-t border-white/5">
+                <div className="mt-6 pt-6 border-t border-border">
                   <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Description</dt>
                   <dd className="text-sm text-muted-foreground leading-relaxed">{opp.description}</dd>
                 </div>
@@ -751,7 +751,7 @@ export default function OpportunityDetail() {
             </Card>
 
             {/* Opty Team */}
-            <Card className="glass-panel border-white/5">
+            <Card className="glass-panel border-border">
               <div className="flex items-center justify-between p-4 pb-3">
                 <p className="text-sm font-semibold text-white flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" /> Opty Team
@@ -763,9 +763,9 @@ export default function OpportunityDetail() {
                     {opp.teamMembers.split(",").map(m => m.trim()).filter(Boolean).map((member, i) => {
                       const initials = member.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
                       return (
-                        <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-full">
+                        <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border border-border rounded-full">
                           <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">{initials}</div>
-                          <span className="text-sm text-white">{member}</span>
+                          <span className="text-sm text-foreground">{member}</span>
                         </div>
                       );
                     })}
@@ -860,18 +860,18 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
 
   const f = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [field]: e.target.value });
-  const sc = "w-full h-9 px-3 rounded-md bg-black/20 border border-white/10 text-white text-sm";
+  const sc = "w-full h-9 px-3 rounded-md bg-muted border border-border text-white text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-white sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Edit Opportunity</DialogTitle>
         </DialogHeader>
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(form); }} className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label className="text-xs">Opportunity Name *</Label>
-            <Input required className="bg-black/20 border-white/10 h-9" value={form.name} onChange={f("name")} />
+            <Input required className="bg-muted border-border h-9" value={form.name} onChange={f("name")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label className="text-xs">Stage</Label>
@@ -890,15 +890,15 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label className="text-xs">Amount ($)</Label>
-              <Input type="number" className="bg-black/20 border-white/10 h-9" value={form.amount} onChange={f("amount")} />
+              <Input type="number" className="bg-muted border-border h-9" value={form.amount} onChange={f("amount")} />
             </div>
             <div className="space-y-1.5"><Label className="text-xs">Win Probability (%)</Label>
-              <Input type="number" min="0" max="100" className="bg-black/20 border-white/10 h-9" value={form.probability} onChange={f("probability")} />
+              <Input type="number" min="0" max="100" className="bg-muted border-border h-9" value={form.probability} onChange={f("probability")} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label className="text-xs">Close Date</Label>
-              <Input type="date" className="bg-black/20 border-white/10 h-9" value={form.closeDate} onChange={f("closeDate")} />
+              <Input type="date" className="bg-muted border-border h-9" value={form.closeDate} onChange={f("closeDate")} />
             </div>
             <div className="space-y-1.5"><Label className="text-xs">Lead Source</Label>
               <select className={sc} value={form.leadSource} onChange={f("leadSource")}>
@@ -909,17 +909,17 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
             </div>
           </div>
           <div className="space-y-1.5"><Label className="text-xs">Next Step</Label>
-            <Input className="bg-black/20 border-white/10 h-9" placeholder="e.g. Send proposal by Friday, Schedule demo with CTO" value={form.nextStep} onChange={f("nextStep")} />
+            <Input className="bg-muted border-border h-9" placeholder="e.g. Send proposal by Friday, Schedule demo with CTO" value={form.nextStep} onChange={f("nextStep")} />
           </div>
           <div className="space-y-1.5"><Label className="text-xs">Opty Team (comma-separated names)</Label>
-            <Input className="bg-black/20 border-white/10 h-9" placeholder="e.g. Sarah Johnson, Mike Chen" value={form.teamMembers} onChange={f("teamMembers")} />
+            <Input className="bg-muted border-border h-9" placeholder="e.g. Sarah Johnson, Mike Chen" value={form.teamMembers} onChange={f("teamMembers")} />
           </div>
           <div className="space-y-1.5"><Label className="text-xs">Description</Label>
-            <textarea className="w-full px-3 py-2 rounded-md bg-black/20 border border-white/10 text-white text-sm min-h-[80px] resize-none" value={form.description} onChange={f("description")} />
+            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-white text-sm min-h-[80px] resize-none" value={form.description} onChange={f("description")} />
           </div>
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground">
               {mutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

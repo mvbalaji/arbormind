@@ -22,12 +22,12 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 const STAGES = [
-  { id: "prospecting", label: "Prospecting", color: "border-blue-500/50 bg-blue-500/10 text-blue-400" },
-  { id: "qualification", label: "Qualification", color: "border-indigo-500/50 bg-indigo-500/10 text-indigo-400" },
-  { id: "proposal", label: "Proposal", color: "border-purple-500/50 bg-purple-500/10 text-purple-400" },
-  { id: "negotiation", label: "Negotiation", color: "border-orange-500/50 bg-orange-500/10 text-orange-400" },
-  { id: "closed_won", label: "Closed Won", color: "border-green-500/50 bg-green-500/10 text-green-400" },
-  { id: "closed_lost", label: "Closed Lost", color: "border-red-500/50 bg-red-500/10 text-red-400" },
+  { id: "prospecting", label: "Prospecting", color: "border-blue-500/50 bg-blue-50 text-blue-700" },
+  { id: "qualification", label: "Qualification", color: "border-indigo-500/50 bg-indigo-50 text-indigo-700" },
+  { id: "proposal", label: "Proposal", color: "border-purple-500/50 bg-purple-50 text-purple-700" },
+  { id: "negotiation", label: "Negotiation", color: "border-orange-500/50 bg-orange-50 text-orange-700" },
+  { id: "closed_won", label: "Closed Won", color: "border-green-500/50 bg-green-50 text-green-700" },
+  { id: "closed_lost", label: "Closed Lost", color: "border-red-500/50 bg-red-50 text-red-700" },
 ];
 
 const VALID_STAGES = new Set(STAGES.map((s) => s.id));
@@ -98,7 +98,7 @@ export default function Opportunities() {
       <div className="flex flex-col h-[calc(100vh-8rem)]">
         <div className="flex justify-between items-center mb-6 shrink-0">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Pipeline</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Pipeline</h1>
             <p className="text-muted-foreground mt-1 text-sm">Drag and drop deals across stages.</p>
           </div>
           <Button
@@ -124,12 +124,12 @@ export default function Opportunities() {
                   const totalValue = items.reduce((sum, item) => sum + (item.amount ?? 0), 0);
 
                   return (
-                    <div key={stage.id} className="w-[320px] shrink-0 flex flex-col h-full bg-card/30 rounded-2xl border border-white/5 overflow-hidden">
-                      <div className="p-4 border-b border-white/5 bg-black/20 flex justify-between items-center shrink-0">
+                    <div key={stage.id} className="w-[320px] shrink-0 flex flex-col h-full bg-card/30 rounded-2xl border border-border overflow-hidden">
+                      <div className="p-4 border-b border-border bg-muted flex justify-between items-center shrink-0">
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${stage.color.split(" ")[0].replace("border-", "bg-")}`} />
-                          <h3 className="font-semibold text-white">{stage.label}</h3>
-                          <span className="text-xs font-medium text-muted-foreground bg-white/5 px-2 py-0.5 rounded-full">
+                          <h3 className="font-semibold text-foreground">{stage.label}</h3>
+                          <span className="text-xs font-medium text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
                             {items.length}
                           </span>
                         </div>
@@ -143,7 +143,7 @@ export default function Opportunities() {
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`flex-1 p-3 overflow-y-auto custom-scrollbar flex flex-col gap-3 transition-colors ${snapshot.isDraggingOver ? "bg-white/5" : ""}`}
+                            className={`flex-1 p-3 overflow-y-auto custom-scrollbar flex flex-col gap-3 transition-colors ${snapshot.isDraggingOver ? "bg-muted/50" : ""}`}
                           >
                             {items.map((opp, index) => (
                               <Draggable key={opp.id} draggableId={opp.id.toString()} index={index}>
@@ -155,7 +155,7 @@ export default function Opportunities() {
                                     className={`bg-card rounded-xl p-4 border transition-all ${
                                       snapshot.isDragging
                                         ? "border-primary shadow-xl shadow-primary/20 scale-105 z-50"
-                                        : "border-white/10 hover:border-white/20 hover:shadow-lg"
+                                        : "border-border hover:border-white/20 hover:shadow-lg"
                                     }`}
                                   >
                                     <Link href={`/opportunities/${opp.id}`}>
@@ -167,7 +167,7 @@ export default function Opportunities() {
                                     <div className="text-xs text-muted-foreground mb-3">
                                       {opp.accountName ?? "No Account"}
                                     </div>
-                                    <div className="flex justify-between items-center mt-auto pt-3 border-t border-white/5">
+                                    <div className="flex justify-between items-center mt-auto pt-3 border-t border-border">
                                       <div className="flex items-center text-primary font-semibold text-sm">
                                         <DollarSign className="w-3.5 h-3.5 mr-0.5" />
                                         {opp.amount?.toLocaleString() ?? "0"}
@@ -243,18 +243,18 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     });
   };
 
-  const selectClass = "w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm";
+  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[540px]">
+      <DialogContent className="bg-card border-border text-white sm:max-w-[540px]">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">New Deal</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
             <Label>Deal Name *</Label>
-            <Input required className="bg-black/20 border-white/10" value={form.name} onChange={f("name")} placeholder="e.g. Acme Corp — Enterprise Tier" />
+            <Input required className="bg-muted border-border" value={form.name} onChange={f("name")} placeholder="e.g. Acme Corp — Enterprise Tier" />
           </div>
 
           <div className="space-y-2">
@@ -276,18 +276,18 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
             </div>
             <div className="space-y-2">
               <Label>Probability (%)</Label>
-              <Input type="number" min="0" max="100" className="bg-black/20 border-white/10" value={form.probability} onChange={f("probability")} />
+              <Input type="number" min="0" max="100" className="bg-muted border-border" value={form.probability} onChange={f("probability")} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Amount ($)</Label>
-              <Input type="number" min="0" className="bg-black/20 border-white/10" value={form.amount} onChange={f("amount")} placeholder="0" />
+              <Input type="number" min="0" className="bg-muted border-border" value={form.amount} onChange={f("amount")} placeholder="0" />
             </div>
             <div className="space-y-2">
               <Label>Close Date</Label>
-              <Input type="date" className="bg-black/20 border-white/10" value={form.closeDate} onChange={f("closeDate")} />
+              <Input type="date" className="bg-muted border-border" value={form.closeDate} onChange={f("closeDate")} />
             </div>
           </div>
 
@@ -304,7 +304,7 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
           <div className="space-y-2">
             <Label>Notes</Label>
             <textarea
-              className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm resize-none h-16"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm resize-none h-16"
               value={form.description}
               onChange={f("description")}
               placeholder="Deal context, next steps..."
@@ -312,8 +312,8 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={createMutation.isPending} className="bg-gradient-to-r from-primary to-accent text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={createMutation.isPending} className="bg-gradient-to-r from-primary to-accent text-foreground">
               {createMutation.isPending ? "Creating..." : "Create Deal"}
             </Button>
           </DialogFooter>

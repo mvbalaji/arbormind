@@ -14,7 +14,7 @@ const ENTITIES = [
   {
     id: "leads",
     label: "Leads",
-    color: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    color: "bg-blue-50 text-blue-700 border-blue-200",
     required: ["firstName", "lastName"],
     columns: ["firstName", "lastName", "email", "phone", "company", "title", "status", "source", "industry", "description"],
     sample: [
@@ -25,7 +25,7 @@ const ENTITIES = [
   {
     id: "contacts",
     label: "Contacts",
-    color: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    color: "bg-purple-50 text-purple-700 border-purple-200",
     required: ["firstName", "lastName"],
     columns: ["firstName", "lastName", "email", "phone", "mobile", "title", "department", "leadSource", "city", "country", "description"],
     sample: [
@@ -35,7 +35,7 @@ const ENTITIES = [
   {
     id: "accounts",
     label: "Accounts",
-    color: "bg-green-500/10 text-green-400 border-green-500/20",
+    color: "bg-green-50 text-green-700 border-green-200",
     required: ["name"],
     columns: ["name", "industry", "website", "phone", "email", "city", "country", "employees", "annualRevenue", "description"],
     sample: [
@@ -45,7 +45,7 @@ const ENTITIES = [
   {
     id: "opportunities",
     label: "Opportunities",
-    color: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    color: "bg-orange-50 text-orange-700 border-orange-200",
     required: ["name"],
     columns: ["name", "stage", "amount", "probability", "closeDate", "leadSource", "nextStep", "forecastCategory", "description"],
     sample: [
@@ -55,7 +55,7 @@ const ENTITIES = [
   {
     id: "campaigns",
     label: "Campaigns",
-    color: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+    color: "bg-rose-500/10 text-rose-600 border-rose-500/20",
     required: ["name"],
     columns: ["name", "type", "status", "startDate", "endDate", "budget", "expectedRevenue", "description", "goals", "channels"],
     sample: [
@@ -168,7 +168,7 @@ export function DataImport() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-white">Data Import</h2>
+          <h2 className="text-lg font-semibold text-foreground">Data Import</h2>
           <p className="text-sm text-muted-foreground mt-0.5">Upload Excel (.xlsx) or CSV files to bulk-import records into any CRM entity.</p>
         </div>
       </div>
@@ -185,7 +185,7 @@ export function DataImport() {
                 "flex flex-col items-center gap-1.5 p-3 rounded-xl border text-sm font-medium transition-all",
                 selectedEntity.id === e.id
                   ? cn("border-2", e.color)
-                  : "border-white/10 text-muted-foreground hover:border-white/20 hover:text-white bg-white/5"
+                  : "border-border text-muted-foreground hover:border-white/20 hover:text-white bg-muted/50"
               )}
             >
               <FileSpreadsheet className="w-4 h-4" />
@@ -196,23 +196,23 @@ export function DataImport() {
       </div>
 
       {/* Required fields info */}
-      <Card className="glass-panel border-white/5 p-4">
+      <Card className="glass-panel border-border p-4">
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex-1 min-w-0">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Supported Columns for <span className="text-white">{entity.label}</span></p>
             <div className="flex flex-wrap gap-1.5">
               {entity.columns.map((col) => (
-                <Badge key={col} variant="outline" className={cn("text-xs", entity.required.includes(col) ? entity.color : "border-white/10 text-muted-foreground")}>
+                <Badge key={col} variant="outline" className={cn("text-xs", entity.required.includes(col) ? entity.color : "border-border text-muted-foreground")}>
                   {col}
-                  {entity.required.includes(col) && <span className="ml-0.5 text-red-400">*</span>}
+                  {entity.required.includes(col) && <span className="ml-0.5 text-red-600">*</span>}
                 </Badge>
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              <span className="text-red-400">*</span> Required fields. Column headers in your file can be camelCase, snake_case, or "Title Case".
+              <span className="text-red-600">*</span> Required fields. Column headers in your file can be camelCase, snake_case, or "Title Case".
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={downloadTemplate} className="border-white/10 gap-1.5 shrink-0">
+          <Button size="sm" variant="outline" onClick={downloadTemplate} className="border-border gap-1.5 shrink-0">
             <Download className="w-3.5 h-3.5" /> Download Template
           </Button>
         </div>
@@ -225,7 +225,7 @@ export function DataImport() {
           <div
             className={cn(
               "relative rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-3 py-16",
-              isDragging ? "border-primary bg-primary/5" : "border-white/10 hover:border-white/20 hover:bg-white/5"
+              isDragging ? "border-primary bg-primary/5" : "border-border hover:border-white/20 hover:bg-muted/50"
             )}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
@@ -239,7 +239,7 @@ export function DataImport() {
               className="hidden"
               onChange={handleFileChange}
             />
-            <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center transition-colors", isDragging ? "bg-primary/20" : "bg-white/5")}>
+            <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center transition-colors", isDragging ? "bg-primary/20" : "bg-muted/50")}>
               <Upload className={cn("w-7 h-7 transition-colors", isDragging ? "text-primary" : "text-muted-foreground")} />
             </div>
             <div className="text-center">
@@ -248,7 +248,7 @@ export function DataImport() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 border border-border">
             <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
               {fileName?.endsWith(".csv") ? <FileText className="w-5 h-5 text-primary" /> : <FileSpreadsheet className="w-5 h-5 text-primary" />}
             </div>
@@ -256,7 +256,7 @@ export function DataImport() {
               <p className="text-sm font-medium text-white truncate">{fileName}</p>
               <p className="text-xs text-muted-foreground">{rows.length.toLocaleString()} rows · {headers.length} columns detected</p>
             </div>
-            <Button size="sm" variant="ghost" onClick={reset} className="text-muted-foreground hover:text-red-400 h-8 px-2">
+            <Button size="sm" variant="ghost" onClick={reset} className="text-muted-foreground hover:text-red-600 h-8 px-2">
               <X className="w-4 h-4" />
             </Button>
           </div>
@@ -267,9 +267,9 @@ export function DataImport() {
       {error && (
         <Card className="border-red-500/30 bg-red-500/5 p-4">
           <div className="flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-medium text-red-400">Import Error</p>
+              <p className="text-sm font-medium text-red-600">Import Error</p>
               <p className="text-xs text-red-300/80 mt-0.5">{error}</p>
             </div>
           </div>
@@ -280,15 +280,15 @@ export function DataImport() {
       {result && (
         <Card className="border-green-500/30 bg-green-500/5 p-5">
           <div className="flex items-center gap-3 mb-3">
-            <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
-            <p className="text-sm font-semibold text-green-400">Import Successful</p>
+            <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+            <p className="text-sm font-semibold text-green-600">Import Successful</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="text-center p-3 bg-green-500/10 rounded-xl">
-              <p className="text-2xl font-bold text-green-400">{result.inserted}</p>
+              <p className="text-2xl font-bold text-green-600">{result.inserted}</p>
               <p className="text-xs text-muted-foreground">Records Inserted</p>
             </div>
-            <div className="text-center p-3 bg-white/5 rounded-xl">
+            <div className="text-center p-3 bg-muted/50 rounded-xl">
               <p className="text-2xl font-bold text-muted-foreground">{result.skipped}</p>
               <p className="text-xs text-muted-foreground">Rows Skipped</p>
             </div>
@@ -298,7 +298,7 @@ export function DataImport() {
               Skipped rows (missing required fields): {result.skippedRows.slice(0, 10).join(", ")}{result.skippedRows.length > 10 ? ` +${result.skippedRows.length - 10} more` : ""}
             </p>
           )}
-          <Button size="sm" variant="outline" onClick={reset} className="mt-3 border-white/10 gap-1.5">
+          <Button size="sm" variant="outline" onClick={reset} className="mt-3 border-border gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> Import Another File
           </Button>
         </Card>
@@ -313,7 +313,7 @@ export function DataImport() {
               size="sm"
               onClick={handleImport}
               disabled={importing}
-              className="gap-1.5 bg-primary hover:bg-primary/90 text-white"
+              className="gap-1.5 bg-primary hover:bg-primary/90 text-foreground"
             >
               {importing ? (
                 <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Importing...</>
@@ -323,30 +323,30 @@ export function DataImport() {
             </Button>
           </div>
 
-          <Card className="glass-panel border-white/5 overflow-hidden">
+          <Card className="glass-panel border-border overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
-                <thead className="bg-black/20 border-b border-white/5">
+                <thead className="bg-muted border-b border-border">
                   <tr>
                     <th className="px-3 py-2.5 text-left text-muted-foreground font-medium">#</th>
                     {headers.map((h) => (
                       <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">
                         <div className="flex items-center gap-1">
                           <span className={cn(entity.columns.includes(h) ? "text-white" : "text-muted-foreground")}>{h}</span>
-                          {entity.required.includes(h) && <span className="text-red-400">*</span>}
+                          {entity.required.includes(h) && <span className="text-red-600">*</span>}
                           {entity.columns.includes(h) ? (
-                            <CheckCircle2 className="w-3 h-3 text-green-400 ml-0.5" />
+                            <CheckCircle2 className="w-3 h-3 text-green-600 ml-0.5" />
                           ) : (
-                            <AlertCircle className="w-3 h-3 text-yellow-400 ml-0.5" />
+                            <AlertCircle className="w-3 h-3 text-yellow-600 ml-0.5" />
                           )}
                         </div>
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-border">
                   {rows.slice(0, PREVIEW_ROWS).map((row, i) => (
-                    <tr key={i} className="hover:bg-white/5 transition-colors">
+                    <tr key={i} className="hover:bg-muted/50 transition-colors">
                       <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                       {headers.map((h) => (
                         <td key={h} className="px-3 py-2 text-muted-foreground max-w-[160px] truncate">
@@ -359,7 +359,7 @@ export function DataImport() {
               </table>
             </div>
             {rows.length > PREVIEW_ROWS && (
-              <div className="p-3 text-center text-xs text-muted-foreground border-t border-white/5">
+              <div className="p-3 text-center text-xs text-muted-foreground border-t border-border">
                 +{rows.length - PREVIEW_ROWS} more rows not shown in preview
               </div>
             )}
@@ -368,8 +368,8 @@ export function DataImport() {
           {/* Column mapping info */}
           {headers.some((h) => !entity.columns.includes(h)) && (
             <div className="mt-2 flex items-start gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5 text-yellow-400 mt-0.5 shrink-0" />
-              <p className="text-xs text-yellow-400/80">
+              <AlertCircle className="w-3.5 h-3.5 text-yellow-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-yellow-600/80">
                 Columns marked <AlertCircle className="inline w-3 h-3" /> are not recognized for {entity.label} and will be ignored during import.
                 Recognized: {entity.columns.join(", ")}.
               </p>
@@ -380,7 +380,7 @@ export function DataImport() {
 
       {/* How it works */}
       {!rows.length && !result && (
-        <Card className="glass-panel border-white/5 p-5">
+        <Card className="glass-panel border-border p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-4">How It Works</p>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             {[
@@ -394,7 +394,7 @@ export function DataImport() {
                   {s.step}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white">{s.title}</p>
+                  <p className="text-sm font-medium text-foreground">{s.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{s.desc}</p>
                 </div>
               </div>

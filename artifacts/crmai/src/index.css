@@ -60,68 +60,63 @@
   --font-sans: 'Inter', sans-serif;
   --font-display: 'Outfit', sans-serif;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
 :root {
-  /* DARK ENTERPRISE THEME DEFAULT */
-  --background: 224 71% 4%;
-  --foreground: 213 31% 91%;
-  
-  --card: 222 47% 11%;
-  --card-foreground: 213 31% 91%;
-  --card-border: 216 34% 17%;
-  
-  --popover: 224 71% 4%;
-  --popover-foreground: 215 20.2% 65.1%;
-  --popover-border: 216 34% 17%;
-  
-  --primary: 217 91% 60%;
-  --primary-foreground: 0 0% 100%;
-  
-  --secondary: 222 47% 15%;
-  --secondary-foreground: 210 40% 98%;
-  
-  --muted: 223 47% 15%;
-  --muted-foreground: 215 20.2% 65.1%;
-  
-  --accent: 262 83% 58%;
-  --accent-foreground: 210 40% 98%;
-  
-  --destructive: 0 63% 31%;
-  --destructive-foreground: 210 40% 98%;
-  
-  --border: 216 34% 17%;
-  --input: 216 34% 17%;
-  --ring: 217 91% 60%;
-  
-  --sidebar: 224 71% 4%;
-  --sidebar-foreground: 213 31% 91%;
-  --sidebar-border: 216 34% 17%;
-  --sidebar-primary: 217 91% 60%;
+  /* SALESFORCE-INSPIRED LIGHT CRM THEME */
+  --background: 214 32% 96%;       /* #f4f6f9 light blue-gray page bg */
+  --foreground: 222 47% 11%;       /* #0f172a dark text */
+
+  --card: 0 0% 100%;               /* #ffffff white cards */
+  --card-foreground: 222 47% 11%;
+  --card-border: 213 25% 90%;      /* #dde3ed */
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 213 25% 88%;
+
+  --primary: 207 97% 42%;          /* #0176d3 Salesforce blue */
+  --primary-foreground: 0 0% 100%; /* white text on blue */
+
+  --secondary: 213 25% 94%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 213 25% 94%;            /* #edf1f7 */
+  --muted-foreground: 215 16% 47%; /* #64748b gray text */
+
+  --accent: 207 97% 95%;           /* very light blue */
+  --accent-foreground: 207 97% 35%;
+
+  --destructive: 0 84% 55%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 213 25% 88%;           /* #dde5f0 */
+  --input: 213 25% 88%;
+  --ring: 207 97% 42%;
+
+  /* DARK NAV SIDEBAR — matches Salesforce dark sidebar */
+  --sidebar: 213 91% 19%;          /* #032d60 Salesforce dark navy */
+  --sidebar-foreground: 213 25% 88%;
+  --sidebar-border: 213 60% 24%;
+  --sidebar-primary: 207 97% 65%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 222 47% 11%;
-  --sidebar-accent-foreground: 213 31% 91%;
-  --sidebar-ring: 217 91% 60%;
+  --sidebar-accent: 213 60% 25%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-ring: 207 97% 65%;
 
-  --chart-1: 217 91% 60%;
+  --chart-1: 207 97% 42%;
   --chart-2: 262 83% 58%;
-  --chart-3: 142 71% 45%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 0 84% 60%;
+  --chart-3: 142 71% 38%;
+  --chart-4: 43 74% 56%;
+  --chart-5: 0 84% 55%;
 
-  --radius: 0.75rem;
+  --radius: 0.375rem;
 
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-  --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 @layer base {
@@ -129,50 +124,87 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased selection:bg-primary/30;
+    @apply bg-background text-foreground font-sans antialiased;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
-    @apply tracking-tight;
+    @apply tracking-tight text-foreground;
   }
-  
-  /* Custom scrollbar for dark theme */
+
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
     background: hsl(var(--border));
-    border-radius: 4px;
+    border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 }
 
+/* Card panel — clean white card with subtle shadow */
 .glass-panel {
-  @apply bg-card/80 backdrop-blur-xl border border-white/5 shadow-2xl shadow-black/50;
+  @apply bg-card border border-border shadow-sm;
+}
+
+/* CRM page header bar */
+.crm-page-header {
+  @apply flex items-center justify-between mb-4 pb-3 border-b border-border;
+}
+
+/* Salesforce-style field label */
+.field-label {
+  @apply text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1;
+}
+
+/* Status pipeline steps */
+.pipeline-step {
+  @apply flex-1 flex flex-col items-center gap-1 cursor-pointer relative;
+}
+.pipeline-step::after {
+  content: '';
+  position: absolute;
+  top: 11px;
+  right: -50%;
+  width: 100%;
+  height: 2px;
+  background: hsl(var(--border));
+  z-index: 0;
+}
+.pipeline-step:last-child::after {
+  display: none;
+}
+.pipeline-step.active .step-dot {
+  @apply bg-primary border-primary;
+}
+.pipeline-step.completed .step-dot {
+  @apply bg-primary/20 border-primary/50;
+}
+.step-dot {
+  @apply w-5 h-5 rounded-full border-2 border-border bg-background z-10 relative;
+}
+
+/* Action button row */
+.action-btn {
+  @apply h-8 px-3 text-xs font-medium border border-border bg-card hover:bg-muted rounded transition-colors text-foreground;
+}
+
+/* Breadcrumb */
+.crm-breadcrumb {
+  @apply flex items-center gap-1.5 text-xs text-muted-foreground mb-4;
+}
+.crm-breadcrumb a {
+  @apply hover:text-primary transition-colors;
 }
 
 .ai-gradient-text {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-pink-500;
-}
-
-.ai-gradient-border {
-  position: relative;
-}
-.ai-gradient-border::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--accent)));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+  background: linear-gradient(to right, hsl(var(--primary)), #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

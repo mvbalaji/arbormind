@@ -42,11 +42,11 @@ interface Campaign {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  planning: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-  active: "text-green-400 bg-green-500/10 border-green-500/20",
-  paused: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
-  completed: "text-gray-400 bg-gray-500/10 border-gray-500/20",
-  cancelled: "text-red-400 bg-red-500/10 border-red-500/20",
+  planning: "text-blue-600 bg-blue-500/10 border-blue-200",
+  active: "text-green-600 bg-green-500/10 border-green-200",
+  paused: "text-yellow-600 bg-yellow-500/10 border-yellow-200",
+  completed: "text-gray-400 bg-gray-500/10 border-gray-200",
+  cancelled: "text-red-600 bg-red-500/10 border-red-200",
 };
 
 const TYPE_ICON: Record<string, React.ElementType> = {
@@ -241,17 +241,17 @@ export default function CampaignDetail() {
           </Link>
 
           {/* Header Card */}
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardContent className="p-5">
               <div className="flex flex-col sm:flex-row items-start gap-5">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500/30 to-rose-500/30 border border-white/10 flex items-center justify-center shrink-0">
-                  <TypeIcon className="w-7 h-7 text-orange-400" />
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500/30 to-rose-500/30 border border-border flex items-center justify-center shrink-0">
+                  <TypeIcon className="w-7 h-7 text-orange-600" />
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h1 className="text-2xl font-bold text-white">{campaign.name}</h1>
+                      <h1 className="text-2xl font-bold text-foreground">{campaign.name}</h1>
                       <p className="text-muted-foreground text-sm mt-0.5 capitalize">{campaign.type} Campaign</p>
                       {campaign.goals && (
                         <p className="text-xs text-primary/80 mt-1 flex items-center gap-1">
@@ -271,7 +271,7 @@ export default function CampaignDetail() {
                       {" → "}
                       {campaign.endDate ? format(new Date(campaign.endDate), "MMM d, yyyy") : "TBD"}
                       {daysRemaining != null && (
-                        <span className={cn("ml-2 text-xs font-medium", daysRemaining < 7 ? "text-rose-400" : daysRemaining < 30 ? "text-yellow-400" : "text-muted-foreground")}>
+                        <span className={cn("ml-2 text-xs font-medium", daysRemaining < 7 ? "text-rose-600" : daysRemaining < 30 ? "text-yellow-600" : "text-muted-foreground")}>
                           {daysRemaining > 0 ? `${daysRemaining}d remaining` : "Ended"}
                         </span>
                       )}
@@ -281,32 +281,32 @@ export default function CampaignDetail() {
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-2 mt-4">
                     {campaign.status === "planning" && (
-                      <Button size="sm" className="gap-1.5 bg-green-600 hover:bg-green-700 text-white" onClick={() => statusMutation.mutate("active")}>
+                      <Button size="sm" className="gap-1.5 bg-green-600 hover:bg-green-700 text-foreground" onClick={() => statusMutation.mutate("active")}>
                         <Play className="w-3.5 h-3.5" /> Launch Campaign
                       </Button>
                     )}
                     {campaign.status === "active" && (
-                      <Button size="sm" variant="outline" className="gap-1.5 border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10" onClick={() => statusMutation.mutate("paused")}>
+                      <Button size="sm" variant="outline" className="gap-1.5 border-yellow-500/50 text-yellow-600 hover:bg-yellow-500/10" onClick={() => statusMutation.mutate("paused")}>
                         <Pause className="w-3.5 h-3.5" /> Pause
                       </Button>
                     )}
                     {campaign.status === "paused" && (
-                      <Button size="sm" className="gap-1.5 bg-green-600 hover:bg-green-700 text-white" onClick={() => statusMutation.mutate("active")}>
+                      <Button size="sm" className="gap-1.5 bg-green-600 hover:bg-green-700 text-foreground" onClick={() => statusMutation.mutate("active")}>
                         <Play className="w-3.5 h-3.5" /> Resume
                       </Button>
                     )}
                     {["active", "paused"].includes(campaign.status) && (
-                      <Button size="sm" variant="outline" className="gap-1.5 border-white/10 text-muted-foreground hover:text-white" onClick={() => statusMutation.mutate("completed")}>
+                      <Button size="sm" variant="outline" className="gap-1.5 border-border text-muted-foreground hover:text-white" onClick={() => statusMutation.mutate("completed")}>
                         <CheckCircle2 className="w-3.5 h-3.5" /> Mark Complete
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" className="gap-1.5 border-white/10" onClick={() => setIsEditOpen(true)}>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEditOpen(true)}>
                       <Pencil className="w-3.5 h-3.5" /> Edit
                     </Button>
-                    <Button size="sm" variant="outline" className="gap-1.5 border-white/10 text-muted-foreground hover:text-white" onClick={() => duplicateMutation.mutate()} disabled={duplicateMutation.isPending}>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-border text-muted-foreground hover:text-white" onClick={() => duplicateMutation.mutate()} disabled={duplicateMutation.isPending}>
                       <Copy className="w-3.5 h-3.5" /> Duplicate
                     </Button>
-                    <Button size="sm" variant="outline" className="gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/10" onClick={() => setIsDeleteOpen(true)}>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-red-500/30 text-red-600 hover:bg-red-500/10" onClick={() => setIsDeleteOpen(true)}>
                       <Trash2 className="w-3.5 h-3.5" /> Delete
                     </Button>
                   </div>
@@ -315,12 +315,12 @@ export default function CampaignDetail() {
 
               {/* Timeline Progress */}
               {progress != null && (
-                <div className="mt-5 pt-5 border-t border-white/5">
+                <div className="mt-5 pt-5 border-t border-border">
                   <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
                     <span>Campaign Timeline Progress</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
-                  <div className="w-full bg-white/5 rounded-full h-2">
+                  <div className="w-full bg-muted/50 rounded-full h-2">
                     <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${progress}%` }} />
                   </div>
                 </div>
@@ -331,36 +331,36 @@ export default function CampaignDetail() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card className="glass-panel border-white/5 p-4">
+          <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Budget</p>
-            <p className="text-xl font-bold text-white">{campaign.budget ? `$${campaign.budget.toLocaleString()}` : "—"}</p>
+            <p className="text-xl font-bold text-foreground">{campaign.budget ? `$${campaign.budget.toLocaleString()}` : "—"}</p>
             {spendProgress != null && (
               <div className="mt-2">
-                <div className="w-full bg-white/5 rounded-full h-1">
+                <div className="w-full bg-muted/50 rounded-full h-1">
                   <div className={cn("h-1 rounded-full", spendProgress > 90 ? "bg-rose-400" : "bg-emerald-400")} style={{ width: `${spendProgress}%` }} />
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{spendProgress.toFixed(0)}% spent</p>
               </div>
             )}
           </Card>
-          <Card className="glass-panel border-white/5 p-4">
+          <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Expected Revenue</p>
-            <p className="text-xl font-bold text-white">{campaign.expectedRevenue ? `$${campaign.expectedRevenue.toLocaleString()}` : "—"}</p>
+            <p className="text-xl font-bold text-foreground">{campaign.expectedRevenue ? `$${campaign.expectedRevenue.toLocaleString()}` : "—"}</p>
           </Card>
-          <Card className="glass-panel border-white/5 p-4">
+          <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Target className="w-3 h-3" /> ROI (Projected)</p>
-            <p className={cn("text-xl font-bold", roi && parseInt(roi) > 0 ? "text-emerald-400" : roi && parseInt(roi) < 0 ? "text-rose-400" : "text-white")}>
+            <p className={cn("text-xl font-bold", roi && parseInt(roi) > 0 ? "text-emerald-600" : roi && parseInt(roi) < 0 ? "text-rose-600" : "text-white")}>
               {roi ? `${roi}%` : "—"}
             </p>
           </Card>
-          <Card className="glass-panel border-white/5 p-4">
+          <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Actual Cost</p>
-            <p className="text-xl font-bold text-white">{campaign.actualCost ? `$${campaign.actualCost.toLocaleString()}` : "—"}</p>
+            <p className="text-xl font-bold text-foreground">{campaign.actualCost ? `$${campaign.actualCost.toLocaleString()}` : "—"}</p>
           </Card>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-0.5 border-b border-white/5 overflow-x-auto">
+        <div className="flex gap-0.5 border-b border-border overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -381,7 +381,7 @@ export default function CampaignDetail() {
             <AISummary entityType="campaign" entityData={campaign as unknown as Record<string, unknown>} />
 
             {/* Campaign Summary */}
-            <Card className="glass-panel border-white/5">
+            <Card className="glass-panel border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Tag className="w-4 h-4 text-primary" /> Campaign Information / Summary
@@ -399,12 +399,12 @@ export default function CampaignDetail() {
                   ].map(({ label, value, capitalize }) => (
                     <div key={label}>
                       <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
-                      <dd className={cn("text-sm text-white", capitalize && "capitalize")}>{value}</dd>
+                      <dd className={cn("text-sm text-foreground", capitalize && "capitalize")}>{value}</dd>
                     </div>
                   ))}
                 </dl>
                 {campaign.description && (
-                  <div className="mt-4 pt-4 border-t border-white/5">
+                  <div className="mt-4 pt-4 border-t border-border">
                     <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Description</dt>
                     <dd className="text-sm text-muted-foreground leading-relaxed">{campaign.description}</dd>
                   </div>
@@ -416,7 +416,7 @@ export default function CampaignDetail() {
 
         {/* Performance Tab */}
         {activeTab === "performance" && (
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold flex items-center gap-2">
                 <BarChart2 className="w-4 h-4 text-primary" /> Performance Metrics
@@ -428,14 +428,14 @@ export default function CampaignDetail() {
                 {MOCK_METRICS.map((m) => {
                   const MIcon = m.icon;
                   return (
-                    <div key={m.label} className="p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div key={m.label} className="p-3 rounded-xl bg-muted/50 border border-border">
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <MIcon className="w-3.5 h-3.5 text-muted-foreground" />
                         <p className="text-xs text-muted-foreground">{m.label}</p>
                       </div>
                       <div className="flex items-end gap-2">
-                        <p className="text-xl font-bold text-white">{m.value}</p>
-                        <p className={cn("text-xs pb-0.5", m.trend.startsWith("+") ? "text-emerald-400" : "text-rose-400")}>{m.trend}</p>
+                        <p className="text-xl font-bold text-foreground">{m.value}</p>
+                        <p className={cn("text-xs pb-0.5", m.trend.startsWith("+") ? "text-emerald-600" : "text-rose-600")}>{m.trend}</p>
                       </div>
                     </div>
                   );
@@ -443,7 +443,7 @@ export default function CampaignDetail() {
               </div>
 
               {/* Mini Bar Charts */}
-              <div className="mt-6 pt-5 border-t border-white/5">
+              <div className="mt-6 pt-5 border-t border-border">
                 <p className="text-sm font-medium text-muted-foreground mb-4">Weekly Trend — Leads Generated</p>
                 <div className="flex items-end gap-2 h-24">
                   {[12, 18, 14, 22, 19, 28, 24].map((v, i) => (
@@ -461,7 +461,7 @@ export default function CampaignDetail() {
         {/* Audience & Targeting Tab */}
         {activeTab === "audience" && (
           <div className="flex flex-col gap-4">
-            <Card className="glass-panel border-white/5">
+            <Card className="glass-panel border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" /> Audience & Targeting
@@ -486,9 +486,9 @@ export default function CampaignDetail() {
                       { label: "Job Level", value: "VP / Director" },
                       { label: "Region", value: "North America" },
                     ].map((d) => (
-                      <div key={d.label} className="p-3 rounded-xl bg-white/5 border border-white/5">
+                      <div key={d.label} className="p-3 rounded-xl bg-muted/50 border border-border">
                         <p className="text-xs text-muted-foreground mb-1">{d.label}</p>
-                        <p className="text-sm font-medium text-white">{d.value}</p>
+                        <p className="text-sm font-medium text-foreground">{d.value}</p>
                       </div>
                     ))}
                   </div>
@@ -511,7 +511,7 @@ export default function CampaignDetail() {
                 </div>
 
                 {/* Audience Size Estimate */}
-                <div className="pt-4 border-t border-white/5">
+                <div className="pt-4 border-t border-border">
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Estimated Reach</p>
                   <div className="grid grid-cols-3 gap-3">
                     {[
@@ -519,9 +519,9 @@ export default function CampaignDetail() {
                       { label: "Active Subscribers", value: "18,200" },
                       { label: "Lookalike Size", value: "95,000" },
                     ].map((r) => (
-                      <div key={r.label} className="p-3 rounded-xl bg-white/5 border border-white/5 text-center">
+                      <div key={r.label} className="p-3 rounded-xl bg-muted/50 border border-border text-center">
                         <p className="text-xs text-muted-foreground mb-1">{r.label}</p>
-                        <p className="text-xl font-bold text-white">{r.value}</p>
+                        <p className="text-xl font-bold text-foreground">{r.value}</p>
                       </div>
                     ))}
                   </div>
@@ -533,13 +533,13 @@ export default function CampaignDetail() {
 
         {/* Creatives / Assets Tab */}
         {activeTab === "creatives" && (
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Image className="w-4 h-4 text-primary" /> Creatives / Assets
                 </CardTitle>
-                <Button size="sm" variant="outline" className="border-white/10 text-xs gap-1.5">
+                <Button size="sm" variant="outline" className="border-border text-xs gap-1.5">
                   <Layers className="w-3.5 h-3.5" /> Upload Asset
                 </Button>
               </div>
@@ -549,18 +549,18 @@ export default function CampaignDetail() {
                 {MOCK_CREATIVES.map((asset, i) => {
                   const AIcon = CREATIVE_ICONS[asset.type] ?? FileText;
                   return (
-                    <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/8 transition-colors group">
+                    <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50 border border-border hover:bg-white/8 transition-colors group">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                         <AIcon className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white">{asset.name}</p>
+                        <p className="text-sm font-medium text-foreground">{asset.name}</p>
                         <p className="text-xs text-muted-foreground capitalize">{asset.type} · {asset.size}</p>
                       </div>
                       <Badge variant="outline" className={cn("text-xs capitalize", {
-                        "text-green-400 border-green-500/30": asset.status === "active",
-                        "text-yellow-400 border-yellow-500/30": asset.status === "review",
-                        "text-muted-foreground border-white/10": asset.status === "draft",
+                        "text-green-600 border-green-500/30": asset.status === "active",
+                        "text-yellow-600 border-yellow-500/30": asset.status === "review",
+                        "text-muted-foreground border-border": asset.status === "draft",
                       })}>
                         {asset.status}
                       </Badge>
@@ -572,11 +572,11 @@ export default function CampaignDetail() {
                 })}
               </div>
 
-              <div className="mt-4 pt-4 border-t border-white/5">
+              <div className="mt-4 pt-4 border-t border-border">
                 <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wide">Document Templates</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {["Proposal Template", "Quote Template", "Follow-up Email", "NDA Template", "Campaign Brief"].map((doc) => (
-                    <button key={doc} className="flex items-center gap-2 p-2.5 rounded-lg bg-white/5 border border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all text-left">
+                    <button key={doc} className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border border-border hover:border-primary/30 hover:bg-primary/5 transition-all text-left">
                       <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                       <span className="text-xs text-muted-foreground hover:text-white transition-colors">{doc}</span>
                     </button>
@@ -589,13 +589,13 @@ export default function CampaignDetail() {
 
         {/* Campaign Team Tab */}
         {activeTab === "team" && (
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" /> Campaign Team
                 </CardTitle>
-                <Button size="sm" variant="outline" className="border-white/10 text-xs gap-1.5">
+                <Button size="sm" variant="outline" className="border-border text-xs gap-1.5">
                   <UserCheck className="w-3.5 h-3.5" /> Add Member
                 </Button>
               </div>
@@ -612,12 +612,12 @@ export default function CampaignDetail() {
                   {teamList.map((member, i) => {
                     const initials = member.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
                     return (
-                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5">
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
                         <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-semibold text-primary">
                           {initials}
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-white">{member}</p>
+                          <p className="text-sm font-medium text-foreground">{member}</p>
                           <p className="text-xs text-muted-foreground">Campaign Team Member</p>
                         </div>
                       </div>
@@ -626,7 +626,7 @@ export default function CampaignDetail() {
                 </div>
               )}
 
-              <div className="mt-5 pt-5 border-t border-white/5">
+              <div className="mt-5 pt-5 border-t border-border">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Responsibilities</p>
                 <div className="space-y-2">
                   {[
@@ -635,8 +635,8 @@ export default function CampaignDetail() {
                     { role: "Design Lead", desc: "Visual assets and branding" },
                     { role: "Analytics Lead", desc: "Tracking, reporting, optimisation" },
                   ].map((r) => (
-                    <div key={r.role} className="flex items-center justify-between p-2.5 rounded-lg bg-white/5 border border-white/5">
-                      <p className="text-sm font-medium text-white">{r.role}</p>
+                    <div key={r.role} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50 border border-border">
+                      <p className="text-sm font-medium text-foreground">{r.role}</p>
                       <p className="text-xs text-muted-foreground">{r.desc}</p>
                     </div>
                   ))}
@@ -656,7 +656,7 @@ export default function CampaignDetail() {
 
         {/* Delete Confirm */}
         <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-          <AlertDialogContent className="bg-card border-white/10 text-white">
+          <AlertDialogContent className="bg-card border-border text-foreground">
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
               <AlertDialogDescription className="text-muted-foreground">
@@ -664,9 +664,9 @@ export default function CampaignDetail() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-white/10 text-white hover:bg-white/5">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="border-border text-foreground hover:bg-muted/50">Cancel</AlertDialogCancel>
               <AlertDialogAction
-                className="bg-destructive text-white hover:bg-destructive/90"
+                className="bg-destructive text-foreground hover:bg-destructive/90"
                 onClick={() => deleteMutation.mutate()}
               >
                 Delete
@@ -740,11 +740,11 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
 
   const f = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [field]: e.target.value });
-  const sc = "w-full h-9 px-3 rounded-md bg-black/20 border border-white/10 text-white text-sm";
+  const sc = "w-full h-9 px-3 rounded-md bg-muted border border-border text-white text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-white sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Edit Campaign</DialogTitle>
         </DialogHeader>
@@ -752,7 +752,7 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
           {/* Basic Info */}
           <div className="space-y-1.5">
             <Label className="text-xs">Campaign Name *</Label>
-            <Input required className="bg-black/20 border-white/10 h-9" value={form.name} onChange={f("name")} />
+            <Input required className="bg-muted border-border h-9" value={form.name} onChange={f("name")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label className="text-xs">Type</Label>
@@ -767,44 +767,44 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Start Date</Label><Input type="date" className="bg-black/20 border-white/10 h-9" value={form.startDate} onChange={f("startDate")} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">End Date</Label><Input type="date" className="bg-black/20 border-white/10 h-9" value={form.endDate} onChange={f("endDate")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Start Date</Label><Input type="date" className="bg-muted border-border h-9" value={form.startDate} onChange={f("startDate")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">End Date</Label><Input type="date" className="bg-muted border-border h-9" value={form.endDate} onChange={f("endDate")} /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Budget ($)</Label><Input type="number" className="bg-black/20 border-white/10 h-9" value={form.budget} onChange={f("budget")} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">Actual Cost ($)</Label><Input type="number" className="bg-black/20 border-white/10 h-9" value={form.actualCost} onChange={f("actualCost")} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">Expected Rev. ($)</Label><Input type="number" className="bg-black/20 border-white/10 h-9" value={form.expectedRevenue} onChange={f("expectedRevenue")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Budget ($)</Label><Input type="number" className="bg-muted border-border h-9" value={form.budget} onChange={f("budget")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Actual Cost ($)</Label><Input type="number" className="bg-muted border-border h-9" value={form.actualCost} onChange={f("actualCost")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Expected Rev. ($)</Label><Input type="number" className="bg-muted border-border h-9" value={form.expectedRevenue} onChange={f("expectedRevenue")} /></div>
           </div>
 
           {/* Goals */}
           <div className="space-y-1.5"><Label className="text-xs">Campaign Goals</Label>
-            <Input className="bg-black/20 border-white/10 h-9" placeholder="e.g. Generate 50 MQLs, increase brand awareness" value={form.goals} onChange={f("goals")} />
+            <Input className="bg-muted border-border h-9" placeholder="e.g. Generate 50 MQLs, increase brand awareness" value={form.goals} onChange={f("goals")} />
           </div>
 
           {/* Description */}
           <div className="space-y-1.5"><Label className="text-xs">Description</Label>
-            <textarea className="w-full px-3 py-2 rounded-md bg-black/20 border border-white/10 text-white text-sm min-h-[70px] resize-none" value={form.description} onChange={f("description")} />
+            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-white text-sm min-h-[70px] resize-none" value={form.description} onChange={f("description")} />
           </div>
 
           {/* Audience */}
           <div className="space-y-1.5"><Label className="text-xs">Target Audience</Label>
-            <textarea className="w-full px-3 py-2 rounded-md bg-black/20 border border-white/10 text-white text-sm min-h-[60px] resize-none"
+            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-white text-sm min-h-[60px] resize-none"
               placeholder="e.g. B2B decision-makers in SaaS companies, 50-500 employees" value={form.targetAudience} onChange={f("targetAudience")} />
           </div>
 
           {/* Channels */}
           <div className="space-y-1.5"><Label className="text-xs">Channels (comma-separated)</Label>
-            <Input className="bg-black/20 border-white/10 h-9" placeholder="e.g. Email, LinkedIn, Google Ads" value={form.channels} onChange={f("channels")} />
+            <Input className="bg-muted border-border h-9" placeholder="e.g. Email, LinkedIn, Google Ads" value={form.channels} onChange={f("channels")} />
           </div>
 
           {/* Team Members */}
           <div className="space-y-1.5"><Label className="text-xs">Campaign Team (comma-separated names)</Label>
-            <Input className="bg-black/20 border-white/10 h-9" placeholder="e.g. Sarah Johnson, Mike Chen, Lisa Park" value={form.teamMembers} onChange={f("teamMembers")} />
+            <Input className="bg-muted border-border h-9" placeholder="e.g. Sarah Johnson, Mike Chen, Lisa Park" value={form.teamMembers} onChange={f("teamMembers")} />
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground">
               {mutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

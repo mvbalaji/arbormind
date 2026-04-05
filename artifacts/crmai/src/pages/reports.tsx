@@ -16,12 +16,12 @@ export default function Reports() {
     <Layout>
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-3xl font-display font-bold text-white tracking-tight">Reports & Analytics</h1>
+          <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Reports & Analytics</h1>
           <p className="text-muted-foreground mt-1 text-sm">Deep dive into your sales performance.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardHeader>
               <CardTitle className="font-display font-semibold flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-primary" /> Pipeline Value by Stage
@@ -46,10 +46,10 @@ export default function Reports() {
             </CardContent>
           </Card>
 
-          <Card className="glass-panel border-white/5">
+          <Card className="glass-panel border-border">
             <CardHeader>
               <CardTitle className="font-display font-semibold flex items-center gap-2">
-                <PieChartIcon className="w-5 h-5 text-accent" /> Lead Sources
+                <PieChartIcon className="w-5 h-5 text-primary" /> Lead Sources
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -76,7 +76,7 @@ export default function Reports() {
             </CardContent>
           </Card>
 
-          <Card className="glass-panel border-white/5 lg:col-span-2">
+          <Card className="glass-panel border-border lg:col-span-2">
             <CardHeader>
               <CardTitle className="font-display font-semibold flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-chart-3" /> Revenue Forecast

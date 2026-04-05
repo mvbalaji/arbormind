@@ -24,17 +24,17 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  medium: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  high: "bg-orange-500/10 text-orange-400 border-orange-500/20",
-  critical: "bg-red-500/10 text-red-400 border-red-500/20",
+  low: "bg-blue-50 text-blue-700 border-blue-200",
+  medium: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  high: "bg-orange-50 text-orange-700 border-orange-200",
+  critical: "bg-red-50 text-red-700 border-red-200",
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  open: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  in_progress: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  resolved: "bg-green-500/10 text-green-400 border-green-500/20",
-  closed: "bg-gray-500/10 text-gray-400 border-gray-500/20",
+  open: "bg-blue-50 text-blue-700 border-blue-200",
+  in_progress: "bg-yellow-50 text-yellow-700 border-yellow-200",
+  resolved: "bg-green-50 text-green-700 border-green-200",
+  closed: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
 interface CaseFormData {
@@ -60,21 +60,21 @@ export default function Cases() {
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Support Cases</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Support Cases</h1>
             <p className="text-muted-foreground mt-1 text-sm">Manage customer issues and requests.</p>
           </div>
           <Button
             onClick={() => setIsCreateOpen(true)}
-            className="bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
+            className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
           >
             <Plus className="w-4 h-4 mr-2" /> New Case
           </Button>
         </div>
 
-        <Card className="glass-panel border-white/5">
+        <Card className="glass-panel border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-white/5 border-b border-white/5">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-medium">Case #</th>
                   <th className="px-6 py-4 font-medium">Subject</th>
@@ -84,17 +84,17 @@ export default function Cases() {
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.length === 0 ? (
                   <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">No cases found.</td></tr>
                 ) : (
                   data?.data?.map((c) => (
-                    <tr key={c.id} className="hover:bg-white/5 transition-colors group">
+                    <tr key={c.id} className="hover:bg-muted/50 transition-colors group">
                       <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{c.caseNumber}</td>
                       <td className="px-6 py-4">
-                        <div className="font-medium text-white">{c.subject}</div>
+                        <div className="font-medium text-foreground">{c.subject}</div>
                         <div className="text-xs text-muted-foreground mt-1">{c.contactName ?? c.accountName ?? "-"}</div>
                       </td>
                       <td className="px-6 py-4">
@@ -103,7 +103,7 @@ export default function Cases() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4">
-                        <Badge variant="outline" className={`capitalize ${STATUS_COLORS[c.status] ?? "bg-black/40 border-white/10 text-muted-foreground"}`}>
+                        <Badge variant="outline" className={`capitalize ${STATUS_COLORS[c.status] ?? "bg-muted border-border text-muted-foreground"}`}>
                           {c.status.replace("_", " ")}
                         </Badge>
                       </td>
@@ -117,7 +117,7 @@ export default function Cases() {
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-card border-white/10 text-white">
+                          <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
                             <DropdownMenuItem
                               onClick={() => setEditingCase({
                                 id: c.id,
@@ -127,11 +127,11 @@ export default function Cases() {
                                 status: c.status,
                                 type: c.type ?? "question",
                               })}
-                              className="cursor-pointer hover:bg-white/10"
+                              className="cursor-pointer hover:bg-muted"
                             >
                               <Pencil className="w-4 h-4 mr-2" /> Edit
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-white/10" />
+                            <DropdownMenuSeparator className="bg-muted" />
                             <DropdownMenuItem
                               onClick={() => setDeletingId(c.id)}
                               className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive"
@@ -158,7 +158,7 @@ export default function Cases() {
         initialData={editingCase ?? undefined}
       />
       <AlertDialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
-        <AlertDialogContent className="bg-card border-white/10 text-white">
+        <AlertDialogContent className="bg-card border-border text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Case?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
@@ -166,7 +166,7 @@ export default function Cases() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-border text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
             <DeleteCaseAction id={deletingId} onDone={() => setDeletingId(null)} />
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -192,7 +192,7 @@ function DeleteCaseAction({ id, onDone }: { id: number | null; onDone: () => voi
           onError: () => toast({ title: "Error", description: "Failed to delete case.", variant: "destructive" }),
         });
       }}
-      className="bg-destructive hover:bg-destructive/90 text-white"
+      className="bg-destructive hover:bg-destructive/90 text-foreground"
     >
       Delete
     </AlertDialogAction>
@@ -245,7 +245,7 @@ function CaseFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[500px]">
+      <DialogContent className="bg-card border-border text-white sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "New Support Case" : "Edit Case"}
@@ -254,12 +254,12 @@ function CaseFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
             <Label>Subject *</Label>
-            <Input required className="bg-black/20 border-white/10" value={formData.subject} onChange={f("subject")} />
+            <Input required className="bg-muted border-border" value={formData.subject} onChange={f("subject")} />
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Type</Label>
-              <select className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm" value={formData.type} onChange={f("type")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.type} onChange={f("type")}>
                 <option value="question">Question</option>
                 <option value="bug">Bug</option>
                 <option value="feature_request">Feature Request</option>
@@ -268,7 +268,7 @@ function CaseFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Priority</Label>
-              <select className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm" value={formData.priority} onChange={f("priority")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.priority} onChange={f("priority")}>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
@@ -277,7 +277,7 @@ function CaseFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <select className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm" value={formData.status} onChange={f("status")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.status} onChange={f("status")}>
                 <option value="open">Open</option>
                 <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
@@ -288,7 +288,7 @@ function CaseFormDialog({
           <div className="space-y-2">
             <Label>Description</Label>
             <textarea
-              className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm resize-none"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm resize-none"
               rows={4}
               value={formData.description}
               onChange={f("description")}
@@ -296,8 +296,8 @@ function CaseFormDialog({
             />
           </div>
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">
               {isPending ? "Saving..." : mode === "create" ? "Create Case" : "Save Changes"}
             </Button>
           </DialogFooter>

@@ -25,11 +25,11 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: "border-white/10 text-muted-foreground",
-  sent: "border-blue-500/30 text-blue-400 bg-blue-500/5",
-  accepted: "border-green-500/30 text-green-400 bg-green-500/5",
-  rejected: "border-red-500/30 text-red-400 bg-red-500/5",
-  expired: "border-orange-500/30 text-orange-400 bg-orange-500/5",
+  draft: "border-border text-muted-foreground",
+  sent: "border-blue-500/30 text-blue-600 bg-blue-500/5",
+  accepted: "border-green-500/30 text-green-600 bg-green-500/5",
+  rejected: "border-red-500/30 text-red-600 bg-red-500/5",
+  expired: "border-orange-500/30 text-orange-600 bg-orange-500/5",
 };
 
 interface QuoteItem {
@@ -142,7 +142,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-white max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Create Quote" : "Edit Quote"}</DialogTitle>
         </DialogHeader>
@@ -151,14 +151,14 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2 col-span-2">
               <Label htmlFor="q-name">Quote Name *</Label>
-              <Input id="q-name" required className="bg-black/20 border-white/10"
+              <Input id="q-name" required className="bg-muted border-border"
                 value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="q-status">Status</Label>
               <select
                 id="q-status"
-                className="w-full h-10 px-3 rounded-md bg-black/20 border border-white/10 text-white text-sm"
+                className="w-full h-10 px-3 rounded-md bg-muted border border-border text-white text-sm"
                 value={formData.status}
                 onChange={e => setFormData({ ...formData, status: e.target.value })}
               >
@@ -169,7 +169,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
             </div>
             <div className="space-y-2">
               <Label htmlFor="q-valid">Valid Until</Label>
-              <Input id="q-valid" type="date" className="bg-black/20 border-white/10"
+              <Input id="q-valid" type="date" className="bg-muted border-border"
                 value={formData.validUntil} onChange={e => setFormData({ ...formData, validUntil: e.target.value })} />
             </div>
           </div>
@@ -178,14 +178,14 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label className="text-sm font-semibold">Line Items</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-white/10 text-xs">
+              <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-border text-xs">
                 <Plus className="w-3 h-3 mr-1" /> Add Item
               </Button>
             </div>
 
             {formData.items.length === 0 ? (
               <div
-                className="border border-dashed border-white/10 rounded-lg p-6 text-center text-muted-foreground text-sm cursor-pointer hover:border-primary/30 transition-colors"
+                className="border border-dashed border-border rounded-lg p-6 text-center text-muted-foreground text-sm cursor-pointer hover:border-primary/30 transition-colors"
                 onClick={addItem}
               >
                 <Package className="w-6 h-6 mx-auto mb-2 opacity-40" />
@@ -202,10 +202,10 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                   <span className="col-span-1"></span>
                 </div>
                 {formData.items.map((item, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-white/5 rounded-lg p-2">
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-muted/50 rounded-lg p-2">
                     <div className="col-span-4">
                       <select
-                        className="w-full h-8 px-2 rounded-md bg-black/30 border border-white/10 text-white text-sm"
+                        className="w-full h-8 px-2 rounded-md bg-black/30 border border-border text-white text-sm"
                         value={item.productId ?? ""}
                         onChange={e => {
                           const val = e.target.value;
@@ -223,7 +223,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                       </select>
                       {!item.productId && (
                         <Input
-                          className="mt-1 h-7 text-xs bg-black/30 border-white/10"
+                          className="mt-1 h-7 text-xs bg-black/30 border-border"
                           placeholder="Product name..."
                           value={item.productName}
                           onChange={e => updateItem(idx, { productName: e.target.value })}
@@ -231,25 +231,25 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                       )}
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="1" className="h-8 bg-black/30 border-white/10 text-right text-sm"
+                      <Input type="number" min="1" className="h-8 bg-black/30 border-border text-right text-sm"
                         value={item.quantity}
                         onChange={e => updateItem(idx, { quantity: parseFloat(e.target.value) || 1 })} />
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="0" step="0.01" className="h-8 bg-black/30 border-white/10 text-right text-sm"
+                      <Input type="number" min="0" step="0.01" className="h-8 bg-black/30 border-border text-right text-sm"
                         value={item.unitPrice}
                         onChange={e => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="0" max="100" className="h-8 bg-black/30 border-white/10 text-right text-sm"
+                      <Input type="number" min="0" max="100" className="h-8 bg-black/30 border-border text-right text-sm"
                         value={item.discount}
                         onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                     </div>
-                    <div className="col-span-1 text-right text-sm font-medium text-white">
+                    <div className="col-span-1 text-right text-sm font-medium text-foreground">
                       ${lineTotal(item).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </div>
                     <div className="col-span-1 flex justify-end">
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600"
                         onClick={() => removeItem(idx)}>
                         <X className="w-3 h-3" />
                       </Button>
@@ -262,20 +262,20 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
 
           {/* Totals */}
           {formData.items.length > 0 && (
-            <div className="border border-white/5 rounded-lg p-4 space-y-2">
+            <div className="border border-border rounded-lg p-4 space-y-2">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Quote Discount %</Label>
-                  <Input type="number" min="0" max="100" className="h-8 bg-black/20 border-white/10 text-sm"
+                  <Input type="number" min="0" max="100" className="h-8 bg-muted border-border text-sm"
                     value={formData.discount} onChange={e => setFormData({ ...formData, discount: e.target.value })} />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Tax %</Label>
-                  <Input type="number" min="0" className="h-8 bg-black/20 border-white/10 text-sm"
+                  <Input type="number" min="0" className="h-8 bg-muted border-border text-sm"
                     value={formData.tax} onChange={e => setFormData({ ...formData, tax: e.target.value })} />
                 </div>
               </div>
-              <div className="border-t border-white/5 pt-2 mt-2 space-y-1 text-sm">
+              <div className="border-t border-border pt-2 mt-2 space-y-1 text-sm">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal</span><span>${subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                 </div>
@@ -291,7 +291,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                     <span>${taxAmt.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-white text-base border-t border-white/10 pt-1 mt-1">
+                <div className="flex justify-between font-bold text-white text-base border-t border-border pt-1 mt-1">
                   <span>Total</span>
                   <span>${total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                 </div>
@@ -301,14 +301,14 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
 
           <div className="space-y-2">
             <Label htmlFor="q-notes">Notes</Label>
-            <Input id="q-notes" className="bg-black/20 border-white/10"
+            <Input id="q-notes" className="bg-muted border-border"
               value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Internal notes or terms..." />
           </div>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">
               {isPending ? "Saving..." : mode === "create" ? "Create Quote" : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -345,18 +345,18 @@ export default function Quotes() {
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Quotes</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Quotes</h1>
             <p className="text-muted-foreground mt-1 text-sm">Manage pricing quotes sent to customers.</p>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20">
+          <Button onClick={() => setIsCreateOpen(true)} className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
             <Plus className="w-4 h-4 mr-2" /> Create Quote
           </Button>
         </div>
 
-        <Card className="glass-panel border-white/5">
+        <Card className="glass-panel border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-white/5 border-b border-white/5">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-medium">Quote</th>
                   <th className="px-6 py-4 font-medium">Opportunity</th>
@@ -366,7 +366,7 @@ export default function Quotes() {
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.length === 0 ? (
@@ -375,15 +375,15 @@ export default function Quotes() {
                     No quotes yet. Create your first quote.
                   </td></tr>
                 ) : data?.data?.map(q => (
-                  <tr key={q.id} className="hover:bg-white/5 transition-colors group">
+                  <tr key={q.id} className="hover:bg-muted/50 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-white">{q.name}</div>
+                      <div className="font-medium text-foreground">{q.name}</div>
                       <div className="text-xs text-muted-foreground mt-1 font-mono">{q.quoteNumber}</div>
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">
                       {q.opportunityName || "-"}
                     </td>
-                    <td className="px-6 py-4 text-right font-semibold text-white">
+                    <td className="px-6 py-4 text-right font-semibold text-foreground">
                       ${q.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-6 py-4">
@@ -401,7 +401,7 @@ export default function Quotes() {
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-card border-white/10 text-white">
+                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
                           <DropdownMenuItem
                             onClick={() => setEditingQuote({
                               id: q.id,
@@ -419,11 +419,11 @@ export default function Quotes() {
                                 discount: it.discount ?? 0,
                               })),
                             })}
-                            className="cursor-pointer hover:bg-white/10"
+                            className="cursor-pointer hover:bg-muted"
                           >
                             <Pencil className="w-4 h-4 mr-2" /> Edit
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-white/10" />
+                          <DropdownMenuSeparator className="bg-muted" />
                           <DropdownMenuItem
                             onClick={() => setDeletingId(q.id)}
                             className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive"
@@ -449,7 +449,7 @@ export default function Quotes() {
         initialData={editingQuote ?? undefined}
       />
       <AlertDialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
-        <AlertDialogContent className="bg-card border-white/10 text-white">
+        <AlertDialogContent className="bg-card border-border text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Quote?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
@@ -457,7 +457,7 @@ export default function Quotes() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-border hover:bg-muted/50">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/80">Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

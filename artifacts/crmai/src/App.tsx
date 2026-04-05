@@ -40,6 +40,7 @@ function CRMRoutes() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/dashboard" component={Dashboard} />
       <Route path="/contacts" component={Contacts} />
       <Route path="/contacts/:id" component={ContactDetail} />
       <Route path="/leads" component={Leads} />

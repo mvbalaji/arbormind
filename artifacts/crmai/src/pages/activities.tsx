@@ -28,10 +28,10 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  call: "text-blue-400 bg-blue-500/10",
-  email: "text-purple-400 bg-purple-500/10",
-  meeting: "text-orange-400 bg-orange-500/10",
-  task: "text-green-400 bg-green-500/10",
+  call: "text-blue-600 bg-blue-500/10",
+  email: "text-purple-600 bg-purple-500/10",
+  meeting: "text-orange-600 bg-orange-500/10",
+  task: "text-green-600 bg-green-500/10",
   note: "text-gray-400 bg-gray-500/10",
 };
 
@@ -56,16 +56,16 @@ function WeekCalendar({ activities }: { activities: Array<{ id: number; type: st
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => setWeekStart((d) => addDays(d, -7))}
-          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-white border border-border rounded-lg hover:border-white/20 transition-colors"
         >
           ← Prev
         </button>
-        <span className="text-sm font-medium text-white">
+        <span className="text-sm font-medium text-foreground">
           {format(days[0], "MMM d")} – {format(days[6], "MMM d, yyyy")}
         </span>
         <button
           onClick={() => setWeekStart((d) => addDays(d, 7))}
-          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-white border border-white/10 rounded-lg hover:border-white/20 transition-colors"
+          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-white border border-border rounded-lg hover:border-white/20 transition-colors"
         >
           Next →
         </button>
@@ -117,11 +117,11 @@ export default function Activities() {
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Activities</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Activities</h1>
             <p className="text-muted-foreground mt-1 text-sm">Calls, emails, meetings, and tasks.</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center border border-white/10 rounded-lg overflow-hidden">
+            <div className="flex items-center border border-border rounded-lg overflow-hidden">
               <button
                 onClick={() => setViewMode("list")}
                 className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-white"}`}
@@ -130,14 +130,14 @@ export default function Activities() {
               </button>
               <button
                 onClick={() => setViewMode("calendar")}
-                className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors border-l border-white/10 ${viewMode === "calendar" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-white"}`}
+                className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors border-l border-border ${viewMode === "calendar" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-white"}`}
               >
                 <Calendar className="w-4 h-4" /> Calendar
               </button>
             </div>
             <Button
               onClick={() => setIsCreateOpen(true)}
-              className="bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
+              className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
             >
               <Plus className="w-4 h-4 mr-2" /> Log Activity
             </Button>
@@ -145,7 +145,7 @@ export default function Activities() {
         </div>
 
         {viewMode === "calendar" && !isLoading && (
-          <Card className="glass-panel border-white/5 p-6">
+          <Card className="glass-panel border-border p-6">
             <WeekCalendar activities={(data?.data ?? []).map((a) => ({
               id: a.id,
               type: a.type,
@@ -158,10 +158,10 @@ export default function Activities() {
         )}
 
         {viewMode === "list" && (
-        <Card className="glass-panel border-white/5">
+        <Card className="glass-panel border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-white/5 border-b border-white/5">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-medium w-12"></th>
                   <th className="px-6 py-4 font-medium">Subject</th>
@@ -171,7 +171,7 @@ export default function Activities() {
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.length === 0 ? (
@@ -180,13 +180,13 @@ export default function Activities() {
                   data?.data?.map((act) => {
                     const Icon = TYPE_ICONS[act.type] ?? FileText;
                     return (
-                      <tr key={act.id} className="hover:bg-white/5 transition-colors group">
+                      <tr key={act.id} className="hover:bg-muted/50 transition-colors group">
                         <td className="px-6 py-4">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${TYPE_COLORS[act.type] ?? "text-gray-400 bg-gray-500/10"}`}>
                             <Icon className="w-4 h-4" />
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-medium text-white">{act.subject}</td>
+                        <td className="px-6 py-4 font-medium text-foreground">{act.subject}</td>
                         <td className="px-6 py-4 text-muted-foreground">
                           {act.contactName ?? act.accountName ?? "-"}
                         </td>
@@ -197,8 +197,8 @@ export default function Activities() {
                           <Badge
                             variant="outline"
                             className={act.status === "completed"
-                              ? "border-green-500/30 text-green-400 bg-green-500/10"
-                              : "border-white/10 text-muted-foreground"}
+                              ? "border-green-500/30 text-green-600 bg-green-500/10"
+                              : "border-border text-muted-foreground"}
                           >
                             {act.status}
                           </Badge>
@@ -210,7 +210,7 @@ export default function Activities() {
                                 <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-card border-white/10 text-white">
+                            <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
                               <DropdownMenuItem
                                 onClick={() => setEditingActivity({
                                   id: act.id,
@@ -220,11 +220,11 @@ export default function Activities() {
                                   status: act.status,
                                   description: act.description ?? "",
                                 })}
-                                className="cursor-pointer hover:bg-white/10"
+                                className="cursor-pointer hover:bg-muted"
                               >
                                 <Pencil className="w-4 h-4 mr-2" /> Edit
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-white/10" />
+                              <DropdownMenuSeparator className="bg-muted" />
                               <DropdownMenuItem
                                 onClick={() => setDeletingId(act.id)}
                                 className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive"
@@ -253,7 +253,7 @@ export default function Activities() {
         initialData={editingActivity ?? undefined}
       />
       <AlertDialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
-        <AlertDialogContent className="bg-card border-white/10 text-white">
+        <AlertDialogContent className="bg-card border-border text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Activity?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
@@ -261,7 +261,7 @@ export default function Activities() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-border text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
             <DeleteActivityAction id={deletingId} onDone={() => setDeletingId(null)} />
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -287,7 +287,7 @@ function DeleteActivityAction({ id, onDone }: { id: number | null; onDone: () =>
           onError: () => toast({ title: "Error", description: "Failed to delete.", variant: "destructive" }),
         });
       }}
-      className="bg-destructive hover:bg-destructive/90 text-white"
+      className="bg-destructive hover:bg-destructive/90 text-foreground"
     >
       Delete
     </AlertDialogAction>
@@ -342,7 +342,7 @@ function ActivityFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[500px]">
+      <DialogContent className="bg-card border-border text-white sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "Log Activity" : "Edit Activity"}
@@ -352,7 +352,7 @@ function ActivityFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Type</Label>
-              <select className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm" value={formData.type} onChange={f("type")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.type} onChange={f("type")}>
                 <option value="call">Call</option>
                 <option value="email">Email</option>
                 <option value="meeting">Meeting</option>
@@ -362,7 +362,7 @@ function ActivityFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <select className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm" value={formData.status} onChange={f("status")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.status} onChange={f("status")}>
                 <option value="planned">Planned</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
@@ -371,24 +371,24 @@ function ActivityFormDialog({
           </div>
           <div className="space-y-2">
             <Label>Subject *</Label>
-            <Input required className="bg-black/20 border-white/10" value={formData.subject} onChange={f("subject")} />
+            <Input required className="bg-muted border-border" value={formData.subject} onChange={f("subject")} />
           </div>
           <div className="space-y-2">
             <Label>Due Date / Time</Label>
-            <Input type="datetime-local" className="bg-black/20 border-white/10 text-white" value={formData.dueDate} onChange={f("dueDate")} />
+            <Input type="datetime-local" className="bg-muted border-border text-foreground" value={formData.dueDate} onChange={f("dueDate")} />
           </div>
           <div className="space-y-2">
             <Label>Description</Label>
             <textarea
-              className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm resize-none"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm resize-none"
               rows={3}
               value={formData.description}
               onChange={f("description")}
             />
           </div>
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">
               {isPending ? "Saving..." : mode === "create" ? "Log Activity" : "Save Changes"}
             </Button>
           </DialogFooter>

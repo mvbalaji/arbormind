@@ -112,9 +112,9 @@ export function AISummary({ entityType, entityData, isLoading }: AISummaryProps)
     return (
       <Card className="glass-panel border-primary/20 bg-primary/5">
         <CardContent className="p-4 space-y-2">
-          <Skeleton className="h-4 w-24 bg-white/10" />
-          <Skeleton className="h-3 w-full bg-white/10" />
-          <Skeleton className="h-3 w-4/5 bg-white/10" />
+          <Skeleton className="h-4 w-24 bg-muted" />
+          <Skeleton className="h-3 w-full bg-muted" />
+          <Skeleton className="h-3 w-4/5 bg-muted" />
         </CardContent>
       </Card>
     );

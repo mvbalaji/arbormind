@@ -7,7 +7,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -19,16 +18,33 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
-import { Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react";
+import {
+  Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink,
+  ChevronDown, Filter, Mail, UserCheck, Upload, ListFilter,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { EmailCompose } from "@/components/email-compose";
 
 const STATUS_COLORS: Record<string, string> = {
-  new: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  contacted: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  qualified: "bg-green-500/10 text-green-400 border-green-500/20",
-  unqualified: "bg-red-500/10 text-red-400 border-red-500/20",
-  converted: "bg-gray-500/10 text-gray-400 border-gray-500/20",
+  new: "bg-blue-50 text-blue-700 border-blue-200",
+  contacted: "bg-purple-50 text-purple-700 border-purple-200",
+  qualified: "bg-green-50 text-green-700 border-green-200",
+  unqualified: "bg-red-50 text-red-700 border-red-200",
+  converted: "bg-gray-100 text-gray-600 border-gray-200",
 };
+
+const SCORE_COLORS = (score: number) =>
+  score >= 80 ? "bg-green-100 text-green-700 border-green-200" :
+  score >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+  "bg-red-100 text-red-700 border-red-200";
+
+const VIEW_OPTIONS = [
+  { label: "All Open Leads", value: "" },
+  { label: "My Leads", value: "my" },
+  { label: "Recently Viewed", value: "recent" },
+  { label: "Converted Leads", value: "converted" },
+];
 
 interface LeadFormData {
   firstName: string;
@@ -49,94 +65,169 @@ const defaultFormData: LeadFormData = {
 
 export default function Leads() {
   const [search, setSearch] = useState("");
+  const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<{ id: number } & LeadFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [convertingId, setConvertingId] = useState<{ id: number; name: string } | null>(null);
-  const { data, isLoading } = useListLeads({ search, limit: 50 });
+  const [emailOpen, setEmailOpen] = useState(false);
+  const { data, isLoading } = useListLeads({ search, limit: 100 });
+
+  const leads = data?.data ?? [];
+  const total = leads.length;
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Leads</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Track and convert potential prospects.</p>
+      <div className="flex flex-col gap-0">
+        {/* Page Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold text-foreground">Leads</h1>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors border-b border-primary/40 pb-0.5">
+                  {activeView.label}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                {VIEW_OPTIONS.map((v) => (
+                  <DropdownMenuItem
+                    key={v.value}
+                    onClick={() => setActiveView(v)}
+                    className={`cursor-pointer text-sm ${activeView.value === v.value ? "text-primary font-medium" : ""}`}
+                  >
+                    {v.label}
+                    {v.value === "" && <span className="ml-auto text-xs text-muted-foreground">Pinned</span>}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-              <Input
-                placeholder="Search leads..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-card border-white/10"
-              />
-            </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
             <Button
-              onClick={() => setIsCreateOpen(true)}
-              className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              onClick={() => setEmailOpen(true)}
             >
-              <Plus className="w-4 h-4 mr-2" /> Add Lead
+              <Mail className="w-3.5 h-3.5" /> Send Email
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+            >
+              <UserCheck className="w-3.5 h-3.5" /> Change Owner
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-white shadow-sm"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <Plus className="w-3.5 h-3.5" /> New
             </Button>
           </div>
         </div>
 
-        <Card className="glass-panel border-white/5 overflow-hidden">
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-shrink-0">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
+            <Input
+              placeholder="Search leads..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-8 text-xs w-60 bg-card border-border"
+            />
+          </div>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+            <ListFilter className="w-3.5 h-3.5" /> Filters
+          </Button>
+          <div className="flex-1" />
+          <span className="text-xs text-muted-foreground">{total} item{total !== 1 ? "s" : ""}</span>
+        </div>
+
+        {/* Table */}
+        <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-black/20 border-b border-white/5">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Lead</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Company</th>
-                  <th className="px-6 py-4 font-medium text-center">Score</th>
-                  <th className="px-6 py-4 font-medium">Assigned To</th>
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Name</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Company</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Phone</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Email</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Lead Status</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">Score</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Created Date</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Owner</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
-                ) : data?.data?.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">No leads found.</td></tr>
+                  <tr>
+                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        Loading leads...
+                      </div>
+                    </td>
+                  </tr>
+                ) : leads.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-12 text-center">
+                      <div className="text-muted-foreground text-sm mb-3">No leads found.</div>
+                      <Button size="sm" onClick={() => setIsCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-white">
+                        <Plus className="w-3.5 h-3.5 mr-1.5" /> Create your first lead
+                      </Button>
+                    </td>
+                  </tr>
                 ) : (
-                  data?.data?.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-white/5 transition-colors group">
-                      <td className="px-6 py-4">
+                  leads.map((lead) => (
+                    <tr key={lead.id} className="hover:bg-muted/30 transition-colors group">
+                      <td className="px-4 py-2.5">
                         <Link href={`/leads/${lead.id}`}>
-                          <div className="font-medium text-white hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
+                          <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
                             {lead.firstName} {lead.lastName}
                             <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                           </div>
                         </Link>
-                        <div className="text-xs text-muted-foreground">{lead.email ?? lead.phone ?? "No contact info"}</div>
+                        {lead.isConverted && (
+                          <span className="text-xs text-muted-foreground italic">Converted</span>
+                        )}
                       </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className={`capitalize ${STATUS_COLORS[lead.status] ?? ""}`}>
+                      <td className="px-4 py-2.5 text-sm text-foreground">{lead.company ?? <span className="text-muted-foreground">—</span>}</td>
+                      <td className="px-4 py-2.5 text-sm text-foreground">{lead.phone ?? <span className="text-muted-foreground">—</span>}</td>
+                      <td className="px-4 py-2.5 text-sm text-foreground">{lead.email ?? <span className="text-muted-foreground">—</span>}</td>
+                      <td className="px-4 py-2.5">
+                        <Badge variant="outline" className={`text-xs capitalize font-medium border ${STATUS_COLORS[lead.status] ?? ""}`}>
                           {lead.status}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground">{lead.company ?? "-"}</td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-2.5 text-center">
                         {lead.score != null ? (
-                          <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full border font-bold text-xs ${
-                            lead.score >= 80 ? "border-green-500/50 text-green-400 bg-green-500/10" :
-                            lead.score >= 50 ? "border-yellow-500/50 text-yellow-400 bg-yellow-500/10" :
-                            "border-red-500/50 text-red-400 bg-red-500/10"
-                          }`}>
+                          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-xs font-bold ${SCORE_COLORS(lead.score)}`}>
                             {lead.score}
-                          </div>
-                        ) : "-"}
+                          </span>
+                        ) : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground">{lead.assignedToName ?? "Unassigned"}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                        {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                        {lead.assignedToName ?? <span className="italic">Unassigned</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           {!lead.isConverted && (
                             <Button
                               size="sm"
-                              variant="outline"
-                              className="border-primary/50 text-primary hover:bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-primary hover:bg-primary/5"
                               onClick={() => setConvertingId({ id: lead.id, name: `${lead.firstName} ${lead.lastName}` })}
                             >
                               <ArrowRightLeft className="w-3 h-3 mr-1" /> Convert
@@ -144,11 +235,11 @@ export default function Leads() {
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreHorizontal className="w-4 h-4" />
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                                <MoreHorizontal className="w-3.5 h-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-card border-white/10 text-white">
+                            <DropdownMenuContent align="end" className="w-40">
                               <DropdownMenuItem
                                 onClick={() => setEditingLead({
                                   id: lead.id,
@@ -162,16 +253,16 @@ export default function Leads() {
                                   assignedTo: (lead.assignedTo?.toString()) ?? "",
                                   score: (lead.score?.toString()) ?? "",
                                 })}
-                                className="cursor-pointer hover:bg-white/10"
+                                className="cursor-pointer text-sm"
                               >
-                                <Pencil className="w-4 h-4 mr-2" /> Edit
+                                <Pencil className="w-3.5 h-3.5 mr-2 text-muted-foreground" /> Edit
                               </DropdownMenuItem>
-                              <DropdownMenuSeparator className="bg-white/10" />
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => setDeletingId(lead.id)}
-                                className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive"
+                                className="cursor-pointer text-sm text-destructive focus:text-destructive"
                               >
-                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -183,7 +274,15 @@ export default function Leads() {
               </tbody>
             </table>
           </div>
-        </Card>
+
+          {/* Table Footer */}
+          {leads.length > 0 && (
+            <div className="px-4 py-2 border-t border-border bg-muted/20 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{total} record{total !== 1 ? "s" : ""}</span>
+              <span className="text-xs text-muted-foreground">Showing all {total} leads</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <LeadFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} mode="create" />
@@ -198,16 +297,21 @@ export default function Leads() {
         onOpenChange={(o) => { if (!o) setConvertingId(null); }}
         lead={convertingId ?? undefined}
       />
+      <EmailCompose
+        open={emailOpen}
+        onOpenChange={setEmailOpen}
+        defaultSubject="Reaching out from arbormind.in"
+      />
       <AlertDialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
-        <AlertDialogContent className="bg-card border-white/10 text-white">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Lead?</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
+            <AlertDialogDescription>
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <DeleteLeadAction id={deletingId} onDone={() => setDeletingId(null)} />
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -286,46 +390,69 @@ function LeadFormDialog({
   const f = (field: keyof LeadFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setFormData({ ...formData, [field]: e.target.value });
 
-  const selectClass = "w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm";
+  const selectClass = "w-full bg-card border border-border rounded-md px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[520px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">
-            {mode === "create" ? "Create Lead" : "Edit Lead"}
+      <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="border-b border-border pb-3">
+          <DialogTitle className="text-base font-semibold">
+            {mode === "create" ? "New Lead" : "Edit Lead"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>First Name *</Label>
-              <Input required className="bg-black/20 border-white/10" value={formData.firstName} onChange={f("firstName")} />
-            </div>
-            <div className="space-y-2">
-              <Label>Last Name *</Label>
-              <Input required className="bg-black/20 border-white/10" value={formData.lastName} onChange={f("lastName")} />
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4 py-3">
+          {/* About section */}
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 -mx-6 px-6 py-2 border-y border-border">
+            About
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Lead Status</Label>
+            <select className={selectClass} value={formData.status} onChange={f("status")}>
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="qualified">Qualified</option>
+              <option value="unqualified">Unqualified</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Email</Label>
-              <Input type="email" className="bg-black/20 border-white/10" value={formData.email} onChange={f("email")} />
+              <Label className="text-xs font-medium">First Name *</Label>
+              <Input required value={formData.firstName} onChange={f("firstName")} className="h-9 text-sm" />
             </div>
             <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input className="bg-black/20 border-white/10" value={formData.phone} onChange={f("phone")} />
+              <Label className="text-xs font-medium">Last Name *</Label>
+              <Input required value={formData.lastName} onChange={f("lastName")} className="h-9 text-sm" />
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Company</Label>
-            <Input className="bg-black/20 border-white/10" value={formData.company} onChange={f("company")} />
+            <Label className="text-xs font-medium">Company</Label>
+            <Input value={formData.company} onChange={f("company")} className="h-9 text-sm" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          {/* Contact section */}
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 -mx-6 px-6 py-2 border-y border-border mt-4">
+            Contact Information
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Source</Label>
+              <Label className="text-xs font-medium">Email</Label>
+              <Input type="email" value={formData.email} onChange={f("email")} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Phone</Label>
+              <Input value={formData.phone} onChange={f("phone")} className="h-9 text-sm" />
+            </div>
+          </div>
+
+          {/* Lead Details section */}
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 -mx-6 px-6 py-2 border-y border-border mt-4">
+            Lead Details
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Source</Label>
               <select className={selectClass} value={formData.source} onChange={f("source")}>
-                <option value="">Select source</option>
+                <option value="">—None—</option>
                 <option value="website">Website</option>
                 <option value="referral">Referral</option>
                 <option value="linkedin">LinkedIn</option>
@@ -336,40 +463,30 @@ function LeadFormDialog({
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
-              <select className={selectClass} value={formData.status} onChange={f("status")}>
-                <option value="new">New</option>
-                <option value="contacted">Contacted</option>
-                <option value="qualified">Qualified</option>
-                <option value="unqualified">Unqualified</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Assign To Rep</Label>
-              <select className={selectClass} value={formData.assignedTo} onChange={f("assignedTo")}>
-                <option value="">Unassigned</option>
-                {usersData?.data?.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label>Lead Score (0–100)</Label>
+              <Label className="text-xs font-medium">Lead Score (0–100)</Label>
               <Input
                 type="number" min="0" max="100"
-                className="bg-black/20 border-white/10"
                 value={formData.score}
                 onChange={f("score")}
                 placeholder="Auto-calculated"
+                className="h-9 text-sm"
               />
             </div>
           </div>
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
-              {isPending ? "Saving..." : mode === "create" ? "Create Lead" : "Save Changes"}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Assign To Rep</Label>
+            <select className={selectClass} value={formData.assignedTo} onChange={f("assignedTo")}>
+              <option value="">—Unassigned—</option>
+              {usersData?.data?.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <DialogFooter className="pt-3 border-t border-border gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" size="sm" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
+              {isPending ? "Saving..." : mode === "create" ? "Save" : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>
@@ -412,22 +529,27 @@ function ConvertLeadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">Convert Lead</DialogTitle>
+      <DialogContent className="sm:max-w-[440px]">
+        <DialogHeader className="border-b border-border pb-3">
+          <DialogTitle className="text-base font-semibold">Convert Lead</DialogTitle>
         </DialogHeader>
-        <div className="py-4 space-y-4">
-          <p className="text-muted-foreground text-sm">Converting <strong className="text-white">{lead?.name}</strong> will automatically create:</p>
-          <ul className="list-disc pl-5 text-sm space-y-2 text-muted-foreground">
-            <li>A new <span className="text-white">Contact</span> record</li>
-            <li>A new <span className="text-white">Account</span> record</li>
-            <li>A new <span className="text-white">Opportunity</span> in Prospecting stage</li>
+        <div className="py-4 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Converting <strong className="text-foreground">{lead?.name}</strong> will automatically create:
+          </p>
+          <ul className="list-disc pl-5 text-sm space-y-1.5 text-muted-foreground">
+            <li>A new <span className="text-foreground font-medium">Contact</span> record</li>
+            <li>A new <span className="text-foreground font-medium">Account</span> record</li>
+            <li>A new <span className="text-foreground font-medium">Opportunity</span> in Prospecting stage</li>
           </ul>
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs text-blue-700">
+            The lead will be marked as converted and can no longer be edited.
+          </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-          <Button onClick={handleConvert} disabled={mutation.isPending} className="bg-accent hover:bg-accent/90">
-            {mutation.isPending ? "Converting..." : "Confirm Conversion"}
+        <DialogFooter className="border-t border-border pt-3 gap-2">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button size="sm" onClick={handleConvert} disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-white">
+            {mutation.isPending ? "Converting..." : "Convert Lead"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -49,24 +49,24 @@ export default function Accounts() {
       <div className="flex flex-col gap-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-display font-bold text-white tracking-tight">Accounts</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Accounts</h1>
             <p className="text-muted-foreground mt-1 text-sm">Organizations and companies you do business with.</p>
           </div>
           <Button
             onClick={() => setIsCreateOpen(true)}
-            className="bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
+            className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
           >
             <Plus className="w-4 h-4 mr-2" /> Add Account
           </Button>
         </div>
 
-        <Card className="glass-panel border-white/5">
-          <div className="p-4 border-b border-white/5 flex gap-4 bg-black/20">
+        <Card className="glass-panel border-border">
+          <div className="p-4 border-b border-border flex gap-4 bg-muted">
             <div className="relative flex-1 max-w-sm">
               <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
               <Input
                 placeholder="Search accounts..."
-                className="pl-9 bg-card border-white/10"
+                className="pl-9 bg-card border-border"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -74,7 +74,7 @@ export default function Accounts() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-white/5 border-b border-white/5">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-medium">Account Name</th>
                   <th className="px-6 py-4 font-medium">Industry</th>
@@ -84,14 +84,14 @@ export default function Accounts() {
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.length === 0 ? (
                   <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">No accounts found.</td></tr>
                 ) : (
                   data?.data?.map((acc) => (
-                    <tr key={acc.id} className="hover:bg-white/5 transition-colors group">
+                    <tr key={acc.id} className="hover:bg-muted/50 transition-colors group">
                       <td className="px-6 py-4">
                         <Link href={`/accounts/${acc.id}`}>
                           <div className="font-medium text-white text-base hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
@@ -113,7 +113,7 @@ export default function Accounts() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center gap-1.5 bg-white/5 px-2.5 py-1 rounded-md text-white font-medium">
+                        <span className="inline-flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md text-foreground font-medium">
                           <Users className="w-3.5 h-3.5 text-muted-foreground" /> {acc.contactCount ?? 0}
                         </span>
                       </td>
@@ -129,7 +129,7 @@ export default function Accounts() {
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-card border-white/10 text-white">
+                          <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
                             <DropdownMenuItem
                               onClick={() => setEditingAccount({
                                 id: acc.id,
@@ -142,11 +142,11 @@ export default function Accounts() {
                                 employees: acc.employees != null ? String(acc.employees) : "",
                                 annualRevenue: acc.annualRevenue != null ? String(acc.annualRevenue) : "",
                               })}
-                              className="cursor-pointer hover:bg-white/10"
+                              className="cursor-pointer hover:bg-muted"
                             >
                               <Pencil className="w-4 h-4 mr-2" /> Edit
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-white/10" />
+                            <DropdownMenuSeparator className="bg-muted" />
                             <DropdownMenuItem
                               onClick={() => setDeletingId(acc.id)}
                               className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive"
@@ -232,7 +232,7 @@ function AccountFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-white/10 text-white sm:max-w-[560px]">
+      <DialogContent className="bg-card border-border text-white sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "Create Account" : "Edit Account"}
@@ -241,12 +241,12 @@ function AccountFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
             <Label>Account Name *</Label>
-            <Input required className="bg-black/20 border-white/10" value={formData.name} onChange={f("name")} />
+            <Input required className="bg-muted border-border" value={formData.name} onChange={f("name")} />
           </div>
           <div className="space-y-2">
             <Label>Industry</Label>
             <select
-              className="w-full bg-black/20 border border-white/10 rounded-md px-3 py-2 text-white text-sm"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm"
               value={formData.industry}
               onChange={f("industry")}
             >
@@ -264,36 +264,36 @@ function AccountFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Website</Label>
-              <Input className="bg-black/20 border-white/10" placeholder="https://" value={formData.website} onChange={f("website")} />
+              <Input className="bg-muted border-border" placeholder="https://" value={formData.website} onChange={f("website")} />
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
-              <Input className="bg-black/20 border-white/10" value={formData.phone} onChange={f("phone")} />
+              <Input className="bg-muted border-border" value={formData.phone} onChange={f("phone")} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>City</Label>
-              <Input className="bg-black/20 border-white/10" value={formData.city} onChange={f("city")} />
+              <Input className="bg-muted border-border" value={formData.city} onChange={f("city")} />
             </div>
             <div className="space-y-2">
               <Label>Country</Label>
-              <Input className="bg-black/20 border-white/10" value={formData.country} onChange={f("country")} />
+              <Input className="bg-muted border-border" value={formData.country} onChange={f("country")} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Employees</Label>
-              <Input type="number" className="bg-black/20 border-white/10" value={formData.employees} onChange={f("employees")} />
+              <Input type="number" className="bg-muted border-border" value={formData.employees} onChange={f("employees")} />
             </div>
             <div className="space-y-2">
               <Label>Annual Revenue ($)</Label>
-              <Input type="number" className="bg-black/20 border-white/10" value={formData.annualRevenue} onChange={f("annualRevenue")} />
+              <Input type="number" className="bg-muted border-border" value={formData.annualRevenue} onChange={f("annualRevenue")} />
             </div>
           </div>
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-white/10">Cancel</Button>
-            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">
               {isPending ? "Saving..." : mode === "create" ? "Create Account" : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -316,7 +316,7 @@ function DeleteAccountDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-card border-white/10 text-white">
+      <AlertDialogContent className="bg-card border-border text-foreground">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Account?</AlertDialogTitle>
           <AlertDialogDescription className="text-muted-foreground">
@@ -324,7 +324,7 @@ function DeleteAccountDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="border-white/10 text-white hover:bg-white/10">Cancel</AlertDialogCancel>
+          <AlertDialogCancel className="border-border text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={() => {
               if (id === null) return;
@@ -337,7 +337,7 @@ function DeleteAccountDialog({
                 onError: () => toast({ title: "Error", description: "Failed to delete account.", variant: "destructive" }),
               });
             }}
-            className="bg-destructive hover:bg-destructive/90 text-white"
+            className="bg-destructive hover:bg-destructive/90 text-foreground"
           >
             {deleteMutation.isPending ? "Deleting..." : "Delete"}
           </AlertDialogAction>
