@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useAuth } from "@/context/auth";
-import { Zap } from "lucide-react";
 
 export default function Login() {
   const { signIn } = useAuth();
@@ -32,11 +31,6 @@ export default function Login() {
     }
   };
 
-  const fillDemo = () => {
-    setUsername("demo@arbormind.in");
-    setPassword("demo1234");
-  };
-
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4 py-8"
@@ -51,24 +45,6 @@ export default function Login() {
       </div>
 
       <div className="w-full max-w-sm">
-        {/* Demo banner */}
-        <button
-          type="button"
-          onClick={fillDemo}
-          className="w-full mb-4 flex items-center gap-3 px-4 py-3 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors text-left group"
-        >
-          <div className="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-            <Zap className="w-3.5 h-3.5 text-indigo-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-indigo-300">Try the demo account</div>
-            <div className="text-[11px] text-indigo-400/70 truncate">demo@arbormind.in · demo1234</div>
-          </div>
-          <span className="text-[10px] font-medium text-indigo-400 group-hover:text-indigo-300 transition-colors shrink-0">
-            Fill in →
-          </span>
-        </button>
-
         {/* Login form */}
         <form
           onSubmit={handleSubmit}
