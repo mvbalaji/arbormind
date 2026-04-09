@@ -4,6 +4,7 @@ import {
   useConvertLead, useListUsers, getListLeadsQueryKey, CreateLeadInputStatus,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/context/auth";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,16 +65,27 @@ const defaultFormData: LeadFormData = {
 };
 
 export default function Leads() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<{ id: number } & LeadFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [convertingId, setConvertingId] = useState<{ id: number; name: string } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
-  const { data, isLoading } = useListLeads({ search, limit: 100 });
+  const { data, isLoading } = useListLeads({ search, limit: 200 });
 
-  const leads = data?.data ?? [];
+  const allLeads = data?.data ?? [];
+
+  const leads = allLeads.filter((lead) => {
+    if (statusFilter && lead.status !== statusFilter) return false;
+    if (activeView.value === "converted") return lead.isConverted;
+    if (activeView.value === "my") return lead.assignedTo === user?.id;
+    if (activeView.value === "recent") return true;
+    return !lead.isConverted;
+  });
+
   const total = leads.length;
 
   return (
@@ -143,9 +155,30 @@ export default function Leads() {
               className="pl-8 h-8 text-xs w-60 bg-card border-border"
             />
           </div>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-            <ListFilter className="w-3.5 h-3.5" /> Filters
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                <ListFilter className="w-3.5 h-3.5" />
+                {statusFilter ? statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1) : "Status"}
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem onClick={() => setStatusFilter("")} className="text-sm cursor-pointer">
+                All Statuses
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {["new", "contacted", "qualified", "unqualified"].map((s) => (
+                <DropdownMenuItem
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`text-sm cursor-pointer capitalize ${statusFilter === s ? "text-primary font-medium" : ""}`}
+                >
+                  {s}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="flex-1" />
           <span className="text-xs text-muted-foreground">{total} item{total !== 1 ? "s" : ""}</span>
         </div>

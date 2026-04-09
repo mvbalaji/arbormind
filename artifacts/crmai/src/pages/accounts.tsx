@@ -4,8 +4,8 @@ import {
   getListAccountsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/context/auth";
 import { Layout } from "@/components/layout";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Building2, Search, MapPin, Link as LinkIcon, Users, Briefcase, Plus, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react";
+import {
+  Building2, Search, MapPin, Link as LinkIcon, Users, Briefcase,
+  Plus, MoreHorizontal, Pencil, Trash2, ExternalLink, ChevronDown,
+  Mail, Phone, Filter, Download, Upload, ListFilter, User,
+} from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,6 +30,7 @@ interface AccountFormData {
   industry: string;
   website: string;
   phone: string;
+  email: string;
   city: string;
   country: string;
   employees: string;
@@ -33,128 +38,283 @@ interface AccountFormData {
 }
 
 const defaultFormData: AccountFormData = {
-  name: "", industry: "", website: "", phone: "",
+  name: "", industry: "", website: "", phone: "", email: "",
   city: "", country: "", employees: "", annualRevenue: "",
 };
 
+const INDUSTRY_OPTIONS = [
+  "Technology", "Finance", "Healthcare", "Manufacturing",
+  "Retail", "Education", "Real Estate", "Other",
+];
+
+const VIEW_OPTIONS = [
+  { label: "All Accounts", value: "all" },
+  { label: "My Accounts", value: "my" },
+  { label: "Recently Created", value: "recent" },
+];
+
 export default function Accounts() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
+  const [industryFilter, setIndustryFilter] = useState("");
+  const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<{ id: number } & AccountFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const { data, isLoading } = useListAccounts({ search, limit: 50 });
+  const { data, isLoading } = useListAccounts({ search, limit: 100 });
+
+  const allAccounts = data?.data ?? [];
+
+  const filteredAccounts = allAccounts.filter((acc) => {
+    if (industryFilter && acc.industry !== industryFilter) return false;
+    if (activeView.value === "my") return acc.ownerId === user?.id;
+    return true;
+  });
+
+  const total = filteredAccounts.length;
+
+  const handleExport = () => {
+    const headers = ["Account Name", "Industry", "Location", "Phone", "Email", "Owner", "Contacts", "Deals"];
+    const rows = filteredAccounts.map((a) => [
+      a.name,
+      a.industry ?? "",
+      a.city ? `${a.city}, ${a.country ?? ""}` : "",
+      a.phone ?? "",
+      a.email ?? "",
+      a.ownerName ?? "",
+      String(a.contactCount ?? 0),
+      String(a.dealCount ?? 0),
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "accounts.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Accounts</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Organizations and companies you do business with.</p>
+      <div className="flex flex-col gap-0">
+        {/* Page Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-semibold text-foreground">Accounts</h1>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors border-b border-primary/40 pb-0.5">
+                  {activeView.label}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                {VIEW_OPTIONS.map((v) => (
+                  <DropdownMenuItem
+                    key={v.value}
+                    onClick={() => setActiveView(v)}
+                    className={`cursor-pointer text-sm ${activeView.value === v.value ? "text-primary font-medium" : ""}`}
+                  >
+                    {v.label}
+                    {v.value === "all" && <span className="ml-auto text-xs text-muted-foreground">Pinned</span>}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-          >
-            <Plus className="w-4 h-4 mr-2" /> Add Account
-          </Button>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleExport}>
+              <Download className="w-3.5 h-3.5" /> Export
+            </Button>
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5">
+              <Upload className="w-3.5 h-3.5" /> Import
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-white shadow-sm"
+              onClick={() => setIsCreateOpen(true)}
+            >
+              <Plus className="w-3.5 h-3.5" /> New
+            </Button>
+          </div>
         </div>
 
-        <Card className="glass-panel border-border">
-          <div className="p-4 border-b border-border flex gap-4 bg-muted">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-              <Input
-                placeholder="Search accounts..."
-                className="pl-9 bg-card border-border"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="relative flex-shrink-0">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
+            <Input
+              placeholder="Search accounts..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-8 text-xs w-60 bg-card border-border"
+            />
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                <Filter className="w-3.5 h-3.5" />
+                {industryFilter ? industryFilter : "Industry"}
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem onClick={() => setIndustryFilter("")} className="text-sm cursor-pointer">
+                All Industries
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {INDUSTRY_OPTIONS.map((ind) => (
+                <DropdownMenuItem
+                  key={ind}
+                  onClick={() => setIndustryFilter(ind)}
+                  className={`text-sm cursor-pointer ${industryFilter === ind ? "text-primary font-medium" : ""}`}
+                >
+                  {ind}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="flex-1" />
+          <span className="text-xs text-muted-foreground">{total} account{total !== 1 ? "s" : ""}</span>
+        </div>
+
+        {/* Table */}
+        <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
-                <tr>
-                  <th className="px-6 py-4 font-medium">Account Name</th>
-                  <th className="px-6 py-4 font-medium">Industry</th>
-                  <th className="px-6 py-4 font-medium">Location</th>
-                  <th className="px-6 py-4 font-medium text-center">Contacts</th>
-                  <th className="px-6 py-4 font-medium text-center">Deals</th>
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+            <table className="w-full text-sm min-w-[900px]">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Account Name</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Location</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Phone</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Industry</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Email</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Account Owner</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">Contacts</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">Deals</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
-                ) : data?.data?.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">No accounts found.</td></tr>
+                  <tr>
+                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        Loading accounts...
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredAccounts.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-12 text-center">
+                      <div className="text-muted-foreground text-sm mb-3">No accounts found.</div>
+                      <Button size="sm" onClick={() => setIsCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-white">
+                        <Plus className="w-3.5 h-3.5 mr-1.5" /> Create your first account
+                      </Button>
+                    </td>
+                  </tr>
                 ) : (
-                  data?.data?.map((acc) => (
-                    <tr key={acc.id} className="hover:bg-muted/50 transition-colors group">
-                      <td className="px-6 py-4">
+                  filteredAccounts.map((acc) => (
+                    <tr key={acc.id} className="hover:bg-muted/30 transition-colors group">
+                      <td className="px-4 py-2.5">
                         <Link href={`/accounts/${acc.id}`}>
-                          <div className="font-medium text-white text-base hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
+                          <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
                             {acc.name}
                             <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                           </div>
                         </Link>
                         {acc.website && (
-                          <div className="text-xs text-primary flex items-center gap-1 mt-1 hover:underline cursor-pointer">
-                            <LinkIcon className="w-3 h-3" /> {acc.website}
+                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <LinkIcon className="w-2.5 h-2.5" />
+                            <span className="truncate max-w-[140px]">{acc.website.replace(/^https?:\/\//, "")}</span>
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground">{acc.industry ?? "-"}</td>
-                      <td className="px-6 py-4 text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" />
-                          {acc.city ? `${acc.city}, ${acc.country ?? ""}` : "-"}
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                        {acc.city ? (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            {acc.city}{acc.country ? `, ${acc.country}` : ""}
+                          </div>
+                        ) : <span>—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-foreground">
+                        {acc.phone ? (
+                          <div className="flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                            {acc.phone}
+                          </div>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-foreground">
+                        {acc.industry ?? <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-foreground">
+                        {acc.email ? (
+                          <div className="flex items-center gap-1">
+                            <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                            <span className="truncate max-w-[140px]">{acc.email}</span>
+                          </div>
+                        ) : <span className="text-muted-foreground">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-foreground">
+                        {acc.ownerName ? (
+                          <div className="flex items-center gap-1">
+                            <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                            {acc.ownerName}
+                          </div>
+                        ) : <span className="text-muted-foreground italic">Unassigned</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span className="inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded text-xs font-medium text-foreground">
+                          <Users className="w-3 h-3 text-muted-foreground" /> {acc.contactCount ?? 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span className="inline-flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded text-xs font-medium text-primary border border-primary/20">
+                          <Briefcase className="w-3 h-3" /> {acc.dealCount ?? 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                                <MoreHorizontal className="w-3.5 h-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem
+                                onClick={() => setEditingAccount({
+                                  id: acc.id,
+                                  name: acc.name,
+                                  industry: acc.industry ?? "",
+                                  website: acc.website ?? "",
+                                  phone: acc.phone ?? "",
+                                  email: acc.email ?? "",
+                                  city: acc.city ?? "",
+                                  country: acc.country ?? "",
+                                  employees: acc.employees != null ? String(acc.employees) : "",
+                                  annualRevenue: acc.annualRevenue != null ? String(acc.annualRevenue) : "",
+                                })}
+                                className="cursor-pointer text-sm"
+                              >
+                                <Pencil className="w-3.5 h-3.5 mr-2 text-muted-foreground" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setDeletingId(acc.id)}
+                                className="cursor-pointer text-sm text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md text-foreground font-medium">
-                          <Users className="w-3.5 h-3.5 text-muted-foreground" /> {acc.contactCount ?? 0}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="inline-flex items-center gap-1.5 bg-primary/10 px-2.5 py-1 rounded-md text-primary font-medium border border-primary/20">
-                          <Briefcase className="w-3.5 h-3.5" /> {acc.dealCount ?? 0}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
-                            <DropdownMenuItem
-                              onClick={() => setEditingAccount({
-                                id: acc.id,
-                                name: acc.name,
-                                industry: acc.industry ?? "",
-                                website: acc.website ?? "",
-                                phone: acc.phone ?? "",
-                                city: acc.city ?? "",
-                                country: acc.country ?? "",
-                                employees: acc.employees != null ? String(acc.employees) : "",
-                                annualRevenue: acc.annualRevenue != null ? String(acc.annualRevenue) : "",
-                              })}
-                              className="cursor-pointer hover:bg-muted"
-                            >
-                              <Pencil className="w-4 h-4 mr-2" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="bg-muted" />
-                            <DropdownMenuItem
-                              onClick={() => setDeletingId(acc.id)}
-                              className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </td>
                     </tr>
                   ))
@@ -162,7 +322,14 @@ export default function Accounts() {
               </tbody>
             </table>
           </div>
-        </Card>
+
+          {filteredAccounts.length > 0 && (
+            <div className="px-4 py-2 border-t border-border bg-muted/20 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">{total} record{total !== 1 ? "s" : ""}</span>
+              <span className="text-xs text-muted-foreground">Showing all {total} accounts</span>
+            </div>
+          )}
+        </div>
       </div>
 
       <AccountFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} mode="create" />
@@ -209,6 +376,7 @@ function AccountFormDialog({
       industry: formData.industry || undefined,
       website: formData.website || undefined,
       phone: formData.phone || undefined,
+      email: formData.email || undefined,
       city: formData.city || undefined,
       country: formData.country || undefined,
       employees: formData.employees ? parseInt(formData.employees) : undefined,
@@ -229,71 +397,65 @@ function AccountFormDialog({
   };
 
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const sc = "w-full bg-card border border-border rounded-md px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-white sm:max-w-[560px]">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">
-            {mode === "create" ? "Create Account" : "Edit Account"}
+      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="border-b border-border pb-3">
+          <DialogTitle className="text-base font-semibold">
+            {mode === "create" ? "New Account" : "Edit Account"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label>Account Name *</Label>
-            <Input required className="bg-muted border-border" value={formData.name} onChange={f("name")} />
+        <form onSubmit={handleSubmit} className="space-y-4 py-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Account Name *</Label>
+            <Input required className="h-9 text-sm" value={formData.name} onChange={f("name")} />
           </div>
-          <div className="space-y-2">
-            <Label>Industry</Label>
-            <select
-              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm"
-              value={formData.industry}
-              onChange={f("industry")}
-            >
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Industry</Label>
+            <select className={sc} value={formData.industry} onChange={f("industry")}>
               <option value="">Select industry</option>
-              <option value="Technology">Technology</option>
-              <option value="Finance">Finance</option>
-              <option value="Healthcare">Healthcare</option>
-              <option value="Manufacturing">Manufacturing</option>
-              <option value="Retail">Retail</option>
-              <option value="Education">Education</option>
-              <option value="Real Estate">Real Estate</option>
-              <option value="Other">Other</option>
+              {INDUSTRY_OPTIONS.map((ind) => <option key={ind} value={ind}>{ind}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Website</Label>
-              <Input className="bg-muted border-border" placeholder="https://" value={formData.website} onChange={f("website")} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Email</Label>
+              <Input type="email" className="h-9 text-sm" placeholder="account@company.com" value={formData.email} onChange={f("email")} />
             </div>
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input className="bg-muted border-border" value={formData.phone} onChange={f("phone")} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>City</Label>
-              <Input className="bg-muted border-border" value={formData.city} onChange={f("city")} />
-            </div>
-            <div className="space-y-2">
-              <Label>Country</Label>
-              <Input className="bg-muted border-border" value={formData.country} onChange={f("country")} />
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Phone</Label>
+              <Input className="h-9 text-sm" value={formData.phone} onChange={f("phone")} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Employees</Label>
-              <Input type="number" className="bg-muted border-border" value={formData.employees} onChange={f("employees")} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Website</Label>
+              <Input className="h-9 text-sm" placeholder="https://" value={formData.website} onChange={f("website")} />
             </div>
-            <div className="space-y-2">
-              <Label>Annual Revenue ($)</Label>
-              <Input type="number" className="bg-muted border-border" value={formData.annualRevenue} onChange={f("annualRevenue")} />
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">City</Label>
+              <Input className="h-9 text-sm" value={formData.city} onChange={f("city")} />
             </div>
           </div>
-          <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
-            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Country</Label>
+              <Input className="h-9 text-sm" value={formData.country} onChange={f("country")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Employees</Label>
+              <Input type="number" className="h-9 text-sm" value={formData.employees} onChange={f("employees")} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Annual Revenue ($)</Label>
+            <Input type="number" className="h-9 text-sm" value={formData.annualRevenue} onChange={f("annualRevenue")} />
+          </div>
+          <DialogFooter className="pt-2 border-t border-border gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" size="sm" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
               {isPending ? "Saving..." : mode === "create" ? "Create Account" : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -316,7 +478,7 @@ function DeleteAccountDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-card border-border text-foreground">
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Account?</AlertDialogTitle>
           <AlertDialogDescription className="text-muted-foreground">
@@ -324,7 +486,7 @@ function DeleteAccountDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="border-border text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={() => {
               if (id === null) return;
@@ -337,7 +499,7 @@ function DeleteAccountDialog({
                 onError: () => toast({ title: "Error", description: "Failed to delete account.", variant: "destructive" }),
               });
             }}
-            className="bg-destructive hover:bg-destructive/90 text-foreground"
+            className="bg-destructive hover:bg-destructive/90 text-white"
           >
             {deleteMutation.isPending ? "Deleting..." : "Delete"}
           </AlertDialogAction>
