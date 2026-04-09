@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Sun, Moon, Zap, BarChart3, Users, Shield, Star, CheckCircle, Globe } from "lucide-react";
+import { Sun, Moon, Zap, BarChart3, Users, Shield, Star, CheckCircle, Globe, Twitter, Linkedin, Github, Youtube } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/context/auth";
 
@@ -709,13 +709,135 @@ export default function Landing() {
 
       {/* FOOTER */}
       <footer
-        className="relative z-10 px-6 md:px-12 py-8 border-t text-center text-sm"
+        className="relative z-10 border-t"
         style={{
-          borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
-          color: isDark ? "#475569" : "#94a3b8",
+          borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)",
+          backgroundColor: isDark ? "rgba(5,8,18,0.95)" : "rgba(248,250,252,0.95)",
         }}
       >
-        © {new Date().getFullYear()} arbormind.in — Built with AI for modern sales teams
+        {/* Main footer grid */}
+        <div className="px-6 md:px-12 lg:px-20 py-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+          {/* Brand column */}
+          <div className="lg:col-span-1 flex flex-col gap-5">
+            {/* Logo */}
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <span className="text-white font-bold text-sm">A</span>
+              </div>
+              <span
+                className="font-display font-bold text-base"
+                style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
+              >
+                arbormind.in
+              </span>
+            </div>
+            {/* Tagline */}
+            <p className="text-sm leading-relaxed" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+              AI-powered CRM for high-velocity sales teams — close deals faster, smarter.
+            </p>
+            {/* Social icons */}
+            <div className="flex items-center gap-2">
+              {[
+                { icon: Twitter, label: "X / Twitter", href: "#" },
+                { icon: Linkedin, label: "LinkedIn", href: "#" },
+                { icon: Github, label: "GitHub", href: "#" },
+                { icon: Youtube, label: "YouTube", href: "#" },
+              ].map(({ icon: Icon, label, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  aria-label={label}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+                  style={{
+                    border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)",
+                    color: isDark ? "#64748b" : "#94a3b8",
+                    backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = isDark ? "#f1f5f9" : "#0f172a")}
+                  onMouseLeave={e => (e.currentTarget.style.color = isDark ? "#64748b" : "#94a3b8")}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Link columns */}
+          {[
+            {
+              heading: "PRODUCT",
+              links: ["Features", "How It Works", "Pricing", "Integrations", "Changelog", "Roadmap", "System Status"],
+            },
+            {
+              heading: "COMPANY",
+              links: ["About Us", "Careers", "Blog", "Press & Media", "Partners", "Customers", "Investors"],
+            },
+            {
+              heading: "SUPPORT",
+              links: ["Contact Us", "Help Center", "Documentation", "API Reference", "Community", "SLA & Uptime"],
+            },
+            {
+              heading: "LEGAL",
+              links: ["Terms & Conditions", "Privacy Policy", "Cookie Policy", "GDPR Compliance", "Security", "Acceptable Use", "Data Processing"],
+            },
+          ].map((col) => (
+            <div key={col.heading} className="flex flex-col gap-4">
+              <p
+                className="text-xs font-semibold tracking-widest uppercase"
+                style={{ color: isDark ? "#94a3b8" : "#64748b" }}
+              >
+                {col.heading}
+              </p>
+              <ul className="flex flex-col gap-2.5">
+                {col.links.map((link) => (
+                  <li key={link}>
+                    <a
+                      href="#"
+                      className="text-sm transition-colors"
+                      style={{ color: isDark ? "#64748b" : "#94a3b8" }}
+                      onMouseEnter={e => (e.currentTarget.style.color = isDark ? "#38bdf8" : "#0284c7")}
+                      onMouseLeave={e => (e.currentTarget.style.color = isDark ? "#64748b" : "#94a3b8")}
+                    >
+                      {link}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom bar */}
+        <div
+          className="px-6 md:px-12 lg:px-20 py-4 border-t flex flex-wrap items-center justify-between gap-4 text-xs"
+          style={{
+            borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+            color: isDark ? "#475569" : "#94a3b8",
+          }}
+        >
+          <span>© {new Date().getFullYear()} arbormind.in, Inc. All rights reserved.</span>
+          {/* Compliance badges */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {["SOC 2 Type II", "ISO 27001", "GDPR", "CCPA"].map((badge) => (
+              <span
+                key={badge}
+                className="px-2.5 py-1 rounded-full text-xs font-medium"
+                style={{
+                  border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)",
+                  color: isDark ? "#94a3b8" : "#64748b",
+                  backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                }}
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+          {/* System status */}
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+            All systems operational
+          </span>
+        </div>
       </footer>
     </div>
   );
