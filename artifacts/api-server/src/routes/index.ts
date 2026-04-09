@@ -16,11 +16,13 @@ import emailsRouter from "./emails";
 import campaignsRouter from "./campaigns";
 import importRouter from "./import";
 import seedRouter from "./seed";
+import emailSettingsRouter from "./email-settings";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(emailSettingsRouter);
 router.use(enquiriesRouter);
 router.use(emailsRouter);
 router.use(usersRouter);
