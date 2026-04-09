@@ -13,7 +13,6 @@ import {
   BarChart3,
   Bot,
   Settings,
-  Bell,
   Search,
   X,
   LogOut,
@@ -43,6 +42,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth";
 import { useTheme } from "@/context/theme";
+import { NotificationBell } from "@/components/notification-bell";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -238,10 +238,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
 
-              <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground hover:text-foreground">
-                <Bell className="w-4 h-4" />
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
-              </Button>
+              <NotificationBell />
 
               {/* Quick-create dropdown — visible sm+ */}
               <DropdownMenu>
