@@ -15,7 +15,6 @@ import {
   Settings,
   Bell,
   Search,
-  Menu,
   X,
   LogOut,
   ChevronDown,
@@ -23,6 +22,8 @@ import {
   Megaphone,
   Plus,
   MoreHorizontal,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth";
+import { useTheme } from "@/context/theme";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -71,6 +73,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -87,11 +90,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* ── Desktop: Narrow Icon Sidebar ── */}
         <aside className="hidden md:flex flex-col w-14 border-r border-sidebar-border z-30 relative flex-shrink-0" style={{ background: "hsl(var(--sidebar))" }}>
-          <Link href="/" className="h-14 flex items-center justify-center border-b border-sidebar-border hover:opacity-90 transition-opacity flex-shrink-0">
+          <div className="h-14 flex items-center justify-center border-b border-sidebar-border flex-shrink-0">
             <div className="w-8 h-8 rounded flex items-center justify-center overflow-hidden bg-white/10">
               <img src="/arbormind-logo.png" alt="arbormind.in" className="w-7 h-7 object-cover" />
             </div>
-          </Link>
+          </div>
 
           <div className="flex-1 overflow-y-auto py-2 flex flex-col gap-0.5 items-center custom-scrollbar">
             {NAV_ITEMS.map((item) => {
@@ -212,18 +215,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* Top Header */}
           <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 lg:px-6 z-20 flex-shrink-0 shadow-sm">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              {/* Mobile: app name (hamburger moved to bottom bar) */}
-              <Link href="/" className="md:hidden flex items-center gap-2 text-sm font-semibold text-foreground">
-                <img src="/arbormind-logo.png" alt="" className="w-6 h-6 rounded" />
-                <span className="text-primary font-bold">arbormind</span>
-                <span className="text-muted-foreground font-normal hidden xs:inline">.in</span>
-              </Link>
-
-              {/* Desktop: app name */}
-              <Link href="/" className="hidden md:flex items-center gap-2 text-sm font-semibold text-foreground hover:text-primary transition-colors">
-                <span className="text-primary font-bold">arbormind</span>
-                <span className="text-muted-foreground font-normal">.in</span>
-              </Link>
+              <span className="text-sm font-bold text-primary">arbormind<span className="text-muted-foreground font-normal">.in</span></span>
 
               <div className="hidden sm:flex items-center relative max-w-sm w-full ml-2">
                 <Search className="w-3.5 h-3.5 absolute left-3 text-muted-foreground" />
@@ -235,6 +227,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Dark / Light mode toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={toggleTheme}
+                title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
+
               <Button variant="ghost" size="icon" className="relative h-8 w-8 text-muted-foreground hover:text-foreground">
                 <Bell className="w-4 h-4" />
                 <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
@@ -274,11 +277,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
                   </Avatar>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 md:hidden">
-                  <div className="px-2 py-1.5">
+                <DropdownMenuContent align="end" className="w-52">
+                  <div className="px-2 py-2">
                     <div className="text-sm font-semibold truncate">{user?.name ?? "User"}</div>
                     <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
                   </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/users" className="flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
+                      Team & Settings
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer" onClick={() => void logout()}>
                     <LogOut className="w-4 h-4 mr-2" />
