@@ -163,7 +163,7 @@ export default function Dashboard() {
             </Link>
             <Link href="/opportunities">
               <Button size="sm" className="bg-primary hover:bg-primary/90 text-white gap-1.5 shadow-lg shadow-primary/20">
-                <Briefcase className="w-4 h-4" /> View Pipeline
+                <Briefcase className="w-4 h-4" /> View Opportunities
               </Button>
             </Link>
           </div>
@@ -218,7 +218,7 @@ export default function Dashboard() {
                 Pipeline by Stage
                 <Link href="/opportunities">
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1 text-xs h-7">
-                    Full Pipeline <ArrowRight className="w-3 h-3" />
+                    All Opportunities <ArrowRight className="w-3 h-3" />
                   </Button>
                 </Link>
               </CardTitle>

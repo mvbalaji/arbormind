@@ -132,7 +132,7 @@ router.get("/reports/top-deals", async (req, res) => {
       .from(opportunitiesTable)
       .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
       .where(sql`${opportunitiesTable.stage} NOT IN ('closed_won', 'closed_lost')`)
-      .orderBy(desc(sql`${opportunitiesTable.amount}`))
+      .orderBy(sql`${opportunitiesTable.amount} DESC NULLS LAST`)
       .limit(5);
 
     res.json({
