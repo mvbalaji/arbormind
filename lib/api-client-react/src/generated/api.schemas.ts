@@ -307,11 +307,13 @@ export interface ConvertLeadInput {
   opportunityAmount?: number | null;
   existingAccountId?: number | null;
   existingContactId?: number | null;
+  existingContactIds?: number[] | null;
 }
 
 export interface ConvertLeadResult {
   success: boolean;
   contactId?: number | null;
+  contactIds?: number[];
   accountId?: number | null;
   opportunityId?: number | null;
 }

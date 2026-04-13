@@ -5,6 +5,7 @@ import { usersTable } from "./users";
 import { contactsTable } from "./contacts";
 import { accountsTable } from "./accounts";
 import { opportunitiesTable } from "./opportunities";
+import { leadsTable } from "./leads";
 
 export const activitiesTable = pgTable("activities", {
   id: serial("id").primaryKey(),
@@ -14,6 +15,7 @@ export const activitiesTable = pgTable("activities", {
   status: text("status").notNull().default("planned"),
   dueDate: timestamp("due_date"),
   completedAt: timestamp("completed_at"),
+  leadId: integer("lead_id").references(() => leadsTable.id),
   contactId: integer("contact_id").references(() => contactsTable.id),
   opportunityId: integer("opportunity_id").references(() => opportunitiesTable.id),
   accountId: integer("account_id").references(() => accountsTable.id),

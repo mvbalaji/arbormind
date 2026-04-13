@@ -13,6 +13,7 @@ const activityFields = {
   status: activitiesTable.status,
   dueDate: activitiesTable.dueDate,
   completedAt: activitiesTable.completedAt,
+  leadId: activitiesTable.leadId,
   contactId: activitiesTable.contactId,
   contactFirstName: contactsTable.firstName,
   contactLastName: contactsTable.lastName,
@@ -36,12 +37,13 @@ function formatActivity(a: { contactFirstName: string | null; contactLastName: s
 
 router.get("/activities", async (req, res) => {
   try {
-    const { contactId, opportunityId, accountId, type, assignedTo, page = "1", limit = "50" } = req.query as Record<string, string>;
+    const { leadId, contactId, opportunityId, accountId, type, assignedTo, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
     const conditions = [];
+    if (leadId) conditions.push(eq(activitiesTable.leadId, parseInt(leadId)));
     if (contactId) conditions.push(eq(activitiesTable.contactId, parseInt(contactId)));
     if (opportunityId) conditions.push(eq(activitiesTable.opportunityId, parseInt(opportunityId)));
     if (accountId) conditions.push(eq(activitiesTable.accountId, parseInt(accountId)));

@@ -14,4 +14,5 @@ export interface ConvertLeadInput {
   opportunityAmount?: number | null;
   existingAccountId?: number | null;
   existingContactId?: number | null;
+  existingContactIds?: number[] | null;
 }

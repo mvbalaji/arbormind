@@ -1841,6 +1841,11 @@ components:
         existingContactId:
           type: integer
           nullable: true
+        existingContactIds:
+          type: array
+          items:
+            type: integer
+          nullable: true
       required:
         - createContact
         - createAccount
@@ -1854,6 +1859,10 @@ components:
         contactId:
           type: integer
           nullable: true
+        contactIds:
+          type: array
+          items:
+            type: integer
         accountId:
           type: integer
           nullable: true

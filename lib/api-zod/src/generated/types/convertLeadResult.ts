@@ -9,6 +9,7 @@
 export interface ConvertLeadResult {
   success: boolean;
   contactId?: number | null;
+  contactIds?: number[];
   accountId?: number | null;
   opportunityId?: number | null;
 }

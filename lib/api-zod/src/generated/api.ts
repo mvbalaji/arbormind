@@ -367,11 +367,13 @@ export const ConvertLeadBody = zod.object({
   opportunityAmount: zod.number().nullish(),
   existingAccountId: zod.number().nullish(),
   existingContactId: zod.number().nullish(),
+  existingContactIds: zod.array(zod.number()).nullish(),
 });
 
 export const ConvertLeadResponse = zod.object({
   success: zod.boolean(),
   contactId: zod.number().nullish(),
+  contactIds: zod.array(zod.number()).optional(),
   accountId: zod.number().nullish(),
   opportunityId: zod.number().nullish(),
 });

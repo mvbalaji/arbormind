@@ -602,7 +602,7 @@ function ConvertLeadDialog({
   const [accountMode, setAccountMode] = useState<"new" | "existing">("new");
   const [contactMode, setContactMode] = useState<"new" | "existing">("new");
   const [existingAccountId, setExistingAccountId] = useState("");
-  const [existingContactId, setExistingContactId] = useState("");
+  const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
   const [accountSearch, setAccountSearch] = useState("");
   const [contactSearch, setContactSearch] = useState("");
   const [oppName, setOppName] = useState("");
@@ -618,13 +618,19 @@ function ConvertLeadDialog({
       setAccountMode("new");
       setContactMode("new");
       setExistingAccountId("");
-      setExistingContactId("");
+      setSelectedContactIds([]);
       setAccountSearch("");
       setContactSearch("");
       setOppName(`${lead.name} Deal`);
       setCreateOpp(true);
     }
   }, [open, lead]);
+
+  const toggleContactId = (id: number) => {
+    setSelectedContactIds((prev) =>
+      prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id]
+    );
+  };
 
   interface AccountOption { id: number; name: string }
   interface ContactOption { id: number; firstName: string; lastName: string }
@@ -646,7 +652,7 @@ function ConvertLeadDialog({
       createAccount: accountMode === "existing" ? false : true,
       createContact: contactMode === "existing" ? false : true,
       existingAccountId: accountMode === "existing" && existingAccountId ? parseInt(existingAccountId) : undefined,
-      existingContactId: contactMode === "existing" && existingContactId ? parseInt(existingContactId) : undefined,
+      existingContactIds: contactMode === "existing" && selectedContactIds.length > 0 ? selectedContactIds : undefined,
     };
 
     mutation.mutate({ id: lead.id, data }, {
@@ -716,8 +722,11 @@ function ConvertLeadDialog({
                   placeholder="Search contacts..."
                   className="h-9 text-sm"
                   value={contactSearch}
-                  onChange={(e) => { setContactSearch(e.target.value); setExistingContactId(""); }}
+                  onChange={(e) => setContactSearch(e.target.value)}
                 />
+                {selectedContactIds.length > 0 && (
+                  <p className="text-xs text-muted-foreground">{selectedContactIds.length} contact(s) selected</p>
+                )}
                 <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
                   {filteredContacts.length === 0 ? (
                     <div className="px-3 py-2 text-xs text-muted-foreground">No contacts found</div>
@@ -725,11 +734,12 @@ function ConvertLeadDialog({
                     <button
                       key={c.id}
                       type="button"
-                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors ${
-                        existingContactId === String(c.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
+                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors flex items-center gap-2 ${
+                        selectedContactIds.includes(c.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
                       }`}
-                      onClick={() => { setExistingContactId(String(c.id)); setContactSearch(`${c.firstName} ${c.lastName}`); }}
+                      onClick={() => toggleContactId(c.id)}
                     >
+                      <input type="checkbox" checked={selectedContactIds.includes(c.id)} readOnly className="rounded border-border pointer-events-none" />
                       {c.firstName} {c.lastName}
                     </button>
                   ))}
@@ -754,7 +764,7 @@ function ConvertLeadDialog({
         </div>
         <DialogFooter className="border-t border-border pt-3 gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button size="sm" onClick={handleConvert} disabled={mutation.isPending || (accountMode === "existing" && !existingAccountId) || (contactMode === "existing" && !existingContactId)} className="bg-primary hover:bg-primary/90 text-white">
+          <Button size="sm" onClick={handleConvert} disabled={mutation.isPending || (accountMode === "existing" && !existingAccountId) || (contactMode === "existing" && selectedContactIds.length === 0)} className="bg-primary hover:bg-primary/90 text-white">
             {mutation.isPending ? "Converting..." : "Convert Lead"}
           </Button>
         </DialogFooter>

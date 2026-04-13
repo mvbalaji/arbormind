@@ -144,6 +144,7 @@ router.post("/leads/:id/convert", async (req, res) => {
       createContact, createAccount, createOpportunity,
       opportunityName, opportunityAmount,
       existingAccountId, existingContactId,
+      existingContactIds,
     } = req.body;
 
     const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
@@ -165,16 +166,21 @@ router.post("/leads/:id/convert", async (req, res) => {
       }
     }
 
-    if (existingContactId) {
-      const [ct] = await db.select({ id: contactsTable.id }).from(contactsTable).where(eq(contactsTable.id, existingContactId));
+    const allContactIds: number[] = existingContactIds?.length
+      ? existingContactIds
+      : existingContactId ? [existingContactId] : [];
+
+    for (const cId of allContactIds) {
+      const [ct] = await db.select({ id: contactsTable.id }).from(contactsTable).where(eq(contactsTable.id, cId));
       if (!ct) {
-        res.status(400).json({ error: "Selected contact does not exist" });
+        res.status(400).json({ error: `Contact ID ${cId} does not exist` });
         return;
       }
     }
 
     const result = await db.transaction(async (tx) => {
       let contactId: number | null = null;
+      const contactIds: number[] = [];
       let accountId: number | null = null;
       let opportunityId: number | null = null;
 
@@ -199,12 +205,15 @@ router.post("/leads/:id/convert", async (req, res) => {
         }
       }
 
-      if (existingContactId) {
-        contactId = existingContactId;
+      if (allContactIds.length > 0) {
+        contactId = allContactIds[0];
+        contactIds.push(...allContactIds);
         if (accountId) {
-          await tx.update(contactsTable)
-            .set({ accountId, updatedAt: new Date() })
-            .where(eq(contactsTable.id, contactId));
+          for (const cId of allContactIds) {
+            await tx.update(contactsTable)
+              .set({ accountId, updatedAt: new Date() })
+              .where(eq(contactsTable.id, cId));
+          }
         }
       } else if (createContact) {
         const [contact] = await tx.insert(contactsTable).values({
@@ -217,6 +226,11 @@ router.post("/leads/:id/convert", async (req, res) => {
           leadSource: lead.source ?? null,
         }).returning();
         contactId = contact.id;
+        contactIds.push(contact.id);
+      }
+
+      if (createOpportunity && !accountId) {
+        throw new Error("ACCOUNT_REQUIRED");
       }
 
       if (createOpportunity && accountId) {
@@ -241,11 +255,15 @@ router.post("/leads/:id/convert", async (req, res) => {
         })
         .where(eq(leadsTable.id, leadId));
 
-      return { contactId, accountId, opportunityId };
+      return { contactId, contactIds, accountId, opportunityId };
     });
 
     res.json({ success: true, ...result });
   } catch (err) {
+    if (err instanceof Error && err.message === "ACCOUNT_REQUIRED") {
+      res.status(400).json({ error: "An account is required to create an opportunity. Please select or create an account." });
+      return;
+    }
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
