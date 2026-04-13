@@ -17,43 +17,39 @@ function requireAdmin(req: any, res: any): boolean {
 
 async function checkIfKnownCustomer(email: string) {
   const [contact] = await db
-    .select({ id: contactsTable.id })
+    .select({ id: contactsTable.id, accountId: contactsTable.accountId })
     .from(contactsTable)
     .where(ilike(contactsTable.email, email));
-  return !!contact;
+  return contact ?? null;
 }
 
 // POST: Receive email via webhook (from email forwarding / Cloudflare Email Routing)
 router.post("/emails", async (req, res) => {
   try {
     const parsed = insertEmailSchema.parse(req.body);
-    const isKnown = await checkIfKnownCustomer(parsed.fromEmail);
+    const knownContact = await checkIfKnownCustomer(parsed.fromEmail);
+    const isKnown = !!knownContact;
 
     let relatedLeadId: number | undefined;
     let relatedOpportunityId: number | undefined;
     let relatedContactId: number | undefined;
+    let relatedAccountId: number | undefined;
 
-    if (isKnown) {
-      const [contact] = await db
-        .select({ id: contactsTable.id })
-        .from(contactsTable)
-        .where(ilike(contactsTable.email, parsed.fromEmail));
-
-      if (contact) {
-        relatedContactId = contact.id;
-        const [opportunity] = await db
-          .insert(opportunitiesTable)
-          .values({
-            name: `Inquiry: ${parsed.subject}`,
-            description: parsed.message,
-            stage: "prospecting",
-            probability: 30,
-            amount: 0,
-            closeDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-          })
-          .returning();
-        relatedOpportunityId = opportunity?.id;
-      }
+    if (isKnown && knownContact) {
+      relatedContactId = knownContact.id;
+      relatedAccountId = knownContact.accountId ?? undefined;
+      const [opportunity] = await db
+        .insert(opportunitiesTable)
+        .values({
+          name: `Inquiry: ${parsed.subject}`,
+          description: parsed.message,
+          stage: "prospecting",
+          probability: 30,
+          amount: 0,
+          closeDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        })
+        .returning();
+      relatedOpportunityId = opportunity?.id;
     } else {
       const nameParts = parsed.fromName.split(" ");
       const [lead] = await db
@@ -93,6 +89,7 @@ router.post("/emails", async (req, res) => {
       contactId: relatedContactId ?? null,
       leadId: relatedLeadId ?? null,
       opportunityId: relatedOpportunityId ?? null,
+      accountId: relatedAccountId ?? null,
     });
 
     res.status(201).json({
