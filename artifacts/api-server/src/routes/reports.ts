@@ -4,7 +4,7 @@ import {
   contactsTable, leadsTable, accountsTable, opportunitiesTable,
   activitiesTable, casesTable
 } from "@workspace/db";
-import { eq, sql, gte, lt, and } from "drizzle-orm";
+import { eq, sql, gte, lt, and, desc } from "drizzle-orm";
 
 const router: IRouter = Router();
 

@@ -474,7 +474,7 @@ export default function OpportunityDetail() {
           <Link href="/opportunities">
             <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-4 hover:text-foreground">
               <ArrowLeft className="w-4 h-4" />
-              Back to Pipeline
+              Back to Opportunities
             </Button>
           </Link>
 

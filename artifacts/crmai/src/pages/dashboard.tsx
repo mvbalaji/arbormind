@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  ResponsiveContainer, Cell, FunnelChart, Funnel, LabelList,
+  ResponsiveContainer, Cell,
   PieChart, Pie,
 } from "recharts";
 import { format, formatDistanceToNow } from "date-fns";
@@ -32,20 +32,20 @@ const STAGE_COLORS = [
 ];
 
 const LEAD_STATUS_COLORS: Record<string, string> = {
-  new: "bg-blue-50 text-blue-700 border-blue-200",
-  contacted: "bg-purple-50 text-purple-700 border-purple-200",
-  qualified: "bg-green-50 text-green-700 border-green-200",
-  unqualified: "bg-red-50 text-red-700 border-red-200",
-  converted: "bg-gray-100 text-gray-600 border-gray-200",
+  new: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+  contacted: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+  qualified: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300 border-green-200 dark:border-green-800",
+  unqualified: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 border-red-200 dark:border-red-800",
+  converted: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700",
 };
 
 const STAGE_BADGE: Record<string, string> = {
-  prospecting: "text-blue-600 bg-blue-50 border-blue-200",
-  qualification: "text-indigo-600 bg-indigo-500/10 border-indigo-200",
-  proposal: "text-purple-600 bg-purple-500/10 border-purple-200",
-  negotiation: "text-orange-600 bg-orange-500/10 border-orange-200",
-  closed_won: "text-green-600 bg-green-500/10 border-green-200",
-  closed_lost: "text-red-600 bg-red-500/10 border-red-200",
+  prospecting: "text-blue-600 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800",
+  qualification: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950 border-indigo-200 dark:border-indigo-800",
+  proposal: "text-purple-600 bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800",
+  negotiation: "text-orange-600 bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800",
+  closed_won: "text-green-600 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800",
+  closed_lost: "text-red-600 bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800",
 };
 
 function KPICard({
@@ -62,7 +62,7 @@ function KPICard({
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{title}</p>
             <div className="mt-1.5 text-2xl font-bold text-foreground font-display">{value}</div>
             {trend && (
-              <p className={cn("text-xs mt-1 font-medium", trendUp ? "text-emerald-700" : "text-rose-600")}>
+              <p className={cn("text-xs mt-1 font-medium", trendUp ? "text-emerald-600" : "text-rose-600")}>
                 {trend}
               </p>
             )}
@@ -83,7 +83,7 @@ function AIInsightsBanner({ stats }: { stats: ReturnType<typeof useGetDashboardS
 
   if ((stats.winRate ?? 0) < 30) insights.push({ icon: AlertCircle, color: "text-orange-600", type: "warn", text: `Win rate at ${stats.winRate}% — review lost deal reasons to improve conversion.` });
   if ((stats.openCases ?? 0) > 5) insights.push({ icon: AlertCircle, color: "text-rose-600", type: "warn", text: `${stats.openCases} open support cases need attention.` });
-  if ((stats.wonDealsThisMonth ?? 0) > 0) insights.push({ icon: CheckCircle2, color: "text-emerald-700", type: "success", text: `${stats.wonDealsThisMonth} deals closed this month totaling $${(stats.revenueThisMonth ?? 0).toLocaleString()}.` });
+  if ((stats.wonDealsThisMonth ?? 0) > 0) insights.push({ icon: CheckCircle2, color: "text-emerald-600", type: "success", text: `${stats.wonDealsThisMonth} deals closed this month totaling $${(stats.revenueThisMonth ?? 0).toLocaleString()}.` });
   if ((stats.totalLeads ?? 0) > 10) insights.push({ icon: Zap, color: "text-blue-600", type: "info", text: `${stats.totalLeads} leads in pipeline. Focus on top-scored leads for fastest conversion.` });
 
   if (insights.length === 0) return null;
@@ -112,40 +112,37 @@ export default function Dashboard() {
   const { data: stats, isLoading } = useGetDashboardStats();
   const { data: pipelineData, isLoading: pipelineLoading } = useGetPipelineReport();
   const { data: leadsData, isLoading: leadsLoading } = useListLeads({ limit: 5 });
-  const { data: dealsData, isLoading: dealsLoading } = useListOpportunities({ limit: 5, stage: "negotiation" });
+  const { data: topDealsData, isLoading: topDealsLoading } = useListOpportunities({ limit: 100 });
+
+  const topDeals = React.useMemo(() => {
+    if (!topDealsData?.data) return [];
+    return [...topDealsData.data]
+      .filter(d => d.stage !== "closed_won" && d.stage !== "closed_lost")
+      .sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))
+      .slice(0, 5);
+  }, [topDealsData]);
 
   const chartData = pipelineData?.stages
     ? pipelineData.stages
         .filter(s => s.stage !== "closed_lost")
         .map((s, i) => ({
           name: STAGE_LABELS[s.stage] ?? s.stage,
-          value: s.totalValue,
-          count: s.count,
+          value: Number(s.totalValue) || 0,
+          count: Number(s.count) || 0,
           color: STAGE_COLORS[i % STAGE_COLORS.length],
-        }))
-    : [];
-
-  const funnelData = pipelineData?.stages
-    ? pipelineData.stages
-        .filter(s => !["closed_won", "closed_lost"].includes(s.stage))
-        .map((s, i) => ({
-          name: STAGE_LABELS[s.stage] ?? s.stage,
-          value: s.count,
-          fill: STAGE_COLORS[i],
         }))
     : [];
 
   const winLossData = pipelineData?.stages
     ? [
-        { name: "Won", value: pipelineData.stages.find(s => s.stage === "closed_won")?.count ?? 0, fill: "#10b981" },
-        { name: "Lost", value: pipelineData.stages.find(s => s.stage === "closed_lost")?.count ?? 0, fill: "#ef4444" },
+        { name: "Won", value: Number(pipelineData.stages.find(s => s.stage === "closed_won")?.count ?? 0), fill: "#10b981" },
+        { name: "Lost", value: Number(pipelineData.stages.find(s => s.stage === "closed_lost")?.count ?? 0), fill: "#ef4444" },
       ]
     : [];
 
   return (
     <Layout>
       <div className="flex flex-col gap-6">
-        {/* Page Header */}
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-display font-bold tracking-tight text-foreground">
@@ -169,59 +166,55 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <KPICard
             title="Revenue This Month"
-            value={isLoading ? <Skeleton className="h-7 w-24" /> : `$${(stats?.revenueThisMonth ?? 0).toLocaleString()}`}
-            trend={`↑ ${stats?.wonDealsThisMonth ?? 0} deals closed`}
+            value={isLoading ? <Skeleton className="h-7 w-24" /> : `$${(Number(stats?.revenueThisMonth) || 0).toLocaleString()}`}
+            trend={`↑ ${Number(stats?.wonDealsThisMonth) || 0} deals closed`}
             trendUp={true}
             icon={DollarSign}
-            color="text-emerald-700 bg-emerald-50"
+            color="text-emerald-600 bg-emerald-100 dark:bg-emerald-950"
           />
           <KPICard
             title="Pipeline Value"
-            value={isLoading ? <Skeleton className="h-7 w-24" /> : `$${((stats?.totalPipelineValue ?? 0) / 1000).toFixed(0)}k`}
-            subtitle={`${stats?.openOpportunities ?? 0} open deals`}
+            value={isLoading ? <Skeleton className="h-7 w-24" /> : `$${((Number(stats?.totalPipelineValue) || 0) / 1000).toFixed(0)}k`}
+            subtitle={`${Number(stats?.openOpportunities) || 0} open deals`}
             icon={TrendingUp}
-            color="text-blue-600 bg-blue-50"
+            color="text-blue-600 bg-blue-100 dark:bg-blue-950"
           />
           <KPICard
             title="Win Rate"
-            value={isLoading ? <Skeleton className="h-7 w-16" /> : `${stats?.winRate ?? 0}%`}
-            trend={(stats?.winRate ?? 0) >= 40 ? "↑ On target" : "↓ Below target"}
-            trendUp={(stats?.winRate ?? 0) >= 40}
+            value={isLoading ? <Skeleton className="h-7 w-16" /> : `${Number(stats?.winRate) || 0}%`}
+            trend={(Number(stats?.winRate) || 0) >= 40 ? "↑ On target" : "↓ Below target"}
+            trendUp={(Number(stats?.winRate) || 0) >= 40}
             icon={Target}
-            color="text-violet-600 bg-violet-50"
+            color="text-violet-600 bg-violet-100 dark:bg-violet-950"
           />
           <KPICard
             title="Total Leads"
-            value={isLoading ? <Skeleton className="h-7 w-16" /> : stats?.totalLeads ?? 0}
-            subtitle={`${stats?.totalContacts ?? 0} contacts`}
+            value={isLoading ? <Skeleton className="h-7 w-16" /> : Number(stats?.totalLeads) || 0}
+            subtitle={`${Number(stats?.totalContacts) || 0} contacts`}
             icon={UserPlus}
-            color="text-orange-600 bg-orange-500/10"
+            color="text-orange-600 bg-orange-100 dark:bg-orange-950"
           />
           <KPICard
             title="Activities / Week"
-            value={isLoading ? <Skeleton className="h-7 w-16" /> : stats?.activitiesThisWeek ?? 0}
-            subtitle={`${stats?.openCases ?? 0} open cases`}
+            value={isLoading ? <Skeleton className="h-7 w-16" /> : Number(stats?.activitiesThisWeek) || 0}
+            subtitle={`${Number(stats?.openCases) || 0} open cases`}
             icon={Activity}
-            color="text-rose-600 bg-rose-50"
+            color="text-rose-600 bg-rose-100 dark:bg-rose-950"
           />
         </div>
 
-        {/* AI Insights */}
         {!isLoading && <AIInsightsBanner stats={stats} />}
 
-        {/* Main Content Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Pipeline Chart */}
           <Card className="lg:col-span-2 glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="font-display font-semibold text-base flex items-center justify-between">
                 Pipeline by Stage
                 <Link href="/opportunities">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-white gap-1 text-xs h-7">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1 text-xs h-7">
                     Full Pipeline <ArrowRight className="w-3 h-3" />
                   </Button>
                 </Link>
@@ -234,13 +227,13 @@ export default function Dashboard() {
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                      <XAxis dataKey="name" stroke="rgba(255,255,255,0.35)" fontSize={11} tickLine={false} axisLine={false} />
-                      <YAxis stroke="rgba(255,255,255,0.35)" fontSize={11} tickLine={false} axisLine={false}
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                      <XAxis dataKey="name" className="fill-muted-foreground" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis className="fill-muted-foreground" fontSize={11} tickLine={false} axisLine={false}
                         tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} />
                       <RechartsTooltip
-                        cursor={{ fill: "rgba(255,255,255,0.04)" }}
-                        contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "rgba(255,255,255,0.1)", borderRadius: "8px", color: "white", fontSize: "12px" }}
+                        cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                        contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))", fontSize: "12px" }}
                         formatter={(value: number, _name: string, entry: { payload?: { count?: number } }) => [
                           `$${value.toLocaleString()}`,
                           `Value (${entry.payload?.count ?? 0} deals)`,
@@ -258,9 +251,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Win/Loss + Quick Stats */}
           <div className="flex flex-col gap-4">
-            {/* Win/Loss Donut */}
             <Card className="glass-panel border-border flex-1">
               <CardHeader className="pb-1 pt-4">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Closed Deals</CardTitle>
@@ -284,7 +275,7 @@ export default function Dashboard() {
                         <div key={i} className="flex items-center gap-2">
                           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.fill }} />
                           <div>
-                            <div className="text-lg font-bold text-white leading-none">{d.value}</div>
+                            <div className="text-lg font-bold text-foreground leading-none">{d.value}</div>
                             <div className="text-xs text-muted-foreground">{d.name}</div>
                           </div>
                         </div>
@@ -295,21 +286,20 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Quick Stats */}
             <Card className="glass-panel border-border">
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Total Accounts</span>
-                  <span className="font-bold text-foreground">{isLoading ? "—" : stats?.totalAccounts ?? 0}</span>
+                  <span className="font-bold text-foreground">{isLoading ? "—" : Number(stats?.totalAccounts) || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Total Contacts</span>
-                  <span className="font-bold text-foreground">{isLoading ? "—" : stats?.totalContacts ?? 0}</span>
+                  <span className="font-bold text-foreground">{isLoading ? "—" : Number(stats?.totalContacts) || 0}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Open Support Cases</span>
-                  <span className={cn("font-bold", (stats?.openCases ?? 0) > 0 ? "text-rose-600" : "text-white")}>
-                    {isLoading ? "—" : stats?.openCases ?? 0}
+                  <span className={cn("font-bold", (Number(stats?.openCases) || 0) > 0 ? "text-rose-600" : "text-foreground")}>
+                    {isLoading ? "—" : Number(stats?.openCases) || 0}
                   </span>
                 </div>
               </CardContent>
@@ -317,15 +307,13 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Bottom Row: Recent Leads + Deals in Negotiation + Upcoming Activities */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Recent Leads */}
           <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display font-semibold flex items-center justify-between">
                 Recent Leads
                 <Link href="/leads">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-white gap-1 text-xs h-7">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1 text-xs h-7">
                     All <ArrowRight className="w-3 h-3" />
                   </Button>
                 </Link>
@@ -355,12 +343,12 @@ export default function Dashboard() {
                             {initials}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{lead.firstName} {lead.lastName}</p>
+                            <p className="text-sm font-medium text-foreground truncate">{lead.firstName} {lead.lastName}</p>
                             <p className="text-xs text-muted-foreground truncate">{lead.company ?? lead.email ?? "—"}</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {lead.score != null && (
-                              <span className={cn("text-xs font-bold", lead.score >= 70 ? "text-emerald-700" : lead.score >= 40 ? "text-yellow-600" : "text-rose-600")}>
+                              <span className={cn("text-xs font-bold", lead.score >= 70 ? "text-emerald-600" : lead.score >= 40 ? "text-yellow-600" : "text-rose-600")}>
                                 {lead.score}
                               </span>
                             )}
@@ -377,13 +365,15 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Hot Deals */}
           <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display font-semibold flex items-center justify-between">
-                🔥 Hot Deals (Negotiation)
+                <span className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  Top Deals
+                </span>
                 <Link href="/opportunities">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-white gap-1 text-xs h-7">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1 text-xs h-7">
                     All <ArrowRight className="w-3 h-3" />
                   </Button>
                 </Link>
@@ -391,40 +381,36 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-border">
-                {dealsLoading ? (
+                {topDealsLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="px-4 py-3 space-y-1.5">
                       <Skeleton className="h-3 w-32" />
                       <Skeleton className="h-3 w-20" />
                     </div>
                   ))
-                ) : !dealsData?.data?.length ? (
-                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">No deals in negotiation.</div>
+                ) : topDeals.length === 0 ? (
+                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">No open deals.</div>
                 ) : (
-                  dealsData.data.map((deal) => (
+                  topDeals.map((deal) => (
                     <Link key={deal.id} href={`/opportunities/${deal.id}`}>
                       <div className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-white truncate">{deal.name}</p>
+                            <p className="text-sm font-medium text-foreground truncate">{deal.name}</p>
                             <p className="text-xs text-muted-foreground">{deal.accountName ?? "—"}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-emerald-700">${(deal.amount ?? 0).toLocaleString()}</p>
-                            {deal.closeDate && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
-                                <Calendar className="w-3 h-3" />
-                                {format(new Date(deal.closeDate), "MMM d")}
-                              </p>
-                            )}
+                            <p className="text-sm font-bold text-emerald-600">${(Number(deal.amount) || 0).toLocaleString()}</p>
+                            <Badge variant="outline" className={cn("text-[10px] capitalize mt-0.5", STAGE_BADGE[deal.stage] ?? "")}>
+                              {STAGE_LABELS[deal.stage] ?? deal.stage}
+                            </Badge>
                           </div>
                         </div>
-                        {deal.probability != null && (
-                          <div className="mt-1.5">
-                            <div className="w-full bg-muted/50 rounded-full h-1">
-                              <div className="bg-orange-400 h-1 rounded-full" style={{ width: `${deal.probability}%` }} />
-                            </div>
-                          </div>
+                        {deal.closeDate && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <Calendar className="w-3 h-3" />
+                            Closes {format(new Date(deal.closeDate), "MMM d, yyyy")}
+                          </p>
                         )}
                       </div>
                     </Link>
@@ -434,7 +420,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Upcoming Activities */}
           <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display font-semibold flex items-center gap-2">
@@ -463,7 +448,7 @@ export default function Dashboard() {
                         <Clock className="w-3.5 h-3.5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{activity.subject}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{activity.subject}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {activity.dueDate
                             ? formatDistanceToNow(new Date(activity.dueDate), { addSuffix: true })
@@ -478,19 +463,18 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Pipeline Funnel + Stage Table */}
-        {!pipelineLoading && funnelData.length > 0 && (
+        {!pipelineLoading && pipelineData?.stages && pipelineData.stages.length > 0 && (
           <Card className="glass-panel border-border">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-display font-semibold">Lead & Deal Stage Summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {pipelineData?.stages?.filter(s => s.stage !== "closed_lost").map((s, i) => (
+                {pipelineData.stages.filter(s => s.stage !== "closed_lost").map((s, i) => (
                   <div key={s.stage} className="text-center p-3 rounded-xl bg-muted/50 border border-border">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{STAGE_LABELS[s.stage]}</div>
-                    <div className="text-xl font-bold font-display" style={{ color: STAGE_COLORS[i] }}>{s.count}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">${(s.totalValue / 1000).toFixed(0)}k</div>
+                    <div className="text-xl font-bold font-display" style={{ color: STAGE_COLORS[i] }}>{Number(s.count) || 0}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">${((Number(s.totalValue) || 0) / 1000).toFixed(0)}k</div>
                   </div>
                 ))}
               </div>
