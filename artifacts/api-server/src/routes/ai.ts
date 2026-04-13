@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import {
   leadsTable, contactsTable, accountsTable, opportunitiesTable,
@@ -6,11 +6,25 @@ import {
 } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
+interface ChatCompletionsAPI {
+  create(params: {
+    model: string;
+    messages: Array<{ role: string; content: string }>;
+    max_completion_tokens?: number;
+  }): Promise<{
+    choices: Array<{ message?: { content?: string | null } }>;
+  }>;
+}
+
+interface OpenAIClient {
+  chat: { completions: ChatCompletionsAPI };
+}
+
 const router: IRouter = Router();
 
-let _openai: any = null;
+let _openai: OpenAIClient | null = null;
 
-async function getOpenAI() {
+async function getOpenAI(): Promise<OpenAIClient | null> {
   if (_openai) return _openai;
   try {
     const mod = await import("@workspace/integrations-openai-ai-server");
@@ -21,11 +35,19 @@ async function getOpenAI() {
   }
 }
 
-function getSessionUser(req: any) {
-  return req.session?.user ?? req.user ?? null;
+interface SessionUser {
+  id: number;
+  email: string;
+  role: string;
 }
 
-function requireAuth(req: any, res: any): boolean {
+function getSessionUser(req: Request): SessionUser | null {
+  const session = req.session as Record<string, unknown> | undefined;
+  const user = session?.user ?? req.user ?? null;
+  return user as SessionUser | null;
+}
+
+function requireAuth(req: Request, res: Response): boolean {
   const user = getSessionUser(req);
   if (!user) {
     res.status(401).json({ error: "Unauthorized" });

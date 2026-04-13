@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import { AISummary } from "@/components/ai-summary";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +57,7 @@ function WeekCalendar({ activities }: { activities: Array<{ id: number; type: st
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => setWeekStart((d) => addDays(d, -7))}
-          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-white border border-border rounded-lg hover:border-white/20 transition-colors"
+          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-primary/20 transition-colors"
         >
           ← Prev
         </button>
@@ -65,7 +66,7 @@ function WeekCalendar({ activities }: { activities: Array<{ id: number; type: st
         </span>
         <button
           onClick={() => setWeekStart((d) => addDays(d, 7))}
-          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-white border border-border rounded-lg hover:border-white/20 transition-colors"
+          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-primary/20 transition-colors"
         >
           Next →
         </button>
@@ -80,7 +81,7 @@ function WeekCalendar({ activities }: { activities: Array<{ id: number; type: st
             <div key={day.toISOString()} className="min-h-32">
               <div className={`text-center py-2 rounded-t-lg mb-1 ${isToday ? "bg-primary/20 text-primary font-semibold" : "text-muted-foreground"}`}>
                 <div className="text-xs uppercase tracking-wide">{format(day, "EEE")}</div>
-                <div className={`text-lg font-bold leading-none mt-0.5 ${isToday ? "text-primary" : "text-white"}`}>{format(day, "d")}</div>
+                <div className={`text-lg font-bold leading-none mt-0.5 ${isToday ? "text-primary" : "text-foreground"}`}>{format(day, "d")}</div>
               </div>
               <div className="flex flex-col gap-1">
                 {dayActivities.map((act) => {
@@ -124,13 +125,13 @@ export default function Activities() {
             <div className="flex items-center border border-border rounded-lg overflow-hidden">
               <button
                 onClick={() => setViewMode("list")}
-                className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-white"}`}
+                className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
               >
                 <List className="w-4 h-4" /> List
               </button>
               <button
                 onClick={() => setViewMode("calendar")}
-                className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors border-l border-border ${viewMode === "calendar" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-white"}`}
+                className={`px-3 py-2 text-sm flex items-center gap-1.5 transition-colors border-l border-border ${viewMode === "calendar" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
               >
                 <Calendar className="w-4 h-4" /> Calendar
               </button>
@@ -143,6 +144,8 @@ export default function Activities() {
             </Button>
           </div>
         </div>
+
+        <AISummary entityType="activities" />
 
         {viewMode === "calendar" && !isLoading && (
           <Card className="glass-panel border-border p-6">
@@ -206,7 +209,7 @@ export default function Activities() {
                         <td className="px-6 py-4 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                                 <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -342,7 +345,7 @@ function ActivityFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-white sm:max-w-[500px]">
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "Log Activity" : "Edit Activity"}
@@ -352,7 +355,7 @@ function ActivityFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Type</Label>
-              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.type} onChange={f("type")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm" value={formData.type} onChange={f("type")}>
                 <option value="call">Call</option>
                 <option value="email">Email</option>
                 <option value="meeting">Meeting</option>
@@ -362,7 +365,7 @@ function ActivityFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.status} onChange={f("status")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm" value={formData.status} onChange={f("status")}>
                 <option value="planned">Planned</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
@@ -380,7 +383,7 @@ function ActivityFormDialog({
           <div className="space-y-2">
             <Label>Description</Label>
             <textarea
-              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm resize-none"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm resize-none"
               rows={3}
               value={formData.description}
               onChange={f("description")}

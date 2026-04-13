@@ -6,6 +6,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth";
 import { Layout } from "@/components/layout";
+import { AISummary } from "@/components/ai-summary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -154,6 +155,8 @@ export default function Accounts() {
             </Button>
           </div>
         </div>
+
+        <AISummary entityType="accounts" />
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 mb-2">
