@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import {
   useGetQuote, useUpdateQuote, useCreateQuoteVersion, useSendQuote,
-  useListProducts,
+  useListProducts, useListOpportunityItems,
   getGetQuoteQueryKey, getListQuotesQueryKey,
   CreateQuoteInputStatus,
 } from "@workspace/api-client-react";
@@ -48,6 +48,10 @@ export default function QuoteDetail() {
   const products = productsData?.data ?? [];
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { data: oppItemsData } = useListOpportunityItems(quote?.opportunityId ?? 0, {
+    query: { enabled: !!quote?.opportunityId },
+  });
+  const opportunityItems = oppItemsData?.data ?? [];
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -348,6 +352,57 @@ export default function QuoteDetail() {
             )}
           </Card>
         </div>
+
+        {/* Opportunity Line Items (source reference) */}
+        {opportunityItems.length > 0 && (
+          <Card className="glass-panel border-border border-blue-500/20">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-500" />
+                <h3 className="font-semibold text-foreground">Opportunity Line Items</h3>
+                <Badge variant="secondary" className="text-xs">{opportunityItems.length} items from opportunity</Badge>
+              </div>
+              {isEditing && editItems.length === 0 && (
+                <Button type="button" variant="outline" size="sm"
+                  className="border-blue-500/30 text-blue-600 hover:bg-blue-500/10 text-xs"
+                  onClick={() => setEditItems(opportunityItems.map(oi => ({
+                    productId: oi.productId ?? null,
+                    productName: oi.productName,
+                    quantity: oi.quantity,
+                    unitPrice: oi.unitPrice,
+                    discount: oi.discount ?? 0,
+                  })))}
+                >
+                  <Copy className="w-3 h-3 mr-1" /> Import to Quote
+                </Button>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-xs text-muted-foreground uppercase bg-blue-500/5 border-b border-border">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium">Product</th>
+                    <th className="px-4 py-2 text-right font-medium">Qty</th>
+                    <th className="px-4 py-2 text-right font-medium">Unit Price</th>
+                    <th className="px-4 py-2 text-right font-medium">Disc %</th>
+                    <th className="px-4 py-2 text-right font-medium">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {opportunityItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-blue-500/5 transition-colors">
+                      <td className="px-4 py-2 text-foreground">{item.productName}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">{item.quantity}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">${item.unitPrice.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">{item.discount}%</td>
+                      <td className="px-4 py-2 text-right font-medium text-foreground">${item.total.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
 
         {/* Line Items */}
         <Card className="glass-panel border-border">

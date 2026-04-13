@@ -752,6 +752,72 @@ export const DeleteOpportunityResponse = zod.object({
 });
 
 /**
+ * @summary List opportunity line items
+ */
+export const ListOpportunityItemsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListOpportunityItemsResponse = zod.object({
+  data: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        opportunityId: zod.number(),
+        productId: zod.number().nullish(),
+        productName: zod.string(),
+        quantity: zod.number(),
+        unitPrice: zod.number(),
+        discount: zod.number(),
+        total: zod.number(),
+        createdAt: zod.date().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Replace opportunity line items
+ */
+export const UpdateOpportunityItemsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const updateOpportunityItemsBodyItemsItemDiscountDefault = 0;
+
+export const UpdateOpportunityItemsBody = zod.object({
+  items: zod.array(
+    zod.object({
+      productId: zod.number().nullish(),
+      productName: zod.string(),
+      quantity: zod.number(),
+      unitPrice: zod.number(),
+      discount: zod
+        .number()
+        .default(updateOpportunityItemsBodyItemsItemDiscountDefault),
+    }),
+  ),
+});
+
+export const UpdateOpportunityItemsResponse = zod.object({
+  data: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        opportunityId: zod.number(),
+        productId: zod.number().nullish(),
+        productName: zod.string(),
+        quantity: zod.number(),
+        unitPrice: zod.number(),
+        discount: zod.number(),
+        total: zod.number(),
+        createdAt: zod.date().optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
  * @summary List activities
  */
 export const listActivitiesQueryPageDefault = 1;

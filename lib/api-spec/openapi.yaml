@@ -540,6 +540,64 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResponse"
 
+  /opportunities/{id}/items:
+    get:
+      operationId: listOpportunityItems
+      tags: [opportunities]
+      summary: List opportunity line items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of opportunity items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OpportunityItem"
+    put:
+      operationId: updateOpportunityItems
+      tags: [opportunities]
+      summary: Replace opportunity line items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/CreateQuoteItemInput"
+      responses:
+        "200":
+          description: Updated opportunity items
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/OpportunityItem"
+
   # ACTIVITIES
   /activities:
     get:
@@ -2909,6 +2967,38 @@ components:
             $ref: "#/components/schemas/CreateQuoteItemInput"
       required:
         - name
+
+    OpportunityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        opportunityId:
+          type: integer
+        productId:
+          type: integer
+          nullable: true
+        productName:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - opportunityId
+        - productName
+        - quantity
+        - unitPrice
+        - discount
+        - total
 
     CreateQuoteItemInput:
       type: object

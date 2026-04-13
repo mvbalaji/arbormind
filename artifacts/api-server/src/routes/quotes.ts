@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable } from "@workspace/db";
+import { quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable, opportunityItemsTable } from "@workspace/db";
 import { eq, sql, inArray, desc, and } from "drizzle-orm";
 import PDFDocument from "pdfkit";
 import nodemailer from "nodemailer";
@@ -275,10 +275,24 @@ router.get("/quotes", async (req, res) => {
 
 router.post("/quotes", async (req, res) => {
   try {
-    const { items = [], ...quoteData } = req.body as {
+    let { items = [], ...quoteData } = req.body as {
       items?: Array<{ productId?: number; productName: string; quantity: number; unitPrice: number; discount?: number }>;
       [key: string]: unknown;
     };
+
+    if (items.length === 0 && quoteData.opportunityId) {
+      const oppItems = await db.select().from(opportunityItemsTable)
+        .where(eq(opportunityItemsTable.opportunityId, quoteData.opportunityId as number));
+      if (oppItems.length > 0) {
+        items = oppItems.map(oi => ({
+          productId: oi.productId ?? undefined,
+          productName: oi.productName,
+          quantity: Number(oi.quantity),
+          unitPrice: Number(oi.unitPrice),
+          discount: Number(oi.discount),
+        }));
+      }
+    }
 
     const [maxQuote] = await db.select({ maxNum: sql<string>`max(quote_number)` }).from(quotesTable);
     const nextNum = maxQuote?.maxNum ? parseInt(maxQuote.maxNum.replace("QT-", "")) + 1 : 1001;

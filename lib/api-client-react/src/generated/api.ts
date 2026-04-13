@@ -51,6 +51,7 @@ import type {
   ListContactsParams,
   ListLeadsParams,
   ListOpportunitiesParams,
+  ListOpportunityItems200,
   ListOrdersParams,
   ListProductsParams,
   ListQuotesParams,
@@ -72,6 +73,8 @@ import type {
   UpdateContactInput,
   UpdateLeadInput,
   UpdateOpportunityInput,
+  UpdateOpportunityItems200,
+  UpdateOpportunityItemsBody,
   UpdateOrderInput,
   UpdateProductInput,
   UpdateQuoteInput,
@@ -1994,6 +1997,185 @@ export const useDeleteOpportunity = <
   TContext
 > => {
   return useMutation(getDeleteOpportunityMutationOptions(options));
+};
+
+/**
+ * @summary List opportunity line items
+ */
+export const getListOpportunityItemsUrl = (id: number) => {
+  return `/api/opportunities/${id}/items`;
+};
+
+export const listOpportunityItems = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ListOpportunityItems200> => {
+  return customFetch<ListOpportunityItems200>(getListOpportunityItemsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListOpportunityItemsQueryKey = (id: number) => {
+  return [`/api/opportunities/${id}/items`] as const;
+};
+
+export const getListOpportunityItemsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listOpportunityItems>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOpportunityItems>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListOpportunityItemsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listOpportunityItems>>
+  > = ({ signal }) => listOpportunityItems(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listOpportunityItems>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListOpportunityItemsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listOpportunityItems>>
+>;
+export type ListOpportunityItemsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List opportunity line items
+ */
+
+export function useListOpportunityItems<
+  TData = Awaited<ReturnType<typeof listOpportunityItems>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOpportunityItems>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListOpportunityItemsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Replace opportunity line items
+ */
+export const getUpdateOpportunityItemsUrl = (id: number) => {
+  return `/api/opportunities/${id}/items`;
+};
+
+export const updateOpportunityItems = async (
+  id: number,
+  updateOpportunityItemsBody: UpdateOpportunityItemsBody,
+  options?: RequestInit,
+): Promise<UpdateOpportunityItems200> => {
+  return customFetch<UpdateOpportunityItems200>(
+    getUpdateOpportunityItemsUrl(id),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateOpportunityItemsBody),
+    },
+  );
+};
+
+export const getUpdateOpportunityItemsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOpportunityItems>>,
+    TError,
+    { id: number; data: BodyType<UpdateOpportunityItemsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateOpportunityItems>>,
+  TError,
+  { id: number; data: BodyType<UpdateOpportunityItemsBody> },
+  TContext
+> => {
+  const mutationKey = ["updateOpportunityItems"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateOpportunityItems>>,
+    { id: number; data: BodyType<UpdateOpportunityItemsBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateOpportunityItems(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateOpportunityItemsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateOpportunityItems>>
+>;
+export type UpdateOpportunityItemsMutationBody =
+  BodyType<UpdateOpportunityItemsBody>;
+export type UpdateOpportunityItemsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Replace opportunity line items
+ */
+export const useUpdateOpportunityItems = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOpportunityItems>>,
+    TError,
+    { id: number; data: BodyType<UpdateOpportunityItemsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateOpportunityItems>>,
+  TError,
+  { id: number; data: BodyType<UpdateOpportunityItemsBody> },
+  TContext
+> => {
+  return useMutation(getUpdateOpportunityItemsMutationOptions(options));
 };
 
 /**

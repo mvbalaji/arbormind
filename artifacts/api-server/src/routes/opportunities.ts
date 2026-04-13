@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { opportunitiesTable, usersTable, accountsTable, contactsTable, activitiesTable } from "@workspace/db";
+import { opportunitiesTable, usersTable, accountsTable, contactsTable, activitiesTable, opportunityItemsTable } from "@workspace/db";
 import { eq, ilike, sql, and } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -190,6 +190,81 @@ router.get("/opportunities/:id/activities", async (req, res) => {
       data: data.map((r) => ({
         ...r.activities,
         contactName: r.contacts ? `${r.contacts.firstName} ${r.contacts.lastName}` : null,
+      })),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/opportunities/:id/items", async (req, res) => {
+  try {
+    const opportunityId = parseInt(req.params.id);
+    if (!Number.isFinite(opportunityId) || opportunityId <= 0) {
+      res.status(400).json({ error: "Invalid opportunity ID" });
+      return;
+    }
+    const items = await db.select().from(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, opportunityId));
+    res.json({
+      data: items.map((item) => ({
+        ...item,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        discount: Number(item.discount),
+        total: Number(item.total),
+      })),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/opportunities/:id/items", async (req, res) => {
+  try {
+    const opportunityId = parseInt(req.params.id);
+    if (!Number.isFinite(opportunityId) || opportunityId <= 0) {
+      res.status(400).json({ error: "Invalid opportunity ID" });
+      return;
+    }
+
+    const [opp] = await db.select({ id: opportunitiesTable.id }).from(opportunitiesTable).where(eq(opportunitiesTable.id, opportunityId));
+    if (!opp) { res.status(404).json({ error: "Opportunity not found" }); return; }
+
+    const { items } = req.body as {
+      items: Array<{ productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
+    };
+
+    await db.delete(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, opportunityId));
+
+    if (items && items.length > 0) {
+      await db.insert(opportunityItemsTable).values(items.map((item) => ({
+        opportunityId,
+        productId: item.productId ?? null,
+        productName: item.productName,
+        quantity: item.quantity.toString(),
+        unitPrice: item.unitPrice.toString(),
+        discount: (item.discount ?? 0).toString(),
+        total: (item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100)).toString(),
+      })));
+    }
+
+    const totalAmount = items.reduce((sum, item) => {
+      return sum + item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100);
+    }, 0);
+    await db.update(opportunitiesTable)
+      .set({ amount: totalAmount.toString(), updatedAt: new Date() })
+      .where(eq(opportunitiesTable.id, opportunityId));
+
+    const savedItems = await db.select().from(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, opportunityId));
+    res.json({
+      data: savedItems.map((item) => ({
+        ...item,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        discount: Number(item.discount),
+        total: Number(item.total),
       })),
     });
   } catch (err) {

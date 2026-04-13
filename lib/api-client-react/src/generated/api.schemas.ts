@@ -805,6 +805,18 @@ export interface CreateQuoteInput {
   items?: CreateQuoteItemInput[];
 }
 
+export interface OpportunityItem {
+  id: number;
+  opportunityId: number;
+  productId?: number | null;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  total: number;
+  createdAt?: string;
+}
+
 export type UpdateQuoteInputStatus =
   (typeof UpdateQuoteInputStatus)[keyof typeof UpdateQuoteInputStatus];
 
@@ -1008,6 +1020,18 @@ export type ListOpportunitiesParams = {
   assignedTo?: number;
   page?: number;
   limit?: number;
+};
+
+export type ListOpportunityItems200 = {
+  data?: OpportunityItem[];
+};
+
+export type UpdateOpportunityItemsBody = {
+  items: CreateQuoteItemInput[];
+};
+
+export type UpdateOpportunityItems200 = {
+  data?: OpportunityItem[];
 };
 
 export type ListActivitiesParams = {
