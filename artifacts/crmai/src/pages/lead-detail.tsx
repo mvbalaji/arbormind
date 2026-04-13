@@ -174,22 +174,18 @@ export default function LeadDetail() {
     enabled: !!id,
   });
 
+  const hasConvertedEntities = !!(lead?.convertedContactId || lead?.convertedAccountId);
   const { data: activitiesData, refetch: refetchActivities } = useQuery<{ data: LeadActivity[] }>({
     queryKey: ["lead-activities", id, lead?.convertedContactId, lead?.convertedAccountId],
     queryFn: async () => {
-      if (lead?.convertedContactId) {
-        const params = new URLSearchParams({ page: "1", limit: "20", contactId: String(lead.convertedContactId) });
-        const res = await fetch(`/api/activities?${params}`, { credentials: "include" });
-        return res.json() as Promise<{ data: LeadActivity[] }>;
-      }
-      const res = await fetch(`/api/activities?page=1&limit=200`, { credentials: "include" });
-      const allData = await res.json() as { data: Array<LeadActivity & { contactId?: number | null; accountId?: number | null; opportunityId?: number | null }> };
-      const unlinked = allData.data.filter((a) =>
-        !a.contactId && !a.accountId && !a.opportunityId
-      );
-      return { data: unlinked };
+      const params = new URLSearchParams({ page: "1", limit: "50" });
+      if (lead?.convertedContactId) params.set("contactId", String(lead.convertedContactId));
+      else if (lead?.convertedAccountId) params.set("accountId", String(lead.convertedAccountId));
+      else return { data: [] };
+      const res = await fetch(`/api/activities?${params}`, { credentials: "include" });
+      return res.json() as Promise<{ data: LeadActivity[] }>;
     },
-    enabled: !!id,
+    enabled: !!id && hasConvertedEntities,
   });
 
   const { data: convertedContactData } = useQuery<ConvertedContact>({
@@ -282,6 +278,7 @@ export default function LeadDetail() {
           status: "completed",
           notes: noteText.trim(),
           contactId: lead.convertedContactId ?? undefined,
+          accountId: lead.convertedAccountId ?? undefined,
         }),
       });
 
@@ -311,6 +308,7 @@ export default function LeadDetail() {
           status: activityType === "note" ? "completed" : "planned",
           description: newNote.trim(),
           contactId: lead.convertedContactId ?? undefined,
+          accountId: lead.convertedAccountId ?? undefined,
         }),
       });
       toast({ title: `${typeLabels[activityType] ?? "Activity"} logged` });
@@ -519,6 +517,15 @@ export default function LeadDetail() {
                   Advance Stage →
                 </Button>
               )}
+              {lead.status === "qualified" && !lead.isConverted && (
+                <Button
+                  size="sm"
+                  className="ml-2 h-8 text-xs bg-green-600 hover:bg-green-700 text-white flex-shrink-0"
+                  onClick={() => setIsConvertOpen(true)}
+                >
+                  Convert Lead →
+                </Button>
+              )}
             </div>
           )}
 
@@ -710,10 +717,16 @@ export default function LeadDetail() {
                     {activities.length === 0 ? (
                       <div className="px-4 py-10 text-center">
                         <Activity className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
-                        <p className="text-sm text-muted-foreground">No activities yet.</p>
-                        <Button size="sm" variant="outline" className="mt-3 text-xs" onClick={() => setIsEmailOpen(true)}>
-                          <Mail className="w-3.5 h-3.5 mr-1.5" /> Log an email
-                        </Button>
+                        <p className="text-sm text-muted-foreground">
+                          {hasConvertedEntities
+                            ? "No activities yet."
+                            : "Activities will be tracked after this lead is converted to a contact."}
+                        </p>
+                        {hasConvertedEntities && (
+                          <Button size="sm" variant="outline" className="mt-3 text-xs" onClick={() => setIsEmailOpen(true)}>
+                            <Mail className="w-3.5 h-3.5 mr-1.5" /> Log an email
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       activities.slice(0, 15).map((act) => {
@@ -870,6 +883,8 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
   const [existingContactId, setExistingContactId] = useState<string>("");
   const [oppName, setOppName] = useState("");
   const [createOpp, setCreateOpp] = useState(true);
+  const [accountSearch, setAccountSearch] = useState("");
+  const [contactSearch, setContactSearch] = useState("");
 
   const { data: accountsData } = useListAccounts({ limit: 100 });
   const { data: contactsData } = useListContacts({ limit: 100 });
@@ -882,6 +897,8 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
       setContactMode("new");
       setExistingAccountId("");
       setExistingContactId("");
+      setAccountSearch("");
+      setContactSearch("");
       setOppName(`${fullName} Deal`);
       setCreateOpp(true);
     }
@@ -905,6 +922,12 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
   interface ContactOption { id: number; firstName: string; lastName: string }
   const accounts: AccountOption[] = (accountsData?.data ?? []) as AccountOption[];
   const contacts: ContactOption[] = (contactsData?.data ?? []) as ContactOption[];
+  const filteredAccounts = accountSearch
+    ? accounts.filter((a) => a.name.toLowerCase().includes(accountSearch.toLowerCase()))
+    : accounts;
+  const filteredContacts = contactSearch
+    ? contacts.filter((c) => `${c.firstName} ${c.lastName}`.toLowerCase().includes(contactSearch.toLowerCase()))
+    : contacts;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -943,16 +966,30 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
                 <span className="text-sm text-foreground">{lead.company || "No company name"}</span>
               </div>
             ) : (
-              <select
-                className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                value={existingAccountId}
-                onChange={(e) => setExistingAccountId(e.target.value)}
-              >
-                <option value="">Select an account...</option>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
+              <div className="space-y-1">
+                <Input
+                  placeholder="Search accounts..."
+                  className="h-9 text-sm"
+                  value={accountSearch}
+                  onChange={(e) => { setAccountSearch(e.target.value); setExistingAccountId(""); }}
+                />
+                <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
+                  {filteredAccounts.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">No accounts found</div>
+                  ) : filteredAccounts.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors ${
+                        existingAccountId === String(a.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
+                      }`}
+                      onClick={() => { setExistingAccountId(String(a.id)); setAccountSearch(a.name); }}
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
@@ -980,16 +1017,30 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
                 <span className="text-sm text-foreground">{fullName}</span>
               </div>
             ) : (
-              <select
-                className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                value={existingContactId}
-                onChange={(e) => setExistingContactId(e.target.value)}
-              >
-                <option value="">Select a contact...</option>
-                {contacts.map((c) => (
-                  <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
-                ))}
-              </select>
+              <div className="space-y-1">
+                <Input
+                  placeholder="Search contacts..."
+                  className="h-9 text-sm"
+                  value={contactSearch}
+                  onChange={(e) => { setContactSearch(e.target.value); setExistingContactId(""); }}
+                />
+                <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
+                  {filteredContacts.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">No contacts found</div>
+                  ) : filteredContacts.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors ${
+                        existingContactId === String(c.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
+                      }`}
+                      onClick={() => { setExistingContactId(String(c.id)); setContactSearch(`${c.firstName} ${c.lastName}`); }}
+                    >
+                      {c.firstName} {c.lastName}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
