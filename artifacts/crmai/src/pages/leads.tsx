@@ -603,6 +603,8 @@ function ConvertLeadDialog({
   const [contactMode, setContactMode] = useState<"new" | "existing">("new");
   const [existingAccountId, setExistingAccountId] = useState("");
   const [existingContactId, setExistingContactId] = useState("");
+  const [accountSearch, setAccountSearch] = useState("");
+  const [contactSearch, setContactSearch] = useState("");
   const [oppName, setOppName] = useState("");
   const [createOpp, setCreateOpp] = useState(true);
 
@@ -617,6 +619,8 @@ function ConvertLeadDialog({
       setContactMode("new");
       setExistingAccountId("");
       setExistingContactId("");
+      setAccountSearch("");
+      setContactSearch("");
       setOppName(`${lead.name} Deal`);
       setCreateOpp(true);
     }
@@ -626,6 +630,12 @@ function ConvertLeadDialog({
   interface ContactOption { id: number; firstName: string; lastName: string }
   const typedAccounts: AccountOption[] = accounts as AccountOption[];
   const typedContacts: ContactOption[] = contacts as ContactOption[];
+  const filteredAccounts = accountSearch
+    ? typedAccounts.filter((a) => a.name.toLowerCase().includes(accountSearch.toLowerCase()))
+    : typedAccounts;
+  const filteredContacts = contactSearch
+    ? typedContacts.filter((c) => `${c.firstName} ${c.lastName}`.toLowerCase().includes(contactSearch.toLowerCase()))
+    : typedContacts;
 
   const handleConvert = () => {
     if (!lead) return;
@@ -667,10 +677,30 @@ function ConvertLeadDialog({
               <Button type="button" size="sm" variant={accountMode === "existing" ? "default" : "outline"} className="text-xs h-7 flex-1" onClick={() => setAccountMode("existing")}>Use Existing</Button>
             </div>
             {accountMode === "existing" && (
-              <select className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value={existingAccountId} onChange={(e) => setExistingAccountId(e.target.value)}>
-                <option value="">Select an account...</option>
-                {typedAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
+              <div className="space-y-1">
+                <Input
+                  placeholder="Search accounts..."
+                  className="h-9 text-sm"
+                  value={accountSearch}
+                  onChange={(e) => { setAccountSearch(e.target.value); setExistingAccountId(""); }}
+                />
+                <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
+                  {filteredAccounts.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">No accounts found</div>
+                  ) : filteredAccounts.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors ${
+                        existingAccountId === String(a.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
+                      }`}
+                      onClick={() => { setExistingAccountId(String(a.id)); setAccountSearch(a.name); }}
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
@@ -681,10 +711,30 @@ function ConvertLeadDialog({
               <Button type="button" size="sm" variant={contactMode === "existing" ? "default" : "outline"} className="text-xs h-7 flex-1" onClick={() => setContactMode("existing")}>Use Existing</Button>
             </div>
             {contactMode === "existing" && (
-              <select className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value={existingContactId} onChange={(e) => setExistingContactId(e.target.value)}>
-                <option value="">Select a contact...</option>
-                {typedContacts.map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
-              </select>
+              <div className="space-y-1">
+                <Input
+                  placeholder="Search contacts..."
+                  className="h-9 text-sm"
+                  value={contactSearch}
+                  onChange={(e) => { setContactSearch(e.target.value); setExistingContactId(""); }}
+                />
+                <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
+                  {filteredContacts.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-muted-foreground">No contacts found</div>
+                  ) : filteredContacts.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors ${
+                        existingContactId === String(c.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
+                      }`}
+                      onClick={() => { setExistingContactId(String(c.id)); setContactSearch(`${c.firstName} ${c.lastName}`); }}
+                    >
+                      {c.firstName} {c.lastName}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

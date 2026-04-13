@@ -80,6 +80,7 @@ const ADVANCE_STAGES = [
   { key: "new", label: "New" },
   { key: "contacted", label: "Contacted" },
   { key: "qualified", label: "Qualified" },
+  { key: "converted", label: "Converted" },
 ];
 
 const PIPELINE_STAGES = [
@@ -241,7 +242,22 @@ export default function LeadDetail() {
   const handleStatusChange = (newStatus: string) => {
     updateMutation.mutate({
       id: lead.id,
-      data: { ...lead, status: newStatus as "new" | "contacted" | "qualified" | "unqualified" | "converted" },
+      data: {
+        firstName: lead.firstName,
+        lastName: lead.lastName,
+        email: lead.email,
+        phone: lead.phone,
+        company: lead.company,
+        title: lead.title,
+        source: lead.source,
+        score: lead.score,
+        industry: lead.industry,
+        description: lead.description,
+        employees: lead.employees,
+        annualRevenue: lead.annualRevenue,
+        assignedTo: lead.assignedTo,
+        status: newStatus as "new" | "contacted" | "qualified" | "unqualified" | "converted",
+      },
     }, {
       onSuccess: () => {
         toast({ title: "Status updated" });
@@ -255,7 +271,11 @@ export default function LeadDetail() {
   const handleMarkComplete = () => {
     if (advanceStageIdx >= 0 && advanceStageIdx < ADVANCE_STAGES.length - 1) {
       const nextStage = ADVANCE_STAGES[advanceStageIdx + 1];
-      handleStatusChange(nextStage.key);
+      if (nextStage.key === "converted") {
+        setIsConvertOpen(true);
+      } else {
+        handleStatusChange(nextStage.key);
+      }
     }
   };
 
@@ -515,15 +535,6 @@ export default function LeadDetail() {
                   disabled={updateMutation.isPending}
                 >
                   Advance Stage →
-                </Button>
-              )}
-              {lead.status === "qualified" && !lead.isConverted && (
-                <Button
-                  size="sm"
-                  className="ml-2 h-8 text-xs bg-green-600 hover:bg-green-700 text-white flex-shrink-0"
-                  onClick={() => setIsConvertOpen(true)}
-                >
-                  Convert Lead →
                 </Button>
               )}
             </div>

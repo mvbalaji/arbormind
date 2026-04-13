@@ -102,8 +102,17 @@ router.get("/leads/:id", async (req, res) => {
 
 router.put("/leads/:id", async (req, res) => {
   try {
+    const allowedFields = [
+      "firstName", "lastName", "email", "phone", "company", "title",
+      "status", "source", "score", "assignedTo",
+      "industry", "employees", "annualRevenue", "description",
+    ] as const;
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    for (const key of allowedFields) {
+      if (key in req.body) updateData[key] = req.body[key];
+    }
     const [lead] = await db.update(leadsTable)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(leadsTable.id, parseInt(req.params.id)))
       .returning();
     if (!lead) {
@@ -172,13 +181,22 @@ router.post("/leads/:id/convert", async (req, res) => {
       if (existingAccountId) {
         accountId = existingAccountId;
       } else if (createAccount && lead.company) {
-        const [account] = await tx.insert(accountsTable).values({
-          name: lead.company,
-          industry: lead.industry ?? null,
-          employees: lead.employees ?? null,
-          annualRevenue: lead.annualRevenue ?? null,
-        }).returning();
-        accountId = account.id;
+        const [existingByName] = await tx
+          .select({ id: accountsTable.id })
+          .from(accountsTable)
+          .where(ilike(accountsTable.name, lead.company))
+          .limit(1);
+        if (existingByName) {
+          accountId = existingByName.id;
+        } else {
+          const [account] = await tx.insert(accountsTable).values({
+            name: lead.company,
+            industry: lead.industry ?? null,
+            employees: lead.employees ?? null,
+            annualRevenue: lead.annualRevenue ?? null,
+          }).returning();
+          accountId = account.id;
+        }
       }
 
       if (existingContactId) {
