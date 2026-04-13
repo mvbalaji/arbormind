@@ -1105,6 +1105,184 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResponse"
 
+  /quotes/{id}/version:
+    post:
+      operationId: createQuoteVersion
+      tags: [quotes]
+      summary: Create new version of a quote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: New version created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+
+  /quotes/{id}/pdf:
+    get:
+      operationId: getQuotePdf
+      tags: [quotes]
+      summary: Download quote as PDF
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /quotes/{id}/send:
+    post:
+      operationId: sendQuote
+      tags: [quotes]
+      summary: Send quote to customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Quote sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendQuoteResponse"
+
+  # ORDERS
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderList"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderInput"
+      responses:
+        "201":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/from-quote/{quoteId}:
+    post:
+      operationId: createOrderFromQuote
+      tags: [orders]
+      summary: Convert accepted quote to order
+      parameters:
+        - name: quoteId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Order created from quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+    put:
+      operationId: updateOrder
+      tags: [orders]
+      summary: Update order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderInput"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+    delete:
+      operationId: deleteOrder
+      tags: [orders]
+      summary: Delete order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
   # REPORTS / DASHBOARD
   /reports/dashboard:
     get:
@@ -2537,6 +2715,11 @@ components:
           type: string
         name:
           type: string
+        version:
+          type: integer
+        parentQuoteId:
+          type: integer
+          nullable: true
         opportunityId:
           type: integer
           nullable: true
@@ -2547,6 +2730,9 @@ components:
           type: integer
           nullable: true
         contactName:
+          type: string
+          nullable: true
+        contactEmail:
           type: string
           nullable: true
         accountId:
@@ -2577,6 +2763,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/QuoteItem"
+        versions:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuoteVersionSummary"
+        isLatestVersion:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -2587,6 +2779,7 @@ components:
         - id
         - quoteNumber
         - name
+        - version
         - status
         - subtotal
         - discount
@@ -2595,6 +2788,44 @@ components:
         - items
         - createdAt
         - updatedAt
+
+    QuoteVersionSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        version:
+          type: integer
+        quoteNumber:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - version
+        - quoteNumber
+        - status
+        - createdAt
+
+    SendQuoteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        sentTo:
+          type: string
+          nullable: true
+        contactName:
+          type: string
+      required:
+        - success
+        - message
+        - contactName
 
     QuoteItem:
       type: object
@@ -2893,3 +3124,163 @@ components:
         - months
         - totalForecast
         - totalActual
+
+    # ORDERS
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        orderNumber:
+          type: string
+        quoteId:
+          type: integer
+          nullable: true
+        quoteNumber:
+          type: string
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+        opportunityName:
+          type: string
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        accountName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, confirmed, shipped, delivered, cancelled]
+        subtotal:
+          type: number
+        discount:
+          type: number
+        tax:
+          type: number
+        total:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        orderDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - orderNumber
+        - status
+        - subtotal
+        - discount
+        - tax
+        - total
+        - items
+        - orderDate
+        - createdAt
+        - updatedAt
+
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+          nullable: true
+        productName:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
+      required:
+        - id
+        - productName
+        - quantity
+        - unitPrice
+        - discount
+        - total
+
+    OrderList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateOrderInput:
+      type: object
+      properties:
+        quoteId:
+          type: integer
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [pending, confirmed, shipped, delivered, cancelled]
+          default: pending
+        discount:
+          type: number
+          default: 0
+        tax:
+          type: number
+          default: 0
+        notes:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateQuoteItemInput"
+
+    UpdateOrderInput:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, confirmed, shipped, delivered, cancelled]
+        notes:
+          type: string
+          nullable: true

@@ -31,12 +31,13 @@ All modules are fully implemented with real data:
 6. **Campaigns** — campaign table with click-through to `/campaigns/:id` detail page with status management, budget progress, simulated metrics, ROI display, AI summary
 7. **Activities** — log of calls, emails, meetings, tasks, notes with due dates
 8. **Products** — product catalog with pricing and categories
-9. **Quotes** — quotes with line items, totals, status tracking (Draft/Sent/Accepted)
-10. **Cases/Support** — case management with priority/status badges; Support inbox with webhook-based emails (`POST /api/emails`)
-11. **Reports** — pipeline by stage bar chart, lead sources, revenue forecast charts
-12. **AI Assistant** — UI panel with mock insights and chat interface
-13. **Users / Team & Data** — user management table with roles and teams; includes **Data Import** tab for bulk Excel/CSV import of any entity
-14. **Bulk Data Import** — `/api/import/:entity` (POST) accepts JSON records for leads/contacts/accounts/opportunities/campaigns with smart column normalization (camelCase, snake_case, Title Case)
+9. **Quotes** — quotes with line items, totals, status tracking (Draft/Sent/Accepted/Rejected/Expired), versioning (clone+increment), PDF generation (pdfkit), quote detail page with version history, send to customer workflow
+10. **Orders** — order tracking created from accepted quotes, with status workflow (Pending→Confirmed→Shipped→Delivered/Cancelled)
+11. **Cases/Support** — case management with priority/status badges; Support inbox with webhook-based emails (`POST /api/emails`)
+12. **Reports** — pipeline by stage bar chart, lead sources, revenue forecast charts
+13. **AI Assistant** — UI panel with mock insights and chat interface
+14. **Users / Team & Data** — user management table with roles and teams; includes **Data Import** tab for bulk Excel/CSV import of any entity
+15. **Bulk Data Import** — `/api/import/:entity` (POST) accepts JSON records for leads/contacts/accounts/opportunities/campaigns with smart column normalization (camelCase, snake_case, Title Case)
 
 ## Key Components
 
@@ -49,6 +50,8 @@ All modules are fully implemented with real data:
 - `/accounts/:id` — Account detail 360-degree view (6 tabs: contacts/opportunities/activities/quotes/cases/about, KPI row, extended fields)
 - `/opportunities/:id` — Opportunity detail (stage pipeline progress, quotes tab with PDF generation, activities, email compose, AI summary)
 - `/campaigns/:id` — Campaign detail (status control: launch/pause/complete, budget progress, simulated metrics, ROI, edit)
+- `/quotes/:id` — Quote detail (line items table, version history, PDF download, send to customer, accept/reject, create new version, convert to order)
+- `/orders` — Orders list (created from accepted quotes, status workflow: pending→confirmed→shipped→delivered)
 
 ## Email Sync / Spacemail Integration
 

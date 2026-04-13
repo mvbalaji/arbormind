@@ -5,33 +5,28 @@
  * CRMAI - Full Featured CRM API
  * OpenAPI spec version: 0.1.0
  */
-import type { QuoteItem } from "./quoteItem";
-import type { QuoteStatus } from "./quoteStatus";
-import type { QuoteVersionSummary } from "./quoteVersionSummary";
+import type { OrderItem } from "./orderItem";
+import type { OrderStatus } from "./orderStatus";
 
-export interface Quote {
+export interface Order {
   id: number;
-  quoteNumber: string;
-  name: string;
-  version: number;
-  parentQuoteId?: number | null;
+  orderNumber: string;
+  quoteId?: number | null;
+  quoteNumber?: string | null;
   opportunityId?: number | null;
   opportunityName?: string | null;
   contactId?: number | null;
   contactName?: string | null;
-  contactEmail?: string | null;
   accountId?: number | null;
   accountName?: string | null;
-  status: QuoteStatus;
-  validUntil?: Date | null;
+  status: OrderStatus;
   subtotal: number;
   discount: number;
   tax: number;
   total: number;
   notes?: string | null;
-  items: QuoteItem[];
-  versions?: QuoteVersionSummary[];
-  isLatestVersion?: boolean;
+  items: OrderItem[];
+  orderDate: Date;
   createdAt: Date;
   updatedAt: Date;
 }

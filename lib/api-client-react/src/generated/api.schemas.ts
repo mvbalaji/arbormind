@@ -724,14 +724,25 @@ export interface QuoteItem {
   total: number;
 }
 
+export interface QuoteVersionSummary {
+  id: number;
+  version: number;
+  quoteNumber: string;
+  status: string;
+  createdAt: string;
+}
+
 export interface Quote {
   id: number;
   quoteNumber: string;
   name: string;
+  version: number;
+  parentQuoteId?: number | null;
   opportunityId?: number | null;
   opportunityName?: string | null;
   contactId?: number | null;
   contactName?: string | null;
+  contactEmail?: string | null;
   accountId?: number | null;
   accountName?: string | null;
   status: QuoteStatus;
@@ -742,8 +753,17 @@ export interface Quote {
   total: number;
   notes?: string | null;
   items: QuoteItem[];
+  versions?: QuoteVersionSummary[];
+  isLatestVersion?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SendQuoteResponse {
+  success: boolean;
+  message: string;
+  sentTo?: string | null;
+  contactName: string;
 }
 
 export interface QuoteList {
@@ -870,6 +890,95 @@ export interface RevenueForecast {
   totalActual: number;
 }
 
+export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
+
+export const OrderStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+  shipped: "shipped",
+  delivered: "delivered",
+  cancelled: "cancelled",
+} as const;
+
+export interface OrderItem {
+  id: number;
+  productId?: number | null;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  total: number;
+}
+
+export interface Order {
+  id: number;
+  orderNumber: string;
+  quoteId?: number | null;
+  quoteNumber?: string | null;
+  opportunityId?: number | null;
+  opportunityName?: string | null;
+  contactId?: number | null;
+  contactName?: string | null;
+  accountId?: number | null;
+  accountName?: string | null;
+  status: OrderStatus;
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  notes?: string | null;
+  items: OrderItem[];
+  orderDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderList {
+  data: Order[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export type CreateOrderInputStatus =
+  (typeof CreateOrderInputStatus)[keyof typeof CreateOrderInputStatus];
+
+export const CreateOrderInputStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+  shipped: "shipped",
+  delivered: "delivered",
+  cancelled: "cancelled",
+} as const;
+
+export interface CreateOrderInput {
+  quoteId?: number | null;
+  opportunityId?: number | null;
+  contactId?: number | null;
+  accountId?: number | null;
+  status?: CreateOrderInputStatus;
+  discount?: number;
+  tax?: number;
+  notes?: string | null;
+  items?: CreateQuoteItemInput[];
+}
+
+export type UpdateOrderInputStatus =
+  (typeof UpdateOrderInputStatus)[keyof typeof UpdateOrderInputStatus];
+
+export const UpdateOrderInputStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+  shipped: "shipped",
+  delivered: "delivered",
+  cancelled: "cancelled",
+} as const;
+
+export interface UpdateOrderInput {
+  status?: UpdateOrderInputStatus;
+  notes?: string | null;
+}
+
 export type ListContactsParams = {
   search?: string;
   accountId?: number;
@@ -937,6 +1046,11 @@ export type ListUsersParams = {
 
 export type ListQuotesParams = {
   opportunityId?: number;
+  page?: number;
+  limit?: number;
+};
+
+export type ListOrdersParams = {
   page?: number;
   limit?: number;
 };

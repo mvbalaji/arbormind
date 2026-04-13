@@ -1273,10 +1273,13 @@ export const ListQuotesResponse = zod.object({
       id: zod.number(),
       quoteNumber: zod.string(),
       name: zod.string(),
+      version: zod.number(),
+      parentQuoteId: zod.number().nullish(),
       opportunityId: zod.number().nullish(),
       opportunityName: zod.string().nullish(),
       contactId: zod.number().nullish(),
       contactName: zod.string().nullish(),
+      contactEmail: zod.string().nullish(),
       accountId: zod.number().nullish(),
       accountName: zod.string().nullish(),
       status: zod.enum(["draft", "sent", "accepted", "rejected", "expired"]),
@@ -1297,6 +1300,18 @@ export const ListQuotesResponse = zod.object({
           total: zod.number(),
         }),
       ),
+      versions: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            version: zod.number(),
+            quoteNumber: zod.string(),
+            status: zod.string(),
+            createdAt: zod.date(),
+          }),
+        )
+        .optional(),
+      isLatestVersion: zod.boolean().optional(),
       createdAt: zod.date(),
       updatedAt: zod.date(),
     }),
@@ -1350,10 +1365,13 @@ export const GetQuoteResponse = zod.object({
   id: zod.number(),
   quoteNumber: zod.string(),
   name: zod.string(),
+  version: zod.number(),
+  parentQuoteId: zod.number().nullish(),
   opportunityId: zod.number().nullish(),
   opportunityName: zod.string().nullish(),
   contactId: zod.number().nullish(),
   contactName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
   accountId: zod.number().nullish(),
   accountName: zod.string().nullish(),
   status: zod.enum(["draft", "sent", "accepted", "rejected", "expired"]),
@@ -1374,6 +1392,18 @@ export const GetQuoteResponse = zod.object({
       total: zod.number(),
     }),
   ),
+  versions: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        version: zod.number(),
+        quoteNumber: zod.string(),
+        status: zod.string(),
+        createdAt: zod.date(),
+      }),
+    )
+    .optional(),
+  isLatestVersion: zod.boolean().optional(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -1413,10 +1443,13 @@ export const UpdateQuoteResponse = zod.object({
   id: zod.number(),
   quoteNumber: zod.string(),
   name: zod.string(),
+  version: zod.number(),
+  parentQuoteId: zod.number().nullish(),
   opportunityId: zod.number().nullish(),
   opportunityName: zod.string().nullish(),
   contactId: zod.number().nullish(),
   contactName: zod.string().nullish(),
+  contactEmail: zod.string().nullish(),
   accountId: zod.number().nullish(),
   accountName: zod.string().nullish(),
   status: zod.enum(["draft", "sent", "accepted", "rejected", "expired"]),
@@ -1437,6 +1470,18 @@ export const UpdateQuoteResponse = zod.object({
       total: zod.number(),
     }),
   ),
+  versions: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        version: zod.number(),
+        quoteNumber: zod.string(),
+        status: zod.string(),
+        createdAt: zod.date(),
+      }),
+    )
+    .optional(),
+  isLatestVersion: zod.boolean().optional(),
   createdAt: zod.date(),
   updatedAt: zod.date(),
 });
@@ -1449,6 +1494,241 @@ export const DeleteQuoteParams = zod.object({
 });
 
 export const DeleteQuoteResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary Create new version of a quote
+ */
+export const CreateQuoteVersionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Download quote as PDF
+ */
+export const GetQuotePdfParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Send quote to customer
+ */
+export const SendQuoteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendQuoteResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+  sentTo: zod.string().nullish(),
+  contactName: zod.string(),
+});
+
+/**
+ * @summary List orders
+ */
+export const listOrdersQueryPageDefault = 1;
+export const listOrdersQueryLimitDefault = 50;
+
+export const ListOrdersQueryParams = zod.object({
+  page: zod.coerce.number().default(listOrdersQueryPageDefault),
+  limit: zod.coerce.number().default(listOrdersQueryLimitDefault),
+});
+
+export const ListOrdersResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      orderNumber: zod.string(),
+      quoteId: zod.number().nullish(),
+      quoteNumber: zod.string().nullish(),
+      opportunityId: zod.number().nullish(),
+      opportunityName: zod.string().nullish(),
+      contactId: zod.number().nullish(),
+      contactName: zod.string().nullish(),
+      accountId: zod.number().nullish(),
+      accountName: zod.string().nullish(),
+      status: zod.enum([
+        "pending",
+        "confirmed",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ]),
+      subtotal: zod.number(),
+      discount: zod.number(),
+      tax: zod.number(),
+      total: zod.number(),
+      notes: zod.string().nullish(),
+      items: zod.array(
+        zod.object({
+          id: zod.number(),
+          productId: zod.number().nullish(),
+          productName: zod.string(),
+          quantity: zod.number(),
+          unitPrice: zod.number(),
+          discount: zod.number(),
+          total: zod.number(),
+        }),
+      ),
+      orderDate: zod.date(),
+      createdAt: zod.date(),
+      updatedAt: zod.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
+});
+
+/**
+ * @summary Create order
+ */
+export const createOrderBodyStatusDefault = `pending`;
+export const createOrderBodyDiscountDefault = 0;
+export const createOrderBodyTaxDefault = 0;
+export const createOrderBodyItemsItemDiscountDefault = 0;
+
+export const CreateOrderBody = zod.object({
+  quoteId: zod.number().nullish(),
+  opportunityId: zod.number().nullish(),
+  contactId: zod.number().nullish(),
+  accountId: zod.number().nullish(),
+  status: zod
+    .enum(["pending", "confirmed", "shipped", "delivered", "cancelled"])
+    .default(createOrderBodyStatusDefault),
+  discount: zod.number().default(createOrderBodyDiscountDefault),
+  tax: zod.number().default(createOrderBodyTaxDefault),
+  notes: zod.string().nullish(),
+  items: zod
+    .array(
+      zod.object({
+        productId: zod.number().nullish(),
+        productName: zod.string(),
+        quantity: zod.number(),
+        unitPrice: zod.number(),
+        discount: zod.number().default(createOrderBodyItemsItemDiscountDefault),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Convert accepted quote to order
+ */
+export const CreateOrderFromQuoteParams = zod.object({
+  quoteId: zod.coerce.number(),
+});
+
+/**
+ * @summary Get order by ID
+ */
+export const GetOrderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetOrderResponse = zod.object({
+  id: zod.number(),
+  orderNumber: zod.string(),
+  quoteId: zod.number().nullish(),
+  quoteNumber: zod.string().nullish(),
+  opportunityId: zod.number().nullish(),
+  opportunityName: zod.string().nullish(),
+  contactId: zod.number().nullish(),
+  contactName: zod.string().nullish(),
+  accountId: zod.number().nullish(),
+  accountName: zod.string().nullish(),
+  status: zod.enum([
+    "pending",
+    "confirmed",
+    "shipped",
+    "delivered",
+    "cancelled",
+  ]),
+  subtotal: zod.number(),
+  discount: zod.number(),
+  tax: zod.number(),
+  total: zod.number(),
+  notes: zod.string().nullish(),
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      productId: zod.number().nullish(),
+      productName: zod.string(),
+      quantity: zod.number(),
+      unitPrice: zod.number(),
+      discount: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+  orderDate: zod.date(),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Update order
+ */
+export const UpdateOrderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateOrderBody = zod.object({
+  status: zod
+    .enum(["pending", "confirmed", "shipped", "delivered", "cancelled"])
+    .optional(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateOrderResponse = zod.object({
+  id: zod.number(),
+  orderNumber: zod.string(),
+  quoteId: zod.number().nullish(),
+  quoteNumber: zod.string().nullish(),
+  opportunityId: zod.number().nullish(),
+  opportunityName: zod.string().nullish(),
+  contactId: zod.number().nullish(),
+  contactName: zod.string().nullish(),
+  accountId: zod.number().nullish(),
+  accountName: zod.string().nullish(),
+  status: zod.enum([
+    "pending",
+    "confirmed",
+    "shipped",
+    "delivered",
+    "cancelled",
+  ]),
+  subtotal: zod.number(),
+  discount: zod.number(),
+  tax: zod.number(),
+  total: zod.number(),
+  notes: zod.string().nullish(),
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      productId: zod.number().nullish(),
+      productName: zod.string(),
+      quantity: zod.number(),
+      unitPrice: zod.number(),
+      discount: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+  orderDate: zod.date(),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Delete order
+ */
+export const DeleteOrderParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteOrderResponse = zod.object({
   success: zod.boolean(),
   id: zod.number(),
 });

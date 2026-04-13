@@ -21,6 +21,8 @@ import Activities from "./pages/activities";
 import Products from "./pages/products";
 import Cases from "./pages/cases";
 import Quotes from "./pages/quotes";
+import QuoteDetail from "./pages/quote-detail";
+import Orders from "./pages/orders";
 import Reports from "./pages/reports";
 import Users from "./pages/users";
 import Support from "./pages/support";
@@ -56,6 +58,8 @@ function CRMRoutes() {
       <Route path="/products" component={Products} />
       <Route path="/cases" component={Cases} />
       <Route path="/quotes" component={Quotes} />
+      <Route path="/quotes/:id" component={QuoteDetail} />
+      <Route path="/orders" component={Orders} />
       <Route path="/reports" component={Reports} />
       <Route path="/users" component={Users} />
       <Route path="/support" component={Support} />

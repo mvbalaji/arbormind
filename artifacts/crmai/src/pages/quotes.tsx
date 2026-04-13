@@ -20,9 +20,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Plus, MoreHorizontal, Pencil, Trash2, X, Package } from "lucide-react";
+import { FileText, Plus, MoreHorizontal, Pencil, Trash2, X, Package, Download } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "wouter";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "border-border text-muted-foreground",
@@ -377,8 +378,15 @@ export default function Quotes() {
                 ) : data?.data?.map(q => (
                   <tr key={q.id} className="hover:bg-muted/50 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-foreground">{q.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1 font-mono">{q.quoteNumber}</div>
+                      <Link href={`/quotes/${q.id}`} className="font-medium text-primary hover:underline cursor-pointer">
+                        {q.name}
+                      </Link>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground font-mono">{q.quoteNumber}</span>
+                        {q.version && q.version > 1 && (
+                          <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">v{q.version}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">
                       {q.opportunityName || "-"}
@@ -402,6 +410,16 @@ export default function Quotes() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
+                              window.open(`${baseUrl}/api/quotes/${q.id}/pdf`, "_blank");
+                            }}
+                            className="cursor-pointer hover:bg-muted"
+                          >
+                            <Download className="w-4 h-4 mr-2" /> Download PDF
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-muted" />
                           <DropdownMenuItem
                             onClick={() => setEditingQuote({
                               id: q.id,

@@ -1,19 +1,28 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable } from "@workspace/db";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, inArray, desc, and } from "drizzle-orm";
+import PDFDocument from "pdfkit";
 
 const router: IRouter = Router();
+
+function parseId(raw: string): number | null {
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 const quoteFields = {
   id: quotesTable.id,
   quoteNumber: quotesTable.quoteNumber,
   name: quotesTable.name,
+  version: quotesTable.version,
+  parentQuoteId: quotesTable.parentQuoteId,
   opportunityId: quotesTable.opportunityId,
   opportunityName: opportunitiesTable.name,
   contactId: quotesTable.contactId,
   contactFirstName: contactsTable.firstName,
   contactLastName: contactsTable.lastName,
+  contactEmail: contactsTable.email,
   accountId: quotesTable.accountId,
   accountName: accountsTable.name,
   status: quotesTable.status,
@@ -30,18 +39,22 @@ const quoteFields = {
 type QuoteRow = {
   contactFirstName?: string | null;
   contactLastName?: string | null;
+  contactEmail?: string | null;
   subtotal: string | null;
   discount: string | null;
   tax: string | null;
   total: string | null;
+  version?: number;
+  parentQuoteId?: number | null;
   [key: string]: unknown;
 };
 
 function formatQuote(q: QuoteRow, items: unknown[] = []) {
-  const { contactFirstName, contactLastName, ...rest } = q;
+  const { contactFirstName, contactLastName, contactEmail, ...rest } = q;
   return {
     ...rest,
-    contactName: contactFirstName ? `${contactFirstName} ${contactLastName}` : null,
+    contactName: contactFirstName ? `${contactFirstName} ${contactLastName ?? ""}`.trim() : null,
+    contactEmail: contactEmail ?? null,
     subtotal: Number(q.subtotal),
     discount: Number(q.discount),
     tax: Number(q.tax),
@@ -77,13 +90,11 @@ router.get("/quotes", async (req, res) => {
     const rawData = await (opportunityId
       ? baseQuery.where(eq(quotesTable.opportunityId, parseInt(opportunityId)))
       : baseQuery
-    ).limit(limitNum).offset(offset);
+    ).orderBy(desc(quotesTable.createdAt)).limit(limitNum).offset(offset);
 
     const quoteIds = rawData.map(q => q.id);
     const allItems = quoteIds.length > 0
-      ? await db.select().from(quoteItemsTable).where(
-          sql`${quoteItemsTable.quoteId} = ANY(ARRAY[${sql.raw(quoteIds.join(","))}]::int[])`
-        )
+      ? await db.select().from(quoteItemsTable).where(inArray(quoteItemsTable.quoteId, quoteIds))
       : [];
 
     const itemsByQuote = new Map<number, ReturnType<typeof formatItem>[]>();
@@ -108,7 +119,10 @@ router.get("/quotes", async (req, res) => {
 
 router.post("/quotes", async (req, res) => {
   try {
-    const { items = [], ...quoteData } = req.body as { items?: Array<{ productId?: number; productName: string; quantity: number; unitPrice: number; discount?: number }>; [key: string]: unknown };
+    const { items = [], ...quoteData } = req.body as {
+      items?: Array<{ productId?: number; productName: string; quantity: number; unitPrice: number; discount?: number }>;
+      [key: string]: unknown;
+    };
 
     const [maxQuote] = await db.select({ maxNum: sql<string>`max(quote_number)` }).from(quotesTable);
     const nextNum = maxQuote?.maxNum ? parseInt(maxQuote.maxNum.replace("QT-", "")) + 1 : 1001;
@@ -124,9 +138,9 @@ router.post("/quotes", async (req, res) => {
 
     const insertData = {
       name: (quoteData.name as string) ?? "",
-      opportunityId: quoteData.opportunityId as number | null ?? null,
-      contactId: quoteData.contactId as number | null ?? null,
-      accountId: quoteData.accountId as number | null ?? null,
+      opportunityId: (quoteData.opportunityId as number | null) ?? null,
+      contactId: (quoteData.contactId as number | null) ?? null,
+      accountId: (quoteData.accountId as number | null) ?? null,
       status: (quoteData.status as string) ?? "draft",
       validUntil: quoteData.validUntil ? new Date(quoteData.validUntil as string) : null,
       discount: (quoteData.discount as string) ?? "0",
@@ -135,6 +149,8 @@ router.post("/quotes", async (req, res) => {
       quoteNumber,
       subtotal: subtotal.toString(),
       total: total.toString(),
+      version: 1,
+      parentQuoteId: null,
     };
     const [quote] = await db.insert(quotesTable).values(insertData).returning();
 
@@ -159,7 +175,8 @@ router.post("/quotes", async (req, res) => {
 
 router.get("/quotes/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
     const [quote] = await db
       .select(quoteFields)
       .from(quotesTable)
@@ -174,25 +191,320 @@ router.get("/quotes/:id", async (req, res) => {
     }
 
     const quoteItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
-    res.json(formatQuote(quote, quoteItems.map(formatItem)));
+
+    const versions = await db
+      .select({ id: quotesTable.id, version: quotesTable.version, quoteNumber: quotesTable.quoteNumber, status: quotesTable.status, createdAt: quotesTable.createdAt })
+      .from(quotesTable)
+      .where(
+        quote.parentQuoteId
+          ? sql`${quotesTable.parentQuoteId} = ${quote.parentQuoteId} OR ${quotesTable.id} = ${quote.parentQuoteId}`
+          : sql`${quotesTable.parentQuoteId} = ${quote.id} OR ${quotesTable.id} = ${quote.id}`
+      )
+      .orderBy(quotesTable.version);
+
+    const maxVersion = Math.max(...versions.map(v => v.version));
+    const isLatestVersion = quote.version === maxVersion;
+
+    res.json({
+      ...formatQuote(quote, quoteItems.map(formatItem)),
+      versions,
+      isLatestVersion,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
+const VALID_QUOTE_STATUSES = new Set(["draft", "sent", "accepted", "rejected", "expired"]);
+
 router.put("/quotes/:id", async (req, res) => {
   try {
-    const { items: _items, ...quoteData } = req.body as { items?: unknown; [key: string]: unknown };
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+
+    if (req.body.status && !VALID_QUOTE_STATUSES.has(req.body.status)) {
+      res.status(400).json({ error: `Invalid status. Must be one of: ${[...VALID_QUOTE_STATUSES].join(", ")}` });
+      return;
+    }
+
+    const { items, ...quoteData } = req.body as {
+      items?: Array<{ productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
+      [key: string]: unknown;
+    };
+
+    const allowedFields = ["name", "status", "validUntil", "discount", "tax", "notes", "opportunityId", "contactId", "accountId"];
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    for (const key of allowedFields) {
+      if (quoteData[key] !== undefined) {
+        if (key === "validUntil" && quoteData[key]) {
+          updateData[key] = new Date(quoteData[key] as string);
+        } else {
+          updateData[key] = quoteData[key];
+        }
+      }
+    }
+
+    if (items) {
+      await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      if (items.length > 0) {
+        await db.insert(quoteItemsTable).values(items.map(item => ({
+          quoteId: id,
+          productId: item.productId ?? null,
+          productName: item.productName,
+          quantity: item.quantity.toString(),
+          unitPrice: item.unitPrice.toString(),
+          discount: (item.discount ?? 0).toString(),
+          total: (item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100)).toString(),
+        })));
+      }
+    }
+
+    const needsRecalc = items !== undefined || quoteData.discount !== undefined || quoteData.tax !== undefined;
+    if (needsRecalc) {
+      const currentItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      let subtotal = 0;
+      for (const item of currentItems) {
+        subtotal += Number(item.quantity) * Number(item.unitPrice) * (1 - Number(item.discount) / 100);
+      }
+      const [existing] = await db.select({ discount: quotesTable.discount, tax: quotesTable.tax }).from(quotesTable).where(eq(quotesTable.id, id));
+      const discountPct = Number(quoteData.discount ?? existing?.discount) || 0;
+      const taxPct = Number(quoteData.tax ?? existing?.tax) || 0;
+      const total = subtotal * (1 - discountPct / 100) * (1 + taxPct / 100);
+      updateData.subtotal = subtotal.toString();
+      updateData.total = total.toString();
+    }
+
     const [quote] = await db.update(quotesTable)
-      .set({ ...(quoteData as Record<string, unknown>), updatedAt: new Date() })
-      .where(eq(quotesTable.id, parseInt(req.params.id)))
+      .set(updateData)
+      .where(eq(quotesTable.id, id))
       .returning();
     if (!quote) {
       res.status(404).json({ error: "Quote not found" });
     } else {
-      res.json(formatQuote(quote, []));
+      const updatedItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      res.json(formatQuote(quote, updatedItems.map(formatItem)));
     }
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/quotes/:id/version", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+
+    const [original] = await db.select().from(quotesTable).where(eq(quotesTable.id, id));
+    if (!original) { res.status(404).json({ error: "Quote not found" }); return; }
+
+    const rootId = original.parentQuoteId ?? original.id;
+
+    const [maxVersionRow] = await db
+      .select({ maxVer: sql<number>`max(${quotesTable.version})` })
+      .from(quotesTable)
+      .where(sql`${quotesTable.parentQuoteId} = ${rootId} OR ${quotesTable.id} = ${rootId}`);
+    const nextVersion = (maxVersionRow?.maxVer ?? 1) + 1;
+
+    const [maxQuote] = await db.select({ maxNum: sql<string>`max(quote_number)` }).from(quotesTable);
+    const nextNum = maxQuote?.maxNum ? parseInt(maxQuote.maxNum.replace("QT-", "")) + 1 : 1001;
+    const quoteNumber = `QT-${nextNum}`;
+
+    const [newQuote] = await db.insert(quotesTable).values({
+      quoteNumber,
+      name: original.name,
+      version: nextVersion,
+      parentQuoteId: rootId,
+      opportunityId: original.opportunityId,
+      contactId: original.contactId,
+      accountId: original.accountId,
+      status: "draft",
+      validUntil: original.validUntil,
+      subtotal: original.subtotal,
+      discount: original.discount,
+      tax: original.tax,
+      total: original.total,
+      notes: original.notes,
+    }).returning();
+
+    const originalItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+    if (originalItems.length > 0) {
+      await db.insert(quoteItemsTable).values(originalItems.map(item => ({
+        quoteId: newQuote.id,
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discount: item.discount,
+        total: item.total,
+      })));
+    }
+
+    res.status(201).json(formatQuote(newQuote, []));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/quotes/:id/pdf", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+
+    const [quote] = await db
+      .select(quoteFields)
+      .from(quotesTable)
+      .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
+      .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
+      .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
+      .where(eq(quotesTable.id, id));
+
+    if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
+
+    const items = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+
+    const doc = new PDFDocument({ size: "A4", margin: 50 });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${quote.quoteNumber}.pdf"`);
+    doc.pipe(res);
+
+    doc.fontSize(20).font("Helvetica-Bold").text("arbormind.in", 50, 50);
+    doc.fontSize(10).font("Helvetica").text("CRM Solutions", 50, 75);
+    doc.fontSize(10).text("support@arbormind.in", 50, 88);
+
+    doc.fontSize(24).font("Helvetica-Bold").text("QUOTATION", 350, 50, { align: "right" });
+    doc.fontSize(10).font("Helvetica").text(`Quote #: ${quote.quoteNumber}`, 350, 80, { align: "right" });
+    doc.text(`Version: ${quote.version}`, 350, 93, { align: "right" });
+    doc.text(`Date: ${new Date(quote.createdAt).toLocaleDateString()}`, 350, 106, { align: "right" });
+    if (quote.validUntil) {
+      doc.text(`Valid Until: ${new Date(quote.validUntil).toLocaleDateString()}`, 350, 119, { align: "right" });
+    }
+
+    doc.moveTo(50, 140).lineTo(545, 140).stroke("#cccccc");
+
+    let y = 155;
+    if (quote.contactFirstName || quote.accountName) {
+      doc.fontSize(11).font("Helvetica-Bold").text("Bill To:", 50, y);
+      y += 16;
+      if (quote.contactFirstName) {
+        doc.fontSize(10).font("Helvetica").text(`${quote.contactFirstName} ${quote.contactLastName ?? ""}`, 50, y);
+        y += 14;
+      }
+      if (quote.accountName) {
+        doc.text(quote.accountName, 50, y);
+        y += 14;
+      }
+      if (quote.contactEmail) {
+        doc.text(quote.contactEmail, 50, y);
+        y += 14;
+      }
+    }
+
+    y += 10;
+    doc.fontSize(11).font("Helvetica-Bold").text("Quote: " + quote.name, 50, y);
+    y += 20;
+
+    const tableTop = y;
+    const colX = [50, 250, 320, 390, 460];
+    doc.fontSize(9).font("Helvetica-Bold");
+    doc.text("Product", colX[0], tableTop);
+    doc.text("Qty", colX[1], tableTop, { width: 60, align: "right" });
+    doc.text("Unit Price", colX[2], tableTop, { width: 60, align: "right" });
+    doc.text("Disc %", colX[3], tableTop, { width: 60, align: "right" });
+    doc.text("Total", colX[4], tableTop, { width: 85, align: "right" });
+    y = tableTop + 18;
+    doc.moveTo(50, y).lineTo(545, y).stroke("#cccccc");
+    y += 6;
+
+    doc.font("Helvetica").fontSize(9);
+    for (const item of items) {
+      doc.text(item.productName, colX[0], y, { width: 195 });
+      doc.text(Number(item.quantity).toString(), colX[1], y, { width: 60, align: "right" });
+      doc.text(`$${Number(item.unitPrice).toFixed(2)}`, colX[2], y, { width: 60, align: "right" });
+      doc.text(`${Number(item.discount)}%`, colX[3], y, { width: 60, align: "right" });
+      doc.text(`$${Number(item.total).toFixed(2)}`, colX[4], y, { width: 85, align: "right" });
+      y += 16;
+      if (y > 700) { doc.addPage(); y = 50; }
+    }
+
+    y += 8;
+    doc.moveTo(50, y).lineTo(545, y).stroke("#cccccc");
+    y += 12;
+
+    const subtotal = Number(quote.subtotal);
+    const discount = Number(quote.discount);
+    const tax = Number(quote.tax);
+    const total = Number(quote.total);
+
+    doc.font("Helvetica").fontSize(10);
+    doc.text("Subtotal:", 380, y, { width: 80, align: "right" });
+    doc.text(`$${subtotal.toFixed(2)}`, 460, y, { width: 85, align: "right" });
+    y += 16;
+
+    if (discount > 0) {
+      doc.text(`Discount (${discount}%):`, 380, y, { width: 80, align: "right" });
+      doc.text(`-$${(subtotal * discount / 100).toFixed(2)}`, 460, y, { width: 85, align: "right" });
+      y += 16;
+    }
+
+    if (tax > 0) {
+      doc.text(`Tax (${tax}%):`, 380, y, { width: 80, align: "right" });
+      doc.text(`$${(subtotal * (1 - discount / 100) * tax / 100).toFixed(2)}`, 460, y, { width: 85, align: "right" });
+      y += 16;
+    }
+
+    y += 4;
+    doc.font("Helvetica-Bold").fontSize(12);
+    doc.text("Total:", 380, y, { width: 80, align: "right" });
+    doc.text(`$${total.toFixed(2)}`, 460, y, { width: 85, align: "right" });
+
+    if (quote.notes) {
+      y += 40;
+      doc.font("Helvetica-Bold").fontSize(10).text("Notes & Terms:", 50, y);
+      y += 16;
+      doc.font("Helvetica").fontSize(9).text(quote.notes, 50, y, { width: 495 });
+    }
+
+    doc.end();
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/quotes/:id/send", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+
+    const [quote] = await db
+      .select(quoteFields)
+      .from(quotesTable)
+      .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
+      .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
+      .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
+      .where(eq(quotesTable.id, id));
+
+    if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
+
+    await db.update(quotesTable)
+      .set({ status: "sent", updatedAt: new Date() })
+      .where(eq(quotesTable.id, id));
+
+    const contactEmail = quote.contactEmail;
+    const contactName = quote.contactFirstName
+      ? `${quote.contactFirstName} ${quote.contactLastName ?? ""}`.trim()
+      : "Customer";
+
+    res.json({
+      success: true,
+      message: `Quotation ${quote.quoteNumber} sent to ${contactEmail ?? "customer"}`,
+      sentTo: contactEmail,
+      contactName,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -201,7 +513,8 @@ router.put("/quotes/:id", async (req, res) => {
 
 router.delete("/quotes/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
     await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
     await db.delete(quotesTable).where(eq(quotesTable.id, id));
     res.json({ success: true, id });
