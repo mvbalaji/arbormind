@@ -39,11 +39,11 @@ function numericOrNull(val: string | null) {
   return val ? Number(val) : null;
 }
 
-function sanitizeAccount(a: any) {
+function sanitizeAccount(a: Record<string, unknown>) {
   return {
     ...a,
-    annualRevenue: numericOrNull(a.annualRevenue),
-    amount: numericOrNull(a.amount),
+    annualRevenue: numericOrNull(a.annualRevenue as string | null),
+    amount: numericOrNull(a.amount as string | null),
   };
 }
 
@@ -122,10 +122,10 @@ router.post("/accounts", async (req, res) => {
     for (const key of ALLOWED_FIELDS) {
       if (req.body[key] !== undefined) payload[key] = req.body[key];
     }
-    const sessionUser = (req.session as any)?.user;
-    if (sessionUser?.name) {
-      payload.createdBy = sessionUser.name;
-      payload.modifiedBy = sessionUser.name;
+    const sessionUser = req.session?.user as { id?: number; name?: string } | undefined;
+    if (sessionUser?.id) {
+      payload.createdBy = sessionUser.id;
+      payload.modifiedBy = sessionUser.id;
     }
     const [account] = await db.insert(accountsTable).values(payload).returning();
     res.status(201).json({
@@ -178,8 +178,8 @@ router.put("/accounts/:id", async (req, res) => {
     for (const key of ALLOWED_FIELDS) {
       if (req.body[key] !== undefined) payload[key] = req.body[key];
     }
-    const sessionUser = (req.session as any)?.user;
-    if (sessionUser?.name) payload.modifiedBy = sessionUser.name;
+    const sessionUser = req.session?.user as { id?: number; name?: string } | undefined;
+    if (sessionUser?.id) payload.modifiedBy = sessionUser.id;
     const [account] = await db.update(accountsTable)
       .set(payload)
       .where(eq(accountsTable.id, id))

@@ -25,6 +25,38 @@ import {
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
+interface AccountRecord {
+  id: number;
+  name: string;
+  industry: string | null;
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  city: string | null;
+  country: string | null;
+  employees: number | null;
+  annualRevenue: number | null;
+  description: string | null;
+  status: string | null;
+  stage: string | null;
+  amount: number | null;
+  closeDate: string | null;
+  probability: number | null;
+  forecastCategory: string | null;
+  nextStep: string | null;
+  optyOwner: string | null;
+  optyTeam: string | null;
+  ownerId: number | null;
+  createdBy: number | null;
+  modifiedBy: number | null;
+  ownerName: string | null;
+  contactCount: number;
+  dealCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface AccountFormData {
   name: string;
   industry: string;
@@ -76,7 +108,7 @@ export default function Accounts() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListAccounts({ search, limit: 100 });
 
-  const allAccounts = data?.data ?? [];
+  const allAccounts = (data?.data ?? []) as unknown as AccountRecord[];
 
   const filteredAccounts = allAccounts.filter((acc) => {
     if (industryFilter && acc.industry !== industryFilter) return false;
@@ -313,16 +345,16 @@ export default function Accounts() {
                                   country: acc.country ?? "",
                                   employees: acc.employees != null ? String(acc.employees) : "",
                                   annualRevenue: acc.annualRevenue != null ? String(acc.annualRevenue) : "",
-                                  description: (acc as any).description ?? "",
-                                  status: (acc as any).status ?? "active",
-                                  stage: (acc as any).stage ?? "",
-                                  amount: (acc as any).amount != null ? String((acc as any).amount) : "",
-                                  closeDate: (acc as any).closeDate ?? "",
-                                  probability: (acc as any).probability != null ? String((acc as any).probability) : "",
-                                  forecastCategory: (acc as any).forecastCategory ?? "",
-                                  nextStep: (acc as any).nextStep ?? "",
-                                  optyOwner: (acc as any).optyOwner ?? "",
-                                  optyTeam: (acc as any).optyTeam ?? "",
+                                  description: acc.description ?? "",
+                                  status: acc.status ?? "active",
+                                  stage: acc.stage ?? "",
+                                  amount: acc.amount != null ? String(acc.amount) : "",
+                                  closeDate: acc.closeDate ?? "",
+                                  probability: acc.probability != null ? String(acc.probability) : "",
+                                  forecastCategory: acc.forecastCategory ?? "",
+                                  nextStep: acc.nextStep ?? "",
+                                  optyOwner: acc.optyOwner ?? "",
+                                  optyTeam: acc.optyTeam ?? "",
                                 })}
                                 className="cursor-pointer text-sm"
                               >

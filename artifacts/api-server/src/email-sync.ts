@@ -17,7 +17,7 @@ async function getSettings() {
   return rows[0] ?? null;
 }
 
-async function getImapConfig(settings: any) {
+async function getImapConfig(settings: Record<string, unknown> | null) {
   if (settings?.imapUser && settings?.imapPassword) {
     return {
       host: settings.imapHost,
@@ -187,8 +187,8 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
         })
         .where(eq(emailSettingsTable.id, settingsId));
     }
-  } catch (err: any) {
-    errorMsg = err?.message ?? "Unknown IMAP error";
+  } catch (err: unknown) {
+    errorMsg = err instanceof Error ? err.message : "Unknown IMAP error";
     const settingsId = settings?.id;
     if (settingsId) {
       await db
