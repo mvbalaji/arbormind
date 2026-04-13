@@ -232,9 +232,12 @@ router.put("/opportunities/:id/items", async (req, res) => {
     const [opp] = await db.select({ id: opportunitiesTable.id }).from(opportunitiesTable).where(eq(opportunitiesTable.id, opportunityId));
     if (!opp) { res.status(404).json({ error: "Opportunity not found" }); return; }
 
-    const { items } = req.body as {
-      items: Array<{ productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
-    };
+    const body = req.body as { items?: unknown };
+    if (!body.items || !Array.isArray(body.items)) {
+      res.status(400).json({ error: "Request body must contain an 'items' array." });
+      return;
+    }
+    const items = body.items as Array<{ productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
 
     await db.delete(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, opportunityId));
 

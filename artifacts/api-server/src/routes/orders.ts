@@ -247,10 +247,47 @@ router.put("/orders/:id", async (req, res) => {
       return;
     }
 
-    const allowedFields = ["status", "notes"];
+    const [existing] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+    if (!existing) { res.status(404).json({ error: "Order not found" }); return; }
+
+    const { items, ...orderData } = req.body as {
+      items?: Array<{ productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
+      [key: string]: unknown;
+    };
+
+    const allowedFields = ["status", "notes", "discount", "tax"];
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     for (const key of allowedFields) {
-      if (req.body[key] !== undefined) updateData[key] = req.body[key];
+      if (orderData[key] !== undefined) updateData[key] = orderData[key];
+    }
+
+    if (items) {
+      await db.delete(orderItemsTable).where(eq(orderItemsTable.orderId, id));
+      if (items.length > 0) {
+        await db.insert(orderItemsTable).values(items.map(item => ({
+          orderId: id,
+          productId: item.productId ?? null,
+          productName: item.productName,
+          quantity: item.quantity.toString(),
+          unitPrice: item.unitPrice.toString(),
+          discount: (item.discount ?? 0).toString(),
+          total: (item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100)).toString(),
+        })));
+      }
+    }
+
+    const needsRecalc = items !== undefined || orderData.discount !== undefined || orderData.tax !== undefined;
+    if (needsRecalc) {
+      const currentItems = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
+      let subtotal = 0;
+      for (const item of currentItems) {
+        subtotal += Number(item.quantity) * Number(item.unitPrice) * (1 - Number(item.discount) / 100);
+      }
+      const discountPct = Number(orderData.discount ?? existing.discount) || 0;
+      const taxPct = Number(orderData.tax ?? existing.tax) || 0;
+      const total = subtotal * (1 - discountPct / 100) * (1 + taxPct / 100);
+      updateData.subtotal = subtotal.toString();
+      updateData.total = total.toString();
     }
 
     const [order] = await db.update(ordersTable)
@@ -258,8 +295,8 @@ router.put("/orders/:id", async (req, res) => {
       .where(eq(ordersTable.id, id))
       .returning();
 
-    if (!order) { res.status(404).json({ error: "Order not found" }); return; }
-    res.json(formatOrder(order, []));
+    const updatedItems = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
+    res.json(formatOrder(order, updatedItems.map(formatItem)));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
