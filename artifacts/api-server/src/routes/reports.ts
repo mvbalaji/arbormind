@@ -115,6 +115,38 @@ router.get("/reports/pipeline", async (req, res) => {
   }
 });
 
+router.get("/reports/top-deals", async (req, res) => {
+  try {
+    const topDeals = await db
+      .select({
+        id: opportunitiesTable.id,
+        name: opportunitiesTable.name,
+        amount: opportunitiesTable.amount,
+        stage: opportunitiesTable.stage,
+        probability: opportunitiesTable.probability,
+        closeDate: opportunitiesTable.closeDate,
+        accountId: opportunitiesTable.accountId,
+        accountName: accountsTable.name,
+        assignedTo: opportunitiesTable.assignedTo,
+      })
+      .from(opportunitiesTable)
+      .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
+      .where(sql`${opportunitiesTable.stage} NOT IN ('closed_won', 'closed_lost')`)
+      .orderBy(desc(sql`${opportunitiesTable.amount}`))
+      .limit(5);
+
+    res.json({
+      data: topDeals.map(d => ({
+        ...d,
+        amount: d.amount ? Number(d.amount) : 0,
+      })),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/reports/lead-sources", async (req, res) => {
   try {
     const sources = await db

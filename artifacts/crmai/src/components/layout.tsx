@@ -66,7 +66,7 @@ const BOTTOM_NAV = [
   { label: "Home", href: "/", icon: LayoutDashboard },
   { label: "Leads", href: "/leads", icon: UserPlus },
   { label: "Contacts", href: "/contacts", icon: Users },
-  { label: "Deals", href: "/opportunities", icon: Briefcase },
+  { label: "Opps", href: "/opportunities", icon: Briefcase },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

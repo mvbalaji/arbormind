@@ -1,6 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { useGetDashboardStats, useGetPipelineReport, useListLeads, useListOpportunities } from "@workspace/api-client-react";
+import { useGetDashboardStats, useGetPipelineReport, useListLeads } from "@workspace/api-client-react";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -112,15 +113,17 @@ export default function Dashboard() {
   const { data: stats, isLoading } = useGetDashboardStats();
   const { data: pipelineData, isLoading: pipelineLoading } = useGetPipelineReport();
   const { data: leadsData, isLoading: leadsLoading } = useListLeads({ limit: 5 });
-  const { data: topDealsData, isLoading: topDealsLoading } = useListOpportunities({ limit: 100 });
-
-  const topDeals = React.useMemo(() => {
-    if (!topDealsData?.data) return [];
-    return [...topDealsData.data]
-      .filter(d => d.stage !== "closed_won" && d.stage !== "closed_lost")
-      .sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))
-      .slice(0, 5);
-  }, [topDealsData]);
+  const { data: topDealsData, isLoading: topDealsLoading } = useQuery<{
+    data: { id: number; name: string; amount: number; stage: string; closeDate: string | null; accountName: string | null; probability: number | null }[];
+  }>({
+    queryKey: ["reports", "top-deals"],
+    queryFn: async () => {
+      const res = await fetch("/api/reports/top-deals", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+  const topDeals = topDealsData?.data ?? [];
 
   const chartData = pipelineData?.stages
     ? pipelineData.stages
