@@ -219,12 +219,12 @@ export async function startEmailPoller() {
   const hasHardcoded = HARDCODED_IMAP.user && HARDCODED_IMAP.password;
 
   if (!hasDbCreds && !hasHardcoded) {
-    console.log("[EmailPoller] Sync disabled or not configured — skipping.");
+    console.log("[EmailPoller] No IMAP credentials configured — skipping.");
     return;
   }
 
-  if (settings && !settings.syncEnabled && !hasHardcoded) {
-    console.log("[EmailPoller] Sync disabled or not configured — skipping.");
+  if (settings && settings.syncEnabled === false) {
+    console.log("[EmailPoller] Sync explicitly disabled by admin — skipping.");
     return;
   }
 

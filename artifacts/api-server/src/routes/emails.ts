@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, emailsTable, leadsTable, opportunitiesTable, contactsTable, insertEmailSchema } from "@workspace/db";
+import { db, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable, insertEmailSchema } from "@workspace/db";
 import { eq, ilike, desc } from "drizzle-orm";
 
 const router = Router();
@@ -84,6 +84,16 @@ router.post("/emails", async (req, res) => {
         notes: isKnown ? "Auto-created Opportunity" : "Auto-created Lead",
       })
       .returning();
+
+    await db.insert(activitiesTable).values({
+      type: "email",
+      subject: `Inbound: ${parsed.subject}`,
+      description: parsed.message?.substring(0, 500) || "",
+      status: "completed",
+      contactId: relatedContactId ?? null,
+      leadId: relatedLeadId ?? null,
+      opportunityId: relatedOpportunityId ?? null,
+    });
 
     res.status(201).json({
       success: true,
