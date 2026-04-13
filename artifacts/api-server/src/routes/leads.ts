@@ -219,7 +219,7 @@ router.post("/leads/:id/convert", async (req, res) => {
         contactId = contact.id;
       }
 
-      if (createOpportunity) {
+      if (createOpportunity && accountId) {
         const [opportunity] = await tx.insert(opportunitiesTable).values({
           name: opportunityName || `${lead.firstName} ${lead.lastName} Opportunity`,
           accountId: accountId,

@@ -296,7 +296,7 @@ export default function LeadDetail() {
           type: "note",
           subject: isAccept ? "Lead Accepted" : `Lead Rejected — ${rejectReason}`,
           status: "completed",
-          notes: noteText.trim(),
+          description: noteText.trim(),
           contactId: lead.convertedContactId ?? undefined,
           accountId: lead.convertedAccountId ?? undefined,
         }),
