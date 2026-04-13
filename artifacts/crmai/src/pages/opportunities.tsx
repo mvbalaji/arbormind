@@ -10,6 +10,7 @@ import {
 import type { Opportunity, UpdateOpportunityInputStage, CreateOpportunityInputStage } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import { AISummary } from "@/components/ai-summary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,12 +176,14 @@ export default function Opportunities() {
             </div>
             <Button
               onClick={() => setIsCreateOpen(true)}
-              className="bg-gradient-to-r from-primary to-accent text-white shadow-lg shadow-primary/20"
+              className="bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20"
             >
               <Plus className="w-4 h-4 mr-2" /> New Opportunity
             </Button>
           </div>
         </div>
+
+        <AISummary entityType="opportunities" />
 
         {isLoading ? (
           <div className="flex gap-4 h-64">

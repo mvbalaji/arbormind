@@ -86,7 +86,7 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-white max-w-lg">
+      <DialogContent className="bg-card border-border text-foreground max-w-lg">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Add Product" : "Edit Product"}</DialogTitle>
         </DialogHeader>
@@ -213,7 +213,7 @@ export default function Products() {
                 ) : data?.data?.map(prod => (
                   <tr key={prod.id} className="hover:bg-muted/50 transition-colors group">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-white flex items-center gap-2">
+                      <div className="font-medium text-foreground flex items-center gap-2">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                           <Package className="w-4 h-4 text-primary" />
                         </div>
@@ -233,7 +233,7 @@ export default function Products() {
                     <td className="px-6 py-4 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>

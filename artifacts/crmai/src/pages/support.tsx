@@ -117,7 +117,7 @@ export default function Support() {
               )}
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Emails sent to <span className="text-white font-medium">support@arbormind.in</span>
+              Emails sent to <span className="text-foreground font-medium">support@arbormind.in</span>
             </p>
           </div>
           <Button
@@ -137,11 +137,11 @@ export default function Support() {
           <div className="mb-4 p-4 rounded-xl border border-blue-200 bg-blue-500/5 flex items-start gap-3">
             <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div className="flex-1 text-sm">
-              <p className="text-white font-medium mb-1">Connect your support inbox</p>
+              <p className="text-foreground font-medium mb-1">Connect your support inbox</p>
               <p className="text-muted-foreground mb-3">
-                Forward emails from <strong className="text-white">support@arbormind.in</strong> to the webhook below, or use email routing (Cloudflare, Google Workspace, etc.) to POST incoming emails to the endpoint.
+                Forward emails from <strong className="text-foreground">support@arbormind.in</strong> to the webhook below, or use email routing (Cloudflare, Google Workspace, etc.) to POST incoming emails to the endpoint.
               </p>
-              <div className="flex items-center gap-2 p-2 bg-black/30 rounded-lg font-mono text-xs text-green-600 border border-border">
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-lg font-mono text-xs text-green-600 border border-border">
                 <Webhook className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                 <span className="truncate">POST {window.location.origin.replace("80", "8080")}/api/emails</span>
               </div>
@@ -183,7 +183,7 @@ export default function Support() {
                       {/* From */}
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div className="min-w-0 flex-1">
-                          <p className={`font-semibold text-sm truncate ${isSelected ? "text-white" : "text-white/90"}`}>
+                          <p className={`font-semibold text-sm truncate ${isSelected ? "text-foreground" : "text-foreground/90"}`}>
                             {email.fromName || email.fromEmail}
                           </p>
                           <p className="text-xs text-muted-foreground truncate">{email.fromEmail}</p>
@@ -199,7 +199,7 @@ export default function Support() {
                       </div>
 
                       {/* Subject */}
-                      <p className="text-sm text-white/80 truncate mb-1.5 font-medium">{email.subject}</p>
+                      <p className="text-sm text-foreground/80 truncate mb-1.5 font-medium">{email.subject}</p>
 
                       {/* Meta */}
                       <div className="flex items-center justify-between">
@@ -225,14 +225,14 @@ export default function Support() {
           {selected ? (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Detail header */}
-              <div className="px-8 py-5 border-b border-border bg-black/10 shrink-0">
-                <h2 className="text-xl font-bold text-white mb-3 leading-tight">{selected.subject}</h2>
+              <div className="px-8 py-5 border-b border-border bg-muted/30 shrink-0">
+                <h2 className="text-xl font-bold text-foreground mb-3 leading-tight">{selected.subject}</h2>
 
                 <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <User className="w-3.5 h-3.5 shrink-0" />
                     <span className="truncate">
-                      <span className="text-white">{selected.fromName}</span>
+                      <span className="text-foreground">{selected.fromName}</span>
                       {selected.fromName && " "}
                       <span className="text-muted-foreground">&lt;{selected.fromEmail}&gt;</span>
                     </span>
@@ -249,11 +249,11 @@ export default function Support() {
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="w-3.5 h-3.5 shrink-0" />
-                    <span className="text-white">{format(new Date(selected.createdAt), "MMM d, yyyy 'at' h:mm a")}</span>
+                    <span className="text-foreground">{format(new Date(selected.createdAt), "MMM d, yyyy 'at' h:mm a")}</span>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Clock className="w-3.5 h-3.5 shrink-0" />
-                    <span className="text-white capitalize">{STATUS_CONFIG[selected.status]?.label ?? selected.status}</span>
+                    <span className="text-foreground capitalize">{STATUS_CONFIG[selected.status]?.label ?? selected.status}</span>
                   </div>
                 </div>
               </div>
@@ -261,14 +261,14 @@ export default function Support() {
               {/* Message body */}
               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                 <div className="max-w-2xl">
-                  <div className="bg-muted rounded-xl border border-border p-6 whitespace-pre-wrap text-sm leading-relaxed text-white/90">
+                  <div className="bg-muted rounded-xl border border-border p-6 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                     {selected.message}
                   </div>
 
                   {/* Auto-created records */}
                   {(selected.relatedLeadId || selected.relatedOpportunityId) && (
                     <div className="mt-6 p-4 rounded-xl border border-primary/20 bg-primary/5">
-                      <p className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-green-600" /> Auto-created records
                       </p>
                       <div className="space-y-1.5 text-sm">
@@ -297,7 +297,7 @@ export default function Support() {
               </div>
 
               {/* Actions footer */}
-              <div className="px-8 py-4 border-t border-border bg-black/10 shrink-0 flex items-center gap-3">
+              <div className="px-8 py-4 border-t border-border bg-muted/30 shrink-0 flex items-center gap-3">
                 {selected.status !== "replied" && (
                   <Button
                     size="sm"

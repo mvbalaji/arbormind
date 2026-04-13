@@ -35,13 +35,14 @@ All modules are fully implemented with real data:
 10. **Orders** — order tracking created from accepted quotes, with status workflow (Pending→Confirmed→Shipped→Delivered/Cancelled)
 11. **Cases/Support** — case management with priority/status badges; Support inbox with webhook-based emails (`POST /api/emails`)
 12. **Reports** — pipeline by stage bar chart, lead sources, revenue forecast charts
-13. **AI Assistant** — UI panel with mock insights and chat interface
+13. **AI Assistant** — Floating AI chatbot (FAB → chat panel) powered by OpenAI via Replit AI Integrations; AI Summary cards on entity list pages (leads, contacts, opportunities, quotes) and detail pages with real-time data analysis
 14. **Users / Team & Data** — user management table with roles and teams; includes **Data Import** tab for bulk Excel/CSV import of any entity
 15. **Bulk Data Import** — `/api/import/:entity` (POST) accepts JSON records for leads/contacts/accounts/opportunities/campaigns with smart column normalization (camelCase, snake_case, Title Case)
 
 ## Key Components
 
-- `artifacts/crmai/src/components/ai-summary.tsx` — AI summary panel for all entity types (lead/contact/account/opportunity/campaign); generates insights + action bullets from live entity data
+- `artifacts/crmai/src/components/ai-summary.tsx` — AI summary panel calling POST /api/ai/summary; "Generate Summary" button fetches real AI insights from CRM data; used on detail pages and list pages (leads, contacts, opportunities, quotes)
+- `artifacts/crmai/src/components/ai-chatbot.tsx` — Floating AI chatbot (FAB → chat panel); messages POST /api/ai/chat with full CRM context; markdown rendering, suggestion chips, clear chat
 - `artifacts/crmai/src/components/email-compose.tsx` — Email compose dialog with 5 built-in templates (Initial Outreach, Follow-up, Proposal, Quote Send, Meeting Request), CC support, mock send
 
 ## Detail Pages
@@ -123,13 +124,13 @@ Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` 
 - Entry: `src/index.ts` — reads `PORT`, starts Express
 - App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
 - Routes: `src/routes/index.ts` mounts sub-routers for all CRM resources
-- Depends on: `@workspace/db`, `@workspace/api-zod`
+- Depends on: `@workspace/db`, `@workspace/api-zod`, `@workspace/integrations-openai-ai-server`
 
-API routes: `/api/users`, `/api/accounts`, `/api/contacts`, `/api/leads` (+ `/api/leads/:id/convert`), `/api/opportunities`, `/api/activities`, `/api/products`, `/api/cases`, `/api/quotes`, `/api/reports/dashboard`, `/api/reports/pipeline`, `/api/reports/lead-sources`, `/api/reports/activities-summary`, `/api/reports/revenue-forecast`
+API routes: `/api/users`, `/api/accounts`, `/api/contacts`, `/api/leads` (+ `/api/leads/:id/convert`), `/api/opportunities`, `/api/activities`, `/api/products`, `/api/cases`, `/api/quotes`, `/api/reports/dashboard`, `/api/reports/pipeline`, `/api/reports/lead-sources`, `/api/reports/activities-summary`, `/api/reports/revenue-forecast`, `/api/ai/chat`, `/api/ai/summary`
 
 ### `artifacts/crmai` (`@workspace/crmai`)
 
-React-Vite CRM frontend application. Uses shadcn/ui components, TailwindCSS (dark theme), Recharts for analytics, @hello-pangea/dnd for Kanban drag-and-drop.
+React-Vite CRM frontend application. Uses shadcn/ui components, TailwindCSS (default light theme, toggleable dark mode), Recharts for analytics, @hello-pangea/dnd for Kanban drag-and-drop.
 
 - `src/pages/` — one file per CRM module
 - `src/components/layout.tsx` — sidebar navigation layout

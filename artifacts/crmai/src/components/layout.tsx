@@ -26,6 +26,7 @@ import {
   Moon,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AIChatbot } from "@/components/ai-chatbot";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -337,6 +338,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </nav>
+      <AIChatbot />
     </TooltipProvider>
   );
 }

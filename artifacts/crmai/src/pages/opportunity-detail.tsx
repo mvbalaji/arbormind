@@ -249,20 +249,20 @@ function QuickQuoteDialog({
                         {products.map(p => <option key={p.id} value={p.id} className="bg-card">{p.name}</option>)}
                       </select>
                       {!item.productId && (
-                        <Input className="mt-1 h-7 text-xs bg-black/30 border-border" placeholder="Name..."
+                        <Input className="mt-1 h-7 text-xs bg-muted border-border" placeholder="Name..."
                           value={item.productName} onChange={e => updateItem(idx, { productName: e.target.value })} />
                       )}
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="1" className="h-8 bg-black/30 border-border text-right text-sm"
+                      <Input type="number" min="1" className="h-8 bg-muted border-border text-right text-sm"
                         value={item.quantity} onChange={e => updateItem(idx, { quantity: parseFloat(e.target.value) || 1 })} />
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="0" step="0.01" className="h-8 bg-black/30 border-border text-right text-sm"
+                      <Input type="number" min="0" step="0.01" className="h-8 bg-muted border-border text-right text-sm"
                         value={item.unitPrice} onChange={e => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="0" max="100" className="h-8 bg-black/30 border-border text-right text-sm"
+                      <Input type="number" min="0" max="100" className="h-8 bg-muted border-border text-right text-sm"
                         value={item.discount} onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-1 text-right text-xs font-medium text-foreground">

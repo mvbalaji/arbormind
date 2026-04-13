@@ -7,6 +7,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth";
 import { Layout } from "@/components/layout";
+import { AISummary } from "@/components/ai-summary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -150,6 +151,8 @@ export default function Leads() {
             </Button>
           </div>
         </div>
+
+        <AISummary entityType="leads" />
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 mb-2">

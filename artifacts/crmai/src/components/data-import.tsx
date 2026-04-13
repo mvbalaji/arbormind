@@ -185,7 +185,7 @@ export function DataImport() {
                 "flex flex-col items-center gap-1.5 p-3 rounded-xl border text-sm font-medium transition-all",
                 selectedEntity.id === e.id
                   ? cn("border-2", e.color)
-                  : "border-border text-muted-foreground hover:border-white/20 hover:text-white bg-muted/50"
+                  : "border-border text-muted-foreground hover:border-primary/20 hover:text-foreground bg-muted/50"
               )}
             >
               <FileSpreadsheet className="w-4 h-4" />
@@ -199,7 +199,7 @@ export function DataImport() {
       <Card className="glass-panel border-border p-4">
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Supported Columns for <span className="text-white">{entity.label}</span></p>
+            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Supported Columns for <span className="text-foreground">{entity.label}</span></p>
             <div className="flex flex-wrap gap-1.5">
               {entity.columns.map((col) => (
                 <Badge key={col} variant="outline" className={cn("text-xs", entity.required.includes(col) ? entity.color : "border-border text-muted-foreground")}>
@@ -225,7 +225,7 @@ export function DataImport() {
           <div
             className={cn(
               "relative rounded-2xl border-2 border-dashed transition-all cursor-pointer flex flex-col items-center justify-center gap-3 py-16",
-              isDragging ? "border-primary bg-primary/5" : "border-border hover:border-white/20 hover:bg-muted/50"
+              isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/20 hover:bg-muted/50"
             )}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
@@ -243,7 +243,7 @@ export function DataImport() {
               <Upload className={cn("w-7 h-7 transition-colors", isDragging ? "text-primary" : "text-muted-foreground")} />
             </div>
             <div className="text-center">
-              <p className="text-white font-medium">{isDragging ? "Drop your file here" : "Drag & drop or click to upload"}</p>
+              <p className="text-foreground font-medium">{isDragging ? "Drop your file here" : "Drag & drop or click to upload"}</p>
               <p className="text-sm text-muted-foreground mt-1">Supports .xlsx, .xls, .csv</p>
             </div>
           </div>
@@ -253,7 +253,7 @@ export function DataImport() {
               {fileName?.endsWith(".csv") ? <FileText className="w-5 h-5 text-primary" /> : <FileSpreadsheet className="w-5 h-5 text-primary" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{fileName}</p>
+              <p className="text-sm font-medium text-foreground truncate">{fileName}</p>
               <p className="text-xs text-muted-foreground">{rows.length.toLocaleString()} rows · {headers.length} columns detected</p>
             </div>
             <Button size="sm" variant="ghost" onClick={reset} className="text-muted-foreground hover:text-red-600 h-8 px-2">
@@ -332,7 +332,7 @@ export function DataImport() {
                     {headers.map((h) => (
                       <th key={h} className="px-3 py-2.5 text-left font-medium whitespace-nowrap">
                         <div className="flex items-center gap-1">
-                          <span className={cn(entity.columns.includes(h) ? "text-white" : "text-muted-foreground")}>{h}</span>
+                          <span className={cn(entity.columns.includes(h) ? "text-foreground" : "text-muted-foreground")}>{h}</span>
                           {entity.required.includes(h) && <span className="text-red-600">*</span>}
                           {entity.columns.includes(h) ? (
                             <CheckCircle2 className="w-3 h-3 text-green-600 ml-0.5" />
@@ -350,7 +350,7 @@ export function DataImport() {
                       <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
                       {headers.map((h) => (
                         <td key={h} className="px-3 py-2 text-muted-foreground max-w-[160px] truncate">
-                          {row[h] != null ? String(row[h]) : <span className="text-white/20">—</span>}
+                          {row[h] != null ? String(row[h]) : <span className="text-muted-foreground/30">—</span>}
                         </td>
                       ))}
                     </tr>

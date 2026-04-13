@@ -18,6 +18,7 @@ import importRouter from "./import";
 import seedRouter from "./seed";
 import emailSettingsRouter from "./email-settings";
 import ordersRouter from "./orders";
+import aiRouter from "./ai";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(campaignsRouter);
 router.use(importRouter);
 router.use(seedRouter);
 router.use(ordersRouter);
+router.use(aiRouter);
 
 export default router;

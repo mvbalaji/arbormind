@@ -150,7 +150,7 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs text-muted-foreground uppercase">To</Label>
-              <button onClick={() => setShowCc(!showCc)} className="text-xs text-muted-foreground hover:text-white transition-colors">
+              <button onClick={() => setShowCc(!showCc)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                 {showCc ? "Hide CC" : "Add CC"}
               </button>
             </div>

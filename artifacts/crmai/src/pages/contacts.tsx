@@ -9,6 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import { AISummary } from "@/components/ai-summary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -73,6 +74,8 @@ export default function Contacts() {
             </Button>
           </div>
         </div>
+
+        <AISummary entityType="contacts" />
 
         <Card className="glass-panel border-border overflow-hidden">
           <div className="overflow-x-auto">

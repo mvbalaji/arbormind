@@ -24,6 +24,7 @@ import { FileText, Plus, MoreHorizontal, Pencil, Trash2, X, Package, Download } 
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
+import { AISummary } from "@/components/ai-summary";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "border-border text-muted-foreground",
@@ -143,7 +144,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-white max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-foreground max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Create Quote" : "Edit Quote"}</DialogTitle>
         </DialogHeader>
@@ -159,7 +160,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
               <Label htmlFor="q-status">Status</Label>
               <select
                 id="q-status"
-                className="w-full h-10 px-3 rounded-md bg-muted border border-border text-white text-sm"
+                className="w-full h-10 px-3 rounded-md bg-muted border border-border text-foreground text-sm"
                 value={formData.status}
                 onChange={e => setFormData({ ...formData, status: e.target.value })}
               >
@@ -206,7 +207,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                   <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-muted/50 rounded-lg p-2">
                     <div className="col-span-4">
                       <select
-                        className="w-full h-8 px-2 rounded-md bg-black/30 border border-border text-white text-sm"
+                        className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
                         value={item.productId ?? ""}
                         onChange={e => {
                           const val = e.target.value;
@@ -224,7 +225,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                       </select>
                       {!item.productId && (
                         <Input
-                          className="mt-1 h-7 text-xs bg-black/30 border-border"
+                          className="mt-1 h-7 text-xs bg-muted border-border"
                           placeholder="Product name..."
                           value={item.productName}
                           onChange={e => updateItem(idx, { productName: e.target.value })}
@@ -232,17 +233,17 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                       )}
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="1" className="h-8 bg-black/30 border-border text-right text-sm"
+                      <Input type="number" min="1" className="h-8 bg-muted border-border text-right text-sm"
                         value={item.quantity}
                         onChange={e => updateItem(idx, { quantity: parseFloat(e.target.value) || 1 })} />
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="0" step="0.01" className="h-8 bg-black/30 border-border text-right text-sm"
+                      <Input type="number" min="0" step="0.01" className="h-8 bg-muted border-border text-right text-sm"
                         value={item.unitPrice}
                         onChange={e => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-2">
-                      <Input type="number" min="0" max="100" className="h-8 bg-black/30 border-border text-right text-sm"
+                      <Input type="number" min="0" max="100" className="h-8 bg-muted border-border text-right text-sm"
                         value={item.discount}
                         onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                     </div>
@@ -292,7 +293,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                     <span>${taxAmt.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-bold text-white text-base border-t border-border pt-1 mt-1">
+                <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1">
                   <span>Total</span>
                   <span>${total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                 </div>
@@ -354,6 +355,8 @@ export default function Quotes() {
           </Button>
         </div>
 
+        <AISummary entityType="quotes" />
+
         <Card className="glass-panel border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -405,7 +408,7 @@ export default function Quotes() {
                     <td className="px-6 py-4 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
