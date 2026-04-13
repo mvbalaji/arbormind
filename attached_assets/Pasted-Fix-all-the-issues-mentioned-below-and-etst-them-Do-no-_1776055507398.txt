@@ -1,0 +1,62 @@
+Fix all the issues mentioned below and etst them. Do no have any fix missed. Execute one by one and let me know once tested.
+1. Change the pipe line screen
+1.1	Rename it to opportunities
+1.2	have different views to show on the opportunities screen(List view and Kanban board view); default - list view
+1.3	opportunities names not displayed in pipeline, when in light mode
+1.4 opportunity end date to be added
+1.5 Have a suitcase icon on the opportunity screen
+1.6 add field- Oppportunity Name
+
+2. Leade screen
+2.1 Make Leads screen editable
+2.2 create lead -> workflow to contact - > account
+2.3 lead to contact 1-to-many
+2.4 multiple leads to one account many-to-one
+2.5 Advance stage button not working
+2.5 activities to capture actions in leads screen(all inbound and outbound(
+
+3. new email to have new activity
+3.1 qualified to opportunity - validate info for account
+3.2 Inbound mail is not coming up. haed code this for now- spacemail; mail id - support@arbormind.in; password - February2026#
+
+4. Dashboard
+4.1 dashboard numbers not adding up
+4.2 value also not displayed
+4.3  dashboard values incorrect
+4.4 top deals in dashboard
+
+5. Convert screen
+5.1 in convert, if there is no account/contACT - CREATE ACCOUNT OR CONTACT OPTION
+5.2 Contacts - add/delete/modify
+5.3 account deal also added as per visibility
+
+6. Create a AI chatbot on the bottom right which is collapsed by default. It should help in answering user questions on the system, also provide insights on the entire data
+
+7. Have icons for each screen - copy the same clickable icons
+
+8. Modify account entity to have hte following fields -
+Account Name
+Close Date
+Amount
+Description
+Opty Owner
+Opty Team
+Status
+Stage
+Probability
+Forecast Category
+Next Step
+Created By
+Modified By
+
+9.have generate AI summary in each screen. have it collapsed on each screen and cliking it should display the summary
+
+10. popup text and icons not visibile in light mode; pls fix it to be visible both in light and dark mode.
+
+11. Fix all the flows
+quote name should be clicakable; should go to edit screen; versioning of quotes; only latest version should be editable
+link between opportunity line item to quote line item; opportunity line item shouldbe visible in quotes
+quotes should have status; send quotation - doc generation - quotation document to customer PDF; mail sent to customer
+
+12. Add one order screen
+13. Give a 360 view in account screen.
