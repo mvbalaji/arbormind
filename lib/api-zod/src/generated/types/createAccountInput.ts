@@ -28,6 +28,4 @@ export interface CreateAccountInput {
   optyOwner?: string | null;
   optyTeam?: string | null;
   ownerId?: number | null;
-  createdBy?: number | null;
-  modifiedBy?: number | null;
 }

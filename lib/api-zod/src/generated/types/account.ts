@@ -19,7 +19,18 @@ export interface Account {
   employees?: number | null;
   annualRevenue?: number | null;
   description?: string | null;
+  status?: string | null;
+  stage?: string | null;
+  amount?: number | null;
+  closeDate?: string | null;
+  probability?: number | null;
+  forecastCategory?: string | null;
+  nextStep?: string | null;
+  optyOwner?: string | null;
+  optyTeam?: string | null;
   ownerId?: number | null;
+  createdBy?: number | null;
+  modifiedBy?: number | null;
   ownerName?: string | null;
   contactCount: number;
   dealCount: number;

@@ -1333,7 +1333,40 @@ components:
         description:
           type: string
           nullable: true
+        status:
+          type: string
+          nullable: true
+        stage:
+          type: string
+          nullable: true
+        amount:
+          type: number
+          nullable: true
+        closeDate:
+          type: string
+          nullable: true
+        probability:
+          type: integer
+          nullable: true
+        forecastCategory:
+          type: string
+          nullable: true
+        nextStep:
+          type: string
+          nullable: true
+        optyOwner:
+          type: string
+          nullable: true
+        optyTeam:
+          type: string
+          nullable: true
         ownerId:
+          type: integer
+          nullable: true
+        createdBy:
+          type: integer
+          nullable: true
+        modifiedBy:
           type: integer
           nullable: true
         ownerName:
@@ -1441,12 +1474,6 @@ components:
         ownerId:
           type: integer
           nullable: true
-        createdBy:
-          type: integer
-          nullable: true
-        modifiedBy:
-          type: integer
-          nullable: true
       required:
         - name
 
@@ -1513,12 +1540,6 @@ components:
           type: string
           nullable: true
         ownerId:
-          type: integer
-          nullable: true
-        createdBy:
-          type: integer
-          nullable: true
-        modifiedBy:
           type: integer
           nullable: true
 

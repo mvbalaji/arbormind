@@ -25,38 +25,6 @@ import {
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
-interface AccountRecord {
-  id: number;
-  name: string;
-  industry: string | null;
-  website: string | null;
-  phone: string | null;
-  email: string | null;
-  address: string | null;
-  city: string | null;
-  country: string | null;
-  employees: number | null;
-  annualRevenue: number | null;
-  description: string | null;
-  status: string | null;
-  stage: string | null;
-  amount: number | null;
-  closeDate: string | null;
-  probability: number | null;
-  forecastCategory: string | null;
-  nextStep: string | null;
-  optyOwner: string | null;
-  optyTeam: string | null;
-  ownerId: number | null;
-  createdBy: number | null;
-  modifiedBy: number | null;
-  ownerName: string | null;
-  contactCount: number;
-  dealCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface AccountFormData {
   name: string;
   industry: string;
@@ -108,7 +76,7 @@ export default function Accounts() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListAccounts({ search, limit: 100 });
 
-  const allAccounts = (data?.data ?? []) as unknown as AccountRecord[];
+  const allAccounts = data?.data ?? [];
 
   const filteredAccounts = allAccounts.filter((acc) => {
     if (industryFilter && acc.industry !== industryFilter) return false;
