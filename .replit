@@ -31,6 +31,8 @@ timeoutMs = 20000
 
 [userenv.shared]
 GOOGLE_CALLBACK_URL = "https://arbormind.in/api/auth/google/callback"
+SMTP_HOST = "mail.spacemail.com"
+SMTP_PORT = "465"
 
 [nix]
 channel = "stable-25_05"
