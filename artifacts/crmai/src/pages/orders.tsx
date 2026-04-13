@@ -66,6 +66,7 @@ interface OrderViewDialogProps {
     accountName?: string | null;
     contactName?: string | null;
     quoteNumber?: string | null;
+    opportunityName?: string | null;
     status: string;
     total: number;
     subtotal: number;
@@ -92,6 +93,7 @@ function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
             <div><span className="text-muted-foreground">Account:</span> <span className="font-medium">{order.accountName ?? "—"}</span></div>
             <div><span className="text-muted-foreground">Contact:</span> <span className="font-medium">{order.contactName ?? "—"}</span></div>
             <div><span className="text-muted-foreground">Quote:</span> <span className="font-medium">{order.quoteNumber ?? "—"}</span></div>
+            <div><span className="text-muted-foreground">Opportunity:</span> <span className="font-medium">{order.opportunityName ?? "—"}</span></div>
             <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{format(new Date(order.orderDate), "MMM d, yyyy")}</span></div>
           </div>
 
@@ -378,6 +380,7 @@ export default function Orders() {
                 <tr>
                   <th className="px-6 py-4 font-medium">Order #</th>
                   <th className="px-6 py-4 font-medium">Account</th>
+                  <th className="px-6 py-4 font-medium">Opportunity</th>
                   <th className="px-6 py-4 font-medium">Quote</th>
                   <th className="px-6 py-4 font-medium text-right">Total</th>
                   <th className="px-6 py-4 font-medium">Status</th>
@@ -387,9 +390,9 @@ export default function Orders() {
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.length === 0 ? (
-                  <tr><td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
+                  <tr><td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
                     <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No orders yet. Create an order or convert an accepted quote.
                   </td></tr>
@@ -403,6 +406,7 @@ export default function Orders() {
                           accountName: order.accountName,
                           contactName: order.contactName,
                           quoteNumber: order.quoteNumber,
+                          opportunityName: order.opportunityName,
                           status: order.status,
                           total: order.total,
                           subtotal: order.subtotal,
@@ -421,6 +425,9 @@ export default function Orders() {
                     </td>
                     <td className="px-6 py-4 text-muted-foreground">
                       {order.accountName ?? "—"}
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {order.opportunityName ?? "—"}
                     </td>
                     <td className="px-6 py-4">
                       {order.quoteNumber ? (
@@ -457,6 +464,7 @@ export default function Orders() {
                               accountName: order.accountName,
                               contactName: order.contactName,
                               quoteNumber: order.quoteNumber,
+                              opportunityName: order.opportunityName,
                               status: order.status,
                               total: order.total,
                               subtotal: order.subtotal,

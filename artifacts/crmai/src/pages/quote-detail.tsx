@@ -248,6 +248,9 @@ export default function QuoteDetail() {
               <Button size="sm" variant="outline" onClick={() => handleStatusChange("rejected")} className="border-red-500/30 text-red-600 hover:bg-red-500/10">
                 <XCircle className="w-4 h-4 mr-2" /> Reject
               </Button>
+              <Button size="sm" variant="outline" onClick={() => handleStatusChange("expired")} className="border-orange-500/30 text-orange-600 hover:bg-orange-500/10">
+                <Clock className="w-4 h-4 mr-2" /> Mark Expired
+              </Button>
             </>
           )}
           {canEdit && !isEditing && (
@@ -266,14 +269,14 @@ export default function QuoteDetail() {
         <Card className="glass-panel border-border p-4">
           <div className="flex items-center gap-1">
             {["draft", "sent", "accepted"].map((s, idx) => {
+              const mainStages = ["draft", "sent", "accepted"];
               const isActive = s === quote.status;
-              const isPast = ["draft", "sent", "accepted"].indexOf(quote.status) > idx;
-              const isRejected = quote.status === "rejected";
+              const isPast = mainStages.indexOf(quote.status) > idx;
               return (
                 <React.Fragment key={s}>
                   {idx > 0 && <div className={`flex-1 h-0.5 ${isPast ? "bg-green-500" : "bg-border"}`} />}
                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    isActive ? (isRejected && s === quote.status ? "bg-red-500/10 text-red-600" : "bg-primary/10 text-primary")
+                    isActive ? "bg-primary/10 text-primary"
                     : isPast ? "bg-green-500/10 text-green-600"
                     : "bg-muted text-muted-foreground"
                   }`}>
@@ -291,10 +294,31 @@ export default function QuoteDetail() {
                 </div>
               </>
             )}
+            {quote.status === "expired" && (
+              <>
+                <div className="flex-1 h-0.5 bg-orange-500/30" />
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-600">
+                  <Clock className="w-3 h-3" /> Expired
+                </div>
+              </>
+            )}
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="glass-panel border-border p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-3">
+              <FileText className="w-4 h-4" />
+              <span className="text-xs font-semibold uppercase">Opportunity</span>
+            </div>
+            {quote.opportunityId ? (
+              <button className="text-primary hover:underline font-medium text-left" onClick={() => navigate(`/opportunities`)}>
+                {quote.opportunityName ?? `Opportunity #${quote.opportunityId}`}
+              </button>
+            ) : (
+              <p className="text-foreground font-medium">—</p>
+            )}
+          </Card>
           <Card className="glass-panel border-border p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-3">
               <Building2 className="w-4 h-4" />
