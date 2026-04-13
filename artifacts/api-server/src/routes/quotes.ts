@@ -569,6 +569,13 @@ router.post("/quotes/:id/send", async (req, res) => {
 
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
 
+    const [rawQuote] = await db.select().from(quotesTable).where(eq(quotesTable.id, id));
+    const isLatest = await isLatestVersion(id, rawQuote?.parentQuoteId ?? null);
+    if (!isLatest) {
+      res.status(403).json({ error: "Only the latest version of a quote can be sent. Create a new version instead." });
+      return;
+    }
+
     if (quote.status !== "draft") {
       res.status(400).json({ error: `Cannot send a quote with status '${quote.status}'. Only draft quotes can be sent.` });
       return;

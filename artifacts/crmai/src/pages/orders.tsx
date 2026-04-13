@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ShoppingCart, MoreHorizontal, Trash2, CheckCircle, Truck, PackageCheck, XCircle,
-  Plus, X, Package, Eye,
+  Plus, X, Package, Eye, Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -305,10 +305,162 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   );
 }
 
+interface EditOrderData {
+  id: number;
+  notes: string;
+  discount: number;
+  tax: number;
+  items: OrderItem[];
+}
+
+function EditOrderDialog({ open, onOpenChange, order }: { open: boolean; onOpenChange: (v: boolean) => void; order: EditOrderData }) {
+  const [notes, setNotes] = useState(order.notes);
+  const [discount, setDiscount] = useState(String(order.discount));
+  const [tax, setTax] = useState(String(order.tax));
+  const [items, setItems] = useState<OrderItem[]>(order.items);
+  const { data: productsData } = useListProducts({ limit: 200 });
+  const products = productsData?.data ?? [];
+  const updateMutation = useUpdateOrder();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      setNotes(order.notes);
+      setDiscount(String(order.discount));
+      setTax(String(order.tax));
+      setItems(order.items.map(i => ({ ...i })));
+    }
+  }, [open, order]);
+
+  const lineTotal = (item: OrderItem) => item.quantity * item.unitPrice * (1 - item.discount / 100);
+  const subtotal = items.reduce((sum, item) => sum + lineTotal(item), 0);
+  const discountAmt = subtotal * (parseFloat(discount) || 0) / 100;
+  const taxAmt = (subtotal - discountAmt) * (parseFloat(tax) || 0) / 100;
+  const total = subtotal - discountAmt + taxAmt;
+
+  const addItem = () => setItems([...items, { productId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 }]);
+  const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, field: keyof OrderItem, value: unknown) => {
+    const updated = [...items];
+    (updated[idx] as Record<string, unknown>)[field] = value;
+    setItems(updated);
+  };
+  const selectProduct = (idx: number, productId: number | null) => {
+    const updated = [...items];
+    if (productId) {
+      const p = products.find(pr => pr.id === productId);
+      if (p) {
+        updated[idx] = { ...updated[idx], productId: p.id, productName: p.name, unitPrice: p.price ?? 0 };
+      }
+    } else {
+      updated[idx] = { ...updated[idx], productId: null };
+    }
+    setItems(updated);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validItems = items.filter(i => i.productName);
+    if (validItems.length === 0) { toast({ title: "Add at least one item", variant: "destructive" }); return; }
+    try {
+      await updateMutation.mutateAsync({
+        id: order.id,
+        data: {
+          notes: notes || undefined,
+          discount: parseFloat(discount) || 0,
+          tax: parseFloat(tax) || 0,
+          items: validItems.map(i => ({
+            productId: i.productId,
+            productName: i.productName,
+            quantity: i.quantity || 1,
+            unitPrice: i.unitPrice || 0,
+            discount: i.discount || 0,
+          })),
+        } as Record<string, unknown>,
+      });
+      toast({ title: "Order updated" });
+      void queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
+      onOpenChange(false);
+    } catch {
+      toast({ title: "Error", description: "Could not update order.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border text-foreground max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Order</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-sm font-medium">Line Items</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-border"><Plus className="w-3 h-3 mr-1" /> Add</Button>
+            </div>
+            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              {items.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border">
+                  <select className="flex-1 h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
+                    value={item.productId ?? ""} onChange={e => {
+                      const v = e.target.value;
+                      selectProduct(idx, v ? parseInt(v) : null);
+                    }}>
+                    <option value="">Custom item</option>
+                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <Input className="w-32 bg-muted border-border text-sm" value={item.productName}
+                    onChange={e => updateItem(idx, "productName", e.target.value)} placeholder="Name" />
+                  <Input className="w-16 bg-muted border-border text-sm text-right" type="number" min="1"
+                    value={item.quantity} onChange={e => updateItem(idx, "quantity", parseInt(e.target.value) || 1)} />
+                  <Input className="w-20 bg-muted border-border text-sm text-right" type="number" step="0.01"
+                    value={item.unitPrice} onChange={e => updateItem(idx, "unitPrice", parseFloat(e.target.value) || 0)} />
+                  <span className="text-xs text-muted-foreground w-20 text-right">${lineTotal(item).toFixed(2)}</span>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(idx)} className="text-muted-foreground hover:text-destructive h-7 w-7">
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label htmlFor="e-discount">Discount %</Label><Input id="e-discount" className="bg-muted border-border" type="number" step="0.1" value={discount} onChange={e => setDiscount(e.target.value)} /></div>
+            <div><Label htmlFor="e-tax">Tax %</Label><Input id="e-tax" className="bg-muted border-border" type="number" step="0.1" value={tax} onChange={e => setTax(e.target.value)} /></div>
+          </div>
+
+          {items.length > 0 && (
+            <div className="text-sm space-y-1">
+              <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+              {parseFloat(discount) > 0 && <div className="flex justify-between text-muted-foreground"><span>Discount ({discount}%)</span><span>-${discountAmt.toFixed(2)}</span></div>}
+              {parseFloat(tax) > 0 && <div className="flex justify-between text-muted-foreground"><span>Tax ({tax}%)</span><span>${taxAmt.toFixed(2)}</span></div>}
+              <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1"><span>Total</span><span>${total.toFixed(2)}</span></div>
+            </div>
+          )}
+
+          <div>
+            <Label htmlFor="e-notes">Notes</Label>
+            <Input id="e-notes" className="bg-muted border-border" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Internal notes..." />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+            <Button type="submit" disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground">
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Orders() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<OrderViewDialogProps["order"] | null>(null);
+  const [editingOrder, setEditingOrder] = useState<EditOrderData | null>(null);
   const { data, isLoading } = useListOrders();
   const createFromQuoteMutation = useCreateOrderFromQuote();
   const updateMutation = useUpdateOrder();
@@ -478,6 +630,26 @@ export default function Orders() {
                           >
                             <Eye className="w-4 h-4 mr-2" /> View Details
                           </DropdownMenuItem>
+                          {!["delivered", "cancelled"].includes(order.status) && (
+                            <DropdownMenuItem
+                              onClick={() => setEditingOrder({
+                                id: order.id,
+                                notes: order.notes ?? "",
+                                discount: order.discount,
+                                tax: order.tax,
+                                items: order.items.map(i => ({
+                                  productId: i.productId ?? null,
+                                  productName: i.productName,
+                                  quantity: i.quantity,
+                                  unitPrice: i.unitPrice,
+                                  discount: i.discount ?? 0,
+                                })),
+                              })}
+                              className="cursor-pointer hover:bg-muted"
+                            >
+                              <Pencil className="w-4 h-4 mr-2" /> Edit Order
+                            </DropdownMenuItem>
+                          )}
                           {(STATUS_TRANSITIONS[order.status] ?? []).length > 0 && <DropdownMenuSeparator className="bg-muted" />}
                           {(STATUS_TRANSITIONS[order.status] ?? []).map((t) => (
                             <DropdownMenuItem
@@ -513,6 +685,14 @@ export default function Orders() {
           open={!!viewingOrder}
           onOpenChange={(o) => { if (!o) setViewingOrder(null); }}
           order={viewingOrder}
+        />
+      )}
+
+      {editingOrder && (
+        <EditOrderDialog
+          open={!!editingOrder}
+          onOpenChange={(o) => { if (!o) setEditingOrder(null); }}
+          order={editingOrder}
         />
       )}
 

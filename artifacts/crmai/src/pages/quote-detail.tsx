@@ -3,6 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import {
   useGetQuote, useUpdateQuote, useCreateQuoteVersion, useSendQuote,
   useListProducts, useListOpportunityItems,
+  useListOpportunities, useListContacts, useListAccounts,
   getGetQuoteQueryKey, getListQuotesQueryKey,
   CreateQuoteInputStatus,
 } from "@workspace/api-client-react";
@@ -52,6 +53,12 @@ export default function QuoteDetail() {
     query: { enabled: !!quote?.opportunityId },
   });
   const opportunityItems = oppItemsData?.data ?? [];
+  const { data: oppsData } = useListOpportunities({ limit: 200 });
+  const opportunities = oppsData?.data ?? [];
+  const { data: contactsData } = useListContacts({ limit: 200 });
+  const contacts = contactsData?.data ?? [];
+  const { data: accountsData } = useListAccounts({ limit: 200 });
+  const accounts = accountsData?.data ?? [];
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -61,6 +68,9 @@ export default function QuoteDetail() {
   const [editTax, setEditTax] = useState("0");
   const [editNotes, setEditNotes] = useState("");
   const [editItems, setEditItems] = useState<EditableItem[]>([]);
+  const [editOpportunityId, setEditOpportunityId] = useState<number | null>(null);
+  const [editContactId, setEditContactId] = useState<number | null>(null);
+  const [editAccountId, setEditAccountId] = useState<number | null>(null);
 
   useEffect(() => {
     if (quote && isEditing) {
@@ -70,6 +80,9 @@ export default function QuoteDetail() {
       setEditDiscount(String(quote.discount ?? 0));
       setEditTax(String(quote.tax ?? 0));
       setEditNotes(quote.notes ?? "");
+      setEditOpportunityId(quote.opportunityId ?? null);
+      setEditContactId(quote.contactId ?? null);
+      setEditAccountId(quote.accountId ?? null);
       setEditItems(quote.items.map(it => ({
         productId: it.productId ?? null,
         productName: it.productName,
@@ -106,6 +119,9 @@ export default function QuoteDetail() {
           discount: parseFloat(editDiscount) || 0,
           tax: parseFloat(editTax) || 0,
           notes: editNotes || null,
+          opportunityId: editOpportunityId,
+          contactId: editContactId,
+          accountId: editAccountId,
           items: editItems.filter(it => it.productName).map(it => ({
             productId: it.productId,
             productName: it.productName,
@@ -315,7 +331,14 @@ export default function QuoteDetail() {
               <FileText className="w-4 h-4" />
               <span className="text-xs font-semibold uppercase">Opportunity</span>
             </div>
-            {quote.opportunityId ? (
+            {isEditing ? (
+              <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
+                value={editOpportunityId ?? ""}
+                onChange={e => setEditOpportunityId(e.target.value ? parseInt(e.target.value) : null)}>
+                <option value="">None</option>
+                {opportunities.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            ) : quote.opportunityId ? (
               <button className="text-primary hover:underline font-medium text-left" onClick={() => navigate(`/opportunities`)}>
                 {quote.opportunityName ?? `Opportunity #${quote.opportunityId}`}
               </button>
@@ -328,15 +351,35 @@ export default function QuoteDetail() {
               <Building2 className="w-4 h-4" />
               <span className="text-xs font-semibold uppercase">Account</span>
             </div>
-            <p className="text-foreground font-medium">{quote.accountName ?? "—"}</p>
+            {isEditing ? (
+              <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
+                value={editAccountId ?? ""}
+                onChange={e => setEditAccountId(e.target.value ? parseInt(e.target.value) : null)}>
+                <option value="">None</option>
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            ) : (
+              <p className="text-foreground font-medium">{quote.accountName ?? "—"}</p>
+            )}
           </Card>
           <Card className="glass-panel border-border p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-3">
               <User className="w-4 h-4" />
               <span className="text-xs font-semibold uppercase">Contact</span>
             </div>
-            <p className="text-foreground font-medium">{quote.contactName ?? "—"}</p>
-            {quote.contactEmail && <p className="text-xs text-muted-foreground mt-1">{quote.contactEmail}</p>}
+            {isEditing ? (
+              <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
+                value={editContactId ?? ""}
+                onChange={e => setEditContactId(e.target.value ? parseInt(e.target.value) : null)}>
+                <option value="">None</option>
+                {contacts.map(c => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
+              </select>
+            ) : (
+              <>
+                <p className="text-foreground font-medium">{quote.contactName ?? "—"}</p>
+                {quote.contactEmail && <p className="text-xs text-muted-foreground mt-1">{quote.contactEmail}</p>}
+              </>
+            )}
           </Card>
           <Card className="glass-panel border-border p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-3">
