@@ -26,7 +26,7 @@ All modules are fully implemented with real data:
 1. **Dashboard** — "Sales Command Center" with 5 KPI cards, AI Insights banner, pipeline bar chart + win/loss donut, hot deals panel, recent leads click-through, upcoming activities feed
 2. **Contacts** — searchable table with add contact modal, account & owner info; Contact detail page
 3. **Leads** — table with lead scoring badges, click-through to `/leads/:id` detail page; Lead detail has score gauge, lifecycle stage stepper, convert flow, email compose, AI summary
-4. **Accounts** — company table, click-through to `/accounts/:id` detail page with 4 tabs (Contacts/Deals/Activities/About) + KPI row
+4. **Accounts** — company table with extended fields (status, stage, amount, closeDate, probability, forecastCategory, nextStep, optyOwner, optyTeam, createdBy, modifiedBy); click-through to `/accounts/:id` detail page with 6 tabs (Contacts/Opportunities/Activities/Quotes/Cases/About) — full 360-degree view + KPI row
 5. **Opportunities** — Kanban pipeline board with drag-and-drop; Opportunity detail page with AI summary, email compose, quote builder, PDF quote generator, tabs for Activities/Quotes/Details
 6. **Campaigns** — campaign table with click-through to `/campaigns/:id` detail page with status management, budget progress, simulated metrics, ROI display, AI summary
 7. **Activities** — log of calls, emails, meetings, tasks, notes with due dates
@@ -46,21 +46,31 @@ All modules are fully implemented with real data:
 ## Detail Pages
 
 - `/leads/:id` — Lead detail (score gauge, lifecycle stepper, convert to contact, edit, email compose, AI summary)
-- `/accounts/:id` — Account detail (4 tabs: contacts/opportunities/activities/about, KPI row, edit)
+- `/accounts/:id` — Account detail 360-degree view (6 tabs: contacts/opportunities/activities/quotes/cases/about, KPI row, extended fields)
 - `/opportunities/:id` — Opportunity detail (stage pipeline progress, quotes tab with PDF generation, activities, email compose, AI summary)
 - `/campaigns/:id` — Campaign detail (status control: launch/pause/complete, budget progress, simulated metrics, ROI, edit)
 
-## Database Schema (9 tables)
+## Email Sync / Spacemail Integration
+
+- IMAP credentials hardcoded for spacemail: `support@arbormind.in` / `February2026#` on `mail.spacemail.com:993`
+- Email sync auto-creates Activity records (type=email) for every inbound email processed
+- Links activities to contact/lead/opportunity/account where possible
+- Poller starts on server boot if credentials are configured
+
+## Database Schema (11 tables)
 
 - `users` — CRM users with roles (admin/manager/rep)
-- `accounts` — Company accounts with industry, revenue, employees
+- `accounts` — Company accounts with industry, revenue, employees, plus extended fields: status, stage, amount, closeDate, probability, forecastCategory, nextStep, optyOwner, optyTeam, createdBy, modifiedBy
 - `contacts` — Individual contacts linked to accounts
 - `leads` — Leads with scoring (0-100), source, status tracking
+- `lead_contacts` — Join table for 1-to-many lead→contacts relationship
 - `opportunities` — Deals with stages, amounts, probabilities, close dates
-- `activities` — Activities (call/email/meeting/task/note) linked to contacts/opportunities
+- `activities` — Activities (call/email/meeting/task/note) linked to contacts/opportunities/leads/accounts
 - `products` — Product catalog with pricing
 - `cases` — Support cases with priority/status/type
 - `quotes` + `quote_items` — Quotes linked to opportunities with line item details
+- `emails` — Inbound email records from IMAP sync
+- `email_settings` — IMAP/SMTP configuration
 
 ## Seed Data
 

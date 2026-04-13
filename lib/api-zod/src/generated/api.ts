@@ -434,7 +434,18 @@ export const CreateAccountBody = zod.object({
   employees: zod.number().nullish(),
   annualRevenue: zod.number().nullish(),
   description: zod.string().nullish(),
+  status: zod.string().nullish(),
+  stage: zod.string().nullish(),
+  amount: zod.number().nullish(),
+  closeDate: zod.string().nullish(),
+  probability: zod.number().nullish(),
+  forecastCategory: zod.string().nullish(),
+  nextStep: zod.string().nullish(),
+  optyOwner: zod.string().nullish(),
+  optyTeam: zod.string().nullish(),
   ownerId: zod.number().nullish(),
+  createdBy: zod.number().nullish(),
+  modifiedBy: zod.number().nullish(),
 });
 
 /**
@@ -484,7 +495,18 @@ export const UpdateAccountBody = zod.object({
   employees: zod.number().nullish(),
   annualRevenue: zod.number().nullish(),
   description: zod.string().nullish(),
+  status: zod.string().nullish(),
+  stage: zod.string().nullish(),
+  amount: zod.number().nullish(),
+  closeDate: zod.string().nullish(),
+  probability: zod.number().nullish(),
+  forecastCategory: zod.string().nullish(),
+  nextStep: zod.string().nullish(),
+  optyOwner: zod.string().nullish(),
+  optyTeam: zod.string().nullish(),
   ownerId: zod.number().nullish(),
+  createdBy: zod.number().nullish(),
+  modifiedBy: zod.number().nullish(),
 });
 
 export const UpdateAccountResponse = zod.object({

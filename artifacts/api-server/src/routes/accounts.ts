@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { accountsTable, usersTable, contactsTable, opportunitiesTable, activitiesTable } from "@workspace/db";
-import { eq, ilike, sql, and } from "drizzle-orm";
+import { accountsTable, usersTable, contactsTable, opportunitiesTable, activitiesTable, quotesTable, casesTable } from "@workspace/db";
+import { eq, ilike, sql, and, desc, inArray } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -18,24 +18,47 @@ const accountFields = {
   employees: accountsTable.employees,
   annualRevenue: accountsTable.annualRevenue,
   description: accountsTable.description,
+  status: accountsTable.status,
+  stage: accountsTable.stage,
+  amount: accountsTable.amount,
+  closeDate: accountsTable.closeDate,
+  probability: accountsTable.probability,
+  forecastCategory: accountsTable.forecastCategory,
+  nextStep: accountsTable.nextStep,
+  optyOwner: accountsTable.optyOwner,
+  optyTeam: accountsTable.optyTeam,
   ownerId: accountsTable.ownerId,
+  createdBy: accountsTable.createdBy,
+  modifiedBy: accountsTable.modifiedBy,
   ownerName: usersTable.name,
   createdAt: accountsTable.createdAt,
   updatedAt: accountsTable.updatedAt,
 };
 
-async function enrichAccounts(data: Array<{ id: number; annualRevenue: string | null; [key: string]: unknown }>) {
+function numericOrNull(val: string | null) {
+  return val ? Number(val) : null;
+}
+
+function sanitizeAccount(a: any) {
+  return {
+    ...a,
+    annualRevenue: numericOrNull(a.annualRevenue),
+    amount: numericOrNull(a.amount),
+  };
+}
+
+async function enrichAccounts(data: Array<{ id: number; [key: string]: unknown }>) {
   const accountIds = data.map(a => a.id);
-  if (accountIds.length === 0) return data.map(a => ({ ...a, contactCount: 0, dealCount: 0, annualRevenue: a.annualRevenue ? Number(a.annualRevenue) : null }));
+  if (accountIds.length === 0) return data.map(a => ({ ...sanitizeAccount(a), contactCount: 0, dealCount: 0 }));
 
   const [contactCounts, dealCounts] = await Promise.all([
     db.select({ accountId: contactsTable.accountId, count: sql<number>`count(*)` })
       .from(contactsTable)
-      .where(sql`${contactsTable.accountId} = ANY(ARRAY[${sql.raw(accountIds.join(","))}]::int[])`)
+      .where(inArray(contactsTable.accountId, accountIds))
       .groupBy(contactsTable.accountId),
     db.select({ accountId: opportunitiesTable.accountId, count: sql<number>`count(*)` })
       .from(opportunitiesTable)
-      .where(sql`${opportunitiesTable.accountId} = ANY(ARRAY[${sql.raw(accountIds.join(","))}]::int[])`)
+      .where(inArray(opportunitiesTable.accountId, accountIds))
       .groupBy(opportunitiesTable.accountId),
   ]);
 
@@ -43,12 +66,23 @@ async function enrichAccounts(data: Array<{ id: number; annualRevenue: string | 
   const dealCountMap = new Map(dealCounts.map(d => [d.accountId, Number(d.count)]));
 
   return data.map(a => ({
-    ...a,
-    annualRevenue: a.annualRevenue ? Number(a.annualRevenue) : null,
+    ...sanitizeAccount(a),
     contactCount: contactCountMap.get(a.id) ?? 0,
     dealCount: dealCountMap.get(a.id) ?? 0,
   }));
 }
+
+function parseId(raw: string): number | null {
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+const ALLOWED_FIELDS = [
+  "name", "industry", "website", "phone", "email", "address", "city", "country",
+  "employees", "annualRevenue", "description", "status", "stage", "amount",
+  "closeDate", "probability", "forecastCategory", "nextStep", "optyOwner",
+  "optyTeam", "ownerId",
+];
 
 router.get("/accounts", async (req, res) => {
   try {
@@ -84,10 +118,18 @@ router.get("/accounts", async (req, res) => {
 
 router.post("/accounts", async (req, res) => {
   try {
-    const [account] = await db.insert(accountsTable).values(req.body).returning();
+    const payload: Record<string, any> = {};
+    for (const key of ALLOWED_FIELDS) {
+      if (req.body[key] !== undefined) payload[key] = req.body[key];
+    }
+    const sessionUser = (req.session as any)?.user;
+    if (sessionUser?.name) {
+      payload.createdBy = sessionUser.name;
+      payload.modifiedBy = sessionUser.name;
+    }
+    const [account] = await db.insert(accountsTable).values(payload).returning();
     res.status(201).json({
-      ...account,
-      annualRevenue: account.annualRevenue ? Number(account.annualRevenue) : null,
+      ...sanitizeAccount(account),
       contactCount: 0,
       dealCount: 0,
     });
@@ -99,11 +141,13 @@ router.post("/accounts", async (req, res) => {
 
 router.get("/accounts/:id", async (req, res) => {
   try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const [account] = await db
       .select(accountFields)
       .from(accountsTable)
       .leftJoin(usersTable, eq(accountsTable.ownerId, usersTable.id))
-      .where(eq(accountsTable.id, parseInt(req.params.id)));
+      .where(eq(accountsTable.id, id));
 
     if (!account) {
       res.status(404).json({ error: "Account not found" });
@@ -116,8 +160,7 @@ router.get("/accounts/:id", async (req, res) => {
     ]);
 
     res.json({
-      ...account,
-      annualRevenue: account.annualRevenue ? Number(account.annualRevenue) : null,
+      ...sanitizeAccount(account),
       contactCount: Number(contactCounts[0].count),
       dealCount: Number(dealCounts[0].count),
     });
@@ -129,16 +172,23 @@ router.get("/accounts/:id", async (req, res) => {
 
 router.put("/accounts/:id", async (req, res) => {
   try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid account ID" }); return; }
+    const payload: Record<string, any> = { updatedAt: new Date() };
+    for (const key of ALLOWED_FIELDS) {
+      if (req.body[key] !== undefined) payload[key] = req.body[key];
+    }
+    const sessionUser = (req.session as any)?.user;
+    if (sessionUser?.name) payload.modifiedBy = sessionUser.name;
     const [account] = await db.update(accountsTable)
-      .set({ ...req.body, updatedAt: new Date() })
-      .where(eq(accountsTable.id, parseInt(req.params.id)))
+      .set(payload)
+      .where(eq(accountsTable.id, id))
       .returning();
     if (!account) {
       res.status(404).json({ error: "Account not found" });
     } else {
       res.json({
-        ...account,
-        annualRevenue: account.annualRevenue ? Number(account.annualRevenue) : null,
+        ...sanitizeAccount(account),
         contactCount: 0,
         dealCount: 0,
       });
@@ -151,7 +201,8 @@ router.put("/accounts/:id", async (req, res) => {
 
 router.delete("/accounts/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid account ID" }); return; }
     await db.delete(accountsTable).where(eq(accountsTable.id, id));
     res.json({ success: true, id });
   } catch (err) {
@@ -160,10 +211,10 @@ router.delete("/accounts/:id", async (req, res) => {
   }
 });
 
-// Relationship: contacts for an account
 router.get("/accounts/:id/contacts", async (req, res) => {
   try {
-    const accountId = parseInt(req.params.id);
+    const accountId = parseId(req.params.id);
+    if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const data = await db
       .select()
       .from(contactsTable)
@@ -176,10 +227,10 @@ router.get("/accounts/:id/contacts", async (req, res) => {
   }
 });
 
-// Relationship: opportunities for an account
 router.get("/accounts/:id/opportunities", async (req, res) => {
   try {
-    const accountId = parseInt(req.params.id);
+    const accountId = parseId(req.params.id);
+    if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const data = await db
       .select()
       .from(opportunitiesTable)
@@ -192,15 +243,55 @@ router.get("/accounts/:id/opportunities", async (req, res) => {
   }
 });
 
-// Relationship: activities for an account
 router.get("/accounts/:id/activities", async (req, res) => {
   try {
-    const accountId = parseInt(req.params.id);
+    const accountId = parseId(req.params.id);
+    if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const data = await db
       .select()
       .from(activitiesTable)
       .where(eq(activitiesTable.accountId, accountId))
-      .orderBy(activitiesTable.dueDate);
+      .orderBy(desc(activitiesTable.createdAt));
+    res.json({ data });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/accounts/:id/quotes", async (req, res) => {
+  try {
+    const accountId = parseId(req.params.id);
+    if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
+    const data = await db
+      .select()
+      .from(quotesTable)
+      .where(eq(quotesTable.accountId, accountId))
+      .orderBy(desc(quotesTable.createdAt));
+    res.json({
+      data: data.map((q) => ({
+        ...q,
+        subtotal: q.subtotal ? Number(q.subtotal) : 0,
+        discount: q.discount ? Number(q.discount) : 0,
+        tax: q.tax ? Number(q.tax) : 0,
+        total: q.total ? Number(q.total) : 0,
+      })),
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/accounts/:id/cases", async (req, res) => {
+  try {
+    const accountId = parseId(req.params.id);
+    if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
+    const data = await db
+      .select()
+      .from(casesTable)
+      .where(eq(casesTable.accountId, accountId))
+      .orderBy(desc(casesTable.createdAt));
     res.json({ data });
   } catch (err) {
     req.log.error(err);

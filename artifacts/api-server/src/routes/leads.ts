@@ -158,6 +158,11 @@ router.post("/leads/:id/convert", async (req, res) => {
       return;
     }
 
+    if (createAccount && !existingAccountId && !lead.company) {
+      res.status(400).json({ error: "Lead must have a company name to create an account. Please update the lead's company field first." });
+      return;
+    }
+
     if (existingAccountId) {
       const [acct] = await db.select({ id: accountsTable.id }).from(accountsTable).where(eq(accountsTable.id, existingAccountId));
       if (!acct) {

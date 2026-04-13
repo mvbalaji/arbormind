@@ -35,11 +35,24 @@ interface AccountFormData {
   country: string;
   employees: string;
   annualRevenue: string;
+  description: string;
+  status: string;
+  stage: string;
+  amount: string;
+  closeDate: string;
+  probability: string;
+  forecastCategory: string;
+  nextStep: string;
+  optyOwner: string;
+  optyTeam: string;
 }
 
 const defaultFormData: AccountFormData = {
   name: "", industry: "", website: "", phone: "", email: "",
   city: "", country: "", employees: "", annualRevenue: "",
+  description: "", status: "active", stage: "", amount: "",
+  closeDate: "", probability: "", forecastCategory: "",
+  nextStep: "", optyOwner: "", optyTeam: "",
 };
 
 const INDUSTRY_OPTIONS = [
@@ -300,6 +313,16 @@ export default function Accounts() {
                                   country: acc.country ?? "",
                                   employees: acc.employees != null ? String(acc.employees) : "",
                                   annualRevenue: acc.annualRevenue != null ? String(acc.annualRevenue) : "",
+                                  description: (acc as any).description ?? "",
+                                  status: (acc as any).status ?? "active",
+                                  stage: (acc as any).stage ?? "",
+                                  amount: (acc as any).amount != null ? String((acc as any).amount) : "",
+                                  closeDate: (acc as any).closeDate ?? "",
+                                  probability: (acc as any).probability != null ? String((acc as any).probability) : "",
+                                  forecastCategory: (acc as any).forecastCategory ?? "",
+                                  nextStep: (acc as any).nextStep ?? "",
+                                  optyOwner: (acc as any).optyOwner ?? "",
+                                  optyTeam: (acc as any).optyTeam ?? "",
                                 })}
                                 className="cursor-pointer text-sm"
                               >
@@ -381,6 +404,16 @@ function AccountFormDialog({
       country: formData.country || undefined,
       employees: formData.employees ? parseInt(formData.employees) : undefined,
       annualRevenue: formData.annualRevenue ? parseFloat(formData.annualRevenue) : undefined,
+      description: formData.description || undefined,
+      status: formData.status || undefined,
+      stage: formData.stage || undefined,
+      amount: formData.amount ? parseFloat(formData.amount) : undefined,
+      closeDate: formData.closeDate || undefined,
+      probability: formData.probability ? parseInt(formData.probability) : undefined,
+      forecastCategory: formData.forecastCategory || undefined,
+      nextStep: formData.nextStep || undefined,
+      optyOwner: formData.optyOwner || undefined,
+      optyTeam: formData.optyTeam || undefined,
     };
     const invalidate = () => queryClient.invalidateQueries({ queryKey: getListAccountsQueryKey() });
     if (mode === "create") {
@@ -452,6 +485,65 @@ function AccountFormDialog({
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Annual Revenue ($)</Label>
             <Input type="number" className="h-9 text-sm" value={formData.annualRevenue} onChange={f("annualRevenue")} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Description</Label>
+            <Input className="h-9 text-sm" value={formData.description} onChange={f("description")} placeholder="Account description..." />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Status</Label>
+              <select className={sc} value={formData.status} onChange={f("status")}>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="prospect">Prospect</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Stage</Label>
+              <Input className="h-9 text-sm" value={formData.stage} onChange={f("stage")} placeholder="e.g., Growth" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Amount ($)</Label>
+              <Input type="number" className="h-9 text-sm" value={formData.amount} onChange={f("amount")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Close Date</Label>
+              <Input type="date" className="h-9 text-sm" value={formData.closeDate} onChange={f("closeDate")} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Probability (%)</Label>
+              <Input type="number" min="0" max="100" className="h-9 text-sm" value={formData.probability} onChange={f("probability")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Forecast Category</Label>
+              <select className={sc} value={formData.forecastCategory} onChange={f("forecastCategory")}>
+                <option value="">Select category</option>
+                <option value="pipeline">Pipeline</option>
+                <option value="best_case">Best Case</option>
+                <option value="commit">Commit</option>
+                <option value="closed">Closed</option>
+                <option value="omitted">Omitted</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Next Step</Label>
+            <Input className="h-9 text-sm" value={formData.nextStep} onChange={f("nextStep")} placeholder="e.g., Schedule demo" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Opty Owner</Label>
+              <Input className="h-9 text-sm" value={formData.optyOwner} onChange={f("optyOwner")} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Opty Team</Label>
+              <Input className="h-9 text-sm" value={formData.optyTeam} onChange={f("optyTeam")} />
+            </div>
           </div>
           <DialogFooter className="pt-2 border-t border-border gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>

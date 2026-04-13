@@ -1,32 +1,61 @@
-import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, contactsTable } from "@workspace/db";
+import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable } from "@workspace/db";
 import { eq, ilike } from "drizzle-orm";
 
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let isSyncing = false;
+
+const HARDCODED_IMAP = {
+  host: "mail.spacemail.com",
+  port: 993,
+  secure: true,
+  user: "support@arbormind.in",
+  password: "February2026#",
+};
 
 async function getSettings() {
   const rows = await db.select().from(emailSettingsTable).limit(1);
   return rows[0] ?? null;
 }
 
+async function getImapConfig(settings: any) {
+  if (settings?.imapUser && settings?.imapPassword) {
+    return {
+      host: settings.imapHost,
+      port: settings.imapPort,
+      secure: settings.imapSecure,
+      user: settings.imapUser,
+      pass: settings.imapPassword,
+    };
+  }
+  return {
+    host: HARDCODED_IMAP.host,
+    port: HARDCODED_IMAP.port,
+    secure: HARDCODED_IMAP.secure,
+    user: HARDCODED_IMAP.user,
+    pass: HARDCODED_IMAP.password,
+  };
+}
+
 async function checkIfKnownCustomer(email: string) {
   const [contact] = await db
-    .select({ id: contactsTable.id })
+    .select({ id: contactsTable.id, accountId: contactsTable.accountId })
     .from(contactsTable)
     .where(ilike(contactsTable.email, email));
-  return contact ? contact.id : null;
+  return contact ?? null;
 }
 
 async function processEmail(fromEmail: string, fromName: string, subject: string, body: string) {
-  const contactId = await checkIfKnownCustomer(fromEmail);
+  const contact = await checkIfKnownCustomer(fromEmail);
 
   let relatedLeadId: number | undefined;
   let relatedOpportunityId: number | undefined;
   let relatedContactId: number | undefined;
+  let relatedAccountId: number | undefined;
   let notes: string;
 
-  if (contactId) {
-    relatedContactId = contactId;
+  if (contact) {
+    relatedContactId = contact.id;
+    relatedAccountId = contact.accountId ?? undefined;
     const closeDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const [opp] = await db
       .insert(opportunitiesTable)
@@ -37,6 +66,7 @@ async function processEmail(fromEmail: string, fromName: string, subject: string
         probability: 30,
         amount: 0,
         closeDate,
+        accountId: contact.accountId ?? undefined,
       })
       .returning();
     relatedOpportunityId = opp?.id;
@@ -63,11 +93,23 @@ async function processEmail(fromEmail: string, fromName: string, subject: string
     subject,
     message: body.slice(0, 4000),
     status: "new",
-    isKnownCustomer: contactId ? "true" : "false",
+    isKnownCustomer: contact ? "true" : "false",
     relatedContactId,
     relatedLeadId,
     relatedOpportunityId,
     notes,
+  });
+
+  await db.insert(activitiesTable).values({
+    type: "email",
+    subject: `Email: ${subject}`,
+    description: body.slice(0, 2000),
+    status: "completed",
+    leadId: relatedLeadId ?? null,
+    contactId: relatedContactId ?? null,
+    opportunityId: relatedOpportunityId ?? null,
+    accountId: relatedAccountId ?? null,
+    completedAt: new Date(),
   });
 }
 
@@ -76,7 +118,9 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
   isSyncing = true;
 
   const settings = await getSettings();
-  if (!settings || !settings.imapUser || !settings.imapPassword) {
+  const imapConfig = await getImapConfig(settings);
+
+  if (!imapConfig.user || !imapConfig.pass) {
     isSyncing = false;
     return { processed: 0, error: "IMAP credentials not configured" };
   }
@@ -88,12 +132,12 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
     const { ImapFlow } = await import("imapflow");
 
     const client = new ImapFlow({
-      host: settings.imapHost,
-      port: settings.imapPort,
-      secure: settings.imapSecure,
+      host: imapConfig.host,
+      port: imapConfig.port,
+      secure: imapConfig.secure,
       auth: {
-        user: settings.imapUser,
-        pass: settings.imapPassword,
+        user: imapConfig.user,
+        pass: imapConfig.pass,
       },
       logger: false,
     });
@@ -130,27 +174,33 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
 
     await client.logout();
 
-    await db
-      .update(emailSettingsTable)
-      .set({
-        lastSyncAt: new Date(),
-        lastSyncStatus: "ok",
-        lastSyncMessage: `Processed ${processed} email(s)`,
-        emailsProcessed: (settings.emailsProcessed ?? 0) + processed,
-        updatedAt: new Date(),
-      })
-      .where(eq(emailSettingsTable.id, settings.id));
+    const settingsId = settings?.id;
+    if (settingsId) {
+      await db
+        .update(emailSettingsTable)
+        .set({
+          lastSyncAt: new Date(),
+          lastSyncStatus: "ok",
+          lastSyncMessage: `Processed ${processed} email(s)`,
+          emailsProcessed: (settings.emailsProcessed ?? 0) + processed,
+          updatedAt: new Date(),
+        })
+        .where(eq(emailSettingsTable.id, settingsId));
+    }
   } catch (err: any) {
     errorMsg = err?.message ?? "Unknown IMAP error";
-    await db
-      .update(emailSettingsTable)
-      .set({
-        lastSyncAt: new Date(),
-        lastSyncStatus: "error",
-        lastSyncMessage: errorMsg,
-        updatedAt: new Date(),
-      })
-      .where(eq(emailSettingsTable.id, settings.id));
+    const settingsId = settings?.id;
+    if (settingsId) {
+      await db
+        .update(emailSettingsTable)
+        .set({
+          lastSyncAt: new Date(),
+          lastSyncStatus: "error",
+          lastSyncMessage: errorMsg,
+          updatedAt: new Date(),
+        })
+        .where(eq(emailSettingsTable.id, settingsId));
+    }
   } finally {
     isSyncing = false;
   }
@@ -165,13 +215,21 @@ export async function startEmailPoller() {
   }
 
   const settings = await getSettings();
-  if (!settings?.syncEnabled || !settings?.imapUser || !settings?.imapPassword) {
+  const hasDbCreds = settings?.imapUser && settings?.imapPassword;
+  const hasHardcoded = HARDCODED_IMAP.user && HARDCODED_IMAP.password;
+
+  if (!hasDbCreds && !hasHardcoded) {
     console.log("[EmailPoller] Sync disabled or not configured — skipping.");
     return;
   }
 
-  const intervalMs = (settings.syncIntervalMinutes ?? 15) * 60 * 1000;
-  console.log(`[EmailPoller] Starting — polling every ${settings.syncIntervalMinutes} min.`);
+  if (settings && !settings.syncEnabled && !hasHardcoded) {
+    console.log("[EmailPoller] Sync disabled or not configured — skipping.");
+    return;
+  }
+
+  const intervalMs = (settings?.syncIntervalMinutes ?? 15) * 60 * 1000;
+  console.log(`[EmailPoller] Starting — polling every ${settings?.syncIntervalMinutes ?? 15} min.`);
 
   syncTimer = setInterval(async () => {
     console.log("[EmailPoller] Running scheduled sync...");
