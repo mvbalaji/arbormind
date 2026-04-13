@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTable } from "@workspace/db";
+import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTable, leadContactsTable } from "@workspace/db";
 import { eq, ilike, or, sql, and } from "drizzle-orm";
 
 const router: IRouter = Router();
@@ -255,6 +255,12 @@ router.post("/leads/:id/convert", async (req, res) => {
         })
         .where(eq(leadsTable.id, leadId));
 
+      if (contactIds.length > 0) {
+        await tx.insert(leadContactsTable).values(
+          contactIds.map((cId) => ({ leadId, contactId: cId }))
+        );
+      }
+
       return { contactId, contactIds, accountId, opportunityId };
     });
 
@@ -264,6 +270,29 @@ router.post("/leads/:id/convert", async (req, res) => {
       res.status(400).json({ error: "An account is required to create an opportunity. Please select or create an account." });
       return;
     }
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/leads/:id/contacts", async (req, res) => {
+  try {
+    const leadId = parseInt(req.params.id);
+    const rows = await db
+      .select({
+        id: contactsTable.id,
+        firstName: contactsTable.firstName,
+        lastName: contactsTable.lastName,
+        email: contactsTable.email,
+        phone: contactsTable.phone,
+        title: contactsTable.title,
+        accountId: contactsTable.accountId,
+      })
+      .from(leadContactsTable)
+      .innerJoin(contactsTable, eq(leadContactsTable.contactId, contactsTable.id))
+      .where(eq(leadContactsTable.leadId, leadId));
+    res.json({ data: rows });
+  } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
   }

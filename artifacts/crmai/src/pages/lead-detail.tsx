@@ -185,13 +185,23 @@ export default function LeadDetail() {
     enabled: !!id,
   });
 
+  const { data: linkedContactsData } = useQuery<{ data: ConvertedContact[] }>({
+    queryKey: ["lead-contacts", lead?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/leads/${lead!.id}/contacts`, { credentials: "include" });
+      return res.json() as Promise<{ data: ConvertedContact[] }>;
+    },
+    enabled: !!lead?.isConverted,
+  });
+  const linkedContacts = linkedContactsData?.data ?? [];
+
   const { data: convertedContactData } = useQuery<ConvertedContact>({
     queryKey: ["contact", lead?.convertedContactId],
     queryFn: async () => {
       const res = await fetch(`/api/contacts/${lead!.convertedContactId}`, { credentials: "include" });
       return res.json() as Promise<ConvertedContact>;
     },
-    enabled: !!lead?.convertedContactId,
+    enabled: !!lead?.convertedContactId && linkedContacts.length === 0,
   });
 
   const { data: convertedAccountData } = useQuery<ConvertedAccount>({
@@ -545,7 +555,19 @@ export default function LeadDetail() {
                 <span className="text-sm font-medium text-green-700">Lead converted — linked records:</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {lead.convertedContactId && (
+                {linkedContacts.length > 0 ? linkedContacts.map((contact) => (
+                  <Link key={contact.id} href={`/contacts/${contact.id}`}>
+                    <div className="flex items-center gap-2.5 p-2.5 rounded-md bg-white border border-green-200 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
+                      <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <User className="w-3.5 h-3.5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">{contact.firstName} {contact.lastName}</div>
+                        <div className="text-xs text-muted-foreground">View contact →</div>
+                      </div>
+                    </div>
+                  </Link>
+                )) : lead.convertedContactId && (
                   <Link href={`/contacts/${lead.convertedContactId}`}>
                     <div className="flex items-center gap-2.5 p-2.5 rounded-md bg-white border border-green-200 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
                       <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -657,7 +679,7 @@ export default function LeadDetail() {
               <div className="flex border-b border-border bg-muted/30">
                 {[
                   { key: "activities", label: "Activities", count: activities.length },
-                  { key: "contacts", label: "Contacts", count: lead.convertedContactId ? 1 : 0 },
+                  { key: "contacts", label: "Contacts", count: linkedContacts.length || (lead.convertedContactId ? 1 : 0) },
                   { key: "accounts", label: "Accounts", count: lead.convertedAccountId ? 1 : 0 },
                 ].map((tab) => (
                   <button
@@ -776,7 +798,31 @@ export default function LeadDetail() {
               {/* Contacts tab */}
               {relatedTab === "contacts" && (
                 <div className="p-4">
-                  {lead.convertedContactId && convertedContactData ? (
+                  {linkedContacts.length > 0 ? (
+                    <div className="space-y-2">
+                      {linkedContacts.map((contact) => (
+                        <Link key={contact.id} href={`/contacts/${contact.id}`}>
+                          <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
+                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                              {contact.firstName?.[0] ?? ""}{contact.lastName?.[0] ?? ""}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                                {contact.firstName} {contact.lastName}
+                              </div>
+                              {contact.title && <div className="text-xs text-muted-foreground">{contact.title}</div>}
+                              {contact.email && (
+                                <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                  <Mail className="w-3 h-3" /> {contact.email}
+                                </div>
+                              )}
+                            </div>
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Linked</Badge>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : lead.convertedContactId && convertedContactData ? (
                     <Link href={`/contacts/${lead.convertedContactId}`}>
                       <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
                         <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
