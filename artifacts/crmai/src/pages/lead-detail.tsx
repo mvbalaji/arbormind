@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { useUpdateLead, useConvertLead, getListLeadsQueryKey, useListUsers } from "@workspace/api-client-react";
+import { useUpdateLead, useConvertLead, getListLeadsQueryKey, useListUsers, useListAccounts, useListContacts } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AISummary } from "@/components/ai-summary";
 import { EmailCompose } from "@/components/email-compose";
@@ -153,6 +154,7 @@ export default function LeadDetail() {
   const [acceptRejectNote, setAcceptRejectNote] = useState("");
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [activityType, setActivityType] = useState<string>("note");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -281,36 +283,38 @@ export default function LeadDetail() {
     }
   };
 
-  const handleAddNote = async () => {
+  const handleAddActivity = async () => {
     if (!newNote.trim()) return;
     setIsAddingNote(true);
+    const typeLabels: Record<string, string> = { note: "Note", call: "Call", meeting: "Meeting", task: "Task", email: "Email" };
     try {
       await fetch("/api/activities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          type: "note",
+          type: activityType,
           subject: newNote.trim().substring(0, 80),
-          status: "completed",
-          notes: newNote.trim(),
+          status: activityType === "note" ? "completed" : "planned",
+          description: newNote.trim(),
           contactId: lead.convertedContactId ?? undefined,
         }),
       });
-      toast({ title: "Note added" });
+      toast({ title: `${typeLabels[activityType] ?? "Activity"} logged` });
       setNewNote("");
+      setActivityType("note");
       void refetchActivities();
     } catch {
-      toast({ title: "Error", description: "Could not add note.", variant: "destructive" });
+      toast({ title: "Error", description: "Could not log activity.", variant: "destructive" });
     } finally {
       setIsAddingNote(false);
     }
   };
 
-  const handleConvert = () => {
+  const handleConvertSubmit = (convertData: Record<string, unknown>) => {
     convertMutation.mutate({
       id: lead.id,
-      data: { createContact: true, createAccount: !!lead.company, createOpportunity: true, opportunityName: `${fullName} Deal`, opportunityAmount: 0 },
+      data: convertData as any,
     }, {
       onSuccess: (result) => {
         toast({ title: "Lead Converted!", description: "Created Contact, Account and Opportunity." });
@@ -654,17 +658,37 @@ export default function LeadDetail() {
               {/* Activities tab */}
               {relatedTab === "activities" && (
                 <div>
-                  {/* Add note inline */}
                   <div className="px-4 py-3 border-b border-border bg-muted/10">
+                    <div className="flex gap-2 mb-2">
+                      {[
+                        { key: "note", label: "Note", icon: MessageSquare },
+                        { key: "call", label: "Call", icon: Phone },
+                        { key: "meeting", label: "Meeting", icon: Users },
+                        { key: "task", label: "Task", icon: CheckSquare },
+                      ].map(({ key, label, icon: BtnIcon }) => (
+                        <button
+                          key={key}
+                          onClick={() => setActivityType(key)}
+                          className={cn(
+                            "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
+                            activityType === key
+                              ? "bg-primary text-white"
+                              : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                          )}
+                        >
+                          <BtnIcon className="w-3 h-3" /> {label}
+                        </button>
+                      ))}
+                    </div>
                     <div className="flex gap-2">
                       <Textarea
-                        placeholder="Add a note or comment..."
+                        placeholder={activityType === "note" ? "Add a note or comment..." : `Log a ${activityType}...`}
                         className="h-10 text-sm resize-none flex-1 min-h-[36px]"
                         value={newNote}
                         onChange={(e) => setNewNote(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleAddNote(); } }}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleAddActivity(); } }}
                       />
-                      <Button size="sm" className="h-10 text-xs bg-primary text-white hover:bg-primary/90" onClick={() => void handleAddNote()} disabled={isAddingNote || !newNote.trim()}>
+                      <Button size="sm" className="h-10 text-xs bg-primary text-white hover:bg-primary/90" onClick={() => void handleAddActivity()} disabled={isAddingNote || !newNote.trim()}>
                         <Plus className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -801,51 +825,13 @@ export default function LeadDetail() {
       />
 
       {/* Convert Dialog */}
-      <Dialog open={isConvertOpen} onOpenChange={setIsConvertOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader className="border-b border-border pb-3">
-            <DialogTitle className="text-base font-semibold flex items-center gap-2">
-              <ArrowRightLeft className="w-4 h-4 text-primary" /> Convert Lead
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Converting <strong className="text-foreground">{fullName}</strong> will create:
-            </p>
-            <div className="space-y-2">
-              {[
-                { icon: User, label: "Contact record", desc: fullName },
-                lead.company ? { icon: Building2, label: "Account record", desc: lead.company } : null,
-                { icon: Briefcase, label: "Opportunity", desc: `${fullName} Deal` },
-              ].filter(Boolean).map((item, i) => {
-                const ItemIcon = item!.icon;
-                return (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-md border border-border bg-muted/30">
-                    <div className="w-7 h-7 rounded-md bg-primary/10 flex items-center justify-center">
-                      <ItemIcon className="w-3.5 h-3.5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{item!.label}</p>
-                      <p className="text-xs text-muted-foreground">{item!.desc}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="p-3 rounded-md bg-amber-50 border border-amber-200">
-              <p className="text-xs text-amber-700">
-                <strong>Validation:</strong> Make sure the lead has a name and company before converting to ensure Account and Contact records are complete.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="border-t border-border pt-3 gap-2">
-            <Button variant="outline" size="sm" onClick={() => setIsConvertOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleConvert} disabled={convertMutation.isPending} className="bg-primary hover:bg-primary/90 text-white">
-              {convertMutation.isPending ? "Converting..." : "Convert Lead"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConvertLeadDialog
+        open={isConvertOpen}
+        onOpenChange={setIsConvertOpen}
+        lead={lead}
+        isPending={convertMutation.isPending}
+        onConvert={handleConvertSubmit}
+      />
 
       {/* Edit Dialog */}
       <LeadEditDialog
@@ -855,6 +841,195 @@ export default function LeadDetail() {
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["lead", id] })}
       />
     </Layout>
+  );
+}
+
+function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  lead: LeadDetail;
+  isPending: boolean;
+  onConvert: (data: Record<string, unknown>) => void;
+}) {
+  const [accountMode, setAccountMode] = useState<"new" | "existing">("new");
+  const [contactMode, setContactMode] = useState<"new" | "existing">("new");
+  const [existingAccountId, setExistingAccountId] = useState<string>("");
+  const [existingContactId, setExistingContactId] = useState<string>("");
+  const [oppName, setOppName] = useState("");
+  const [createOpp, setCreateOpp] = useState(true);
+
+  const { data: accountsData } = useListAccounts({ limit: 100 });
+  const { data: contactsData } = useListContacts({ limit: 100 });
+
+  const fullName = `${lead.firstName} ${lead.lastName}`;
+
+  React.useEffect(() => {
+    if (open) {
+      setAccountMode("new");
+      setContactMode("new");
+      setExistingAccountId("");
+      setExistingContactId("");
+      setOppName(`${fullName} Deal`);
+      setCreateOpp(true);
+    }
+  }, [open, fullName]);
+
+  const handleSubmit = () => {
+    const data: Record<string, unknown> = {
+      createOpportunity: createOpp,
+      opportunityName: oppName || `${fullName} Deal`,
+      opportunityAmount: 0,
+    };
+
+    if (accountMode === "existing" && existingAccountId) {
+      data.existingAccountId = parseInt(existingAccountId);
+      data.createAccount = false;
+    } else {
+      data.createAccount = !!lead.company;
+    }
+
+    if (contactMode === "existing" && existingContactId) {
+      data.existingContactId = parseInt(existingContactId);
+      data.createContact = false;
+    } else {
+      data.createContact = true;
+    }
+
+    onConvert(data);
+  };
+
+  const accounts = accountsData?.data ?? [];
+  const contacts = contactsData?.data ?? [];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="border-b border-border pb-3">
+          <DialogTitle className="text-base font-semibold flex items-center gap-2">
+            <ArrowRightLeft className="w-4 h-4 text-primary" /> Convert Lead
+          </DialogTitle>
+        </DialogHeader>
+        <div className="py-4 space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Converting <strong className="text-foreground">{fullName}</strong>
+          </p>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Account</Label>
+            <div className="flex gap-2 mb-2">
+              <Button
+                type="button" size="sm" variant={accountMode === "new" ? "default" : "outline"}
+                className="text-xs h-7 flex-1"
+                onClick={() => setAccountMode("new")}
+              >
+                Create New
+              </Button>
+              <Button
+                type="button" size="sm" variant={accountMode === "existing" ? "default" : "outline"}
+                className="text-xs h-7 flex-1"
+                onClick={() => setAccountMode("existing")}
+              >
+                Use Existing
+              </Button>
+            </div>
+            {accountMode === "new" ? (
+              <div className="flex items-center gap-2.5 p-2.5 rounded-md border border-border bg-muted/30">
+                <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
+                <span className="text-sm text-foreground">{lead.company || "No company name"}</span>
+              </div>
+            ) : (
+              <select
+                className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                value={existingAccountId}
+                onChange={(e) => setExistingAccountId(e.target.value)}
+              >
+                <option value="">Select an account...</option>
+                {accounts.map((a: any) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</Label>
+            <div className="flex gap-2 mb-2">
+              <Button
+                type="button" size="sm" variant={contactMode === "new" ? "default" : "outline"}
+                className="text-xs h-7 flex-1"
+                onClick={() => setContactMode("new")}
+              >
+                Create New
+              </Button>
+              <Button
+                type="button" size="sm" variant={contactMode === "existing" ? "default" : "outline"}
+                className="text-xs h-7 flex-1"
+                onClick={() => setContactMode("existing")}
+              >
+                Use Existing
+              </Button>
+            </div>
+            {contactMode === "new" ? (
+              <div className="flex items-center gap-2.5 p-2.5 rounded-md border border-border bg-muted/30">
+                <User className="w-4 h-4 text-primary flex-shrink-0" />
+                <span className="text-sm text-foreground">{fullName}</span>
+              </div>
+            ) : (
+              <select
+                className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                value={existingContactId}
+                onChange={(e) => setExistingContactId(e.target.value)}
+              >
+                <option value="">Select a contact...</option>
+                {contacts.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="createOpp"
+                checked={createOpp}
+                onChange={(e) => setCreateOpp(e.target.checked)}
+                className="rounded border-border"
+              />
+              <Label htmlFor="createOpp" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
+                Create Opportunity
+              </Label>
+            </div>
+            {createOpp && (
+              <Input
+                placeholder="Opportunity name"
+                className="h-9 text-sm"
+                value={oppName}
+                onChange={(e) => setOppName(e.target.value)}
+              />
+            )}
+          </div>
+
+          <div className="p-3 rounded-md bg-amber-50 border border-amber-200">
+            <p className="text-xs text-amber-700">
+              The lead will be marked as <strong>converted</strong> and linked to the selected records.
+            </p>
+          </div>
+        </div>
+        <DialogFooter className="border-t border-border pt-3 gap-2">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button
+            size="sm"
+            onClick={handleSubmit}
+            disabled={isPending || (accountMode === "existing" && !existingAccountId) || (contactMode === "existing" && !existingContactId)}
+            className="bg-primary hover:bg-primary/90 text-white"
+          >
+            {isPending ? "Converting..." : "Convert Lead"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

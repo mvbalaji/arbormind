@@ -5,6 +5,7 @@ import {
   useUpdateContact,
   useDeleteContact,
   getListContactsQueryKey,
+  useListAccounts,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -31,10 +32,11 @@ interface ContactFormData {
   email: string;
   phone: string;
   title: string;
+  accountId: string;
 }
 
 const defaultFormData: ContactFormData = {
-  firstName: "", lastName: "", email: "", phone: "", title: "",
+  firstName: "", lastName: "", email: "", phone: "", title: "", accountId: "",
 };
 
 export default function Contacts() {
@@ -148,7 +150,7 @@ export default function Contacts() {
                       <td className="px-6 py-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -161,6 +163,7 @@ export default function Contacts() {
                                 email: contact.email ?? "",
                                 phone: contact.phone ?? "",
                                 title: contact.title ?? "",
+                                accountId: contact.accountId?.toString() ?? "",
                               })}
                               className="cursor-pointer hover:bg-muted"
                             >
@@ -224,11 +227,22 @@ function ContactFormDialog({
     if (open) setFormData(initialData ?? defaultFormData);
   }, [open, initialData]);
 
+  const { data: accountsData } = useListAccounts({ limit: 100 });
+  const accounts = accountsData?.data ?? [];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const invalidate = () => queryClient.invalidateQueries({ queryKey: getListContactsQueryKey() });
+    const payload = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email || undefined,
+      phone: formData.phone || undefined,
+      title: formData.title || undefined,
+      accountId: formData.accountId ? parseInt(formData.accountId) : undefined,
+    };
     if (mode === "create") {
-      createMutation.mutate({ data: formData }, {
+      createMutation.mutate({ data: payload }, {
         onSuccess: () => {
           toast({ title: "Contact created", description: "The contact has been added successfully." });
           invalidate();
@@ -237,7 +251,7 @@ function ContactFormDialog({
         onError: () => toast({ title: "Error", description: "Failed to create contact.", variant: "destructive" }),
       });
     } else if (initialData) {
-      updateMutation.mutate({ id: initialData.id, data: formData }, {
+      updateMutation.mutate({ id: initialData.id, data: payload }, {
         onSuccess: () => {
           toast({ title: "Contact updated", description: "Changes saved successfully." });
           invalidate();
@@ -252,7 +266,7 @@ function ContactFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-card border-border text-white shadow-2xl">
+      <DialogContent className="sm:max-w-[500px] bg-card border-border text-foreground shadow-2xl">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "Create New Contact" : "Edit Contact"}
@@ -279,9 +293,25 @@ function ContactFormDialog({
               <Input id="phone" className="bg-muted border-border" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="title">Job Title</Label>
-            <Input id="title" className="bg-muted border-border" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Job Title</Label>
+              <Input id="title" className="bg-muted border-border" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="accountId">Account</Label>
+              <select
+                id="accountId"
+                className="w-full h-10 px-3 rounded-md bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                value={formData.accountId}
+                onChange={e => setFormData({ ...formData, accountId: e.target.value })}
+              >
+                <option value="">No account</option>
+                {accounts.map((a: any) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   useListLeads, useCreateLead, useUpdateLead, useDeleteLead,
   useConvertLead, useListUsers, getListLeadsQueryKey, CreateLeadInputStatus,
+  useListAccounts, useListContacts,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth";
@@ -72,7 +73,7 @@ export default function Leads() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<{ id: number } & LeadFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [convertingId, setConvertingId] = useState<{ id: number; name: string } | null>(null);
+  const [convertingId, setConvertingId] = useState<{ id: number; name: string; company?: string | null } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const { data, isLoading } = useListLeads({ search, limit: 200 });
 
@@ -261,7 +262,7 @@ export default function Leads() {
                               size="sm"
                               variant="ghost"
                               className="h-7 px-2 text-xs text-primary hover:bg-primary/5"
-                              onClick={() => setConvertingId({ id: lead.id, name: `${lead.firstName} ${lead.lastName}` })}
+                              onClick={() => setConvertingId({ id: lead.id, name: `${lead.firstName} ${lead.lastName}`, company: lead.company })}
                             >
                               <ArrowRightLeft className="w-3 h-3 mr-1" /> Convert
                             </Button>
@@ -533,24 +534,55 @@ function ConvertLeadDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lead?: { id: number; name: string };
+  lead?: { id: number; name: string; company?: string | null };
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const mutation = useConvertLead();
+  const [accountMode, setAccountMode] = useState<"new" | "existing">("new");
+  const [contactMode, setContactMode] = useState<"new" | "existing">("new");
+  const [existingAccountId, setExistingAccountId] = useState("");
+  const [existingContactId, setExistingContactId] = useState("");
+  const [oppName, setOppName] = useState("");
+  const [createOpp, setCreateOpp] = useState(true);
+
+  const { data: accountsData } = useListAccounts({ limit: 100 });
+  const { data: contactsData } = useListContacts({ limit: 100 });
+  const accounts = accountsData?.data ?? [];
+  const contacts = contactsData?.data ?? [];
+
+  React.useEffect(() => {
+    if (open && lead) {
+      setAccountMode("new");
+      setContactMode("new");
+      setExistingAccountId("");
+      setExistingContactId("");
+      setOppName(`${lead.name} Deal`);
+      setCreateOpp(true);
+    }
+  }, [open, lead]);
 
   const handleConvert = () => {
     if (!lead) return;
-    mutation.mutate({
-      id: lead.id,
-      data: {
-        createContact: true,
-        createAccount: true,
-        createOpportunity: true,
-        opportunityName: `${lead.name} Deal`,
-        opportunityAmount: 0,
-      },
-    }, {
+    const data: Record<string, unknown> = {
+      createOpportunity: createOpp,
+      opportunityName: oppName || `${lead.name} Deal`,
+      opportunityAmount: 0,
+    };
+    if (accountMode === "existing" && existingAccountId) {
+      data.existingAccountId = parseInt(existingAccountId);
+      data.createAccount = false;
+    } else {
+      data.createAccount = true;
+    }
+    if (contactMode === "existing" && existingContactId) {
+      data.existingContactId = parseInt(existingContactId);
+      data.createContact = false;
+    } else {
+      data.createContact = true;
+    }
+
+    mutation.mutate({ id: lead.id, data: data as any }, {
       onSuccess: () => {
         toast({ title: "Lead Converted!", description: "Created Contact, Account, and Opportunity." });
         queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
@@ -562,26 +594,60 @@ function ConvertLeadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[440px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader className="border-b border-border pb-3">
           <DialogTitle className="text-base font-semibold">Convert Lead</DialogTitle>
         </DialogHeader>
-        <div className="py-4 space-y-3">
+        <div className="py-4 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Converting <strong className="text-foreground">{lead?.name}</strong> will automatically create:
+            Converting <strong className="text-foreground">{lead?.name}</strong>
           </p>
-          <ul className="list-disc pl-5 text-sm space-y-1.5 text-muted-foreground">
-            <li>A new <span className="text-foreground font-medium">Contact</span> record</li>
-            <li>A new <span className="text-foreground font-medium">Account</span> record</li>
-            <li>A new <span className="text-foreground font-medium">Opportunity</span> in Prospecting stage</li>
-          </ul>
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-xs text-blue-700">
-            The lead will be marked as converted and can no longer be edited.
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Account</Label>
+            <div className="flex gap-2 mb-2">
+              <Button type="button" size="sm" variant={accountMode === "new" ? "default" : "outline"} className="text-xs h-7 flex-1" onClick={() => setAccountMode("new")}>Create New</Button>
+              <Button type="button" size="sm" variant={accountMode === "existing" ? "default" : "outline"} className="text-xs h-7 flex-1" onClick={() => setAccountMode("existing")}>Use Existing</Button>
+            </div>
+            {accountMode === "existing" && (
+              <select className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value={existingAccountId} onChange={(e) => setExistingAccountId(e.target.value)}>
+                <option value="">Select an account...</option>
+                {accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</Label>
+            <div className="flex gap-2 mb-2">
+              <Button type="button" size="sm" variant={contactMode === "new" ? "default" : "outline"} className="text-xs h-7 flex-1" onClick={() => setContactMode("new")}>Create New</Button>
+              <Button type="button" size="sm" variant={contactMode === "existing" ? "default" : "outline"} className="text-xs h-7 flex-1" onClick={() => setContactMode("existing")}>Use Existing</Button>
+            </div>
+            {contactMode === "existing" && (
+              <select className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value={existingContactId} onChange={(e) => setExistingContactId(e.target.value)}>
+                <option value="">Select a contact...</option>
+                {contacts.map((c: any) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
+              </select>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="createOppList" checked={createOpp} onChange={(e) => setCreateOpp(e.target.checked)} className="rounded border-border" />
+              <Label htmlFor="createOppList" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">Create Opportunity</Label>
+            </div>
+            {createOpp && (
+              <Input placeholder="Opportunity name" className="h-9 text-sm" value={oppName} onChange={(e) => setOppName(e.target.value)} />
+            )}
+          </div>
+
+          <div className="p-3 rounded-md bg-amber-50 border border-amber-200">
+            <p className="text-xs text-amber-700">The lead will be marked as <strong>converted</strong> and linked to the selected records.</p>
           </div>
         </div>
         <DialogFooter className="border-t border-border pt-3 gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button size="sm" onClick={handleConvert} disabled={mutation.isPending} className="bg-primary hover:bg-primary/90 text-white">
+          <Button size="sm" onClick={handleConvert} disabled={mutation.isPending || (accountMode === "existing" && !existingAccountId) || (contactMode === "existing" && !existingContactId)} className="bg-primary hover:bg-primary/90 text-white">
             {mutation.isPending ? "Converting..." : "Convert Lead"}
           </Button>
         </DialogFooter>

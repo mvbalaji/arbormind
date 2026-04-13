@@ -131,7 +131,11 @@ router.delete("/leads/:id", async (req, res) => {
 router.post("/leads/:id/convert", async (req, res) => {
   try {
     const leadId = parseInt(req.params.id);
-    const { createContact, createAccount, createOpportunity, opportunityName, opportunityAmount } = req.body;
+    const {
+      createContact, createAccount, createOpportunity,
+      opportunityName, opportunityAmount,
+      existingAccountId, existingContactId,
+    } = req.body;
 
     const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
     if (!lead) {
@@ -139,12 +143,35 @@ router.post("/leads/:id/convert", async (req, res) => {
       return;
     }
 
+    if (lead.isConverted) {
+      res.status(409).json({ error: "Lead is already converted" });
+      return;
+    }
+
+    if (existingAccountId) {
+      const [acct] = await db.select({ id: accountsTable.id }).from(accountsTable).where(eq(accountsTable.id, existingAccountId));
+      if (!acct) {
+        res.status(400).json({ error: "Selected account does not exist" });
+        return;
+      }
+    }
+
+    if (existingContactId) {
+      const [ct] = await db.select({ id: contactsTable.id }).from(contactsTable).where(eq(contactsTable.id, existingContactId));
+      if (!ct) {
+        res.status(400).json({ error: "Selected contact does not exist" });
+        return;
+      }
+    }
+
     const result = await db.transaction(async (tx) => {
       let contactId: number | null = null;
       let accountId: number | null = null;
       let opportunityId: number | null = null;
 
-      if (createAccount && lead.company) {
+      if (existingAccountId) {
+        accountId = existingAccountId;
+      } else if (createAccount && lead.company) {
         const [account] = await tx.insert(accountsTable).values({
           name: lead.company,
           industry: lead.industry ?? null,
@@ -154,7 +181,14 @@ router.post("/leads/:id/convert", async (req, res) => {
         accountId = account.id;
       }
 
-      if (createContact) {
+      if (existingContactId) {
+        contactId = existingContactId;
+        if (accountId) {
+          await tx.update(contactsTable)
+            .set({ accountId, updatedAt: new Date() })
+            .where(eq(contactsTable.id, contactId));
+        }
+      } else if (createContact) {
         const [contact] = await tx.insert(contactsTable).values({
           firstName: lead.firstName,
           lastName: lead.lastName,
