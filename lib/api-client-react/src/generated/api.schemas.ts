@@ -305,6 +305,8 @@ export interface ConvertLeadInput {
   createOpportunity: boolean;
   opportunityName?: string | null;
   opportunityAmount?: number | null;
+  existingAccountId?: number | null;
+  existingContactId?: number | null;
 }
 
 export interface ConvertLeadResult {

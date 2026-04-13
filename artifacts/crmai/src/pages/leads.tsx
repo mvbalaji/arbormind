@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import {
   useListLeads, useCreateLead, useUpdateLead, useDeleteLead,
   useConvertLead, useListUsers, getListLeadsQueryKey, CreateLeadInputStatus,
-  useListAccounts, useListContacts,
+  useListAccounts, useListContacts, type ConvertLeadInput,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth";
@@ -54,15 +54,21 @@ interface LeadFormData {
   email: string;
   phone: string;
   company: string;
+  title: string;
   source: string;
   status: string;
   assignedTo: string;
   score: string;
+  industry: string;
+  employees: string;
+  annualRevenue: string;
+  description: string;
 }
 
 const defaultFormData: LeadFormData = {
-  firstName: "", lastName: "", email: "", phone: "", company: "",
+  firstName: "", lastName: "", email: "", phone: "", company: "", title: "",
   source: "", status: "new", assignedTo: "", score: "",
+  industry: "", employees: "", annualRevenue: "", description: "",
 };
 
 export default function Leads() {
@@ -282,10 +288,15 @@ export default function Leads() {
                                   email: lead.email ?? "",
                                   phone: lead.phone ?? "",
                                   company: lead.company ?? "",
+                                  title: lead.title ?? "",
                                   source: lead.source ?? "",
                                   status: lead.status,
                                   assignedTo: (lead.assignedTo?.toString()) ?? "",
                                   score: (lead.score?.toString()) ?? "",
+                                  industry: lead.industry ?? "",
+                                  employees: (lead.employees ?? "").toString(),
+                                  annualRevenue: (lead.annualRevenue ?? "").toString(),
+                                  description: lead.description ?? "",
                                 })}
                                 className="cursor-pointer text-sm"
                               >
@@ -405,6 +416,11 @@ function LeadFormDialog({
       status: formData.status as CreateLeadInputStatus,
       assignedTo: formData.assignedTo ? parseInt(formData.assignedTo) : undefined,
       score: formData.score ? parseInt(formData.score) : undefined,
+      employees: formData.employees ? parseInt(formData.employees) : undefined,
+      annualRevenue: formData.annualRevenue ? parseFloat(formData.annualRevenue.replace(/[^0-9.]/g, "")) : undefined,
+      title: formData.title || undefined,
+      industry: formData.industry || undefined,
+      description: formData.description || undefined,
     };
     const invalidate = () => queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
     if (mode === "create") {
@@ -458,9 +474,40 @@ function LeadFormDialog({
               <Input required value={formData.lastName} onChange={f("lastName")} className="h-9 text-sm" />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Company</Label>
+              <Input value={formData.company} onChange={f("company")} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Title</Label>
+              <Input value={formData.title} onChange={f("title")} placeholder="e.g. VP of Sales" className="h-9 text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Industry</Label>
+              <select className={selectClass} value={formData.industry} onChange={f("industry")}>
+                <option value="">—None—</option>
+                <option value="technology">Technology</option>
+                <option value="finance">Finance</option>
+                <option value="healthcare">Healthcare</option>
+                <option value="manufacturing">Manufacturing</option>
+                <option value="retail">Retail</option>
+                <option value="education">Education</option>
+                <option value="consulting">Consulting</option>
+                <option value="real_estate">Real Estate</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Employees</Label>
+              <Input type="number" min="0" value={formData.employees} onChange={f("employees")} placeholder="e.g. 50" className="h-9 text-sm" />
+            </div>
+          </div>
           <div className="space-y-2">
-            <Label className="text-xs font-medium">Company</Label>
-            <Input value={formData.company} onChange={f("company")} className="h-9 text-sm" />
+            <Label className="text-xs font-medium">Annual Revenue</Label>
+            <Input value={formData.annualRevenue} onChange={f("annualRevenue")} placeholder="e.g. $1M" className="h-9 text-sm" />
           </div>
 
           {/* Contact section */}
@@ -517,6 +564,19 @@ function LeadFormDialog({
             </select>
           </div>
 
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-muted/40 -mx-6 px-6 py-2 border-y border-border mt-4">
+            Description
+          </div>
+          <div className="space-y-2">
+            <textarea
+              className="w-full bg-card border border-border rounded-md px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 min-h-[80px] resize-y"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Additional notes about this lead..."
+              rows={3}
+            />
+          </div>
+
           <DialogFooter className="pt-3 border-t border-border gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" size="sm" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
@@ -562,27 +622,24 @@ function ConvertLeadDialog({
     }
   }, [open, lead]);
 
+  interface AccountOption { id: number; name: string }
+  interface ContactOption { id: number; firstName: string; lastName: string }
+  const typedAccounts: AccountOption[] = accounts as AccountOption[];
+  const typedContacts: ContactOption[] = contacts as ContactOption[];
+
   const handleConvert = () => {
     if (!lead) return;
-    const data: Record<string, unknown> = {
+    const data: ConvertLeadInput = {
       createOpportunity: createOpp,
       opportunityName: oppName || `${lead.name} Deal`,
       opportunityAmount: 0,
+      createAccount: accountMode === "existing" ? false : true,
+      createContact: contactMode === "existing" ? false : true,
+      existingAccountId: accountMode === "existing" && existingAccountId ? parseInt(existingAccountId) : undefined,
+      existingContactId: contactMode === "existing" && existingContactId ? parseInt(existingContactId) : undefined,
     };
-    if (accountMode === "existing" && existingAccountId) {
-      data.existingAccountId = parseInt(existingAccountId);
-      data.createAccount = false;
-    } else {
-      data.createAccount = true;
-    }
-    if (contactMode === "existing" && existingContactId) {
-      data.existingContactId = parseInt(existingContactId);
-      data.createContact = false;
-    } else {
-      data.createContact = true;
-    }
 
-    mutation.mutate({ id: lead.id, data: data as any }, {
+    mutation.mutate({ id: lead.id, data }, {
       onSuccess: () => {
         toast({ title: "Lead Converted!", description: "Created Contact, Account, and Opportunity." });
         queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
@@ -612,7 +669,7 @@ function ConvertLeadDialog({
             {accountMode === "existing" && (
               <select className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value={existingAccountId} onChange={(e) => setExistingAccountId(e.target.value)}>
                 <option value="">Select an account...</option>
-                {accounts.map((a: any) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                {typedAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             )}
           </div>
@@ -626,7 +683,7 @@ function ConvertLeadDialog({
             {contactMode === "existing" && (
               <select className="w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" value={existingContactId} onChange={(e) => setExistingContactId(e.target.value)}>
                 <option value="">Select a contact...</option>
-                {contacts.map((c: any) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
+                {typedContacts.map((c) => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
               </select>
             )}
           </div>

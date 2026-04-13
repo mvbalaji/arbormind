@@ -365,6 +365,8 @@ export const ConvertLeadBody = zod.object({
     .default(convertLeadBodyCreateOpportunityDefault),
   opportunityName: zod.string().nullish(),
   opportunityAmount: zod.number().nullish(),
+  existingAccountId: zod.number().nullish(),
+  existingContactId: zod.number().nullish(),
 });
 
 export const ConvertLeadResponse = zod.object({

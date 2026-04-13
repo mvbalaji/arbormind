@@ -307,7 +307,7 @@ function ContactFormDialog({
                 onChange={e => setFormData({ ...formData, accountId: e.target.value })}
               >
                 <option value="">No account</option>
-                {accounts.map((a: any) => (
+                {(accounts as Array<{ id: number; name: string }>).map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>

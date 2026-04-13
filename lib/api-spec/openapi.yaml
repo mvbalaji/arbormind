@@ -1835,6 +1835,12 @@ components:
         opportunityAmount:
           type: number
           nullable: true
+        existingAccountId:
+          type: integer
+          nullable: true
+        existingContactId:
+          type: integer
+          nullable: true
       required:
         - createContact
         - createAccount

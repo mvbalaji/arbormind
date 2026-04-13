@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { useUpdateLead, useConvertLead, getListLeadsQueryKey, useListUsers, useListAccounts, useListContacts } from "@workspace/api-client-react";
+import { useUpdateLead, useConvertLead, getListLeadsQueryKey, useListUsers, useListAccounts, useListContacts, type ConvertLeadInput } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -75,6 +75,12 @@ interface ConvertedAccount {
   city: string | null;
   country: string | null;
 }
+
+const ADVANCE_STAGES = [
+  { key: "new", label: "New" },
+  { key: "contacted", label: "Contacted" },
+  { key: "qualified", label: "Qualified" },
+];
 
 const PIPELINE_STAGES = [
   { key: "new", label: "New" },
@@ -169,12 +175,19 @@ export default function LeadDetail() {
   });
 
   const { data: activitiesData, refetch: refetchActivities } = useQuery<{ data: LeadActivity[] }>({
-    queryKey: ["lead-activities", id, lead?.convertedContactId],
+    queryKey: ["lead-activities", id, lead?.convertedContactId, lead?.convertedAccountId],
     queryFn: async () => {
-      const params = new URLSearchParams({ page: "1", limit: "20" });
-      if (lead?.convertedContactId) params.set("contactId", String(lead.convertedContactId));
-      const res = await fetch(`/api/activities?${params}`, { credentials: "include" });
-      return res.json() as Promise<{ data: LeadActivity[] }>;
+      if (lead?.convertedContactId) {
+        const params = new URLSearchParams({ page: "1", limit: "20", contactId: String(lead.convertedContactId) });
+        const res = await fetch(`/api/activities?${params}`, { credentials: "include" });
+        return res.json() as Promise<{ data: LeadActivity[] }>;
+      }
+      const res = await fetch(`/api/activities?page=1&limit=200`, { credentials: "include" });
+      const allData = await res.json() as { data: Array<LeadActivity & { contactId?: number | null; accountId?: number | null; opportunityId?: number | null }> };
+      const unlinked = allData.data.filter((a) =>
+        !a.contactId && !a.accountId && !a.opportunityId
+      );
+      return { data: unlinked };
     },
     enabled: !!id,
   });
@@ -242,10 +255,10 @@ export default function LeadDetail() {
     });
   };
 
+  const advanceStageIdx = ADVANCE_STAGES.findIndex((s) => s.key === lead.status);
   const handleMarkComplete = () => {
-    const nextIdx = Math.min(currentStageIdx + 1, PIPELINE_STAGES.length - 1);
-    const nextStage = PIPELINE_STAGES[nextIdx];
-    if (nextStage && nextStage.key !== lead.status) {
+    if (advanceStageIdx >= 0 && advanceStageIdx < ADVANCE_STAGES.length - 1) {
+      const nextStage = ADVANCE_STAGES[advanceStageIdx + 1];
       handleStatusChange(nextStage.key);
     }
   };
@@ -311,10 +324,10 @@ export default function LeadDetail() {
     }
   };
 
-  const handleConvertSubmit = (convertData: Record<string, unknown>) => {
+  const handleConvertSubmit = (convertData: ConvertLeadInput) => {
     convertMutation.mutate({
       id: lead.id,
-      data: convertData as any,
+      data: convertData,
     }, {
       onSuccess: (result) => {
         toast({ title: "Lead Converted!", description: "Created Contact, Account and Opportunity." });
@@ -496,7 +509,7 @@ export default function LeadDetail() {
                   );
                 })}
               </div>
-              {currentStageIdx < PIPELINE_STAGES.length - 2 && (
+              {advanceStageIdx >= 0 && advanceStageIdx < ADVANCE_STAGES.length - 1 && (
                 <Button
                   size="sm"
                   className="ml-2 h-8 text-xs bg-primary hover:bg-primary/90 text-white flex-shrink-0"
@@ -849,7 +862,7 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
   onOpenChange: (v: boolean) => void;
   lead: LeadDetail;
   isPending: boolean;
-  onConvert: (data: Record<string, unknown>) => void;
+  onConvert: (data: ConvertLeadInput) => void;
 }) {
   const [accountMode, setAccountMode] = useState<"new" | "existing">("new");
   const [contactMode, setContactMode] = useState<"new" | "existing">("new");
@@ -875,31 +888,23 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
   }, [open, fullName]);
 
   const handleSubmit = () => {
-    const data: Record<string, unknown> = {
+    const data: ConvertLeadInput = {
       createOpportunity: createOpp,
       opportunityName: oppName || `${fullName} Deal`,
       opportunityAmount: 0,
+      createAccount: accountMode === "existing" ? false : !!lead.company,
+      createContact: contactMode === "existing" ? false : true,
+      existingAccountId: accountMode === "existing" && existingAccountId ? parseInt(existingAccountId) : undefined,
+      existingContactId: contactMode === "existing" && existingContactId ? parseInt(existingContactId) : undefined,
     };
-
-    if (accountMode === "existing" && existingAccountId) {
-      data.existingAccountId = parseInt(existingAccountId);
-      data.createAccount = false;
-    } else {
-      data.createAccount = !!lead.company;
-    }
-
-    if (contactMode === "existing" && existingContactId) {
-      data.existingContactId = parseInt(existingContactId);
-      data.createContact = false;
-    } else {
-      data.createContact = true;
-    }
 
     onConvert(data);
   };
 
-  const accounts = accountsData?.data ?? [];
-  const contacts = contactsData?.data ?? [];
+  interface AccountOption { id: number; name: string }
+  interface ContactOption { id: number; firstName: string; lastName: string }
+  const accounts: AccountOption[] = (accountsData?.data ?? []) as AccountOption[];
+  const contacts: ContactOption[] = (contactsData?.data ?? []) as ContactOption[];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -944,7 +949,7 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
                 onChange={(e) => setExistingAccountId(e.target.value)}
               >
                 <option value="">Select an account...</option>
-                {accounts.map((a: any) => (
+                {accounts.map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
@@ -981,7 +986,7 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
                 onChange={(e) => setExistingContactId(e.target.value)}
               >
                 <option value="">Select a contact...</option>
-                {contacts.map((c: any) => (
+                {contacts.map((c) => (
                   <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>
                 ))}
               </select>
