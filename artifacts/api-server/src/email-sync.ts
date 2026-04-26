@@ -5,15 +5,15 @@ import { simpleParser } from "mailparser";
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let isSyncing = false;
 
-// IMAP defaults: prefer environment variables, then fall back to admin-configured DB row.
-// The hardcoded fallback exists so the support@arbormind.in mailbox keeps working out of the
-// box; rotate the password and move it to IMAP_USER / IMAP_PASSWORD secrets for production.
+// IMAP credentials come from environment secrets only.
+// The password MUST be supplied via the IMAP_PASSWORD secret — there is no hardcoded fallback.
+// Host, port, secure, and user have safe non-secret defaults for the support@arbormind.in mailbox.
 const DEFAULT_IMAP = {
   host: process.env.IMAP_HOST ?? "mail.spacemail.com",
   port: Number(process.env.IMAP_PORT ?? 993),
   secure: (process.env.IMAP_SECURE ?? "true") !== "false",
   user: process.env.IMAP_USER ?? "support@arbormind.in",
-  password: process.env.IMAP_PASSWORD ?? "February2026#",
+  password: process.env.IMAP_PASSWORD ?? "",
 };
 
 async function getSettings() {
@@ -22,6 +22,9 @@ async function getSettings() {
 }
 
 async function getImapConfig(settings: Record<string, unknown> | null) {
+  // Per-tenant DB-stored credentials are used when an admin has explicitly configured them via
+  // the email_settings UI. Otherwise, fall back to env-var credentials (IMAP_PASSWORD secret).
+  // There is NO hardcoded password fallback — see DEFAULT_IMAP above.
   if (settings?.imapUser && settings?.imapPassword) {
     return {
       host: settings.imapHost,
@@ -253,10 +256,13 @@ export async function startEmailPoller() {
 
   const settings = await getSettings();
   const hasDbCreds = settings?.imapUser && settings?.imapPassword;
-  const hasHardcoded = DEFAULT_IMAP.user && DEFAULT_IMAP.password;
+  const hasEnvCreds = DEFAULT_IMAP.user && DEFAULT_IMAP.password;
 
-  if (!hasDbCreds && !hasHardcoded) {
-    console.log("[EmailPoller] No IMAP credentials configured — skipping.");
+  if (!hasDbCreds && !hasEnvCreds) {
+    console.warn(
+      "[EmailPoller] No IMAP credentials configured — skipping. " +
+        "Set the IMAP_PASSWORD secret (and optionally IMAP_USER / IMAP_HOST) to enable inbox sync.",
+    );
     return;
   }
 

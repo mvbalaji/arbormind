@@ -56,7 +56,7 @@ All modules are fully implemented with real data:
 
 ## Email Sync / Spacemail Integration
 
-- IMAP defaults to `support@arbormind.in` on `mail.spacemail.com:993`. Override per-deployment with `IMAP_HOST` / `IMAP_PORT` / `IMAP_USER` / `IMAP_PASSWORD` env vars, or per-tenant via the `email_settings` DB row.
+- IMAP defaults to `support@arbormind.in` on `mail.spacemail.com:993`. The password MUST be supplied via the `IMAP_PASSWORD` secret — there is no hardcoded fallback. Optionally override host/port/user with `IMAP_HOST` / `IMAP_PORT` / `IMAP_USER` env vars, or override per-tenant via the `email_settings` DB row.
 - Email body parsing uses `mailparser`'s `simpleParser` to extract both plain text (`message`) and HTML (`body_html`); the support inbox renders HTML via DOMPurify with a text fallback.
 - Deduplication is enforced by a `messageUid` column with a unique index plus `onConflictDoNothing` on insert — re-running the sync is a no-op once a message has been imported.
 - The support inbox UI auto-refreshes silently every 30 seconds (POST `/api/admin/email-sync` then GET `/api/emails`); the manual Refresh button does the same with a visible spinner.

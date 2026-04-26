@@ -17,7 +17,7 @@ Fix all the issues mentioned below and etst them. Do no have any fix missed. Exe
 
 3. new email to have new activity
 3.1 qualified to opportunity - validate info for account
-3.2 Inbound mail is not coming up. haed code this for now- spacemail; mail id - support@arbormind.in; password - February2026#
+3.2 Inbound mail is not coming up. haed code this for now- spacemail; mail id - support@arbormind.in; password - [REDACTED-rotated]
 
 4. Dashboard
 4.1 dashboard numbers not adding up
