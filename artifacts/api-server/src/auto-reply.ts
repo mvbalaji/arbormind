@@ -4,25 +4,63 @@ import { db, emailsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 
-const CATALOGUE_PATH = path.resolve(
-  process.cwd(),
-  "attached_assets/RTindall_Fire_Protection_Catalogue_with_Pricing.pdf",
-);
+const CATALOGUE_FILENAME = "RTindall_Fire_Protection_Catalogue_with_Pricing.pdf";
 
-const FALLBACK_REPLY =
-  "Acknowledged — someone from the support team will get back to you shortly.";
+// The api-server runs with cwd = artifacts/api-server, but the catalogue lives at
+// <repo-root>/attached_assets/. Try a few candidate locations and use whichever exists,
+// with an explicit CATALOGUE_PATH env override for production deployments.
+const CATALOGUE_CANDIDATES = [
+  process.env.CATALOGUE_PATH,
+  path.resolve(process.cwd(), "attached_assets", CATALOGUE_FILENAME),
+  path.resolve(process.cwd(), "..", "..", "attached_assets", CATALOGUE_FILENAME),
+  path.resolve(process.cwd(), "..", "attached_assets", CATALOGUE_FILENAME),
+  path.resolve("/home/runner/workspace/attached_assets", CATALOGUE_FILENAME),
+].filter((p): p is string => Boolean(p));
+
+const FALLBACK_REPLY = `Hello,
+
+Thank you for reaching out to RTindall Fire Protection. We've received your message and a member of our support team will get back to you shortly with a personalised response.
+
+If your enquiry is urgent, please reply to this email with any additional details.
+
+Kind regards,
+RTindall Fire Protection — Support Team
+support@arbormind.in`;
 
 let cachedCatalogueText: string | null = null;
+let cachedCataloguePath: string | null = null;
+
+async function resolveCataloguePath(): Promise<string> {
+  if (cachedCataloguePath) return cachedCataloguePath;
+  for (const candidate of CATALOGUE_CANDIDATES) {
+    try {
+      await fs.access(candidate);
+      cachedCataloguePath = candidate;
+      console.log(`[AutoReply] Using catalogue at ${candidate}`);
+      return candidate;
+    } catch {
+      // try next
+    }
+  }
+  throw new Error(
+    `Catalogue PDF not found. Tried: ${CATALOGUE_CANDIDATES.join(", ")}. ` +
+      `Set the CATALOGUE_PATH env var to the absolute path of ${CATALOGUE_FILENAME}.`,
+  );
+}
 
 async function loadCatalogueText(): Promise<string> {
   if (cachedCatalogueText) return cachedCatalogueText;
-  const buffer = await fs.readFile(CATALOGUE_PATH);
+  const cataloguePath = await resolveCataloguePath();
+  const buffer = await fs.readFile(cataloguePath);
   // Import the lib entry directly to avoid pdf-parse's index.js test loader.
   const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default as (
     data: Buffer,
   ) => Promise<{ text: string }>;
   const parsed = await pdfParse(buffer);
   cachedCatalogueText = parsed.text;
+  console.log(
+    `[AutoReply] Catalogue loaded — ${parsed.text.length} characters of text extracted.`,
+  );
   return cachedCatalogueText;
 }
 
@@ -37,14 +75,24 @@ Respond ONLY with a single JSON object — no markdown fences, no commentary bef
 }
 
 Rules:
-- Set "canAnswer" to true ONLY if the customer's question can be answered substantively and accurately from the catalogue content.
-- If the question is off-topic, ambiguous, requires information that is not in the catalogue, requires a human decision (custom quote, order changes, complaints, account issues, scheduling, refunds), or you cannot find a confident answer in the catalogue, set "canAnswer" to false and return an empty string for "reply".
-- When "canAnswer" is true, "reply" must be a complete, properly formatted email body in plain text. It must:
-    * Open with a brief greeting addressing the customer by their first name if known, otherwise "Hello".
-    * Answer the question clearly, citing relevant product names and prices from the catalogue.
-    * Close with a short sign-off from "RTindall Fire Protection — Support Team".
-    * Use line breaks (\\n) to separate paragraphs. Do not include subject lines or email headers.
-- Never speculate. Never apologise for missing information — if you can't answer, just set canAnswer=false.`;
+- Set "canAnswer" to true if the customer's question can be answered substantively from the catalogue content (product info, pricing, specifications, availability of items listed in the catalogue). Be generous: if the catalogue has any relevant information, answer with what you have.
+- Only set "canAnswer" to false when the question is completely off-topic, requires a human decision (custom quote outside catalogue scope, order modifications, complaints, refunds, account/billing issues, scheduling), or there is genuinely no relevant content in the catalogue. When false, return an empty string for "reply".
+- When "canAnswer" is true, "reply" must be a complete, professionally formatted email body in plain text following EXACTLY this structure:
+
+    Hi <FirstName>,    <-- or "Hello," if no name is known
+
+    Thank you for reaching out to RTindall Fire Protection.
+
+    <One or two short paragraphs answering the question. Cite specific product names and prices from the catalogue. Use bullet points (with "• " prefix) when listing multiple products or specs. Keep paragraphs short — 2-4 sentences each.>
+
+    If you'd like to place an order or need any further details, just reply to this email and our team will be happy to help.
+
+    Kind regards,
+    RTindall Fire Protection — Support Team
+    support@arbormind.in
+
+- Use real newline characters (\\n) between lines and a blank line between paragraphs. Do NOT include "Subject:" lines, "From:" headers, markdown formatting, code fences, or HTML.
+- Never invent products, prices, or specifications. Never apologise for missing information — if you cannot answer from the catalogue, set canAnswer=false instead.`;
 
 interface ClaudeReplyResult {
   canAnswer: boolean;
@@ -171,6 +219,46 @@ async function sendEmail(
     subject: replySubject,
     text: bodyText,
   });
+}
+
+/**
+ * Diagnostic helper: composes (but does NOT send) a reply for a sample customer email.
+ * Used by the /api/admin/auto-reply-preview endpoint so admins can verify the AI is
+ * actually pulling answers from the catalogue and producing a properly formatted reply.
+ */
+export async function previewAutoReply(opts: {
+  fromName: string;
+  subject: string;
+  body: string;
+}): Promise<{
+  cataloguePath: string;
+  catalogueChars: number;
+  canAnswer: boolean;
+  reply: string;
+  source: "ai" | "fallback";
+}> {
+  const cataloguePath = await resolveCataloguePath();
+  const catalogue = await loadCatalogueText();
+  let canAnswer = false;
+  let reply = FALLBACK_REPLY;
+  let source: "ai" | "fallback" = "fallback";
+  try {
+    const result = await composeReply(opts.fromName, opts.subject, opts.body);
+    if (result.canAnswer && result.reply.trim()) {
+      canAnswer = true;
+      reply = result.reply.trim();
+      source = "ai";
+    }
+  } catch (err) {
+    console.error("[AutoReply] Preview composition failed:", err);
+  }
+  return {
+    cataloguePath,
+    catalogueChars: catalogue.length,
+    canAnswer,
+    reply,
+    source,
+  };
 }
 
 export async function maybeAutoReply(opts: {

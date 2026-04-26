@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, emailSettingsTable } from "@workspace/db";
 import { runEmailSync, startEmailPoller, stopEmailPoller } from "../email-sync";
+import { previewAutoReply } from "../auto-reply";
 
 const router = Router();
 
@@ -132,6 +133,27 @@ router.post("/admin/email-sync", async (req, res) => {
     res.json({ success: true, processed: result.processed });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err?.message ?? "Sync failed" });
+  }
+});
+
+// POST /api/admin/auto-reply-preview
+// Diagnostic: returns what the AI would compose for a sample customer email,
+// without sending anything. Useful for verifying PDF loading + reply formatting.
+router.post("/admin/auto-reply-preview", async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  const { fromName, subject, body } = req.body ?? {};
+  if (!subject || !body) {
+    return res.status(400).json({ error: "subject and body are required" });
+  }
+  try {
+    const result = await previewAutoReply({
+      fromName: fromName ?? "Test User",
+      subject: String(subject),
+      body: String(body),
+    });
+    res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err?.message ?? "Preview failed" });
   }
 });
 

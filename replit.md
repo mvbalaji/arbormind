@@ -63,6 +63,14 @@ All modules are fully implemented with real data:
 - Email sync auto-creates Activity records (type=email) for every inbound email and links them to contact/lead/opportunity/account where possible.
 - Server-side poller runs every `sync_interval_minutes` (default 1 min) on server boot if credentials are configured.
 
+### Auto-reply (AI-composed)
+
+- For every newly imported email, `artifacts/api-server/src/auto-reply.ts` calls Claude (`claude-sonnet-4-6`) grounded in `attached_assets/RTindall_Fire_Protection_Catalogue_with_Pricing.pdf`. The PDF is parsed with `pdf-parse` (lazy + cached).
+- Catalogue path is resolved by trying `CATALOGUE_PATH` env var → `<cwd>/attached_assets/...` → `<cwd>/../../attached_assets/...` → `/home/runner/workspace/attached_assets/...`. The api-server runs with cwd `artifacts/api-server`, so the two-up resolution is what wins in development.
+- When Claude returns `canAnswer: true`, the formatted reply (greeting → answer with bullet-listed prices → call to action → signature `RTindall Fire Protection — Support Team / support@arbormind.in`) is sent via SMTP (admin DB creds → `SMTP_*` env → `IMAP_*` env, in that order). Otherwise a polite formatted fallback acknowledgement is sent. Either way, the email row is marked `replied` with a note recording which path was used.
+- Self-addressed mail is skipped to prevent reply loops.
+- Diagnostic endpoint: `POST /api/admin/auto-reply-preview` `{fromName, subject, body}` composes a sample reply and returns `{cataloguePath, catalogueChars, canAnswer, source: "ai"|"fallback", reply}` without sending — useful for verifying PDF loading and reply formatting after deployment.
+
 ## Database Schema (11 tables)
 
 - `users` — CRM users with roles (admin/manager/rep)
