@@ -38,31 +38,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/me", { credentials: "include" });
       if (res.ok) {
         const data = await res.json() as { user: AuthUser };
-        setUser(data.user);
+        setUser((prev) => {
+          if (prev && data.user && prev.id === data.user.id && prev.email === data.user.email && prev.role === data.user.role && prev.name === data.user.name) {
+            return prev;
+          }
+          return data.user;
+        });
       } else {
-        setUser(null);
+        setUser((prev) => (prev === null ? prev : null));
       }
     } catch {
-      setUser(null);
+      setUser((prev) => (prev === null ? prev : null));
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => { 
+  useEffect(() => {
     void fetchUser();
-    
-    // Poll for auth changes (important for OAuth redirects)
-    const pollInterval = setInterval(() => {
-      void fetchUser();
-    }, 2000); // Check every 2 seconds
-    
-    // Also refetch when window/tab comes into focus (useful after OAuth redirect)
+
+    // Refetch when window/tab regains focus (covers OAuth redirect + session expiry)
     const handleFocus = () => void fetchUser();
     window.addEventListener("focus", handleFocus);
-    
+
     return () => {
-      clearInterval(pollInterval);
       window.removeEventListener("focus", handleFocus);
     };
   }, []);
