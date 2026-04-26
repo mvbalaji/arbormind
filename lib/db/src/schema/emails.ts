@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const emailsTable = pgTable("emails", {
   id: serial("id").primaryKey(),
+  messageUid: text("message_uid"),
   fromEmail: text("from_email").notNull(),
   fromName: text("from_name").notNull(),
   subject: text("subject").notNull(),

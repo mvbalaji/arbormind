@@ -1,5 +1,5 @@
 import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable } from "@workspace/db";
-import { eq, ilike } from "drizzle-orm";
+import { eq, ilike, inArray } from "drizzle-orm";
 
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let isSyncing = false;
@@ -44,7 +44,7 @@ async function checkIfKnownCustomer(email: string) {
   return contact ?? null;
 }
 
-async function processEmail(fromEmail: string, fromName: string, subject: string, body: string) {
+async function processEmail(messageUid: string, fromEmail: string, fromName: string, subject: string, body: string) {
   const contact = await checkIfKnownCustomer(fromEmail);
 
   let relatedLeadId: number | undefined;
@@ -88,6 +88,7 @@ async function processEmail(fromEmail: string, fromName: string, subject: string
   }
 
   await db.insert(emailsTable).values({
+    messageUid,
     fromEmail,
     fromName: fromName || fromEmail,
     subject,
@@ -146,8 +147,17 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
 
     const lock = await client.getMailboxLock("INBOX");
     try {
+      // Collect all UIDs already imported so we can skip them
+      const existingRows = await db
+        .select({ messageUid: emailsTable.messageUid })
+        .from(emailsTable);
+      const importedUids = new Set(
+        existingRows.map((r) => r.messageUid).filter((u): u is string => !!u),
+      );
+
       for await (const msg of client.fetch("1:*", { envelope: true, bodyStructure: true, source: true }, { uid: true })) {
-        if (msg.flags?.has("\\Seen")) continue;
+        const uidKey = String(msg.uid);
+        if (importedUids.has(uidKey)) continue;
 
         const envelope = msg.envelope;
         const fromAddr = envelope?.from?.[0];
@@ -164,8 +174,8 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
           body = parts.slice(1).join("\n\n").replace(/<[^>]+>/g, " ").trim().slice(0, 4000);
         }
 
-        await processEmail(fromEmail, fromName, subject, body || "(no body)");
-        await client.messageFlagsAdd({ uid: msg.uid }, ["\\Seen"]);
+        await processEmail(uidKey, fromEmail, fromName, subject, body || "(no body)");
+        importedUids.add(uidKey);
         processed++;
       }
     } finally {
