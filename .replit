@@ -33,6 +33,7 @@ timeoutMs = 20000
 GOOGLE_CALLBACK_URL = "https://arbormind.in/api/auth/google/callback"
 SMTP_HOST = "mail.spacemail.com"
 SMTP_PORT = "465"
+IMAP_USER = "support@arbormind.in"
 
 [nix]
 channel = "stable-25_05"

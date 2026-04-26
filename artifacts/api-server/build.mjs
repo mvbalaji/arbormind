@@ -105,6 +105,7 @@ async function buildAll() {
       "puppeteer",
       "puppeteer-core",
       "electron",
+      "pdf-parse",
     ],
     sourcemap: "linked",
     plugins: [

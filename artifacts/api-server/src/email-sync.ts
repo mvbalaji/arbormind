@@ -1,13 +1,15 @@
 import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable } from "@workspace/db";
 import { eq, ilike } from "drizzle-orm";
 import { simpleParser } from "mailparser";
+import { maybeAutoReply } from "./auto-reply";
 
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let isSyncing = false;
 
-// IMAP credentials come from environment secrets only.
-// The password MUST be supplied via the IMAP_PASSWORD secret — there is no hardcoded fallback.
-// Host, port, secure, and user have safe non-secret defaults for the support@arbormind.in mailbox.
+// IMAP credentials come from environment / admin-configured DB row only.
+// The password MUST be supplied via the IMAP_PASSWORD secret (or the email_settings DB row) —
+// there is no hardcoded password fallback. Host, port, secure, and user have safe non-secret
+// defaults for the public support@arbormind.in mailbox so the inbox keeps working out of the box.
 const DEFAULT_IMAP = {
   host: process.env.IMAP_HOST ?? "mail.spacemail.com",
   port: Number(process.env.IMAP_PORT ?? 993),
@@ -101,7 +103,7 @@ async function processEmail(
     notes = "Auto-created Lead from inbound email";
   }
 
-  await db
+  const [insertedEmail] = await db
     .insert(emailsTable)
     .values({
       messageUid,
@@ -117,7 +119,8 @@ async function processEmail(
       relatedOpportunityId,
       notes,
     })
-    .onConflictDoNothing({ target: emailsTable.messageUid });
+    .onConflictDoNothing({ target: emailsTable.messageUid })
+    .returning({ id: emailsTable.id });
 
   await db.insert(activitiesTable).values({
     type: "email",
@@ -130,6 +133,8 @@ async function processEmail(
     accountId: relatedAccountId ?? null,
     completedAt: new Date(),
   });
+
+  return insertedEmail?.id;
 }
 
 export async function runEmailSync(): Promise<{ processed: number; error?: string }> {
@@ -204,9 +209,29 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
           }
         }
 
-        await processEmail(uidKey, fromEmail, fromName, subject, bodyText || "(no body)", bodyHtml);
+        const emailBody = bodyText || "(no body)";
+        const emailId = await processEmail(uidKey, fromEmail, fromName, subject, emailBody, bodyHtml);
         importedUids.add(uidKey);
         processed++;
+
+        if (emailId) {
+          // Auto-reply with Claude using the catalogue. Errors are caught inside
+          // maybeAutoReply so a single bad email cannot abort the whole sync.
+          try {
+            await maybeAutoReply({
+              emailId,
+              fromEmail,
+              fromName,
+              subject,
+              body: emailBody,
+              imapUser: String(imapConfig.user),
+              imapPass: String(imapConfig.pass),
+              emailSettings: settings as Record<string, unknown> | null,
+            });
+          } catch (err) {
+            console.error("[EmailPoller] Auto-reply failed for", uidKey, err);
+          }
+        }
       }
     } finally {
       lock.release();
