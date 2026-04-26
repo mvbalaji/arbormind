@@ -56,10 +56,12 @@ All modules are fully implemented with real data:
 
 ## Email Sync / Spacemail Integration
 
-- IMAP credentials hardcoded for spacemail: `support@arbormind.in` / `February2026#` on `mail.spacemail.com:993`
-- Email sync auto-creates Activity records (type=email) for every inbound email processed
-- Links activities to contact/lead/opportunity/account where possible
-- Poller starts on server boot if credentials are configured
+- IMAP defaults to `support@arbormind.in` on `mail.spacemail.com:993`. Override per-deployment with `IMAP_HOST` / `IMAP_PORT` / `IMAP_USER` / `IMAP_PASSWORD` env vars, or per-tenant via the `email_settings` DB row.
+- Email body parsing uses `mailparser`'s `simpleParser` to extract both plain text (`message`) and HTML (`body_html`); the support inbox renders HTML via DOMPurify with a text fallback.
+- Deduplication is enforced by a `messageUid` column with a unique index plus `onConflictDoNothing` on insert — re-running the sync is a no-op once a message has been imported.
+- The support inbox UI auto-refreshes silently every 30 seconds (POST `/api/admin/email-sync` then GET `/api/emails`); the manual Refresh button does the same with a visible spinner.
+- Email sync auto-creates Activity records (type=email) for every inbound email and links them to contact/lead/opportunity/account where possible.
+- Server-side poller runs every `sync_interval_minutes` (default 1 min) on server boot if credentials are configured.
 
 ## Database Schema (11 tables)
 

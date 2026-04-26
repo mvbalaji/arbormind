@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import DOMPurify from "dompurify";
 import {
   Mail, RefreshCw, CheckCircle2, Clock, User, Calendar,
   Inbox, ExternalLink, Tag, AlertCircle, Info, Webhook,
@@ -16,6 +17,7 @@ interface SupportEmail {
   fromName: string;
   subject: string;
   message: string;
+  bodyHtml?: string | null;
   status: string;
   isKnownCustomer: string;
   relatedLeadId?: number;
@@ -40,27 +42,52 @@ export default function Support() {
   const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
-  const fetchEmails = useCallback(async (showRefreshing = false) => {
+  const fetchEmails = useCallback(async (opts: { sync?: boolean; showRefreshing?: boolean; silent?: boolean } = {}) => {
+    const { sync = false, showRefreshing = false, silent = false } = opts;
     if (showRefreshing) setRefreshing(true);
-    else setLoading(true);
+    else if (!silent) setLoading(true);
     try {
+      if (sync) {
+        try {
+          await fetch("/api/admin/email-sync", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+          });
+        } catch {
+          /* ignore sync errors — still try to load DB rows */
+        }
+      }
       const res = await fetch("/api/emails", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setEmails(data.emails ?? []);
-      } else {
+      } else if (!silent) {
         toast({ title: "Could not load inbox", variant: "destructive" });
       }
     } catch {
-      toast({ title: "Network error", variant: "destructive" });
+      if (!silent) toast({ title: "Network error", variant: "destructive" });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [toast]);
 
+  // Initial load — also runs a sync so the user sees the latest
   useEffect(() => {
-    if (!isLoading && user) fetchEmails();
+    if (!isLoading && user && user.role === "admin") {
+      fetchEmails({ sync: true });
+    }
+  }, [isLoading, user, fetchEmails]);
+
+  // Auto-refresh every 30 seconds (silent — no spinners, no toasts)
+  useEffect(() => {
+    if (isLoading || !user || user.role !== "admin") return;
+    const id = setInterval(() => {
+      fetchEmails({ sync: true, silent: true });
+    }, 30_000);
+    return () => clearInterval(id);
   }, [isLoading, user, fetchEmails]);
 
   const updateStatus = async (id: number, status: string) => {
@@ -124,7 +151,7 @@ export default function Support() {
             variant="outline"
             size="sm"
             className="border-border gap-2"
-            onClick={() => fetchEmails(true)}
+            onClick={() => fetchEmails({ sync: true, showRefreshing: true })}
             disabled={refreshing}
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
@@ -260,10 +287,23 @@ export default function Support() {
 
               {/* Message body */}
               <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                <div className="max-w-2xl">
-                  <div className="bg-muted rounded-xl border border-border p-6 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                    {selected.message}
-                  </div>
+                <div className="max-w-3xl">
+                  {selected.bodyHtml ? (
+                    <div
+                      className="email-html bg-card rounded-xl border border-border p-6 text-sm leading-relaxed text-foreground/90 overflow-x-auto"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(selected.bodyHtml, {
+                          USE_PROFILES: { html: true },
+                          FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form"],
+                          FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "style"],
+                        }),
+                      }}
+                    />
+                  ) : (
+                    <div className="bg-muted rounded-xl border border-border p-6 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                      {selected.message}
+                    </div>
+                  )}
 
                   {/* Auto-created records */}
                   {(selected.relatedLeadId || selected.relatedOpportunityId) && (

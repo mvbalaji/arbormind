@@ -1,15 +1,19 @@
 import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable } from "@workspace/db";
-import { eq, ilike, inArray } from "drizzle-orm";
+import { eq, ilike } from "drizzle-orm";
+import { simpleParser } from "mailparser";
 
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let isSyncing = false;
 
-const HARDCODED_IMAP = {
-  host: "mail.spacemail.com",
-  port: 993,
-  secure: true,
-  user: "support@arbormind.in",
-  password: "February2026#",
+// IMAP defaults: prefer environment variables, then fall back to admin-configured DB row.
+// The hardcoded fallback exists so the support@arbormind.in mailbox keeps working out of the
+// box; rotate the password and move it to IMAP_USER / IMAP_PASSWORD secrets for production.
+const DEFAULT_IMAP = {
+  host: process.env.IMAP_HOST ?? "mail.spacemail.com",
+  port: Number(process.env.IMAP_PORT ?? 993),
+  secure: (process.env.IMAP_SECURE ?? "true") !== "false",
+  user: process.env.IMAP_USER ?? "support@arbormind.in",
+  password: process.env.IMAP_PASSWORD ?? "February2026#",
 };
 
 async function getSettings() {
@@ -28,11 +32,11 @@ async function getImapConfig(settings: Record<string, unknown> | null) {
     };
   }
   return {
-    host: HARDCODED_IMAP.host,
-    port: HARDCODED_IMAP.port,
-    secure: HARDCODED_IMAP.secure,
-    user: HARDCODED_IMAP.user,
-    pass: HARDCODED_IMAP.password,
+    host: DEFAULT_IMAP.host,
+    port: DEFAULT_IMAP.port,
+    secure: DEFAULT_IMAP.secure,
+    user: DEFAULT_IMAP.user,
+    pass: DEFAULT_IMAP.password,
   };
 }
 
@@ -44,7 +48,14 @@ async function checkIfKnownCustomer(email: string) {
   return contact ?? null;
 }
 
-async function processEmail(messageUid: string, fromEmail: string, fromName: string, subject: string, body: string) {
+async function processEmail(
+  messageUid: string,
+  fromEmail: string,
+  fromName: string,
+  subject: string,
+  body: string,
+  bodyHtml: string | null,
+) {
   const contact = await checkIfKnownCustomer(fromEmail);
 
   let relatedLeadId: number | undefined;
@@ -87,19 +98,23 @@ async function processEmail(messageUid: string, fromEmail: string, fromName: str
     notes = "Auto-created Lead from inbound email";
   }
 
-  await db.insert(emailsTable).values({
-    messageUid,
-    fromEmail,
-    fromName: fromName || fromEmail,
-    subject,
-    message: body.slice(0, 4000),
-    status: "new",
-    isKnownCustomer: contact ? "true" : "false",
-    relatedContactId,
-    relatedLeadId,
-    relatedOpportunityId,
-    notes,
-  });
+  await db
+    .insert(emailsTable)
+    .values({
+      messageUid,
+      fromEmail,
+      fromName: fromName || fromEmail,
+      subject,
+      message: body.slice(0, 8000),
+      bodyHtml: bodyHtml ? bodyHtml.slice(0, 100000) : null,
+      status: "new",
+      isKnownCustomer: contact ? "true" : "false",
+      relatedContactId,
+      relatedLeadId,
+      relatedOpportunityId,
+      notes,
+    })
+    .onConflictDoNothing({ target: emailsTable.messageUid });
 
   await db.insert(activitiesTable).values({
     type: "email",
@@ -155,7 +170,7 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
         existingRows.map((r) => r.messageUid).filter((u): u is string => !!u),
       );
 
-      for await (const msg of client.fetch("1:*", { envelope: true, bodyStructure: true, source: true }, { uid: true })) {
+      for await (const msg of client.fetch("1:*", { envelope: true, source: true }, { uid: true })) {
         const uidKey = String(msg.uid);
         if (importedUids.has(uidKey)) continue;
 
@@ -167,14 +182,26 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
         const fromName = fromAddr.name || fromAddr.address;
         const subject = envelope?.subject || "(no subject)";
 
-        let body = "";
+        let bodyText = "";
+        let bodyHtml: string | null = null;
+
         if (msg.source) {
-          const raw = msg.source.toString("utf8");
-          const parts = raw.split(/\r?\n\r?\n/);
-          body = parts.slice(1).join("\n\n").replace(/<[^>]+>/g, " ").trim().slice(0, 4000);
+          try {
+            const parsed = await simpleParser(msg.source);
+            bodyText = (parsed.text ?? "").trim();
+            bodyHtml = typeof parsed.html === "string" ? parsed.html : null;
+            if (!bodyText && bodyHtml) {
+              bodyText = bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            }
+          } catch (parseErr) {
+            console.error("[EmailPoller] Failed to parse message", uidKey, parseErr);
+            const raw = msg.source.toString("utf8");
+            const parts = raw.split(/\r?\n\r?\n/);
+            bodyText = parts.slice(1).join("\n\n").replace(/<[^>]+>/g, " ").trim();
+          }
         }
 
-        await processEmail(uidKey, fromEmail, fromName, subject, body || "(no body)");
+        await processEmail(uidKey, fromEmail, fromName, subject, bodyText || "(no body)", bodyHtml);
         importedUids.add(uidKey);
         processed++;
       }
@@ -226,7 +253,7 @@ export async function startEmailPoller() {
 
   const settings = await getSettings();
   const hasDbCreds = settings?.imapUser && settings?.imapPassword;
-  const hasHardcoded = HARDCODED_IMAP.user && HARDCODED_IMAP.password;
+  const hasHardcoded = DEFAULT_IMAP.user && DEFAULT_IMAP.password;
 
   if (!hasDbCreds && !hasHardcoded) {
     console.log("[EmailPoller] No IMAP credentials configured — skipping.");
