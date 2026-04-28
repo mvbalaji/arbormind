@@ -279,6 +279,19 @@ export async function maybeAutoReply(opts: {
     return;
   }
 
+  // Canonical guard: if this email row was already auto-replied to (even if an admin
+  // has since flipped `status` back to "new" while triaging), do NOT send again.
+  const [existing] = await db
+    .select({ autoRepliedAt: emailsTable.autoRepliedAt })
+    .from(emailsTable)
+    .where(eq(emailsTable.id, emailId));
+  if (existing?.autoRepliedAt) {
+    console.log(
+      `[AutoReply] Skipping email ${emailId} — already auto-replied at ${existing.autoRepliedAt.toISOString()}`,
+    );
+    return;
+  }
+
   const smtp = getSmtpConfig(emailSettings, imapUser, imapPass);
   if (!smtp) {
     console.warn(`[AutoReply] No SMTP credentials available — cannot send reply for email ${emailId}`);
@@ -301,14 +314,16 @@ export async function maybeAutoReply(opts: {
 
   try {
     await sendEmail(smtp, fromEmail, subject, replyText);
+    const now = new Date();
     await db
       .update(emailsTable)
       .set({
         status: "replied",
+        autoRepliedAt: now,
         notes: usedAi
           ? "Auto-replied with AI-composed answer from catalogue"
           : "Auto-replied with acknowledgement (catalogue did not contain an answer)",
-        updatedAt: new Date(),
+        updatedAt: now,
       })
       .where(eq(emailsTable.id, emailId));
     console.log(

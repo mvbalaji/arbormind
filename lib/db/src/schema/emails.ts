@@ -18,6 +18,11 @@ export const emailsTable = pgTable(
     relatedOpportunityId: integer("related_opportunity_id"),
     isKnownCustomer: text("is_known_customer").notNull().default("false"), // true or false as string
     notes: text("notes"),
+    // Set the moment an automated reply is successfully dispatched. This is the canonical
+    // "did we already auto-respond?" flag — independent of `status`, which an admin may
+    // toggle back to "new" while triaging. Once set, it must NOT be cleared by admin flows,
+    // so re-imports / UID changes / manual recreations cannot trigger a duplicate reply.
+    autoRepliedAt: timestamp("auto_replied_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
