@@ -144,7 +144,7 @@ export default function Leads() {
             </Button>
             <Button
               size="sm"
-              className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-white shadow-sm"
+              className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
               onClick={() => setIsCreateOpen(true)}
             >
               <Plus className="w-3.5 h-3.5" /> New
@@ -224,7 +224,7 @@ export default function Leads() {
                   <tr>
                     <td colSpan={9} className="px-4 py-12 text-center">
                       <div className="text-muted-foreground text-sm mb-3">No leads found.</div>
-                      <Button size="sm" onClick={() => setIsCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-white">
+                      <Button size="sm" onClick={() => setIsCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         <Plus className="w-3.5 h-3.5 mr-1.5" /> Create your first lead
                       </Button>
                     </td>
@@ -386,7 +386,7 @@ function DeleteLeadAction({ id, onDone }: { id: number | null; onDone: () => voi
           onError: () => toast({ title: "Error", description: "Failed to delete lead.", variant: "destructive" }),
         });
       }}
-      className="bg-destructive hover:bg-destructive/90 text-white"
+      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
     >
       Delete
     </AlertDialogAction>
@@ -582,7 +582,7 @@ function LeadFormDialog({
 
           <DialogFooter className="pt-3 border-t border-border gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" size="sm" disabled={isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="submit" size="sm" disabled={isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {isPending ? "Saving..." : mode === "create" ? "Save" : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -767,7 +767,7 @@ function ConvertLeadDialog({
         </div>
         <DialogFooter className="border-t border-border pt-3 gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button size="sm" onClick={handleConvert} disabled={mutation.isPending || (accountMode === "existing" && !existingAccountId) || (contactMode === "existing" && selectedContactIds.length === 0)} className="bg-primary hover:bg-primary/90 text-white">
+          <Button size="sm" onClick={handleConvert} disabled={mutation.isPending || (accountMode === "existing" && !existingAccountId) || (contactMode === "existing" && selectedContactIds.length === 0)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
             {mutation.isPending ? "Converting..." : "Convert Lead"}
           </Button>
         </DialogFooter>

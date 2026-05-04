@@ -11,6 +11,7 @@ import {
 import type { Opportunity, UpdateOpportunityInputStage, CreateOpportunityInputStage } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import { useAuth } from "@/context/auth";
 import { AISummary } from "@/components/ai-summary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Plus,
   Calendar,
@@ -40,6 +42,8 @@ import {
   ChevronDown,
   Trash2,
   Eye,
+  Check,
+  Pin,
 } from "lucide-react";
 import { Link } from "wouter";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -82,6 +86,116 @@ const STAGE_PROBABILITY: Record<string, number> = {
   negotiation: 75, closed_won: 100, closed_lost: 0,
 };
 
+type ListViewId =
+  | "all"
+  | "high_probability"
+  | "high_value"
+  | "recently_viewed"
+  | "closing_next_month"
+  | "closing_this_month"
+  | "my_opportunities"
+  | "new_last_week"
+  | "new_this_week";
+
+interface ListView {
+  id: ListViewId;
+  label: string;
+  pinned: boolean;
+  filter: (opp: Opportunity, userId?: number) => boolean;
+}
+
+const now = () => new Date();
+
+const LIST_VIEWS: ListView[] = [
+  { id: "all", label: "All Opportunities", pinned: true, filter: () => true },
+  {
+    id: "high_probability",
+    label: "High Probability Opportunities",
+    pinned: true,
+    filter: (o) => (o.probability ?? 0) >= 70,
+  },
+  {
+    id: "high_value",
+    label: "High Value Opportunities",
+    pinned: true,
+    filter: (o) => (Number(o.amount) || 0) >= 100000,
+  },
+  {
+    id: "recently_viewed",
+    label: "Recently Viewed",
+    pinned: true,
+    filter: (o) => {
+      if (!o.updatedAt) return false;
+      const d = new Date(o.updatedAt);
+      const n = now();
+      const threeDaysAgo = new Date(n);
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      return d >= threeDaysAgo;
+    },
+  },
+  {
+    id: "closing_this_month",
+    label: "Closing This Month",
+    pinned: false,
+    filter: (o) => {
+      if (!o.closeDate) return false;
+      const d = new Date(o.closeDate);
+      const n = now();
+      return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear();
+    },
+  },
+  {
+    id: "closing_next_month",
+    label: "Closing Next Month",
+    pinned: false,
+    filter: (o) => {
+      if (!o.closeDate) return false;
+      const d = new Date(o.closeDate);
+      const n = now();
+      const nextMonth = n.getMonth() === 11 ? 0 : n.getMonth() + 1;
+      const nextYear = n.getMonth() === 11 ? n.getFullYear() + 1 : n.getFullYear();
+      return d.getMonth() === nextMonth && d.getFullYear() === nextYear;
+    },
+  },
+  {
+    id: "my_opportunities",
+    label: "My Opportunities",
+    pinned: false,
+    filter: (o, userId) => userId != null && o.assignedTo === userId,
+  },
+  {
+    id: "new_last_week",
+    label: "New Last Week",
+    pinned: false,
+    filter: (o) => {
+      if (!o.createdAt) return false;
+      const d = new Date(o.createdAt);
+      const n = now();
+      const weekAgo = new Date(n);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const twoWeeksAgo = new Date(n);
+      twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+      return d >= twoWeeksAgo && d < weekAgo;
+    },
+  },
+  {
+    id: "new_this_week",
+    label: "New This Week",
+    pinned: false,
+    filter: (o) => {
+      if (!o.createdAt) return false;
+      const d = new Date(o.createdAt);
+      const n = now();
+      const weekAgo = new Date(n);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return d >= weekAgo;
+    },
+  },
+];
+
+const PINNED_VIEWS = LIST_VIEWS.filter((v) => v.pinned);
+const OTHER_VIEWS = LIST_VIEWS.filter((v) => !v.pinned);
+
 interface NewDealForm {
   name: string;
   accountId: string;
@@ -106,6 +220,7 @@ export default function Opportunities() {
   const deleteMutation = useDeleteOpportunity();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [columns, setColumns] = useState<Record<string, Opportunity[]>>({});
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -113,17 +228,29 @@ export default function Opportunities() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [activeViewId, setActiveViewId] = useState<ListViewId>("all");
+  const [viewPickerOpen, setViewPickerOpen] = useState(false);
+  const [viewPickerSearch, setViewPickerSearch] = useState("");
+
+  const activeView = LIST_VIEWS.find((v) => v.id === activeViewId) ?? LIST_VIEWS[0];
+
+  const allOpps = data?.data ?? [];
+
+  const viewFilteredOpps = useMemo(() => {
+    return allOpps.filter((o) => activeView.filter(o, currentUser?.id));
+  }, [allOpps, activeView, currentUser?.id]);
 
   useEffect(() => {
     if (data?.data) {
+      const filtered = viewFilteredOpps;
       const cols: Record<string, Opportunity[]> = {};
       STAGES.forEach((s) => (cols[s.id] = []));
-      data.data.forEach((opp) => {
+      filtered.forEach((opp) => {
         if (cols[opp.stage]) cols[opp.stage].push(opp);
       });
       setColumns(cols);
     }
-  }, [data]);
+  }, [data, viewFilteredOpps]);
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -147,19 +274,17 @@ export default function Opportunities() {
     );
   };
 
-  const allOpps = data?.data ?? [];
-
   const filteredOpps = useMemo(() => {
-    if (!searchQuery.trim()) return allOpps;
+    if (!searchQuery.trim()) return viewFilteredOpps;
     const q = searchQuery.toLowerCase();
-    return allOpps.filter(
+    return viewFilteredOpps.filter(
       (opp) =>
         (opp.name ?? "").toLowerCase().includes(q) ||
         (opp.accountName ?? "").toLowerCase().includes(q) ||
         (opp.stage ?? "").toLowerCase().includes(q) ||
         (opp.assignedToName ?? "").toLowerCase().includes(q)
     );
-  }, [allOpps, searchQuery]);
+  }, [viewFilteredOpps, searchQuery]);
 
   const sortedOpps = useMemo(() => {
     return [...filteredOpps].sort((a, b) => {
@@ -252,10 +377,100 @@ export default function Opportunities() {
             </div>
             <div>
               <h1 className="text-xl font-display font-bold text-foreground tracking-tight">Opportunities</h1>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                All Opportunities
-                <ChevronDown className="w-3.5 h-3.5" />
-              </div>
+              <Popover open={viewPickerOpen} onOpenChange={(open) => { setViewPickerOpen(open); if (!open) setViewPickerSearch(""); }}>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    {activeView.label}
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" sideOffset={6} className="w-64 p-0">
+                  <div className="p-2 border-b border-border">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <input
+                        type="text"
+                        aria-label="Search list views"
+                        placeholder="Search list views..."
+                        value={viewPickerSearch}
+                        onChange={(e) => setViewPickerSearch(e.target.value)}
+                        className="w-full pl-7 pr-2 py-1.5 text-sm bg-transparent border border-border rounded-md outline-none focus:border-primary text-foreground placeholder:text-muted-foreground"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-72 overflow-y-auto" role="listbox" aria-label="List views">
+                    {(() => {
+                      const filteredPinned = PINNED_VIEWS.filter((v) => !viewPickerSearch || v.label.toLowerCase().includes(viewPickerSearch.toLowerCase()));
+                      const filteredOther = OTHER_VIEWS.filter((v) => !viewPickerSearch || v.label.toLowerCase().includes(viewPickerSearch.toLowerCase()));
+                      if (filteredPinned.length === 0 && filteredOther.length === 0) {
+                        return (
+                          <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                            No matching views found.
+                          </div>
+                        );
+                      }
+                      return (
+                        <>
+                          {filteredPinned.length > 0 && (
+                            <>
+                              <div className="px-3 pt-2 pb-1">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pinned List Views</span>
+                              </div>
+                              {filteredPinned.map((view) => (
+                                <button
+                                  key={view.id}
+                                  role="option"
+                                  aria-selected={activeViewId === view.id}
+                                  onClick={() => { setActiveViewId(view.id); setViewPickerOpen(false); setViewPickerSearch(""); setSelectedIds(new Set()); }}
+                                  className={cn(
+                                    "w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors",
+                                    activeViewId === view.id && "text-primary font-medium"
+                                  )}
+                                >
+                                  {activeViewId === view.id ? (
+                                    <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                                  ) : (
+                                    <span className="w-3.5 shrink-0" />
+                                  )}
+                                  {view.label}
+                                </button>
+                              ))}
+                            </>
+                          )}
+                          {filteredOther.length > 0 && (
+                            <>
+                              <div className="border-t border-border mt-1" />
+                              <div className="px-3 pt-2 pb-1">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">All Other Views</span>
+                              </div>
+                              {filteredOther.map((view) => (
+                                <button
+                                  key={view.id}
+                                  role="option"
+                                  aria-selected={activeViewId === view.id}
+                                  onClick={() => { setActiveViewId(view.id); setViewPickerOpen(false); setViewPickerSearch(""); setSelectedIds(new Set()); }}
+                                  className={cn(
+                                    "w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors",
+                                    activeViewId === view.id && "text-primary font-medium"
+                                  )}
+                                >
+                                  {activeViewId === view.id ? (
+                                    <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                                  ) : (
+                                    <span className="w-3.5 shrink-0" />
+                                  )}
+                                  {view.label}
+                                </button>
+                              ))}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

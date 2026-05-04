@@ -106,7 +106,7 @@ export default function AIAssistant() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 font-medium text-sm capitalize transition-all border-b-2 ${activeTab === tab ? "border-accent text-primary" : "border-transparent text-muted-foreground hover:text-white"}`}
+              className={`px-4 py-2 font-medium text-sm capitalize transition-all border-b-2 ${activeTab === tab ? "border-accent text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
               {tab === "insights" ? "Next Best Actions" : tab === "drafts" ? "Email Drafter" : "Lead Scoring"}
             </button>
@@ -117,7 +117,7 @@ export default function AIAssistant() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="glass-panel border-border col-span-2">
               <CardContent className="p-6 space-y-5">
-                <h3 className="font-display font-semibold text-lg text-white mb-2">Recommended Actions</h3>
+                <h3 className="font-display font-semibold text-lg text-foreground mb-2">Recommended Actions</h3>
 
                 {highValueOpps.length === 0 ? (
                   <p className="text-muted-foreground text-sm">Add contacts to see AI-powered next best actions.</p>
@@ -172,7 +172,7 @@ export default function AIAssistant() {
 
             <Card className="glass-panel border-border">
               <CardContent className="p-6">
-                <h3 className="font-display font-semibold text-lg text-white mb-4 flex items-center gap-2">
+                <h3 className="font-display font-semibold text-lg text-foreground mb-4 flex items-center gap-2">
                   <Zap className="w-5 h-5 text-yellow-600" /> Quick Stats
                 </h3>
                 <div className="space-y-4">
@@ -201,7 +201,7 @@ export default function AIAssistant() {
           <Card className="glass-panel border-border col-span-full">
             <CardContent className="p-6 flex gap-6 min-h-[500px] flex-col md:flex-row">
               <div className="w-full md:w-1/3 border-b md:border-b-0 md:border-r border-border pb-4 md:pb-0 md:pr-6 space-y-3">
-                <h3 className="font-display font-semibold text-white mb-2">Templates</h3>
+                <h3 className="font-display font-semibold text-foreground mb-2">Templates</h3>
                 {templates.map((t, i) => (
                   <div
                     key={i}
@@ -216,7 +216,7 @@ export default function AIAssistant() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Contact Name</label>
                     <input
-                      className="w-full bg-black/30 border border-border rounded px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground"
+                      className="w-full bg-muted border border-border rounded px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground"
                       placeholder="e.g. Sarah Jenkins"
                       value={customName}
                       onChange={e => { setCustomName(e.target.value); setDraftGenerated(false); }}
@@ -225,7 +225,7 @@ export default function AIAssistant() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Product / Tier</label>
                     <input
-                      className="w-full bg-black/30 border border-border rounded px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground"
+                      className="w-full bg-muted border border-border rounded px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground"
                       placeholder="e.g. Enterprise Tier"
                       value={customProduct}
                       onChange={e => { setCustomProduct(e.target.value); setDraftGenerated(false); }}
@@ -239,7 +239,7 @@ export default function AIAssistant() {
                   <span className="text-xs text-muted-foreground">Subject:</span>
                   <span className="text-sm text-foreground font-medium">{currentTemplate.subject}</span>
                 </div>
-                <div className="flex-1 bg-black/30 rounded-xl border border-border p-6 font-mono text-sm text-gray-300 whitespace-pre-wrap leading-relaxed overflow-y-auto">
+                <div className="flex-1 bg-muted rounded-xl border border-border p-6 font-mono text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed overflow-y-auto">
                   {draftBody}
                 </div>
                 <div className="mt-4 flex justify-end gap-3">
@@ -274,7 +274,7 @@ export default function AIAssistant() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="glass-panel border-border lg:col-span-2">
               <CardContent className="p-6">
-                <h3 className="font-display font-semibold text-lg text-white mb-2 flex items-center gap-2">
+                <h3 className="font-display font-semibold text-lg text-foreground mb-2 flex items-center gap-2">
                   <BarChart2 className="w-5 h-5 text-primary" /> Scoring Formula
                 </h3>
                 <p className="text-sm text-muted-foreground mb-6">
@@ -330,7 +330,7 @@ export default function AIAssistant() {
 
             <Card className="glass-panel border-border">
               <CardContent className="p-6">
-                <h3 className="font-display font-semibold text-lg text-white mb-4 flex items-center gap-2">
+                <h3 className="font-display font-semibold text-lg text-foreground mb-4 flex items-center gap-2">
                   <Target className="w-5 h-5 text-chart-3" /> Score Distribution
                 </h3>
 
@@ -347,7 +347,7 @@ export default function AIAssistant() {
                       <div key={bucket.label} className="p-3 bg-muted/50 rounded-lg">
                         <div className="flex justify-between items-center mb-2">
                           <span className={`text-sm font-medium ${bucket.text}`}>{bucket.label}</span>
-                          <span className="text-white font-bold">{bucket.count}</span>
+                          <span className="text-foreground font-bold">{bucket.count}</span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-1.5">
                           <div
@@ -371,7 +371,7 @@ export default function AIAssistant() {
                 )}
 
                 <div className="mt-6 space-y-2 border-t border-border pt-4">
-                  <h4 className="text-sm font-medium text-white flex items-center gap-1.5">
+                  <h4 className="text-sm font-medium text-foreground flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-muted-foreground" /> Score by Source
                   </h4>
                   {Object.entries(sourceDist).length === 0 ? (
@@ -380,7 +380,7 @@ export default function AIAssistant() {
                     Object.entries(sourceDist).map(([src, d]) => (
                       <div key={src} className="flex justify-between text-xs">
                         <span className="text-muted-foreground capitalize">{src.replace("_", " ")}</span>
-                        <span className="text-white">{d.count} leads · avg {d.count > 0 ? Math.round(d.totalScore / d.count) : 0}</span>
+                        <span className="text-foreground">{d.count} leads · avg {d.count > 0 ? Math.round(d.totalScore / d.count) : 0}</span>
                       </div>
                     ))
                   )}

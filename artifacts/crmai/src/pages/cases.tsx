@@ -113,7 +113,7 @@ export default function Cases() {
                       <td className="px-6 py-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -245,7 +245,7 @@ function CaseFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-white sm:max-w-[500px]">
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "New Support Case" : "Edit Case"}
@@ -259,7 +259,7 @@ function CaseFormDialog({
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Type</Label>
-              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.type} onChange={f("type")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm" value={formData.type} onChange={f("type")}>
                 <option value="question">Question</option>
                 <option value="bug">Bug</option>
                 <option value="feature_request">Feature Request</option>
@@ -268,7 +268,7 @@ function CaseFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Priority</Label>
-              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.priority} onChange={f("priority")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm" value={formData.priority} onChange={f("priority")}>
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
@@ -277,7 +277,7 @@ function CaseFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm" value={formData.status} onChange={f("status")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm" value={formData.status} onChange={f("status")}>
                 <option value="open">Open</option>
                 <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
@@ -288,7 +288,7 @@ function CaseFormDialog({
           <div className="space-y-2">
             <Label>Description</Label>
             <textarea
-              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm resize-none"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm resize-none"
               rows={4}
               value={formData.description}
               onChange={f("description")}

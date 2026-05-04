@@ -166,7 +166,7 @@ export default function Campaigns() {
             </div>
             <Button
               onClick={() => setIsCreateOpen(true)}
-              className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
             >
               <Plus className="w-4 h-4 mr-2" /> New Campaign
             </Button>
@@ -276,7 +276,7 @@ export default function Campaigns() {
                       <td className="px-6 py-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -385,11 +385,11 @@ function CampaignFormDialog({
     onSubmit(payload);
   };
 
-  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm";
+  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-white sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {mode === "create" ? "New Campaign" : "Edit Campaign"}
@@ -451,7 +451,7 @@ function CampaignFormDialog({
           <div className="space-y-2">
             <Label>Description</Label>
             <textarea
-              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm resize-none h-20"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm resize-none h-20"
               value={form.description}
               onChange={f("description")}
               placeholder="Campaign objective and notes..."
@@ -460,7 +460,7 @@ function CampaignFormDialog({
           <div className="space-y-2">
             <Label>Target Audience</Label>
             <textarea
-              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-white text-sm resize-none h-16"
+              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm resize-none h-16"
               value={form.targetAudience}
               onChange={f("targetAudience")}
               placeholder="e.g. B2B decision-makers, VP Sales, 50-500 employee companies"

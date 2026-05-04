@@ -235,7 +235,7 @@ export default function CampaignDetail() {
         {/* Back */}
         <div>
           <Link href="/campaigns">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-3 hover:text-white">
+            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-3 hover:text-foreground">
               <ArrowLeft className="w-4 h-4" /> Back to Campaigns
             </Button>
           </Link>
@@ -296,14 +296,14 @@ export default function CampaignDetail() {
                       </Button>
                     )}
                     {["active", "paused"].includes(campaign.status) && (
-                      <Button size="sm" variant="outline" className="gap-1.5 border-border text-muted-foreground hover:text-white" onClick={() => statusMutation.mutate("completed")}>
+                      <Button size="sm" variant="outline" className="gap-1.5 border-border text-muted-foreground hover:text-foreground" onClick={() => statusMutation.mutate("completed")}>
                         <CheckCircle2 className="w-3.5 h-3.5" /> Mark Complete
                       </Button>
                     )}
                     <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEditOpen(true)}>
                       <Pencil className="w-3.5 h-3.5" /> Edit
                     </Button>
-                    <Button size="sm" variant="outline" className="gap-1.5 border-border text-muted-foreground hover:text-white" onClick={() => duplicateMutation.mutate()} disabled={duplicateMutation.isPending}>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-border text-muted-foreground hover:text-foreground" onClick={() => duplicateMutation.mutate()} disabled={duplicateMutation.isPending}>
                       <Copy className="w-3.5 h-3.5" /> Duplicate
                     </Button>
                     <Button size="sm" variant="outline" className="gap-1.5 border-red-500/30 text-red-600 hover:bg-red-500/10" onClick={() => setIsDeleteOpen(true)}>
@@ -349,7 +349,7 @@ export default function CampaignDetail() {
           </Card>
           <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Target className="w-3 h-3" /> ROI (Projected)</p>
-            <p className={cn("text-xl font-bold", roi && parseInt(roi) > 0 ? "text-emerald-600" : roi && parseInt(roi) < 0 ? "text-rose-600" : "text-white")}>
+            <p className={cn("text-xl font-bold", roi && parseInt(roi) > 0 ? "text-emerald-600" : roi && parseInt(roi) < 0 ? "text-rose-600" : "text-foreground")}>
               {roi ? `${roi}%` : "—"}
             </p>
           </Card>
@@ -367,7 +367,7 @@ export default function CampaignDetail() {
               onClick={() => setActiveTab(tab.id)}
               className={cn(
                 "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
-                activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-white"
+                activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               {tab.label}
@@ -471,7 +471,7 @@ export default function CampaignDetail() {
                 {/* Target Segment */}
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Target Audience Segment</p>
-                  <p className="text-sm text-white leading-relaxed">
+                  <p className="text-sm text-foreground leading-relaxed">
                     {campaign.targetAudience ?? "B2B decision-makers in SaaS / Technology companies with 50–500 employees. Primarily VPs and Directors of Sales and Revenue Operations."}
                   </p>
                 </div>
@@ -578,7 +578,7 @@ export default function CampaignDetail() {
                   {["Proposal Template", "Quote Template", "Follow-up Email", "NDA Template", "Campaign Brief"].map((doc) => (
                     <button key={doc} className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border border-border hover:border-primary/30 hover:bg-primary/5 transition-all text-left">
                       <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground hover:text-white transition-colors">{doc}</span>
+                      <span className="text-xs text-muted-foreground hover:text-foreground transition-colors">{doc}</span>
                     </button>
                   ))}
                 </div>
@@ -660,7 +660,7 @@ export default function CampaignDetail() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
               <AlertDialogDescription className="text-muted-foreground">
-                This will permanently delete <strong className="text-white">{campaign.name}</strong>. This action cannot be undone.
+                This will permanently delete <strong className="text-foreground">{campaign.name}</strong>. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -740,11 +740,11 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
 
   const f = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [field]: e.target.value });
-  const sc = "w-full h-9 px-3 rounded-md bg-muted border border-border text-white text-sm";
+  const sc = "w-full h-9 px-3 rounded-md bg-muted border border-border text-foreground text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-white sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[620px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Edit Campaign</DialogTitle>
         </DialogHeader>
@@ -783,12 +783,12 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
 
           {/* Description */}
           <div className="space-y-1.5"><Label className="text-xs">Description</Label>
-            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-white text-sm min-h-[70px] resize-none" value={form.description} onChange={f("description")} />
+            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-foreground text-sm min-h-[70px] resize-none" value={form.description} onChange={f("description")} />
           </div>
 
           {/* Audience */}
           <div className="space-y-1.5"><Label className="text-xs">Target Audience</Label>
-            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-white text-sm min-h-[60px] resize-none"
+            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-foreground text-sm min-h-[60px] resize-none"
               placeholder="e.g. B2B decision-makers in SaaS companies, 50-500 employees" value={form.targetAudience} onChange={f("targetAudience")} />
           </div>
 

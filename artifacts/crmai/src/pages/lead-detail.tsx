@@ -380,7 +380,7 @@ export default function LeadDetail() {
           {/* Name + actions row */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+              <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold flex-shrink-0">
                 {initials}
               </div>
               <div>
@@ -474,7 +474,7 @@ export default function LeadDetail() {
               <div className="flex gap-2">
                 <Button
                   size="sm"
-                  className={cn("text-xs text-white", acceptRejectMode === "accept" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700")}
+                  className={cn("text-xs text-primary-foreground", acceptRejectMode === "accept" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700")}
                   onClick={() => void handleAcceptReject()}
                   disabled={updateMutation.isPending}
                 >
@@ -507,7 +507,7 @@ export default function LeadDetail() {
                         isFirst ? "rounded-l-sm" : "",
                         isLast ? "rounded-r-sm" : "",
                         isCurrent
-                          ? "bg-primary border-primary text-white z-10"
+                          ? "bg-primary border-primary text-primary-foreground z-10"
                           : isCompleted
                           ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
                           : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/60"
@@ -537,7 +537,7 @@ export default function LeadDetail() {
               {advanceStageIdx >= 0 && advanceStageIdx < ADVANCE_STAGES.length - 1 && (
                 <Button
                   size="sm"
-                  className="ml-2 h-8 text-xs bg-primary hover:bg-primary/90 text-white flex-shrink-0"
+                  className="ml-2 h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0"
                   onClick={handleMarkComplete}
                   disabled={updateMutation.isPending}
                 >
@@ -722,7 +722,7 @@ export default function LeadDetail() {
                           className={cn(
                             "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
                             activityType === key
-                              ? "bg-primary text-white"
+                              ? "bg-primary text-primary-foreground"
                               : "bg-muted/50 text-muted-foreground hover:bg-muted"
                           )}
                         >
@@ -738,7 +738,7 @@ export default function LeadDetail() {
                         onChange={(e) => setNewNote(e.target.value)}
                         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleAddActivity(); } }}
                       />
-                      <Button size="sm" className="h-10 text-xs bg-primary text-white hover:bg-primary/90" onClick={() => void handleAddActivity()} disabled={isAddingNote || !newNote.trim()}>
+                      <Button size="sm" className="h-10 text-xs bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => void handleAddActivity()} disabled={isAddingNote || !newNote.trim()}>
                         <Plus className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -802,7 +802,7 @@ export default function LeadDetail() {
                       {linkedContacts.map((contact) => (
                         <Link key={contact.id} href={`/contacts/${contact.id}`}>
                           <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
-                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold flex-shrink-0">
                               {contact.firstName?.[0] ?? ""}{contact.lastName?.[0] ?? ""}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -824,7 +824,7 @@ export default function LeadDetail() {
                   ) : lead.convertedContactId && convertedContactData ? (
                     <Link href={`/contacts/${lead.convertedContactId}`}>
                       <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
-                        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold flex-shrink-0">
                           {convertedContactData.firstName?.[0] ?? ""}{convertedContactData.lastName?.[0] ?? ""}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -1144,7 +1144,7 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
             size="sm"
             onClick={handleSubmit}
             disabled={isPending || (accountMode === "existing" && !existingAccountId) || (contactMode === "existing" && selectedContactIds.length === 0)}
-            className="bg-primary hover:bg-primary/90 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {isPending ? "Converting..." : "Convert Lead"}
           </Button>
@@ -1336,7 +1336,7 @@ function LeadEditDialog({ open, onOpenChange, lead, onSaved }: {
           </div>
           <DialogFooter className="pt-3 border-t border-border gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" size="sm" disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-white">
+            <Button type="submit" size="sm" disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

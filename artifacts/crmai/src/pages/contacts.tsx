@@ -67,7 +67,7 @@ export default function Contacts() {
             </div>
             <Button
               onClick={() => setIsCreateOpen(true)}
-              className="bg-primary hover:bg-primary/90 text-white hover:shadow-primary/40 hover:-translate-y-0.5 transition-all"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-primary/40 hover:-translate-y-0.5 transition-all"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Contact

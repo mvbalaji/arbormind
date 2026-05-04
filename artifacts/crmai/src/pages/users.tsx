@@ -247,7 +247,7 @@ export default function Users() {
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
                 activeTab === tab.id
-                  ? "bg-primary text-white shadow-lg shadow-primary/20"
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -653,7 +653,7 @@ export default function Users() {
             {/* Save Button */}
             <div className="flex justify-end">
               <Button
-                className="rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-white px-8"
+                className="rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-primary-foreground px-8"
                 onClick={() => void handleSaveMailSettings()}
                 disabled={mailSaving}
               >
@@ -710,7 +710,7 @@ export default function Users() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 text-white hover:bg-red-700" onClick={() => removeId && void handleRemoveUser(removeId)}>
+            <AlertDialogAction className="bg-red-600 text-destructive-foreground hover:bg-red-700" onClick={() => removeId && void handleRemoveUser(removeId)}>
               Revoke
             </AlertDialogAction>
           </AlertDialogFooter>

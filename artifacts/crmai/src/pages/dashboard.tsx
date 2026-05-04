@@ -162,7 +162,7 @@ export default function Dashboard() {
               </Button>
             </Link>
             <Link href="/opportunities">
-              <Button size="sm" className="bg-primary hover:bg-primary/90 text-white gap-1.5 shadow-lg shadow-primary/20">
+              <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 shadow-lg shadow-primary/20">
                 <Briefcase className="w-4 h-4" /> View Opportunities
               </Button>
             </Link>
@@ -342,7 +342,7 @@ export default function Dashboard() {
                     return (
                       <Link key={lead.id} href={`/leads/${lead.id}`}>
                         <div className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/70 to-accent/70 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/70 to-accent/70 flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
                             {initials}
                           </div>
                           <div className="flex-1 min-w-0">

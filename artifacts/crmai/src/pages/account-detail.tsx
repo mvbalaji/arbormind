@@ -256,7 +256,7 @@ export default function AccountDetail() {
           <Card className="glass-panel border-border">
             <CardContent className="p-5">
               <div className="flex flex-col sm:flex-row items-start gap-5">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/40 to-violet-500/40 border border-border flex items-center justify-center text-2xl font-bold text-white shrink-0">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/40 to-violet-500/40 border border-border flex items-center justify-center text-2xl font-bold text-foreground shrink-0">
                   {account.name[0]?.toUpperCase()}
                 </div>
 
@@ -368,7 +368,7 @@ export default function AccountDetail() {
                   <Link key={contact.id} href={`/contacts/${contact.id}`}>
                     <Card className="glass-panel border-border hover:border-primary/30 transition-all cursor-pointer group p-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/70 to-accent/70 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/70 to-accent/70 flex items-center justify-center text-primary-foreground text-sm font-bold shrink-0">
                           {initials}
                         </div>
                         <div className="flex-1 min-w-0">

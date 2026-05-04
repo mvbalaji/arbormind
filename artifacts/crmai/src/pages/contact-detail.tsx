@@ -144,7 +144,7 @@ export default function ContactDetail() {
 
           <Card className="glass-panel border-border p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-primary/20">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground text-2xl font-bold shadow-lg shadow-primary/20">
                 {initials}
               </div>
               <div className="flex-1">
