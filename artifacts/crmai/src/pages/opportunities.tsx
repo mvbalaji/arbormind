@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   useListOpportunities,
   useUpdateOpportunity,
   useCreateOpportunity,
+  useDeleteOpportunity,
   useListAccounts,
   useListUsers,
   getListOpportunitiesQueryKey,
@@ -16,8 +17,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, DollarSign, Calendar, ExternalLink, Briefcase, List, LayoutGrid, ArrowUpDown, User } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  Plus,
+  Calendar,
+  ExternalLink,
+  Briefcase,
+  List,
+  LayoutGrid,
+  ArrowUpDown,
+  Search,
+  Pencil,
+  MoreHorizontal,
+  ChevronDown,
+  Trash2,
+  Eye,
+} from "lucide-react";
 import { Link } from "wouter";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
@@ -35,12 +58,21 @@ const STAGES = [
 ];
 
 const STAGE_BADGE_COLORS: Record<string, string> = {
-  prospecting: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-  qualification: "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800",
-  proposal: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 border-purple-200 dark:border-purple-800",
-  negotiation: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300 border-orange-200 dark:border-orange-800",
-  closed_won: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300 border-green-200 dark:border-green-800",
-  closed_lost: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 border-red-200 dark:border-red-800",
+  prospecting: "bg-teal-500 text-white border-teal-500",
+  qualification: "bg-amber-500 text-white border-amber-500",
+  proposal: "bg-purple-500 text-white border-purple-500",
+  negotiation: "bg-blue-600 text-white border-blue-600",
+  closed_won: "bg-emerald-600 text-white border-emerald-600",
+  closed_lost: "bg-red-500 text-white border-red-500",
+};
+
+const STATUS_FROM_STAGE: Record<string, { label: string; cls: string }> = {
+  prospecting: { label: "Initial Contact", cls: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700" },
+  qualification: { label: "Qualified", cls: "bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600" },
+  proposal: { label: "Proposal Sent", cls: "bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600" },
+  negotiation: { label: "In Progress", cls: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-700" },
+  closed_won: { label: "Won", cls: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300 dark:border-green-700" },
+  closed_lost: { label: "Lost", cls: "bg-red-100 text-red-600 border-red-300 dark:bg-red-950 dark:text-red-300 dark:border-red-700" },
 };
 
 const VALID_STAGES = new Set(STAGES.map((s) => s.id));
@@ -71,12 +103,16 @@ type ViewMode = "list" | "kanban";
 export default function Opportunities() {
   const { data, isLoading } = useListOpportunities({ limit: 200 });
   const updateMutation = useUpdateOpportunity();
+  const deleteMutation = useDeleteOpportunity();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [columns, setColumns] = useState<Record<string, Opportunity[]>>({});
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortField, setSortField] = useState<string>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (data?.data) {
@@ -112,29 +148,97 @@ export default function Opportunities() {
   };
 
   const allOpps = data?.data ?? [];
-  const sortedOpps = [...allOpps].sort((a, b) => {
-    let cmp = 0;
-    switch (sortField) {
-      case "name": cmp = (a.name ?? "").localeCompare(b.name ?? ""); break;
-      case "account": cmp = (a.accountName ?? "").localeCompare(b.accountName ?? ""); break;
-      case "amount": cmp = (Number(a.amount) || 0) - (Number(b.amount) || 0); break;
-      case "stage": cmp = (a.stage ?? "").localeCompare(b.stage ?? ""); break;
-      case "closeDate": cmp = (a.closeDate ? new Date(a.closeDate).getTime() : 0) - (b.closeDate ? new Date(b.closeDate).getTime() : 0); break;
-      case "probability": cmp = (a.probability ?? 0) - (b.probability ?? 0); break;
-      default: cmp = 0;
-    }
-    return sortDir === "asc" ? cmp : -cmp;
-  });
+
+  const filteredOpps = useMemo(() => {
+    if (!searchQuery.trim()) return allOpps;
+    const q = searchQuery.toLowerCase();
+    return allOpps.filter(
+      (opp) =>
+        (opp.name ?? "").toLowerCase().includes(q) ||
+        (opp.accountName ?? "").toLowerCase().includes(q) ||
+        (opp.stage ?? "").toLowerCase().includes(q) ||
+        (opp.assignedToName ?? "").toLowerCase().includes(q)
+    );
+  }, [allOpps, searchQuery]);
+
+  const sortedOpps = useMemo(() => {
+    return [...filteredOpps].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "name": cmp = (a.name ?? "").localeCompare(b.name ?? ""); break;
+        case "account": cmp = (a.accountName ?? "").localeCompare(b.accountName ?? ""); break;
+        case "amount": cmp = (Number(a.amount) || 0) - (Number(b.amount) || 0); break;
+        case "stage": cmp = (a.stage ?? "").localeCompare(b.stage ?? ""); break;
+        case "closeDate": cmp = (a.closeDate ? new Date(a.closeDate).getTime() : 0) - (b.closeDate ? new Date(b.closeDate).getTime() : 0); break;
+        case "probability": cmp = (a.probability ?? 0) - (b.probability ?? 0); break;
+        default: cmp = 0;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredOpps, sortField, sortDir]);
 
   const toggleSort = (field: string) => {
     if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortField(field); setSortDir("asc"); }
   };
 
+  const visibleIds = useMemo(() => new Set(sortedOpps.map((o) => o.id)), [sortedOpps]);
+  const visibleSelectedCount = useMemo(() => {
+    let count = 0;
+    for (const id of selectedIds) { if (visibleIds.has(id)) count++; }
+    return count;
+  }, [selectedIds, visibleIds]);
+  const allVisibleSelected = visibleIds.size > 0 && visibleSelectedCount === visibleIds.size;
+  const someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
+
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of visibleIds) next.delete(id);
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of visibleIds) next.add(id);
+        return next;
+      });
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleDelete = (id: number, name: string) => {
+    if (!window.confirm(`Delete opportunity "${name}"? This cannot be undone.`)) return;
+    deleteMutation.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          toast({ title: "Deleted", description: `"${name}" has been removed.` });
+          queryClient.invalidateQueries({ queryKey: getListOpportunitiesQueryKey() });
+          setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+        },
+        onError: () => toast({ title: "Error", description: "Failed to delete opportunity.", variant: "destructive" }),
+      }
+    );
+  };
+
   const SortHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
-    <button onClick={() => toggleSort(field)} className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+    <button
+      onClick={() => toggleSort(field)}
+      aria-sort={sortField === field ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+      className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold hover:bg-white/30 transition-colors whitespace-nowrap"
+    >
       {children}
-      <ArrowUpDown className={cn("w-3 h-3", sortField === field ? "text-primary" : "text-muted-foreground/40")} />
+      <ArrowUpDown className={cn("w-3 h-3", sortField === field ? "opacity-100" : "opacity-40")} />
     </button>
   );
 
@@ -144,41 +248,57 @@ export default function Opportunities() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10">
-              <Briefcase className="w-5 h-5 text-primary" />
+              <Briefcase className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">Opportunities</h1>
-              <p className="text-muted-foreground text-sm">
-                {viewMode === "kanban" ? "Drag and drop deals across stages" : `${allOpps.length} opportunities`}
-              </p>
+              <h1 className="text-xl font-display font-bold text-foreground tracking-tight">Opportunities</h1>
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                All Opportunities
+                <ChevronDown className="w-3.5 h-3.5" />
+              </div>
             </div>
           </div>
+
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search this list..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 w-48 text-sm bg-card border-border"
+              />
+            </div>
+
             <div className="flex items-center border border-border rounded-lg overflow-hidden">
               <button
                 onClick={() => setViewMode("list")}
+                aria-label="List view"
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors",
-                  viewMode === "list" ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  viewMode === "list" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"
                 )}
               >
-                <List className="w-3.5 h-3.5" /> List
+                <List className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setViewMode("kanban")}
+                aria-label="Kanban view"
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors",
-                  viewMode === "kanban" ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  viewMode === "kanban" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"
                 )}
               >
-                <LayoutGrid className="w-3.5 h-3.5" /> Kanban
+                <LayoutGrid className="w-3.5 h-3.5" />
               </button>
             </div>
+
             <Button
+              size="sm"
               onClick={() => setIsCreateOpen(true)}
-              className="bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 h-8"
             >
-              <Plus className="w-4 h-4 mr-2" /> New Opportunity
+              New
             </Button>
           </div>
         </div>
@@ -192,67 +312,134 @@ export default function Opportunities() {
             ))}
           </div>
         ) : viewMode === "list" ? (
-          <Card className="border-border overflow-hidden">
+          <Card className="border-border overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="text-left px-4 py-3"><SortHeader field="name">Opportunity Name</SortHeader></th>
-                    <th className="text-left px-4 py-3 hidden md:table-cell"><SortHeader field="account">Account</SortHeader></th>
-                    <th className="text-left px-4 py-3"><SortHeader field="stage">Stage</SortHeader></th>
-                    <th className="text-right px-4 py-3"><SortHeader field="amount">Amount</SortHeader></th>
-                    <th className="text-left px-4 py-3 hidden lg:table-cell"><SortHeader field="closeDate">Close Date</SortHeader></th>
-                    <th className="text-right px-4 py-3 hidden lg:table-cell"><SortHeader field="probability">Probability</SortHeader></th>
-                    <th className="text-left px-4 py-3 hidden xl:table-cell">Owner</th>
+                  <tr className="bg-[hsl(207,97%,42%)] dark:bg-[hsl(207,97%,32%)]">
+                    <th className="w-10 px-3 py-2.5">
+                      <Checkbox
+                        checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all opportunities"
+                        className="border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-primary data-[state=indeterminate]:bg-white/70 data-[state=indeterminate]:text-primary"
+                      />
+                    </th>
+                    <th className="text-left px-3 py-2.5"><SortHeader field="name">Opportunity</SortHeader></th>
+                    <th className="text-left px-3 py-2.5"><SortHeader field="account">Account</SortHeader></th>
+                    <th className="text-left px-3 py-2.5"><SortHeader field="stage">Stage</SortHeader></th>
+                    <th className="text-left px-3 py-2.5"><SortHeader field="amount">Value</SortHeader></th>
+                    <th className="text-left px-3 py-2.5"><SortHeader field="closeDate">Close Date</SortHeader></th>
+                    <th className="text-left px-3 py-2.5">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold whitespace-nowrap">Owner</span>
+                    </th>
+                    <th className="text-left px-3 py-2.5">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold whitespace-nowrap">Status</span>
+                    </th>
+                    <th className="text-center px-3 py-2.5">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold whitespace-nowrap">Actions</span>
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-border bg-card">
                   {sortedOpps.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-12 text-muted-foreground">
-                        No opportunities yet. Create your first one!
+                      <td colSpan={9} className="text-center py-12 text-muted-foreground">
+                        {searchQuery ? "No opportunities match your search." : "No opportunities yet. Create your first one!"}
                       </td>
                     </tr>
                   ) : (
-                    sortedOpps.map((opp) => (
-                      <tr key={opp.id} className="hover:bg-muted/30 transition-colors group">
-                        <td className="px-4 py-3">
-                          <Link href={`/opportunities/${opp.id}`}>
-                            <span className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
-                              <Briefcase className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                              {opp.name}
+                    sortedOpps.map((opp) => {
+                      const status = (opp as any).forecastCategory
+                        ? { label: (opp as any).forecastCategory, cls: "bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600" }
+                        : STATUS_FROM_STAGE[opp.stage] ?? { label: "Open", cls: "bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600" };
+
+                      return (
+                        <tr key={opp.id} className="hover:bg-muted/30 transition-colors group">
+                          <td className="w-10 px-3 py-3">
+                            <Checkbox
+                              checked={selectedIds.has(opp.id)}
+                              onCheckedChange={() => toggleSelect(opp.id)}
+                              aria-label={`Select ${opp.name}`}
+                            />
+                          </td>
+                          <td className="px-3 py-3">
+                            <Link href={`/opportunities/${opp.id}`}>
+                              <span className="font-medium text-foreground hover:text-primary hover:underline transition-colors cursor-pointer">
+                                {opp.name}
+                              </span>
+                            </Link>
+                          </td>
+                          <td className="px-3 py-3 text-foreground">
+                            {opp.accountName ?? "—"}
+                          </td>
+                          <td className="px-3 py-3">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-xs font-semibold border rounded-md px-2.5 py-0.5",
+                                STAGE_BADGE_COLORS[opp.stage] ?? "bg-gray-500 text-white border-gray-500"
+                              )}
+                            >
+                              {STAGES.find(s => s.id === opp.stage)?.label ?? opp.stage}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-3 font-semibold text-foreground">
+                            £{(Number(opp.amount) || 0).toLocaleString()}
+                          </td>
+                          <td className="px-3 py-3 text-foreground">
+                            {opp.closeDate ? format(new Date(opp.closeDate), "dd MMM yyyy") : "—"}
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="inline-flex items-center gap-1 text-foreground text-sm">
+                              {opp.assignedToName ?? "Unassigned"}
+                              <ChevronDown className="w-3 h-3 text-muted-foreground" />
                             </span>
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3 hidden md:table-cell text-muted-foreground">
-                          {opp.accountName ?? "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline" className={cn("capitalize text-xs", STAGE_BADGE_COLORS[opp.stage] ?? "")}>
-                            {STAGES.find(s => s.id === opp.stage)?.label ?? opp.stage}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-right font-semibold text-foreground">
-                          ${(Number(opp.amount) || 0).toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">
-                          {opp.closeDate ? format(new Date(opp.closeDate), "MMM d, yyyy") : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right hidden lg:table-cell">
-                          {opp.probability != null ? (
-                            <span className={cn(
-                              "text-xs font-semibold",
-                              opp.probability >= 75 ? "text-green-600" : opp.probability >= 50 ? "text-orange-600" : "text-muted-foreground"
-                            )}>
-                              {opp.probability}%
-                            </span>
-                          ) : "—"}
-                        </td>
-                        <td className="px-4 py-3 hidden xl:table-cell text-muted-foreground text-xs">
-                          {opp.assignedToName ?? "Unassigned"}
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                          <td className="px-3 py-3">
+                            <Badge
+                              variant="outline"
+                              className={cn("text-xs font-medium rounded-md px-2.5 py-0.5", status.cls)}
+                            >
+                              {status.label}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <Link href={`/opportunities/${opp.id}`}>
+                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                  Edit
+                                </Button>
+                              </Link>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" aria-label={`More actions for ${opp.name}`}>
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40">
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/opportunities/${opp.id}`} className="flex items-center gap-2 cursor-pointer">
+                                      <Eye className="w-4 h-4" />
+                                      View Details
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive cursor-pointer"
+                                    onClick={() => handleDelete(opp.id, opp.name)}
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -277,7 +464,7 @@ export default function Opportunities() {
                           </span>
                         </div>
                         <div className="text-xs font-medium text-muted-foreground">
-                          ${(totalValue / 1000).toFixed(1)}k
+                          £{(totalValue / 1000).toFixed(1)}k
                         </div>
                       </div>
 
@@ -316,8 +503,7 @@ export default function Opportunities() {
                                     </div>
                                     <div className="flex justify-between items-center mt-auto pt-2 border-t border-border">
                                       <div className="flex items-center text-primary font-semibold text-sm">
-                                        <DollarSign className="w-3.5 h-3.5 mr-0.5" />
-                                        {(Number(opp.amount) || 0).toLocaleString()}
+                                        £{(Number(opp.amount) || 0).toLocaleString()}
                                       </div>
                                       <div className="flex items-center text-xs text-muted-foreground">
                                         <Calendar className="w-3 h-3 mr-1" />
@@ -432,7 +618,7 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Amount ($)</Label>
+              <Label>Amount (£)</Label>
               <Input type="number" min="0" className="bg-muted border-border" value={form.amount} onChange={f("amount")} placeholder="0" />
             </div>
             <div className="space-y-2">
@@ -463,7 +649,7 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
-            <Button type="submit" disabled={createMutation.isPending} className="bg-gradient-to-r from-primary to-accent text-white">
+            <Button type="submit" disabled={createMutation.isPending} className="bg-primary text-primary-foreground hover:bg-primary/90">
               {createMutation.isPending ? "Creating..." : "Create Opportunity"}
             </Button>
           </DialogFooter>
