@@ -20,11 +20,12 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Plus, MoreHorizontal, Pencil, Trash2, X, Package, Download } from "lucide-react";
+import { FileText, Plus, MoreHorizontal, Pencil, Trash2, X, Package, Download, ChevronUp, ChevronDown, Settings, RefreshCw, ArrowUpDown, Filter, Search } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { AISummary } from "@/components/ai-summary";
+import { formatDistanceToNow } from "date-fns";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "border-border text-muted-foreground",
@@ -320,14 +321,26 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
   );
 }
 
+type SortField = "quoteNumber" | "name" | "validUntil" | "subtotal" | "total";
+type SortDir = "asc" | "desc";
+
 export default function Quotes() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<({ id: number } & QuoteFormData) | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const { data, isLoading } = useListQuotes();
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
+  const { data, isLoading, refetch, isFetching } = useListQuotes();
   const deleteMutation = useDeleteQuote();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (data) setUpdatedAt(new Date());
+  }, [data]);
 
   const handleDelete = async () => {
     if (deletingId === null) return;
@@ -342,124 +355,318 @@ export default function Quotes() {
     }
   };
 
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  };
+
+  const allQuotes = data?.data ?? [];
+
+  const filteredQuotes = React.useMemo(() => {
+    if (!searchQuery.trim()) return allQuotes;
+    const q = searchQuery.toLowerCase();
+    return allQuotes.filter((quote) =>
+      (quote.name ?? "").toLowerCase().includes(q) ||
+      (quote.quoteNumber ?? "").toLowerCase().includes(q) ||
+      (quote.opportunityName ?? "").toLowerCase().includes(q)
+    );
+  }, [allQuotes, searchQuery]);
+
+  const sortedQuotes = React.useMemo(() => {
+    return [...filteredQuotes].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "quoteNumber":
+          cmp = (a.quoteNumber ?? "").localeCompare(b.quoteNumber ?? "");
+          break;
+        case "name":
+          cmp = (a.name ?? "").localeCompare(b.name ?? "");
+          break;
+        case "validUntil":
+          cmp = (a.validUntil ? new Date(a.validUntil).getTime() : 0) - (b.validUntil ? new Date(b.validUntil).getTime() : 0);
+          break;
+        case "subtotal":
+          cmp = (Number(a.subtotal) || 0) - (Number(b.subtotal) || 0);
+          break;
+        case "total":
+          cmp = (Number(a.total) || 0) - (Number(b.total) || 0);
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredQuotes, sortField, sortDir]);
+
+  const allSelected = sortedQuotes.length > 0 && sortedQuotes.every((q) => selectedIds.has(q.id));
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sortedQuotes.map((q) => q.id)));
+    }
+  };
+  const toggleSelectOne = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
+    return sortDir === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />;
+  };
+
+  const SortableHeader = ({ field, label, align = "left" }: { field: SortField; label: string; align?: "left" | "right" }) => (
+    <th className={`px-3 py-2.5 font-medium text-foreground border-r border-border last:border-r-0 ${align === "right" ? "text-right" : "text-left"}`}>
+      <button
+        onClick={() => toggleSort(field)}
+        className={`inline-flex items-center gap-1 hover:text-primary transition-colors ${align === "right" ? "flex-row-reverse" : ""}`}
+      >
+        <span>{label}</span>
+        <SortIcon field={field} />
+      </button>
+    </th>
+  );
+
+  const itemCount = sortedQuotes.length;
+  const updatedAgo = formatDistanceToNow(updatedAt, { addSuffix: true });
+  const sortLabel = ({ quoteNumber: "Quote Number", name: "Quote Name", validUntil: "Expiration Date", subtotal: "Subtotal", total: "Total Price" } as const)[sortField];
+
   return (
     <Layout>
-      <div className="flex flex-col gap-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Quotes</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Manage pricing quotes sent to customers.</p>
+      <div className="flex flex-col gap-3">
+        {/* Breadcrumb */}
+        <div className="text-xs text-muted-foreground">
+          <Link href="/opportunities" className="hover:text-primary hover:underline">Opportunities</Link>
+          <span className="mx-1.5">›</span>
+          <span>All Quotes</span>
+        </div>
+
+        {/* Header bar */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-display font-bold text-foreground tracking-tight leading-tight">Quotes</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isLoading ? "Loading..." : `${itemCount} ${itemCount === 1 ? "item" : "items"}`}
+                {!isLoading && (
+                  <>
+                    {" "}• Sorted by <span className="font-medium">{sortLabel}</span> • Updated {updatedAgo}
+                  </>
+                )}
+              </p>
+            </div>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
-            <Plus className="w-4 h-4 mr-2" /> Create Quote
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search this list..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 pl-8 w-56 bg-card border-border"
+              />
+            </div>
+            <div className="flex items-center gap-1 border border-border rounded-md p-0.5 bg-card">
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="List settings">
+                <Settings className="w-3.5 h-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                title="Refresh"
+                onClick={() => { refetch(); }}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Sort">
+                <ArrowUpDown className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Filters">
+                <Filter className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateOpen(true)}
+              className="border-border text-foreground hover:bg-muted h-9"
+            >
+              New Quote
+            </Button>
+          </div>
         </div>
 
         <AISummary entityType="quotes" />
 
-        <Card className="glass-panel border-border">
+        {/* Table */}
+        <Card className="border-border overflow-hidden p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
+              <thead className="text-xs uppercase bg-muted/40 border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 font-medium">Quote</th>
-                  <th className="px-6 py-4 font-medium">Opportunity</th>
-                  <th className="px-6 py-4 font-medium text-right">Total</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Valid Until</th>
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+                  <th className="w-10 px-3 py-2.5 border-r border-border">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      aria-label="Select all quotes"
+                      className="rounded border-border cursor-pointer"
+                    />
+                  </th>
+                  <th className="w-10 px-2 py-2.5 text-muted-foreground font-medium text-center border-r border-border">#</th>
+                  <SortableHeader field="quoteNumber" label="Quote Number" />
+                  <SortableHeader field="name" label="Quote Name" />
+                  <th className="px-3 py-2.5 font-medium text-foreground border-r border-border">
+                    <span className="inline-flex items-center gap-1">Syncing <ChevronDown className="w-3 h-3 opacity-50" /></span>
+                  </th>
+                  <SortableHeader field="validUntil" label="Expiration Date" />
+                  <SortableHeader field="subtotal" label="Subtotal" align="right" />
+                  <SortableHeader field="total" label="Total Price" align="right" />
+                  <th className="px-3 py-2.5 font-medium text-foreground border-r border-border">Created By</th>
+                  <th className="w-10 px-2 py-2.5"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
-                ) : data?.data?.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
-                    <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    No quotes yet. Create your first quote.
-                  </td></tr>
-                ) : data?.data?.map(q => (
-                  <tr key={q.id} className="hover:bg-muted/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <Link href={`/quotes/${q.id}`} className="font-medium text-primary hover:underline cursor-pointer">
-                        {q.name}
-                      </Link>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground font-mono">{q.quoteNumber}</span>
-                        {q.version && q.version > 1 && (
-                          <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">v{q.version}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {q.opportunityName || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-right font-semibold text-foreground">
-                      ${q.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className={`capitalize ${STATUS_COLORS[q.status] ?? ""}`}>
-                        {q.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {q.validUntil ? format(new Date(q.validUntil), "MMM d, yyyy") : "-"}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
-                              window.open(`${baseUrl}/api/quotes/${q.id}/pdf`, "_blank");
-                            }}
-                            className="cursor-pointer hover:bg-muted"
-                          >
-                            <Download className="w-4 h-4 mr-2" /> Download PDF
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-muted" />
-                          <DropdownMenuItem
-                            onClick={() => setEditingQuote({
-                              id: q.id,
-                              name: q.name,
-                              status: q.status,
-                              validUntil: q.validUntil ?? "",
-                              discount: String(q.discount ?? 0),
-                              tax: String(q.tax ?? 0),
-                              notes: q.notes ?? "",
-                              items: (q.items ?? []).map((it: { productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }) => ({
-                                productId: it.productId ?? null,
-                                productName: it.productName,
-                                quantity: it.quantity,
-                                unitPrice: it.unitPrice,
-                                discount: it.discount ?? 0,
-                              })),
-                            })}
-                            className="cursor-pointer hover:bg-muted"
-                          >
-                            <Pencil className="w-4 h-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-muted" />
-                          <DropdownMenuItem
-                            onClick={() => setDeletingId(q.id)}
-                            className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                  <tr><td colSpan={10} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                ) : sortedQuotes.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="px-6 py-12 text-center text-muted-foreground">
+                      <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      {searchQuery ? "No quotes match your search." : "No quotes yet. Create your first quote."}
                     </td>
                   </tr>
-                ))}
+                ) : sortedQuotes.map((q, idx) => {
+                  const checked = selectedIds.has(q.id);
+                  const subtotal = Number(q.subtotal) || 0;
+                  const total = Number(q.total) || 0;
+                  return (
+                    <tr
+                      key={q.id}
+                      className={`group transition-colors ${checked ? "bg-primary/5" : "hover:bg-muted/40"}`}
+                    >
+                      <td className="px-3 py-2 border-r border-border">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSelectOne(q.id)}
+                          aria-label={`Select quote ${q.quoteNumber}`}
+                          className="rounded border-border cursor-pointer"
+                        />
+                      </td>
+                      <td className="px-2 py-2 text-center text-muted-foreground border-r border-border">{idx + 1}</td>
+                      <td className="px-3 py-2 border-r border-border">
+                        <Link href={`/quotes/${q.id}`} className="text-primary hover:underline font-mono text-sm">
+                          {q.quoteNumber}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2 border-r border-border">
+                        <Link href={`/quotes/${q.id}`} className="text-primary hover:underline">
+                          {q.name}
+                        </Link>
+                        {q.version && q.version > 1 && (
+                          <span className="ml-2 text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">v{q.version}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 border-r border-border">
+                        <span className="inline-block w-3.5 h-3.5 border border-border rounded-sm bg-background" aria-label="Not syncing" />
+                      </td>
+                      <td className="px-3 py-2 text-foreground border-r border-border">
+                        {q.validUntil ? format(new Date(q.validUntil), "M/d/yyyy") : "-"}
+                      </td>
+                      <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
+                        ₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
+                        ₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-3 py-2 border-r border-border">
+                        <Link href={`/quotes/${q.id}`} className="text-primary hover:underline">
+                          {q.opportunityName || "—"}
+                        </Link>
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground opacity-60 group-hover:opacity-100 transition-opacity"
+                              aria-label="Row actions"
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-card border-border text-foreground">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
+                                window.open(`${baseUrl}/api/quotes/${q.id}/pdf`, "_blank");
+                              }}
+                              className="cursor-pointer hover:bg-muted"
+                            >
+                              <Download className="w-4 h-4 mr-2" /> Download PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-muted" />
+                            <DropdownMenuItem
+                              onClick={() => setEditingQuote({
+                                id: q.id,
+                                name: q.name,
+                                status: q.status,
+                                validUntil: q.validUntil ?? "",
+                                discount: String(q.discount ?? 0),
+                                tax: String(q.tax ?? 0),
+                                notes: q.notes ?? "",
+                                items: (q.items ?? []).map((it: { productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }) => ({
+                                  productId: it.productId ?? null,
+                                  productName: it.productName,
+                                  quantity: it.quantity,
+                                  unitPrice: it.unitPrice,
+                                  discount: it.discount ?? 0,
+                                })),
+                              })}
+                              className="cursor-pointer hover:bg-muted"
+                            >
+                              <Pencil className="w-4 h-4 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-muted" />
+                            <DropdownMenuItem
+                              onClick={() => setDeletingId(q.id)}
+                              className="cursor-pointer text-destructive hover:bg-destructive/10 focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </Card>
+
+        {/* Status badge legend (subtle) */}
+        {sortedQuotes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground px-1">
+            <span>Status legend:</span>
+            {Object.entries(STATUS_COLORS).map(([s, cls]) => (
+              <Badge key={s} variant="outline" className={`capitalize text-[10px] py-0 ${cls}`}>{s}</Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       <QuoteFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} mode="create" />
