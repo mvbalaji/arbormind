@@ -408,27 +408,27 @@ export default function Landing() {
       <nav
         className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-12 py-5 border-b backdrop-blur-xl"
         style={{ 
-          borderColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
-          background: isDark ? "rgba(15,23,42,0.8)" : "rgba(255,255,255,0.8)"
+          borderColor: "rgba(255,255,255,0.08)",
+          background: "rgba(10,25,60,0.95)"
         }}
       >
         <div className="flex items-center gap-2.5">
           <div
             className="w-16 h-16 rounded-lg flex items-center justify-center overflow-hidden"
-            style={{ background: isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.05)" }}
+            style={{ background: "rgba(255,255,255,0.08)" }}
           >
             <img src="/arbormind-logo.png" alt="arbormind.in" className="w-14 h-14 object-cover" />
           </div>
-          <span className="font-bold text-2xl tracking-tight" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
+          <span className="font-bold text-2xl tracking-tight" style={{ color: "#ffffff" }}>
             arbormind.in
           </span>
         </div>
 
         <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm font-medium transition-colors" style={{ color: isDark ? "#94a3b8" : "#475569" }}>Features</a>
-          <a href="#dashboard" className="text-sm font-medium transition-colors" style={{ color: isDark ? "#94a3b8" : "#475569" }}>Dashboard</a>
-          <a href="#testimonials" className="text-sm font-medium transition-colors" style={{ color: isDark ? "#94a3b8" : "#475569" }}>Testimonials</a>
-          <a href="#pricing" className="text-sm font-medium transition-colors" style={{ color: isDark ? "#94a3b8" : "#475569" }}>Pricing</a>
+          <a href="#features" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>Features</a>
+          <a href="#dashboard" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>Dashboard</a>
+          <a href="#testimonials" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>Testimonials</a>
+          <a href="#pricing" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>Pricing</a>
         </div>
 
         <div className="flex items-center gap-3">
@@ -436,14 +436,14 @@ export default function Landing() {
             onClick={toggleTheme}
             className="w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:scale-105"
             style={{
-              background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
-              color: isDark ? "#94a3b8" : "#64748b",
+              background: "rgba(255,255,255,0.12)",
+              color: "#ffffff",
             }}
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          <Link href="/login" className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border" style={{ borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", color: isDark ? "#f1f5f9" : "#0f172a" }}>
+          <Link href="/login" className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border" style={{ borderColor: "rgba(255,255,255,0.25)", color: "#ffffff" }}>
             Log in
           </Link>
         </div>
