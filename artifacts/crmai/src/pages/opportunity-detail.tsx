@@ -18,6 +18,7 @@ import {
   ArrowLeft, ArrowRight, Pencil, DollarSign, Calendar, Activity, Building2,
   Phone, Mail, Users, Briefcase, Check, CheckCircle2, Clock, TrendingUp,
   FileText, Plus, Package, X, Printer, ShieldCheck,
+  Filter, RotateCw, ChevronDown, ChevronRight, PhoneCall, CalendarPlus, ListTodo,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +51,7 @@ interface RelatedActivity {
   status: string;
   dueDate: string | null;
   contactName: string | null;
+  notes?: string | null;
 }
 
 const STAGE_CONFIG: Record<string, { label: string; color: string; step: number }> = {
@@ -403,6 +405,10 @@ export default function OpportunityDetail() {
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [activitySubTab, setActivitySubTab] = useState<"call" | "email" | "task" | "event">("call");
+  const [recapText, setRecapText] = useState("");
+  const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -668,51 +674,226 @@ export default function OpportunityDetail() {
         </div>
 
         {/* Activities Tab */}
-        {activeTab === "activities" && (
-          <div className="flex flex-col gap-3">
-            {!activitiesData?.data.length ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                No activities logged for this deal yet.
+        {activeTab === "activities" && (() => {
+          const subTabs = [
+            { id: "call" as const, label: "Log a Call", icon: PhoneCall, placeholder: "Recap your call...", type: "call" as const, status: "completed" as const },
+            { id: "email" as const, label: "Email", icon: Mail, placeholder: "Compose a quick email summary...", type: "email" as const, status: "completed" as const },
+            { id: "task" as const, label: "New Task", icon: ListTodo, placeholder: "Describe the task...", type: "task" as const, status: "pending" as const },
+            { id: "event" as const, label: "New Event", icon: CalendarPlus, placeholder: "Describe the event...", type: "event" as const, status: "pending" as const },
+          ];
+          const current = subTabs.find((t) => t.id === activitySubTab) ?? subTabs[0];
+
+          const upcoming = (activitiesData?.data ?? []).filter((a) => a.status !== "completed" && a.status !== "cancelled");
+          const completed = (activitiesData?.data ?? []).filter((a) => a.status === "completed" || a.status === "cancelled");
+
+          const handleAdd = async () => {
+            const text = recapText.trim();
+            if (!text || !numericId) return;
+            setIsAddingActivity(true);
+            try {
+              const res = await fetch("/api/activities", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                  type: current.type,
+                  subject: text.length > 80 ? text.slice(0, 77) + "..." : text,
+                  notes: text,
+                  status: current.status,
+                  opportunityId: numericId,
+                }),
+              });
+              if (!res.ok) throw new Error("Failed");
+              setRecapText("");
+              queryClient.invalidateQueries({ queryKey: ["opportunity-activities", id] });
+              toastTop({ title: "Activity added", description: current.label });
+            } catch {
+              toastTop({ title: "Could not add activity", variant: "destructive" });
+            } finally {
+              setIsAddingActivity(false);
+            }
+          };
+
+          const toggleStep = (actId: number) => {
+            setExpandedSteps((prev) => {
+              const next = new Set(prev);
+              if (next.has(actId)) next.delete(actId); else next.add(actId);
+              return next;
+            });
+          };
+          const expandAll = () => {
+            const allIds = (activitiesData?.data ?? []).map((a) => a.id);
+            setExpandedSteps(expandedSteps.size === allIds.length ? new Set() : new Set(allIds));
+          };
+
+          return (
+            <div className="flex flex-col gap-4">
+              {/* Composer Card */}
+              <Card className="border-border overflow-hidden">
+                {/* Sub-tabs */}
+                <div className="flex border-b border-border bg-muted/30">
+                  {subTabs.map((t) => {
+                    const Icon = t.icon;
+                    const isActive = activitySubTab === t.id;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => setActivitySubTab(t.id)}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                          isActive
+                            ? "border-blue-600 text-blue-700 dark:text-blue-300 bg-card"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Recap input */}
+                <div className="p-3 flex items-stretch gap-2 bg-card">
+                  <Input
+                    value={recapText}
+                    onChange={(e) => setRecapText(e.target.value)}
+                    placeholder={current.placeholder}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleAdd(); } }}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={handleAdd}
+                    disabled={!recapText.trim() || isAddingActivity}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+                  >
+                    {isAddingActivity ? "Adding..." : "Add"}
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Activity Timeline Header */}
+              <div className="flex items-center justify-between border-b border-border pb-2">
+                <h3 className="text-sm font-semibold text-foreground">Activity Timeline</h3>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" aria-label="Filter activities" title="Filter">
+                    <Filter className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ["opportunity-activities", id] })}
+                    aria-label="Refresh activities"
+                    title="Refresh"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={expandAll}
+                    disabled={!activitiesData?.data.length}
+                  >
+                    {expandedSteps.size > 0 && expandedSteps.size === (activitiesData?.data.length ?? 0) ? "Collapse All" : "Expand All"}
+                  </Button>
+                </div>
               </div>
-            ) : (
-              activitiesData.data.map((act) => {
-                const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
-                return (
-                  <Card key={act.id} className="glass-panel border-border p-4 flex items-start gap-4">
-                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-foreground text-sm">{act.subject}</span>
-                        <Badge variant="outline" className={`capitalize text-xs ${
-                          act.status === "completed" ? "border-green-500/30 text-green-600" :
-                          act.status === "cancelled" ? "border-red-500/30 text-red-600" :
-                          "border-blue-500/30 text-blue-600"
-                        }`}>
-                          {act.status}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-muted-foreground capitalize">{act.type}</span>
-                        {act.dueDate && (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock className="w-3 h-3" />
-                            {format(new Date(act.dueDate), "MMM d, h:mm a")}
-                          </span>
-                        )}
-                        {act.contactName && (
-                          <span className="text-xs text-muted-foreground">· {act.contactName}</span>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })
-            )}
-          </div>
-        )}
+
+              {/* Next Steps section */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium text-foreground">Next Steps</h4>
+                  <Button variant="outline" size="sm" disabled className="h-7 px-2 text-xs">
+                    More Steps
+                  </Button>
+                </div>
+                {upcoming.length === 0 ? (
+                  <div className="text-xs text-muted-foreground italic px-1 py-2">No upcoming steps.</div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {upcoming.map((act) => {
+                      const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
+                      const isOpen = expandedSteps.has(act.id);
+                      return (
+                        <Card key={act.id} className="border-l-4 border-l-emerald-500 border-border">
+                          <button
+                            onClick={() => toggleStep(act.id)}
+                            className="w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors"
+                          >
+                            {isOpen ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+                            <div className="w-7 h-7 rounded bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center shrink-0">
+                              <Icon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-foreground text-sm truncate">{act.subject}</div>
+                              <div className="text-xs text-muted-foreground">You have an upcoming {act.type}</div>
+                            </div>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+                              {act.dueDate ? format(new Date(act.dueDate), "MMM d") : "Today"}
+                              <ChevronDown className="w-3 h-3" />
+                            </span>
+                          </button>
+                          {isOpen && (
+                            <div className="px-12 pb-3 text-xs text-muted-foreground border-t border-border/50 pt-2">
+                              {act.notes || "No additional details."}
+                              {act.contactName && (
+                                <div className="mt-1.5">Contact: <span className="text-foreground">{act.contactName}</span></div>
+                              )}
+                            </div>
+                          )}
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Past activity */}
+              {completed.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-foreground mb-2">Past Activity</h4>
+                  <div className="flex flex-col gap-2">
+                    {completed.map((act) => {
+                      const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
+                      return (
+                        <Card key={act.id} className="border-border p-3 flex items-start gap-3">
+                          <div className="w-7 h-7 rounded bg-muted flex items-center justify-center shrink-0">
+                            <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-medium text-foreground text-sm">{act.subject}</span>
+                              <span className="text-xs text-muted-foreground capitalize">{act.status}</span>
+                            </div>
+                            <div className="flex items-center gap-3 mt-0.5">
+                              <span className="text-xs text-muted-foreground capitalize">{act.type}</span>
+                              {act.dueDate && (
+                                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Clock className="w-3 h-3" />
+                                  {format(new Date(act.dueDate), "MMM d, h:mm a")}
+                                </span>
+                              )}
+                              {act.contactName && (
+                                <span className="text-xs text-muted-foreground">· {act.contactName}</span>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {!activitiesData?.data.length && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  No activities logged yet. Use the form above to add one.
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Contacts Tab */}
         {activeTab === "contacts" && (
