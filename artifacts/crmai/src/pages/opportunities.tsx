@@ -531,27 +531,28 @@ export default function Opportunities() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm bg-card">
                 <thead>
-                  <tr className="bg-card border-b border-border">
-                    <th className="w-10 px-3 py-2.5">
+                  <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800">
+                    <th className="w-10 px-3 py-3">
                       <Checkbox
                         checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
                         onCheckedChange={toggleSelectAll}
                         aria-label="Select all opportunities"
+                        className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
                       />
                     </th>
-                    <th className="text-left px-3 py-2.5"><SortHeader field="name">Opportunity</SortHeader></th>
-                    <th className="text-left px-3 py-2.5"><SortHeader field="account">Account</SortHeader></th>
-                    <th className="text-left px-3 py-2.5"><SortHeader field="stage">Stage</SortHeader></th>
-                    <th className="text-left px-3 py-2.5"><SortHeader field="amount">Value</SortHeader></th>
-                    <th className="text-left px-3 py-2.5"><SortHeader field="closeDate">Close Date</SortHeader></th>
-                    <th className="text-left px-3 py-2.5">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Owner</span>
+                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="name">Opportunity</SortHeader></th>
+                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="account">Account</SortHeader></th>
+                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="stage">Stage</SortHeader></th>
+                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="amount">Value</SortHeader></th>
+                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="closeDate">Close Date</SortHeader></th>
+                    <th className="text-left px-3 py-3">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</span>
                     </th>
-                    <th className="text-left px-3 py-2.5">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Status</span>
+                    <th className="text-left px-3 py-3">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</span>
                     </th>
-                    <th className="text-center px-3 py-2.5">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Actions</span>
+                    <th className="text-center px-3 py-3">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</span>
                     </th>
                   </tr>
                 </thead>

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useListQuotes, useCreateQuote, useListProducts, getListQuotesQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput } from "@workspace/api-client-react";
+import { useListQuotes, useCreateQuote, useListProducts, useUpdateOpportunity, getListQuotesQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { EntityApprovals } from "@/components/entity-approvals";
 import { useAuth } from "@/context/auth";
 import {
   ArrowLeft, ArrowRight, Pencil, DollarSign, Calendar, Activity, Building2,
-  Phone, Mail, Users, Briefcase, CheckCircle2, Clock, TrendingUp,
+  Phone, Mail, Users, Briefcase, Check, CheckCircle2, Clock, TrendingUp,
   FileText, Plus, Package, X, Printer, ShieldCheck,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -439,6 +439,27 @@ export default function OpportunityDetail() {
   const { data: quotesData } = useListQuotes(numericId ? { opportunityId: numericId } : undefined);
   const oppQuotes: OppQuote[] = (quotesData?.data ?? []) as OppQuote[];
 
+  const updateOppMutation = useUpdateOpportunity();
+  const { toast: toastTop } = useToast();
+  const advanceStage = () => {
+    if (!opp || !numericId) return;
+    const idx = STAGES_ORDERED.indexOf(opp.stage);
+    if (idx < 0 || idx >= STAGES_ORDERED.length - 1) return;
+    const nextStage = STAGES_ORDERED[idx + 1];
+    updateOppMutation.mutate(
+      { id: numericId, data: { stage: nextStage as Parameters<typeof updateOppMutation.mutate>[0]["data"]["stage"] } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["opportunity", id] });
+          queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+          queryClient.invalidateQueries({ queryKey: ["opportunity-activities", id] });
+          toastTop({ title: nextStage === "closed_won" ? "Marked as Won!" : "Stage advanced", description: `Now: ${STAGE_CONFIG[nextStage]?.label ?? nextStage}` });
+        },
+        onError: () => toastTop({ title: "Failed to update stage", variant: "destructive" }),
+      }
+    );
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -539,34 +560,66 @@ export default function OpportunityDetail() {
                 )}
               </div>
 
-              {/* Stage Pipeline Progress */}
-              {opp.stage !== "closed_lost" && (
-                <div>
-                  <div className="text-xs text-muted-foreground mb-2">Pipeline Progress</div>
-                  <div className="flex items-center gap-1">
-                    {STAGES_ORDERED.map((s, idx) => {
-                      const isActive = idx + 1 <= currentStep;
-                      const isCurrent = s === opp.stage;
-                      return (
-                        <React.Fragment key={s}>
-                          <div
-                            className={`flex-1 h-1.5 rounded-full transition-all ${
-                              isActive ? "bg-primary" : "bg-muted"
-                            } ${isCurrent ? "shadow-[0_0_8px_rgba(99,102,241,0.6)]" : ""}`}
-                          />
-                        </React.Fragment>
-                      );
-                    })}
+              {/* Stage Pipeline Progress — Salesforce-style chevrons */}
+              {opp.stage !== "closed_lost" && (() => {
+                const idx = STAGES_ORDERED.indexOf(opp.stage);
+                const isWon = opp.stage === "closed_won";
+                const nextStage = idx >= 0 && idx < STAGES_ORDERED.length - 1 ? STAGES_ORDERED[idx + 1] : null;
+                const isProposal = opp.stage === "proposal";
+                return (
+                  <div className="flex items-stretch gap-0 -mx-1">
+                    <ol
+                      role="list"
+                      aria-label="Opportunity stage progress"
+                      className="flex-1 flex items-stretch overflow-hidden rounded-md border border-border bg-muted/30 list-none p-0 m-0"
+                    >
+                      {STAGES_ORDERED.map((s, i) => {
+                        const done = i < idx;
+                        const current = i === idx;
+                        const isLast = i === STAGES_ORDERED.length - 1;
+                        const label = STAGE_CONFIG[s]?.label ?? s;
+                        const stateLabel = done ? "completed" : current ? "current" : "upcoming";
+                        return (
+                          <li
+                            key={s}
+                            role="listitem"
+                            aria-current={current ? "step" : undefined}
+                            aria-label={`${label} — ${stateLabel}`}
+                            className={`relative flex-1 flex items-center justify-center px-3 py-2 text-xs font-medium min-w-0 ${
+                              done ? "bg-emerald-500 text-white" :
+                              current ? (isProposal ? "bg-blue-700 text-white" : "bg-blue-600 text-white") :
+                              "bg-muted/50 text-muted-foreground"
+                            }`}
+                            style={!isLast ? { clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)" } : { clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)" }}
+                          >
+                            {done ? (
+                              <>
+                                <span aria-hidden="true" className="flex items-center justify-center w-5 h-5 rounded-full bg-white/20"><Check className="w-3.5 h-3.5" /></span>
+                                <span className="sr-only">{label}</span>
+                              </>
+                            ) : (
+                              <span className="truncate max-w-full">{label}</span>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                    <Button
+                      size="sm"
+                      onClick={advanceStage}
+                      disabled={isWon || updateOppMutation.isPending || !nextStage}
+                      className={`shrink-0 ml-2 gap-1.5 ${
+                        nextStage === "closed_won"
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                          : "bg-blue-600 hover:bg-blue-700 text-white"
+                      }`}
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      {isWon ? "Won" : nextStage === "closed_won" ? "Mark as Won" : "Mark Stage as Complete"}
+                    </Button>
                   </div>
-                  <div className="flex justify-between mt-1">
-                    {STAGES_ORDERED.map((s) => (
-                      <span key={s} className={`text-xs ${s === opp.stage ? "text-primary font-medium" : "text-muted-foreground/50"}`}>
-                        {STAGE_CONFIG[s]?.label.split(" ")[0]}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
@@ -576,7 +629,14 @@ export default function OpportunityDetail() {
                 <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEmailOpen(true)}>
                   <Mail className="w-3.5 h-3.5" /> Send Email
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => { setActiveTab("quotes"); setIsQuoteOpen(true); }}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-border"
+                  disabled={opp.stage !== "proposal"}
+                  title={opp.stage !== "proposal" ? "Create Quote is enabled when stage is Proposal/Price Quote" : "Create a new quote"}
+                  onClick={() => { setActiveTab("quotes"); setIsQuoteOpen(true); }}
+                >
                   <FileText className="w-3.5 h-3.5" /> Create Quote
                 </Button>
               </div>
@@ -704,7 +764,13 @@ export default function OpportunityDetail() {
         {activeTab === "quotes" && (
           <div className="flex flex-col gap-3">
             <div className="flex justify-end">
-              <Button size="sm" onClick={() => setIsQuoteOpen(true)} className="bg-primary text-foreground hover:bg-primary/90">
+              <Button
+                size="sm"
+                onClick={() => setIsQuoteOpen(true)}
+                disabled={opp.stage !== "proposal"}
+                title={opp.stage !== "proposal" ? "Create Quote is enabled when stage is Proposal/Price Quote" : "Create a new quote"}
+                className="bg-primary text-foreground hover:bg-primary/90"
+              >
                 <Plus className="w-4 h-4 mr-1.5" /> New Quote
               </Button>
             </div>
@@ -713,9 +779,21 @@ export default function OpportunityDetail() {
                 <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
                 No quotes for this opportunity yet.
                 <div className="mt-2">
-                  <Button variant="outline" size="sm" onClick={() => setIsQuoteOpen(true)} className="border-border text-sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsQuoteOpen(true)}
+                    disabled={opp.stage !== "proposal"}
+                    title={opp.stage !== "proposal" ? "Create Quote is enabled when stage is Proposal/Price Quote" : "Create a new quote"}
+                    className="border-border text-sm"
+                  >
                     Create first quote
                   </Button>
+                  {opp.stage !== "proposal" && (
+                    <div className="text-xs text-muted-foreground/70 mt-2">
+                      Quote creation is unlocked when the opportunity reaches the <span className="font-medium text-foreground">Proposal/Price Quote</span> stage.
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
