@@ -528,9 +528,9 @@ export default function Opportunities() {
           </div>
         ) : viewMode === "list" ? (
           <Card className="border-border overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[calc(100vh-260px)]">
               <table className="w-full text-sm bg-card">
-                <thead>
+                <thead className="sticky top-0 z-10">
                   <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800">
                     <th className="w-10 px-3 py-3">
                       <Checkbox

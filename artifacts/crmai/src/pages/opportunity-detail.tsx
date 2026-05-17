@@ -73,7 +73,7 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
   demo: Briefcase,
 };
 
-type Tab = "activities" | "quotes" | "contacts" | "approvals" | "about";
+type Tab = "activities" | "quotes" | "contacts" | "approvals" | "about" | "related";
 
 interface OppQuote {
   id: number;
@@ -497,11 +497,12 @@ export default function OpportunityDetail() {
     { id: "quotes", label: "Quotes", count: oppQuotes.length },
     { id: "approvals", label: "Approvals" },
     { id: "about", label: "Details" },
+    { id: "related", label: "Related" },
   ];
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+      <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
         <div>
           <Link href="/opportunities">
             <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-4 hover:text-foreground">
@@ -1025,6 +1026,144 @@ export default function OpportunityDetail() {
         )}
 
         {/* Details Tab */}
+        {/* Related Tab */}
+        {activeTab === "related" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Account Details */}
+            <Card className="border-border overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center">
+                    <Building2 className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">Account Details</h3>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Account Name</div>
+                  {opp.accountId ? (
+                    <Link href={`/accounts/${opp.accountId}`}>
+                      <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">{opp.accountName ?? "—"}</span>
+                    </Link>
+                  ) : (
+                    <div className="text-foreground">{opp.accountName ?? "—"}</div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Type</div>
+                  <div className="text-foreground">—</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Owner</div>
+                  <div className="text-foreground">{opp.assignedToName ?? "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Stage</div>
+                  <div className="text-foreground">{stageConfig.label}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Close Date</div>
+                  <div className="text-foreground">{opp.closeDate ? format(new Date(opp.closeDate), "yyyy-MM-dd") : "—"}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-0.5">Probability</div>
+                  <div className="text-foreground">{opp.probability !== null ? `${opp.probability}%` : "—"}</div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Products */}
+            <Card className="border-border overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-amber-500 flex items-center justify-center">
+                    <Package className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">Products ({oppQuotes.length})</h3>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="p-4 text-sm">
+                {oppQuotes.length === 0 ? (
+                  <div className="text-xs text-muted-foreground italic">No products linked. Add quote line items to populate.</div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {oppQuotes.slice(0, 3).map((q) => (
+                      <div key={q.id} className="flex items-center justify-between text-sm">
+                        <Link href={`/quotes/${q.id}`}>
+                          <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate">{q.name}</span>
+                        </Link>
+                        <span className="text-xs text-muted-foreground">{q.quoteNumber}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Contact Roles */}
+            <Card className="border-border overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-orange-50 dark:bg-orange-950/30 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-orange-500 flex items-center justify-center">
+                    <Users className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">Contact Roles ({contactsData?.data.length ?? 0})</h3>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="p-4 text-sm">
+                {!contactsData?.data.length ? (
+                  <div className="text-xs text-muted-foreground italic">No contact roles assigned.</div>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    {contactsData.data.slice(0, 5).map((c, idx) => {
+                      const initials = `${c.firstName[0] ?? ""}${c.lastName[0] ?? ""}`.toUpperCase();
+                      return (
+                        <div key={c.id} className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-950/50 flex items-center justify-center text-orange-700 dark:text-orange-300 text-xs font-bold shrink-0">
+                            {initials}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <Link href={`/contacts/${c.id}`}>
+                              <span className="text-blue-600 dark:text-blue-400 hover:underline text-sm cursor-pointer">{c.firstName} {c.lastName}</span>
+                            </Link>
+                            {idx === 0 && (
+                              <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 border-orange-300 text-orange-700 dark:text-orange-300">PRIMARY</Badge>
+                            )}
+                            {c.title && <div className="text-xs text-muted-foreground">Role: {c.title}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Notes & Attachments */}
+            <Card className="border-border overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-purple-500 flex items-center justify-center">
+                    <FileText className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">Notes & Attachments (0)</h3>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="p-4 text-sm text-center">
+                <div className="text-xs text-muted-foreground italic mb-2">No files uploaded yet.</div>
+                <Button variant="outline" size="sm" disabled className="text-xs h-7">
+                  <Plus className="w-3 h-3 mr-1" /> Upload Files
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+
         {activeTab === "about" && (
           <div className="flex flex-col gap-4">
             {/* Next Step - Prominent Highlight */}
