@@ -531,8 +531,8 @@ export default function Opportunities() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm bg-card">
                 <thead>
-                  <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800">
-                    <th className="w-10 px-3 py-3">
+                  <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 [&_th]:py-3 [&_th]:px-2">
+                    <th className="w-10 !px-3">
                       <Checkbox
                         checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
                         onCheckedChange={toggleSelectAll}
@@ -540,19 +540,25 @@ export default function Opportunities() {
                         className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
                       />
                     </th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="name">Opportunity</SortHeader></th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="account">Account</SortHeader></th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="stage">Stage</SortHeader></th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="amount">Value</SortHeader></th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide"><SortHeader field="closeDate">Close Date</SortHeader></th>
-                    <th className="text-left px-3 py-3">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</span>
+                    <th className="text-left"><div className="inline-flex items-center bg-white text-blue-700 rounded px-3 py-1 shadow-sm [&_*]:!text-blue-700 [&_*]:!font-semibold"><SortHeader field="name">Opportunity</SortHeader></div></th>
+                    <th className="text-left"><div className="inline-flex items-center bg-white text-blue-700 rounded px-3 py-1 shadow-sm [&_*]:!text-blue-700 [&_*]:!font-semibold"><SortHeader field="account">Account</SortHeader></div></th>
+                    <th className="text-left"><div className="inline-flex items-center bg-white text-blue-700 rounded px-3 py-1 shadow-sm [&_*]:!text-blue-700 [&_*]:!font-semibold"><SortHeader field="stage">Stage</SortHeader></div></th>
+                    <th className="text-left"><div className="inline-flex items-center bg-white text-blue-700 rounded px-3 py-1 shadow-sm [&_*]:!text-blue-700 [&_*]:!font-semibold"><SortHeader field="amount">Value</SortHeader></div></th>
+                    <th className="text-left"><div className="inline-flex items-center bg-white text-blue-700 rounded px-3 py-1 shadow-sm [&_*]:!text-blue-700 [&_*]:!font-semibold"><SortHeader field="closeDate">Close Date</SortHeader></div></th>
+                    <th className="text-left">
+                      <div className="inline-flex items-center bg-white rounded px-3 py-1 shadow-sm">
+                        <span className="text-xs font-semibold text-blue-700 whitespace-nowrap">Owner</span>
+                      </div>
                     </th>
-                    <th className="text-left px-3 py-3">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</span>
+                    <th className="text-left">
+                      <div className="inline-flex items-center bg-white rounded px-3 py-1 shadow-sm">
+                        <span className="text-xs font-semibold text-blue-700 whitespace-nowrap">Status</span>
+                      </div>
                     </th>
-                    <th className="text-center px-3 py-3">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</span>
+                    <th className="text-center">
+                      <div className="inline-flex items-center bg-white rounded px-3 py-1 shadow-sm">
+                        <span className="text-xs font-semibold text-blue-700 whitespace-nowrap">Actions</span>
+                      </div>
                     </th>
                   </tr>
                 </thead>
@@ -589,15 +595,15 @@ export default function Opportunities() {
                             {opp.accountName ?? "—"}
                           </td>
                           <td className="px-3 py-3">
-                            <Badge
-                              variant="outline"
+                            <span
                               className={cn(
-                                "text-xs font-semibold border rounded-md px-2.5 py-0.5",
+                                "inline-flex items-center text-xs font-semibold pl-2.5 pr-4 py-1 whitespace-nowrap",
                                 STAGE_BADGE_COLORS[opp.stage] ?? "bg-gray-500 text-white border-gray-500"
                               )}
+                              style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" }}
                             >
                               {STAGES.find(s => s.id === opp.stage)?.label ?? opp.stage}
-                            </Badge>
+                            </span>
                           </td>
                           <td className="px-3 py-3 font-semibold text-foreground">
                             £{(Number(opp.amount) || 0).toLocaleString()}
