@@ -29,6 +29,7 @@ import Support from "./pages/support";
 import AIAssistant from "./pages/ai-assistant";
 import Campaigns from "./pages/campaigns";
 import CampaignDetail from "./pages/campaign-detail";
+import Approvals from "./pages/approvals";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,7 @@ function CRMRoutes() {
       <Route path="/users" component={Users} />
       <Route path="/support" component={Support} />
       <Route path="/ai-assistant" component={AIAssistant} />
+      <Route path="/admin/approvals" component={Approvals} />
       <Route component={NotFound} />
     </Switch>
   );

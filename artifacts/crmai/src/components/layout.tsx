@@ -24,6 +24,7 @@ import {
   MoreHorizontal,
   Sun,
   Moon,
+  ShieldCheck,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AIChatbot } from "@/components/ai-chatbot";
@@ -61,6 +62,7 @@ const NAV_ITEMS = [
   { label: "Reports", href: "/reports", icon: BarChart3 },
   { label: "AI Assistant", href: "/ai-assistant", icon: Bot },
   { label: "Support", href: "/support", icon: Mail },
+  { label: "Approvals", href: "/admin/approvals", icon: ShieldCheck, adminOnly: true },
   { label: "Team & Data", href: "/users", icon: Settings },
 ];
 
@@ -87,6 +89,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return location === href || location.startsWith(href + "/");
   };
 
+  const visibleNavItems = NAV_ITEMS.filter(
+    (item) => !item.adminOnly || user?.role === "admin",
+  );
+
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex h-screen bg-background text-foreground overflow-hidden">
@@ -100,7 +106,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex-1 overflow-y-auto py-2 flex flex-col gap-0.5 items-center custom-scrollbar">
-            {NAV_ITEMS.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = isActive(item.href);
               return (
                 <Tooltip key={item.href}>
@@ -177,7 +183,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </Button>
               </div>
               <div className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
-                {NAV_ITEMS.map((item) => (
+                {visibleNavItems.map((item) => (
                   <Link key={item.href} href={item.href} onClick={() => setIsMobileMenuOpen(false)}>
                     <div className={cn(
                       "flex items-center gap-3 px-3 py-3 rounded-lg transition-colors text-sm",

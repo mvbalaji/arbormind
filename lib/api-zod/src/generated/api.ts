@@ -1948,3 +1948,192 @@ export const GetRevenueForecastResponse = zod.object({
   totalForecast: zod.number(),
   totalActual: zod.number(),
 });
+
+/**
+ * @summary List approval roles
+ */
+export const ListApprovalRolesResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      level: zod.number(),
+      description: zod.string().nullish(),
+      createdAt: zod.date(),
+      updatedAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create approval role
+ */
+export const createApprovalRoleBodyLevelDefault = 1;
+
+export const CreateApprovalRoleBody = zod.object({
+  name: zod.string(),
+  level: zod.number().default(createApprovalRoleBodyLevelDefault),
+  description: zod.string().nullish(),
+});
+
+/**
+ * @summary Update approval role
+ */
+export const UpdateApprovalRoleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateApprovalRoleBody = zod.object({
+  name: zod.string().optional(),
+  level: zod.number().optional(),
+  description: zod.string().nullish(),
+});
+
+export const UpdateApprovalRoleResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  level: zod.number(),
+  description: zod.string().nullish(),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Delete approval role
+ */
+export const DeleteApprovalRoleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteApprovalRoleResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary List approval configurations
+ */
+export const ListApprovalConfigsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      entity: zod.enum(["account", "opportunity", "quote", "order"]),
+      multiLevel: zod.boolean(),
+      enabled: zod.boolean(),
+      createdAt: zod.date(),
+      updatedAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update approval configuration for an entity
+ */
+export const UpdateApprovalConfigParams = zod.object({
+  entity: zod.enum(["account", "opportunity", "quote", "order"]),
+});
+
+export const UpdateApprovalConfigBody = zod.object({
+  multiLevel: zod.boolean().optional(),
+  enabled: zod.boolean().optional(),
+});
+
+export const UpdateApprovalConfigResponse = zod.object({
+  id: zod.number(),
+  entity: zod.enum(["account", "opportunity", "quote", "order"]),
+  multiLevel: zod.boolean(),
+  enabled: zod.boolean(),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary List approval criteria
+ */
+export const ListApprovalCriteriaQueryParams = zod.object({
+  entity: zod.enum(["account", "opportunity", "quote", "order"]).optional(),
+});
+
+export const ListApprovalCriteriaResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      entity: zod.enum(["account", "opportunity", "quote", "order"]),
+      name: zod.string(),
+      field: zod.string(),
+      operator: zod.enum(["gt", "gte", "lt", "lte", "eq", "neq", "contains"]),
+      threshold: zod.number().nullish(),
+      thresholdText: zod.string().nullish(),
+      level: zod.number(),
+      roleId: zod.number().nullish(),
+      active: zod.boolean(),
+      createdAt: zod.date(),
+      updatedAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create approval criterion
+ */
+export const createApprovalCriterionBodyLevelDefault = 1;
+export const createApprovalCriterionBodyActiveDefault = true;
+
+export const CreateApprovalCriterionBody = zod.object({
+  entity: zod.enum(["account", "opportunity", "quote", "order"]),
+  name: zod.string(),
+  field: zod.string(),
+  operator: zod.enum(["gt", "gte", "lt", "lte", "eq", "neq", "contains"]),
+  threshold: zod.number().nullish(),
+  thresholdText: zod.string().nullish(),
+  level: zod.number().default(createApprovalCriterionBodyLevelDefault),
+  roleId: zod.number().nullish(),
+  active: zod.boolean().default(createApprovalCriterionBodyActiveDefault),
+});
+
+/**
+ * @summary Update approval criterion
+ */
+export const UpdateApprovalCriterionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateApprovalCriterionBody = zod.object({
+  name: zod.string().optional(),
+  field: zod.string().optional(),
+  operator: zod
+    .enum(["gt", "gte", "lt", "lte", "eq", "neq", "contains"])
+    .optional(),
+  threshold: zod.number().nullish(),
+  thresholdText: zod.string().nullish(),
+  level: zod.number().optional(),
+  roleId: zod.number().nullish(),
+  active: zod.boolean().optional(),
+});
+
+export const UpdateApprovalCriterionResponse = zod.object({
+  id: zod.number(),
+  entity: zod.enum(["account", "opportunity", "quote", "order"]),
+  name: zod.string(),
+  field: zod.string(),
+  operator: zod.enum(["gt", "gte", "lt", "lte", "eq", "neq", "contains"]),
+  threshold: zod.number().nullish(),
+  thresholdText: zod.string().nullish(),
+  level: zod.number(),
+  roleId: zod.number().nullish(),
+  active: zod.boolean(),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Delete approval criterion
+ */
+export const DeleteApprovalCriterionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteApprovalCriterionResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});

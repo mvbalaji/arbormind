@@ -22,6 +22,12 @@ import type {
   ActivitiesSummary,
   Activity,
   ActivityList,
+  ApprovalConfig,
+  ApprovalConfigList,
+  ApprovalCriterion,
+  ApprovalCriterionList,
+  ApprovalRole,
+  ApprovalRoleList,
   Case,
   CaseList,
   Contact,
@@ -30,6 +36,8 @@ import type {
   ConvertLeadResult,
   CreateAccountInput,
   CreateActivityInput,
+  CreateApprovalCriterionInput,
+  CreateApprovalRoleInput,
   CreateCaseInput,
   CreateContactInput,
   CreateLeadInput,
@@ -47,6 +55,7 @@ import type {
   LeadSourcesReport,
   ListAccountsParams,
   ListActivitiesParams,
+  ListApprovalCriteriaParams,
   ListCasesParams,
   ListContactsParams,
   ListLeadsParams,
@@ -69,6 +78,9 @@ import type {
   SendQuoteResponse,
   UpdateAccountInput,
   UpdateActivityInput,
+  UpdateApprovalConfigInput,
+  UpdateApprovalCriterionInput,
+  UpdateApprovalRoleInput,
   UpdateCaseInput,
   UpdateContactInput,
   UpdateLeadInput,
@@ -5495,3 +5507,877 @@ export function useGetRevenueForecast<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List approval roles
+ */
+export const getListApprovalRolesUrl = () => {
+  return `/api/approvals/roles`;
+};
+
+export const listApprovalRoles = async (
+  options?: RequestInit,
+): Promise<ApprovalRoleList> => {
+  return customFetch<ApprovalRoleList>(getListApprovalRolesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListApprovalRolesQueryKey = () => {
+  return [`/api/approvals/roles`] as const;
+};
+
+export const getListApprovalRolesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listApprovalRoles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listApprovalRoles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListApprovalRolesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listApprovalRoles>>
+  > = ({ signal }) => listApprovalRoles({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listApprovalRoles>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListApprovalRolesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listApprovalRoles>>
+>;
+export type ListApprovalRolesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List approval roles
+ */
+
+export function useListApprovalRoles<
+  TData = Awaited<ReturnType<typeof listApprovalRoles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listApprovalRoles>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListApprovalRolesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create approval role
+ */
+export const getCreateApprovalRoleUrl = () => {
+  return `/api/approvals/roles`;
+};
+
+export const createApprovalRole = async (
+  createApprovalRoleInput: CreateApprovalRoleInput,
+  options?: RequestInit,
+): Promise<ApprovalRole> => {
+  return customFetch<ApprovalRole>(getCreateApprovalRoleUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createApprovalRoleInput),
+  });
+};
+
+export const getCreateApprovalRoleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createApprovalRole>>,
+    TError,
+    { data: BodyType<CreateApprovalRoleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createApprovalRole>>,
+  TError,
+  { data: BodyType<CreateApprovalRoleInput> },
+  TContext
+> => {
+  const mutationKey = ["createApprovalRole"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createApprovalRole>>,
+    { data: BodyType<CreateApprovalRoleInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createApprovalRole(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateApprovalRoleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createApprovalRole>>
+>;
+export type CreateApprovalRoleMutationBody = BodyType<CreateApprovalRoleInput>;
+export type CreateApprovalRoleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create approval role
+ */
+export const useCreateApprovalRole = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createApprovalRole>>,
+    TError,
+    { data: BodyType<CreateApprovalRoleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createApprovalRole>>,
+  TError,
+  { data: BodyType<CreateApprovalRoleInput> },
+  TContext
+> => {
+  return useMutation(getCreateApprovalRoleMutationOptions(options));
+};
+
+/**
+ * @summary Update approval role
+ */
+export const getUpdateApprovalRoleUrl = (id: number) => {
+  return `/api/approvals/roles/${id}`;
+};
+
+export const updateApprovalRole = async (
+  id: number,
+  updateApprovalRoleInput: UpdateApprovalRoleInput,
+  options?: RequestInit,
+): Promise<ApprovalRole> => {
+  return customFetch<ApprovalRole>(getUpdateApprovalRoleUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateApprovalRoleInput),
+  });
+};
+
+export const getUpdateApprovalRoleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateApprovalRole>>,
+    TError,
+    { id: number; data: BodyType<UpdateApprovalRoleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateApprovalRole>>,
+  TError,
+  { id: number; data: BodyType<UpdateApprovalRoleInput> },
+  TContext
+> => {
+  const mutationKey = ["updateApprovalRole"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateApprovalRole>>,
+    { id: number; data: BodyType<UpdateApprovalRoleInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateApprovalRole(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateApprovalRoleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateApprovalRole>>
+>;
+export type UpdateApprovalRoleMutationBody = BodyType<UpdateApprovalRoleInput>;
+export type UpdateApprovalRoleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update approval role
+ */
+export const useUpdateApprovalRole = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateApprovalRole>>,
+    TError,
+    { id: number; data: BodyType<UpdateApprovalRoleInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateApprovalRole>>,
+  TError,
+  { id: number; data: BodyType<UpdateApprovalRoleInput> },
+  TContext
+> => {
+  return useMutation(getUpdateApprovalRoleMutationOptions(options));
+};
+
+/**
+ * @summary Delete approval role
+ */
+export const getDeleteApprovalRoleUrl = (id: number) => {
+  return `/api/approvals/roles/${id}`;
+};
+
+export const deleteApprovalRole = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteApprovalRoleUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteApprovalRoleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteApprovalRole>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteApprovalRole>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteApprovalRole"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteApprovalRole>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteApprovalRole(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteApprovalRoleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteApprovalRole>>
+>;
+
+export type DeleteApprovalRoleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete approval role
+ */
+export const useDeleteApprovalRole = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteApprovalRole>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteApprovalRole>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteApprovalRoleMutationOptions(options));
+};
+
+/**
+ * @summary List approval configurations
+ */
+export const getListApprovalConfigsUrl = () => {
+  return `/api/approvals/configs`;
+};
+
+export const listApprovalConfigs = async (
+  options?: RequestInit,
+): Promise<ApprovalConfigList> => {
+  return customFetch<ApprovalConfigList>(getListApprovalConfigsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListApprovalConfigsQueryKey = () => {
+  return [`/api/approvals/configs`] as const;
+};
+
+export const getListApprovalConfigsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listApprovalConfigs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listApprovalConfigs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListApprovalConfigsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listApprovalConfigs>>
+  > = ({ signal }) => listApprovalConfigs({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listApprovalConfigs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListApprovalConfigsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listApprovalConfigs>>
+>;
+export type ListApprovalConfigsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List approval configurations
+ */
+
+export function useListApprovalConfigs<
+  TData = Awaited<ReturnType<typeof listApprovalConfigs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listApprovalConfigs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListApprovalConfigsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update approval configuration for an entity
+ */
+export const getUpdateApprovalConfigUrl = (
+  entity: "account" | "opportunity" | "quote" | "order",
+) => {
+  return `/api/approvals/configs/${entity}`;
+};
+
+export const updateApprovalConfig = async (
+  entity: "account" | "opportunity" | "quote" | "order",
+  updateApprovalConfigInput: UpdateApprovalConfigInput,
+  options?: RequestInit,
+): Promise<ApprovalConfig> => {
+  return customFetch<ApprovalConfig>(getUpdateApprovalConfigUrl(entity), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateApprovalConfigInput),
+  });
+};
+
+export const getUpdateApprovalConfigMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateApprovalConfig>>,
+    TError,
+    {
+      entity: "account" | "opportunity" | "quote" | "order";
+      data: BodyType<UpdateApprovalConfigInput>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateApprovalConfig>>,
+  TError,
+  {
+    entity: "account" | "opportunity" | "quote" | "order";
+    data: BodyType<UpdateApprovalConfigInput>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateApprovalConfig"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateApprovalConfig>>,
+    {
+      entity: "account" | "opportunity" | "quote" | "order";
+      data: BodyType<UpdateApprovalConfigInput>;
+    }
+  > = (props) => {
+    const { entity, data } = props ?? {};
+
+    return updateApprovalConfig(entity, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateApprovalConfigMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateApprovalConfig>>
+>;
+export type UpdateApprovalConfigMutationBody =
+  BodyType<UpdateApprovalConfigInput>;
+export type UpdateApprovalConfigMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update approval configuration for an entity
+ */
+export const useUpdateApprovalConfig = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateApprovalConfig>>,
+    TError,
+    {
+      entity: "account" | "opportunity" | "quote" | "order";
+      data: BodyType<UpdateApprovalConfigInput>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateApprovalConfig>>,
+  TError,
+  {
+    entity: "account" | "opportunity" | "quote" | "order";
+    data: BodyType<UpdateApprovalConfigInput>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateApprovalConfigMutationOptions(options));
+};
+
+/**
+ * @summary List approval criteria
+ */
+export const getListApprovalCriteriaUrl = (
+  params?: ListApprovalCriteriaParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/approvals/criteria?${stringifiedParams}`
+    : `/api/approvals/criteria`;
+};
+
+export const listApprovalCriteria = async (
+  params?: ListApprovalCriteriaParams,
+  options?: RequestInit,
+): Promise<ApprovalCriterionList> => {
+  return customFetch<ApprovalCriterionList>(
+    getListApprovalCriteriaUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListApprovalCriteriaQueryKey = (
+  params?: ListApprovalCriteriaParams,
+) => {
+  return [`/api/approvals/criteria`, ...(params ? [params] : [])] as const;
+};
+
+export const getListApprovalCriteriaQueryOptions = <
+  TData = Awaited<ReturnType<typeof listApprovalCriteria>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListApprovalCriteriaParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listApprovalCriteria>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListApprovalCriteriaQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listApprovalCriteria>>
+  > = ({ signal }) =>
+    listApprovalCriteria(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listApprovalCriteria>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListApprovalCriteriaQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listApprovalCriteria>>
+>;
+export type ListApprovalCriteriaQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List approval criteria
+ */
+
+export function useListApprovalCriteria<
+  TData = Awaited<ReturnType<typeof listApprovalCriteria>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListApprovalCriteriaParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listApprovalCriteria>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListApprovalCriteriaQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create approval criterion
+ */
+export const getCreateApprovalCriterionUrl = () => {
+  return `/api/approvals/criteria`;
+};
+
+export const createApprovalCriterion = async (
+  createApprovalCriterionInput: CreateApprovalCriterionInput,
+  options?: RequestInit,
+): Promise<ApprovalCriterion> => {
+  return customFetch<ApprovalCriterion>(getCreateApprovalCriterionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createApprovalCriterionInput),
+  });
+};
+
+export const getCreateApprovalCriterionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createApprovalCriterion>>,
+    TError,
+    { data: BodyType<CreateApprovalCriterionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createApprovalCriterion>>,
+  TError,
+  { data: BodyType<CreateApprovalCriterionInput> },
+  TContext
+> => {
+  const mutationKey = ["createApprovalCriterion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createApprovalCriterion>>,
+    { data: BodyType<CreateApprovalCriterionInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createApprovalCriterion(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateApprovalCriterionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createApprovalCriterion>>
+>;
+export type CreateApprovalCriterionMutationBody =
+  BodyType<CreateApprovalCriterionInput>;
+export type CreateApprovalCriterionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create approval criterion
+ */
+export const useCreateApprovalCriterion = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createApprovalCriterion>>,
+    TError,
+    { data: BodyType<CreateApprovalCriterionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createApprovalCriterion>>,
+  TError,
+  { data: BodyType<CreateApprovalCriterionInput> },
+  TContext
+> => {
+  return useMutation(getCreateApprovalCriterionMutationOptions(options));
+};
+
+/**
+ * @summary Update approval criterion
+ */
+export const getUpdateApprovalCriterionUrl = (id: number) => {
+  return `/api/approvals/criteria/${id}`;
+};
+
+export const updateApprovalCriterion = async (
+  id: number,
+  updateApprovalCriterionInput: UpdateApprovalCriterionInput,
+  options?: RequestInit,
+): Promise<ApprovalCriterion> => {
+  return customFetch<ApprovalCriterion>(getUpdateApprovalCriterionUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateApprovalCriterionInput),
+  });
+};
+
+export const getUpdateApprovalCriterionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateApprovalCriterion>>,
+    TError,
+    { id: number; data: BodyType<UpdateApprovalCriterionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateApprovalCriterion>>,
+  TError,
+  { id: number; data: BodyType<UpdateApprovalCriterionInput> },
+  TContext
+> => {
+  const mutationKey = ["updateApprovalCriterion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateApprovalCriterion>>,
+    { id: number; data: BodyType<UpdateApprovalCriterionInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateApprovalCriterion(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateApprovalCriterionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateApprovalCriterion>>
+>;
+export type UpdateApprovalCriterionMutationBody =
+  BodyType<UpdateApprovalCriterionInput>;
+export type UpdateApprovalCriterionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update approval criterion
+ */
+export const useUpdateApprovalCriterion = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateApprovalCriterion>>,
+    TError,
+    { id: number; data: BodyType<UpdateApprovalCriterionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateApprovalCriterion>>,
+  TError,
+  { id: number; data: BodyType<UpdateApprovalCriterionInput> },
+  TContext
+> => {
+  return useMutation(getUpdateApprovalCriterionMutationOptions(options));
+};
+
+/**
+ * @summary Delete approval criterion
+ */
+export const getDeleteApprovalCriterionUrl = (id: number) => {
+  return `/api/approvals/criteria/${id}`;
+};
+
+export const deleteApprovalCriterion = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeleteApprovalCriterionUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteApprovalCriterionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteApprovalCriterion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteApprovalCriterion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteApprovalCriterion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteApprovalCriterion>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteApprovalCriterion(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteApprovalCriterionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteApprovalCriterion>>
+>;
+
+export type DeleteApprovalCriterionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete approval criterion
+ */
+export const useDeleteApprovalCriterion = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteApprovalCriterion>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteApprovalCriterion>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteApprovalCriterionMutationOptions(options));
+};

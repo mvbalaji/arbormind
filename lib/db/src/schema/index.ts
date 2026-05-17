@@ -15,3 +15,4 @@ export * from "./email-settings";
 export * from "./lead-contacts";
 export * from "./orders";
 export * from "./opportunity-items";
+export * from "./approvals";

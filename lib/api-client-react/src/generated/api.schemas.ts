@@ -991,6 +991,160 @@ export interface UpdateOrderInput {
   notes?: string | null;
 }
 
+export interface ApprovalRole {
+  id: number;
+  name: string;
+  level: number;
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalRoleList {
+  data: ApprovalRole[];
+}
+
+export interface CreateApprovalRoleInput {
+  name: string;
+  level?: number;
+  description?: string | null;
+}
+
+export interface UpdateApprovalRoleInput {
+  name?: string;
+  level?: number;
+  description?: string | null;
+}
+
+export type ApprovalConfigEntity =
+  (typeof ApprovalConfigEntity)[keyof typeof ApprovalConfigEntity];
+
+export const ApprovalConfigEntity = {
+  account: "account",
+  opportunity: "opportunity",
+  quote: "quote",
+  order: "order",
+} as const;
+
+export interface ApprovalConfig {
+  id: number;
+  entity: ApprovalConfigEntity;
+  multiLevel: boolean;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalConfigList {
+  data: ApprovalConfig[];
+}
+
+export interface UpdateApprovalConfigInput {
+  multiLevel?: boolean;
+  enabled?: boolean;
+}
+
+export type ApprovalCriterionEntity =
+  (typeof ApprovalCriterionEntity)[keyof typeof ApprovalCriterionEntity];
+
+export const ApprovalCriterionEntity = {
+  account: "account",
+  opportunity: "opportunity",
+  quote: "quote",
+  order: "order",
+} as const;
+
+export type ApprovalCriterionOperator =
+  (typeof ApprovalCriterionOperator)[keyof typeof ApprovalCriterionOperator];
+
+export const ApprovalCriterionOperator = {
+  gt: "gt",
+  gte: "gte",
+  lt: "lt",
+  lte: "lte",
+  eq: "eq",
+  neq: "neq",
+  contains: "contains",
+} as const;
+
+export interface ApprovalCriterion {
+  id: number;
+  entity: ApprovalCriterionEntity;
+  name: string;
+  field: string;
+  operator: ApprovalCriterionOperator;
+  threshold?: number | null;
+  thresholdText?: string | null;
+  level: number;
+  roleId?: number | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalCriterionList {
+  data: ApprovalCriterion[];
+}
+
+export type CreateApprovalCriterionInputEntity =
+  (typeof CreateApprovalCriterionInputEntity)[keyof typeof CreateApprovalCriterionInputEntity];
+
+export const CreateApprovalCriterionInputEntity = {
+  account: "account",
+  opportunity: "opportunity",
+  quote: "quote",
+  order: "order",
+} as const;
+
+export type CreateApprovalCriterionInputOperator =
+  (typeof CreateApprovalCriterionInputOperator)[keyof typeof CreateApprovalCriterionInputOperator];
+
+export const CreateApprovalCriterionInputOperator = {
+  gt: "gt",
+  gte: "gte",
+  lt: "lt",
+  lte: "lte",
+  eq: "eq",
+  neq: "neq",
+  contains: "contains",
+} as const;
+
+export interface CreateApprovalCriterionInput {
+  entity: CreateApprovalCriterionInputEntity;
+  name: string;
+  field: string;
+  operator: CreateApprovalCriterionInputOperator;
+  threshold?: number | null;
+  thresholdText?: string | null;
+  level?: number;
+  roleId?: number | null;
+  active?: boolean;
+}
+
+export type UpdateApprovalCriterionInputOperator =
+  (typeof UpdateApprovalCriterionInputOperator)[keyof typeof UpdateApprovalCriterionInputOperator];
+
+export const UpdateApprovalCriterionInputOperator = {
+  gt: "gt",
+  gte: "gte",
+  lt: "lt",
+  lte: "lte",
+  eq: "eq",
+  neq: "neq",
+  contains: "contains",
+} as const;
+
+export interface UpdateApprovalCriterionInput {
+  name?: string;
+  field?: string;
+  operator?: UpdateApprovalCriterionInputOperator;
+  threshold?: number | null;
+  thresholdText?: string | null;
+  level?: number;
+  roleId?: number | null;
+  active?: boolean;
+}
+
 export type ListContactsParams = {
   search?: string;
   accountId?: number;
@@ -1078,3 +1232,17 @@ export type ListOrdersParams = {
   page?: number;
   limit?: number;
 };
+
+export type ListApprovalCriteriaParams = {
+  entity?: ListApprovalCriteriaEntity;
+};
+
+export type ListApprovalCriteriaEntity =
+  (typeof ListApprovalCriteriaEntity)[keyof typeof ListApprovalCriteriaEntity];
+
+export const ListApprovalCriteriaEntity = {
+  account: "account",
+  opportunity: "opportunity",
+  quote: "quote",
+  order: "order",
+} as const;
