@@ -360,7 +360,7 @@ export default function Opportunities() {
     <button
       onClick={() => toggleSort(field)}
       aria-sort={sortField === field ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-      className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold hover:bg-white/30 transition-colors whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
     >
       {children}
       <ArrowUpDown className={cn("w-3 h-3", sortField === field ? "opacity-100" : "opacity-40")} />
@@ -529,15 +529,14 @@ export default function Opportunities() {
         ) : viewMode === "list" ? (
           <Card className="border-border overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm bg-card">
                 <thead>
-                  <tr className="bg-[hsl(207,97%,42%)] dark:bg-[hsl(207,97%,32%)]">
+                  <tr className="bg-card border-b border-border">
                     <th className="w-10 px-3 py-2.5">
                       <Checkbox
                         checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
                         onCheckedChange={toggleSelectAll}
                         aria-label="Select all opportunities"
-                        className="border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-primary data-[state=indeterminate]:bg-white/70 data-[state=indeterminate]:text-primary"
                       />
                     </th>
                     <th className="text-left px-3 py-2.5"><SortHeader field="name">Opportunity</SortHeader></th>
@@ -546,13 +545,13 @@ export default function Opportunities() {
                     <th className="text-left px-3 py-2.5"><SortHeader field="amount">Value</SortHeader></th>
                     <th className="text-left px-3 py-2.5"><SortHeader field="closeDate">Close Date</SortHeader></th>
                     <th className="text-left px-3 py-2.5">
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold whitespace-nowrap">Owner</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Owner</span>
                     </th>
                     <th className="text-left px-3 py-2.5">
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold whitespace-nowrap">Status</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Status</span>
                     </th>
                     <th className="text-center px-3 py-2.5">
-                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold whitespace-nowrap">Actions</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Actions</span>
                     </th>
                   </tr>
                 </thead>
