@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { AISummary } from "@/components/ai-summary";
 import { EmailCompose } from "@/components/email-compose";
 import { EntityApprovals } from "@/components/entity-approvals";
@@ -432,6 +433,15 @@ export default function OpportunityDetail() {
     enabled: !!id,
   });
 
+  const { data: stageHistoryData } = useQuery<{ data: Array<{ id: number; opportunityId: number; stage: string; enteredAt: string; leftAt: string | null }> }>({
+    queryKey: ["opportunity-stage-history", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/opportunities/${id}/stage-history`, { credentials: "include" });
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
   const { data: contactsData } = useQuery<{ data: OppContact[] }>({
     queryKey: ["opportunity-contacts", id],
     queryFn: async () => {
@@ -459,6 +469,7 @@ export default function OpportunityDetail() {
           queryClient.invalidateQueries({ queryKey: ["opportunity", id] });
           queryClient.invalidateQueries({ queryKey: ["opportunities"] });
           queryClient.invalidateQueries({ queryKey: ["opportunity-activities", id] });
+          queryClient.invalidateQueries({ queryKey: ["opportunity-stage-history", id] });
           toastTop({ title: nextStage === "closed_won" ? "Marked as Won!" : "Stage advanced", description: `Now: ${STAGE_CONFIG[nextStage]?.label ?? nextStage}` });
         },
         onError: () => toastTop({ title: "Failed to update stage", variant: "destructive" }),
@@ -573,8 +584,21 @@ export default function OpportunityDetail() {
                 const isWon = opp.stage === "closed_won";
                 const nextStage = idx >= 0 && idx < STAGES_ORDERED.length - 1 ? STAGES_ORDERED[idx + 1] : null;
                 const isProposal = opp.stage === "proposal";
+                const history = stageHistoryData?.data ?? [];
+                // For each stage, find the most recent history row, compute days
+                const stageInfo = (stage: string): { days: number | null; enteredAt: Date | null; leftAt: Date | null } => {
+                  const rows = history.filter((h) => h.stage === stage);
+                  if (rows.length === 0) return { days: null, enteredAt: null, leftAt: null };
+                  const latest = rows[rows.length - 1];
+                  const enteredAt = new Date(latest.enteredAt);
+                  const leftAt = latest.leftAt ? new Date(latest.leftAt) : null;
+                  const end = leftAt ?? new Date();
+                  const days = Math.max(0, Math.floor((end.getTime() - enteredAt.getTime()) / 86400000));
+                  return { days, enteredAt, leftAt };
+                };
                 return (
                   <div className="flex items-stretch gap-0 -mx-1">
+                    <TooltipProvider delayDuration={150}>
                     <ol
                       role="list"
                       aria-label="Opportunity stage progress"
@@ -585,14 +609,22 @@ export default function OpportunityDetail() {
                         const current = i === idx;
                         const isLast = i === STAGES_ORDERED.length - 1;
                         const label = STAGE_CONFIG[s]?.label ?? s;
-                        const stateLabel = done ? "completed" : current ? "current" : "upcoming";
+                        const stateLabel = done ? "Completed" : current ? "Current" : "Upcoming";
+                        const info = stageInfo(s);
+                        const daysLabel = info.days !== null
+                          ? (current ? `${info.days} day${info.days === 1 ? "" : "s"} in this stage so far`
+                                     : done ? `Spent ${info.days} day${info.days === 1 ? "" : "s"} here`
+                                     : "")
+                          : "";
                         return (
+                          <Tooltip key={s}>
+                            <TooltipTrigger asChild>
                           <li
-                            key={s}
                             role="listitem"
+                            tabIndex={0}
                             aria-current={current ? "step" : undefined}
-                            aria-label={`${label} — ${stateLabel}`}
-                            className={`relative flex-1 flex items-center justify-center px-3 py-2 text-xs font-medium min-w-0 ${
+                            aria-label={`${label} — ${stateLabel}${daysLabel ? `, ${daysLabel}` : ""}`}
+                            className={`relative flex-1 flex items-center justify-center px-3 py-2 text-xs font-medium min-w-0 cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-inset ${
                               done ? "bg-emerald-500 text-white" :
                               current ? (isProposal ? "bg-blue-700 text-white" : "bg-blue-600 text-white") :
                               "bg-muted/50 text-muted-foreground"
@@ -608,9 +640,29 @@ export default function OpportunityDetail() {
                               <span className="truncate max-w-full">{label}</span>
                             )}
                           </li>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="bg-foreground text-background border-border max-w-xs">
+                              <div className="text-xs">
+                                <div className="font-semibold mb-1">{label}</div>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${done ? "bg-emerald-400" : current ? "bg-blue-400" : "bg-muted-foreground/50"}`} />
+                                  <span>Status: {stateLabel}</span>
+                                </div>
+                                {info.enteredAt && (
+                                  <div className="opacity-80">Entered: {format(info.enteredAt, "MMM d, yyyy")}</div>
+                                )}
+                                {info.leftAt && (
+                                  <div className="opacity-80">Left: {format(info.leftAt, "MMM d, yyyy")}</div>
+                                )}
+                                {daysLabel && <div className="mt-1">{daysLabel}</div>}
+                                {!info.enteredAt && !current && !done && <div className="opacity-70">Not yet reached</div>}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
                         );
                       })}
                     </ol>
+                    </TooltipProvider>
                     <Button
                       size="sm"
                       onClick={advanceStage}

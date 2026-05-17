@@ -3,6 +3,7 @@ export * from "./accounts";
 export * from "./contacts";
 export * from "./leads";
 export * from "./opportunities";
+export * from "./opportunity-stage-history";
 export * from "./activities";
 export * from "./products";
 export * from "./cases";

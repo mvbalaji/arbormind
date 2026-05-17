@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { opportunitiesTable, usersTable, accountsTable, contactsTable, activitiesTable, opportunityItemsTable } from "@workspace/db";
-import { eq, ilike, sql, and } from "drizzle-orm";
+import { opportunitiesTable, usersTable, accountsTable, contactsTable, activitiesTable, opportunityItemsTable, opportunityStageHistoryTable } from "@workspace/db";
+import { eq, ilike, sql, and, isNull, asc } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -79,6 +79,10 @@ router.get("/opportunities", async (req, res) => {
 router.post("/opportunities", async (req, res) => {
   try {
     const [opportunity] = await db.insert(opportunitiesTable).values(req.body).returning();
+    await db.insert(opportunityStageHistoryTable).values({
+      opportunityId: opportunity.id,
+      stage: opportunity.stage,
+    });
     res.status(201).json({ ...opportunity, amount: opportunity.amount ? Number(opportunity.amount) : null });
   } catch (err) {
     req.log.error(err);
@@ -109,15 +113,72 @@ router.get("/opportunities/:id", async (req, res) => {
 
 router.put("/opportunities/:id", async (req, res) => {
   try {
-    const [opportunity] = await db.update(opportunitiesTable)
-      .set({ ...req.body, updatedAt: new Date() })
-      .where(eq(opportunitiesTable.id, parseInt(req.params.id)))
-      .returning();
+    const id = parseInt(req.params.id);
+    const opportunity = await db.transaction(async (tx) => {
+      const [prev] = await tx.select({ stage: opportunitiesTable.stage }).from(opportunitiesTable).where(eq(opportunitiesTable.id, id)).for("update");
+      if (!prev) return null;
+      const [updated] = await tx.update(opportunitiesTable)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(eq(opportunitiesTable.id, id))
+        .returning();
+      if (req.body.stage && prev.stage !== updated.stage) {
+        const now = new Date();
+        await tx.update(opportunityStageHistoryTable)
+          .set({ leftAt: now })
+          .where(and(
+            eq(opportunityStageHistoryTable.opportunityId, id),
+            eq(opportunityStageHistoryTable.stage, prev.stage),
+            isNull(opportunityStageHistoryTable.leftAt),
+          ));
+        await tx.insert(opportunityStageHistoryTable).values({
+          opportunityId: id,
+          stage: updated.stage,
+          enteredAt: now,
+        });
+      }
+      return updated;
+    });
     if (!opportunity) {
       res.status(404).json({ error: "Opportunity not found" });
-    } else {
-      res.json({ ...opportunity, amount: opportunity.amount ? Number(opportunity.amount) : null });
+      return;
     }
+    res.json({ ...opportunity, amount: opportunity.amount ? Number(opportunity.amount) : null });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Stage history for an opportunity (for tooltip showing days per stage)
+router.get("/opportunities/:id/stage-history", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [opp] = await db.select({ stage: opportunitiesTable.stage, createdAt: opportunitiesTable.createdAt }).from(opportunitiesTable).where(eq(opportunitiesTable.id, id));
+    if (!opp) {
+      res.status(404).json({ error: "Opportunity not found" });
+      return;
+    }
+    let rows = await db.select().from(opportunityStageHistoryTable)
+      .where(eq(opportunityStageHistoryTable.opportunityId, id))
+      .orderBy(asc(opportunityStageHistoryTable.enteredAt));
+    // Backfill (idempotent): seed once for legacy opps using a transaction with row lock.
+    if (rows.length === 0) {
+      rows = await db.transaction(async (tx) => {
+        // Lock the opportunity row to serialize concurrent backfill attempts
+        await tx.select({ id: opportunitiesTable.id }).from(opportunitiesTable).where(eq(opportunitiesTable.id, id)).for("update");
+        const existing = await tx.select().from(opportunityStageHistoryTable)
+          .where(eq(opportunityStageHistoryTable.opportunityId, id))
+          .orderBy(asc(opportunityStageHistoryTable.enteredAt));
+        if (existing.length > 0) return existing;
+        const [inserted] = await tx.insert(opportunityStageHistoryTable).values({
+          opportunityId: id,
+          stage: opp.stage,
+          enteredAt: opp.createdAt,
+        }).returning();
+        return [inserted];
+      });
+    }
+    res.json({ data: rows });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
