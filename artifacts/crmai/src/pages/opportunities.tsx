@@ -591,7 +591,7 @@ export default function Opportunities() {
                           <td className="px-3 py-3">
                             <span
                               className={cn(
-                                "inline-flex items-center text-xs font-semibold pl-2.5 pr-4 py-1 whitespace-nowrap",
+                                "inline-flex items-center justify-center text-xs font-semibold pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
                                 STAGE_BADGE_COLORS[opp.stage] ?? "bg-gray-500 text-white border-gray-500"
                               )}
                               style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" }}
