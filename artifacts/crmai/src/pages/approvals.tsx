@@ -176,6 +176,10 @@ export default function Approvals() {
   const [criterionForm, setCriterionForm] = useState<CriterionForm | null>(null);
   const [deletingCriterionId, setDeletingCriterionId] = useState<number | null>(null);
   const [settings, setSettings] = useState<ThresholdSettings>(() => loadSettings("opportunity"));
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [diagramOpen, setDiagramOpen] = useState(false);
+  const [cloneTarget, setCloneTarget] = useState<Entity>("account");
+  const [cloning, setCloning] = useState(false);
 
   useEffect(() => {
     setSettings(loadSettings(entity));
@@ -318,11 +322,117 @@ export default function Approvals() {
   const lastUpdated = config?.updatedAt ? new Date(config.updatedAt) : new Date();
   const EntityIcon = ENTITY_META[entity].icon;
 
-  const handleClone = () => {
-    toast({
-      title: "Clone configuration",
-      description: "Pick a target entity in the dropdown then save — the current entity's criteria stay where they are.",
-    });
+  // Inline-edit a role at a given (criterionName, level) cell
+  const setRoleAt = async (
+    canonical: ApprovalCriterion,
+    levels: ApprovalCriterion[],
+    level: number,
+    nextRoleId: number | null,
+  ) => {
+    try {
+      const existing = levels.find((l) => l.level === level);
+      if (existing) {
+        // Existing row at this level
+        if (nextRoleId == null && level > 1) {
+          // Clearing a non-L1 row: remove the criterion entirely
+          await deleteCriterionMutation.mutateAsync({ id: existing.id });
+        } else {
+          await updateCriterionMutation.mutateAsync({
+            id: existing.id,
+            data: {
+              entity: entity as CreateApprovalCriterionInputEntity,
+              name: existing.name,
+              field: existing.field,
+              operator: existing.operator as CreateApprovalCriterionInputOperator,
+              threshold: existing.threshold ?? null,
+              thresholdText: existing.thresholdText ?? null,
+              level: existing.level,
+              roleId: nextRoleId,
+              active: existing.active,
+            },
+          });
+        }
+      } else if (nextRoleId != null) {
+        // No row at this level yet — create a new criterion mirroring the canonical
+        await createCriterionMutation.mutateAsync({
+          data: {
+            entity: entity as CreateApprovalCriterionInputEntity,
+            name: canonical.name,
+            field: canonical.field,
+            operator: canonical.operator as CreateApprovalCriterionInputOperator,
+            threshold: canonical.threshold ?? null,
+            thresholdText: canonical.thresholdText ?? null,
+            level,
+            roleId: nextRoleId,
+            active: canonical.active,
+          },
+        });
+        // Auto-enable multi-level when adding L2/L3 roles
+        if (level > 1 && !multiLevel) {
+          await updateConfigMutation.mutateAsync({ entity, data: { multiLevel: true } });
+          await qc.invalidateQueries({ queryKey: getListApprovalConfigsQueryKey() });
+        }
+      }
+      await refreshAll();
+    } catch {
+      toast({ title: "Error", description: "Could not update role mapping.", variant: "destructive" });
+    }
+  };
+
+  const handleClone = async () => {
+    if (cloneTarget === entity) {
+      toast({ title: "Pick a different entity", description: "Choose an entity other than the current one.", variant: "destructive" });
+      return;
+    }
+    if (criteria.length === 0) {
+      toast({ title: "Nothing to clone", description: "Add at least one criterion first.", variant: "destructive" });
+      return;
+    }
+    setCloning(true);
+    try {
+      const targetFields = ENTITY_META[cloneTarget].fields;
+      let cloned = 0;
+      for (const c of criteria) {
+        const targetField =
+          targetFields.find((f) => f.id === c.field)?.id
+          ?? targetFields.find((f) => f.numeric === (c.threshold != null))?.id
+          ?? targetFields[0]?.id
+          ?? c.field;
+        await createCriterionMutation.mutateAsync({
+          data: {
+            entity: cloneTarget as CreateApprovalCriterionInputEntity,
+            name: c.name,
+            field: targetField,
+            operator: c.operator as CreateApprovalCriterionInputOperator,
+            threshold: c.threshold ?? null,
+            thresholdText: c.thresholdText ?? null,
+            level: c.level,
+            roleId: c.roleId ?? null,
+            active: c.active,
+          },
+        });
+        cloned += 1;
+      }
+      // Mirror multi-level setting
+      if (multiLevel) {
+        await updateConfigMutation.mutateAsync({ entity: cloneTarget, data: { multiLevel: true } });
+      }
+      saveSettings(cloneTarget, settings);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: getListApprovalCriteriaQueryKey({ entity: cloneTarget }) }),
+        qc.invalidateQueries({ queryKey: getListApprovalConfigsQueryKey() }),
+      ]);
+      toast({
+        title: "Configuration cloned",
+        description: `Copied ${cloned} criteria to ${ENTITY_META[cloneTarget].label}. Review field mappings on that entity.`,
+      });
+      setCloneOpen(false);
+      setEntity(cloneTarget);
+    } catch {
+      toast({ title: "Error", description: "Could not clone configuration.", variant: "destructive" });
+    } finally {
+      setCloning(false);
+    }
   };
 
   const handleExport = () => {
@@ -508,20 +618,35 @@ export default function Approvals() {
                         </td>
                       </tr>
                     ) : canonicalCriteria.map(({ canonical: c, levels }) => {
-                      const roleAt = (lvl: number) => {
+                      const roleIdAt = (lvl: number) => {
                         const match = levels.find((l) => l.level === lvl);
-                        if (!match || match.roleId == null) return null;
-                        return rolesById.get(match.roleId) ?? null;
+                        return match?.roleId ?? null;
                       };
-                      const l1 = roleAt(1);
-                      const l2 = roleAt(2);
-                      const l3 = roleAt(3);
+                      const renderRoleCell = (lvl: number) => {
+                        const current = roleIdAt(lvl);
+                        return (
+                          <Select
+                            value={current == null ? "none" : String(current)}
+                            onValueChange={(v) => setRoleAt(c, levels, lvl, v === "none" ? null : Number(v))}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">—</SelectItem>
+                              {roles.map((r) => (
+                                <SelectItem key={r.id} value={String(r.id)}>{r.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        );
+                      };
                       return (
                         <tr key={c.id} className="hover:bg-muted/40 transition-colors">
                           <td className="px-3 py-2 font-medium text-foreground">{c.name}</td>
-                          <td className="px-3 py-2 text-foreground">{l1?.name ?? <span className="text-muted-foreground">—</span>}</td>
-                          <td className="px-3 py-2 text-foreground">{l2?.name ?? <span className="text-muted-foreground">—</span>}</td>
-                          <td className="px-3 py-2 text-foreground">{l3?.name ?? <span className="text-muted-foreground">—</span>}</td>
+                          <td className="px-2 py-1.5 w-44">{renderRoleCell(1)}</td>
+                          <td className="px-2 py-1.5 w-44">{renderRoleCell(2)}</td>
+                          <td className="px-2 py-1.5 w-44">{renderRoleCell(3)}</td>
                         </tr>
                       );
                     })}
@@ -571,7 +696,7 @@ export default function Approvals() {
               )}
 
               <div className="flex flex-wrap gap-2 mt-3">
-                <Button size="sm" variant="outline" className="flex-1 min-w-0" onClick={() => toast({ title: "Workflow diagram", description: "Full diagram view coming soon." })}>
+                <Button size="sm" variant="outline" className="flex-1 min-w-0" onClick={() => setDiagramOpen(true)}>
                   <Eye className="w-3.5 h-3.5 mr-1.5" /> View Workflow Diagram
                 </Button>
                 <Button size="sm" variant="outline" className="flex-1 min-w-0" onClick={handleExport}>
@@ -629,7 +754,7 @@ export default function Approvals() {
           <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { saveSettings(entity, settings); toast({ title: "Configuration saved", description: `${ENTITY_META[entity].label} approval settings updated.` }); }}>
             <Save className="w-4 h-4 mr-2" /> Save Configuration
           </Button>
-          <Button variant="outline" onClick={handleClone}>
+          <Button variant="outline" onClick={() => { setCloneTarget(ENTITIES.find((e) => e !== entity) ?? "account"); setCloneOpen(true); }}>
             <Copy className="w-4 h-4 mr-2" /> Clone for Another Entity
           </Button>
           <Button variant="ghost" className="text-muted-foreground" onClick={() => { setSettings(loadSettings(entity)); toast({ title: "Changes discarded" }); }}>
@@ -758,6 +883,134 @@ export default function Approvals() {
           }
         }}
       />
+
+      {/* Clone dialog */}
+      <Dialog open={cloneOpen} onOpenChange={setCloneOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clone configuration</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Copy all {criteria.length} criteria from <span className="font-medium text-foreground">{ENTITY_META[entity].label}</span> to another entity.
+              Field mappings are auto-matched where possible — review them on the target.
+            </p>
+            <div>
+              <Label htmlFor="cloneTarget">Target entity</Label>
+              <Select value={cloneTarget} onValueChange={(v) => setCloneTarget(v as Entity)}>
+                <SelectTrigger id="cloneTarget"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ENTITIES.filter((e) => e !== entity).map((e) => {
+                    const M = ENTITY_META[e];
+                    return (
+                      <SelectItem key={e} value={e}>
+                        <span className="inline-flex items-center gap-2"><M.icon className="w-3.5 h-3.5" /> {M.label}</span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCloneOpen(false)} disabled={cloning}>Cancel</Button>
+            <Button onClick={handleClone} disabled={cloning} className="bg-blue-600 hover:bg-blue-700 text-white">
+              {cloning ? "Cloning…" : "Clone Configuration"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Workflow diagram dialog */}
+      <Dialog open={diagramOpen} onOpenChange={setDiagramOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Workflow Diagram — {ENTITY_META[entity].label}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* High-level pipeline */}
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { icon: EntityIcon, label: ENTITY_META[entity].label, color: "bg-blue-500/10 text-blue-700 border-blue-500/30" },
+                { icon: ShieldCheck, label: "Criteria Evaluation", color: "bg-amber-500/10 text-amber-700 border-amber-500/30" },
+                { icon: Users2, label: "Role Assignment", color: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" },
+                { icon: FileText, label: "Approval Process", color: "bg-indigo-500/10 text-indigo-700 border-indigo-500/30" },
+                { icon: FileText, label: "Audit Trail", color: "bg-purple-500/10 text-purple-700 border-purple-500/30" },
+              ].map((step, idx, arr) => {
+                const Icon = step.icon;
+                return (
+                  <React.Fragment key={step.label}>
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${step.color}`}>
+                      <Icon className="w-4 h-4" />
+                      <span className="text-sm font-medium">{step.label}</span>
+                    </div>
+                    {idx < arr.length - 1 && <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            {/* Criterion-by-criterion flow */}
+            <div className="rounded-lg border border-border p-4 bg-muted/20">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-3 font-semibold">Configured Approval Chains</div>
+              {canonicalCriteria.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-4 text-center">No criteria configured yet.</div>
+              ) : (
+                <div className="space-y-3">
+                  {canonicalCriteria.map(({ canonical: c, levels }) => {
+                    const fieldMeta = ENTITY_META[entity].fields.find((f) => f.id === c.field);
+                    const op = OPERATOR_LABEL[c.operator as Operator] ?? c.operator;
+                    const val = c.threshold != null ? c.threshold.toLocaleString() : c.thresholdText ?? "—";
+                    const chain = [...levels].sort((a, b) => a.level - b.level);
+                    return (
+                      <div key={c.id} className="bg-card rounded-md border border-border p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="font-medium text-sm text-foreground">{c.name}</div>
+                          <div className="font-mono text-xs text-muted-foreground">
+                            {fieldMeta?.label ?? c.field} {op} {val}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2 py-1 rounded-md bg-amber-500/10 text-amber-700 border border-amber-500/30 text-xs">Trigger</span>
+                          {chain.map((lvl, i) => {
+                            const role = lvl.roleId != null ? rolesById.get(lvl.roleId) : null;
+                            return (
+                              <React.Fragment key={lvl.id}>
+                                <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span className="px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-700 border border-emerald-500/30 text-xs">
+                                  L{lvl.level}: {role?.name ?? "Unassigned"}
+                                </span>
+                                {i === chain.length - 1 && (
+                                  <>
+                                    <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <span className="px-2 py-1 rounded-md bg-indigo-500/10 text-indigo-700 border border-indigo-500/30 text-xs">Approved</span>
+                                  </>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              {enabled
+                ? `Approvals are enabled. ${multiLevel ? "Multi-level escalation is on — approvers act in sequence L1 → L2 → L3." : "Single-level mode — one approver per criterion."}`
+                : "Approvals are currently disabled for this entity. Toggle 'Enabled' to activate routing."}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiagramOpen(false)}>Close</Button>
+            <Button onClick={handleExport} className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Download className="w-4 h-4 mr-2" /> Export Configuration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deletingCriterionId !== null} onOpenChange={(o) => { if (!o) setDeletingCriterionId(null); }}>
         <AlertDialogContent>
