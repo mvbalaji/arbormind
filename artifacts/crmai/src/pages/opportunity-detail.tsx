@@ -20,6 +20,7 @@ import {
   Phone, Mail, Users, Briefcase, Check, CheckCircle2, Clock, TrendingUp,
   FileText, Plus, Package, X, Printer, ShieldCheck,
   Filter, RotateCw, ChevronDown, ChevronRight, PhoneCall, CalendarPlus, ListTodo,
+  UserPlus, FilePlus, Copy, MoreVertical, Globe,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -433,6 +434,21 @@ export default function OpportunityDetail() {
     enabled: !!id,
   });
 
+  const { data: accountData } = useQuery<{
+    id: number; name: string; industry: string | null; website: string | null; phone: string | null;
+    email: string | null; address: string | null; city: string | null; country: string | null;
+    annualRevenue: number | null; ownerName: string | null; status: string | null;
+  }>({
+    queryKey: ["account", (opp as { accountId?: number } | undefined)?.accountId],
+    queryFn: async () => {
+      const accountId = (opp as { accountId?: number } | undefined)?.accountId;
+      const res = await fetch(`/api/accounts/${accountId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch account");
+      return res.json();
+    },
+    enabled: !!(opp as { accountId?: number } | undefined)?.accountId,
+  });
+
   const { data: stageHistoryData } = useQuery<{ data: Array<{ id: number; opportunityId: number; stage: string; enteredAt: string; leftAt: string | null }> }>({
     queryKey: ["opportunity-stage-history", id],
     queryFn: async () => {
@@ -513,7 +529,7 @@ export default function OpportunityDetail() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6 max-w-5xl mx-auto pb-8">
+      <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-8">
         <div>
           <Link href="/opportunities">
             <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-4 hover:text-foreground">
@@ -522,61 +538,64 @@ export default function OpportunityDetail() {
             </Button>
           </Link>
 
-          {/* Header Card */}
-          <Card className="glass-panel border-border p-6">
-            <div className="flex flex-col gap-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground">{opp.name}</h1>
-                  {opp.accountName && (
-                    <div className="flex items-center gap-1.5 text-muted-foreground mt-1">
-                      <Building2 className="w-4 h-4" />
-                      <span className="text-sm">{opp.accountName}</span>
-                    </div>
-                  )}
+          {/* Header Card — Salesforce-style highlight panel */}
+          <Card className="border-border p-0 overflow-hidden shadow-sm">
+            {/* Title row */}
+            <div className="flex items-start justify-between gap-4 px-6 pt-4 pb-3 border-b border-border bg-gradient-to-r from-blue-50/60 to-transparent dark:from-blue-950/20">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-md bg-blue-600 flex items-center justify-center text-white shrink-0 mt-0.5">
+                  <Briefcase className="w-5 h-5" />
                 </div>
-                <Badge variant="outline" className={`capitalize shrink-0 ${stageConfig.color}`}>
-                  {stageConfig.label}
-                </Badge>
+                <div className="min-w-0">
+                  <div className="text-xs text-muted-foreground uppercase tracking-wide">Opportunity</div>
+                  <h1 className="text-xl font-bold text-foreground truncate">{opp.name}</h1>
+                </div>
               </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button size="sm" variant="outline" className="gap-1.5 border-border" title="Follow this opportunity">
+                  <Plus className="w-3.5 h-3.5" /> Follow
+                </Button>
+                <Button size="sm" variant="outline" className="border-border" title="Create a new case linked to this opportunity">New Case</Button>
+                <Button size="sm" variant="outline" className="border-border" title="Add a new note">New Note</Button>
+                <Button size="sm" variant="outline" className="border-border" title="Clone this opportunity">Clone</Button>
+                <Button size="sm" variant="outline" className="border-border p-2" aria-label="More actions">
+                  <MoreVertical className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
 
-              {/* Key Metrics Row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {opp.amount !== null && (
-                  <div className="bg-muted/50 rounded-xl p-3">
-                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <DollarSign className="w-3 h-3" /> Value
-                    </div>
-                    <div className="text-lg font-bold text-foreground">${opp.amount.toLocaleString()}</div>
-                  </div>
-                )}
-                {opp.probability !== null && (
-                  <div className="bg-muted/50 rounded-xl p-3">
-                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3" /> Win Probability
-                    </div>
-                    <div className="text-lg font-bold text-foreground">{opp.probability}%</div>
-                  </div>
-                )}
-                {opp.closeDate && (
-                  <div className="bg-muted/50 rounded-xl p-3">
-                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> Close Date
-                    </div>
-                    <div className="text-sm font-semibold text-foreground">{format(new Date(opp.closeDate), "MMM d, yyyy")}</div>
-                  </div>
-                )}
-                {(opp.contactFirstName || opp.contactLastName) && (
-                  <div className="bg-muted/50 rounded-xl p-3">
-                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Users className="w-3 h-3" /> Contact
-                    </div>
-                    <div className="text-sm font-semibold text-foreground">
-                      {[opp.contactFirstName, opp.contactLastName].filter(Boolean).join(" ")}
-                    </div>
-                  </div>
+            {/* Highlight fields row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border border-b border-border bg-card">
+              <div className="px-4 py-3">
+                <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Account Name</div>
+                {opp.accountId ? (
+                  <Link href={`/accounts/${opp.accountId}`}>
+                    <span className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium truncate block">{opp.accountName ?? "—"}</span>
+                  </Link>
+                ) : (
+                  <div className="text-sm text-foreground font-medium">{opp.accountName ?? "—"}</div>
                 )}
               </div>
+              <div className="px-4 py-3">
+                <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Close Date</div>
+                <div className="text-sm text-foreground font-medium">{opp.closeDate ? format(new Date(opp.closeDate), "yyyy-MM-dd") : "—"}</div>
+              </div>
+              <div className="px-4 py-3">
+                <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Amount</div>
+                <div className="text-sm text-foreground font-medium">{opp.amount !== null ? `$${opp.amount.toLocaleString()}` : "—"}</div>
+              </div>
+              <div className="px-4 py-3">
+                <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Opportunity Owner</div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-[10px] font-bold shrink-0">
+                    {(opp.assignedToName ?? "—").charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm text-foreground font-medium truncate">{opp.assignedToName ?? "—"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 flex flex-col gap-5">
 
               {/* Stage Pipeline Progress — Salesforce-style chevrons */}
               {opp.stage !== "closed_lost" && (() => {
@@ -706,6 +725,9 @@ export default function OpportunityDetail() {
         {/* AI Summary */}
         <AISummary entityType="opportunity" entityData={opp as unknown as Record<string, unknown>} />
 
+        {/* Two-column layout: tabs + right sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+          <div className="min-w-0 flex flex-col gap-6">
         {/* Tabs */}
         <div className="flex gap-1 border-b border-border">
           {TABS.map((tab) => (
@@ -1308,6 +1330,135 @@ export default function OpportunityDetail() {
             </Card>
           </div>
         )}
+          </div>
+          {/* Right Sidebar */}
+          <aside className="flex flex-col gap-4">
+            {/* Account Details */}
+            <Card className="border-border overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center">
+                    <Building2 className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">Account Details</h3>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
+                <div className="col-span-2">
+                  <div className="text-[11px] text-muted-foreground mb-0.5">Account Name</div>
+                  {opp.accountId ? (
+                    <Link href={`/accounts/${opp.accountId}`}>
+                      <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-sm">{opp.accountName ?? "—"}</span>
+                    </Link>
+                  ) : (
+                    <div className="text-foreground text-sm">{opp.accountName ?? "—"}</div>
+                  )}
+                </div>
+                <div>
+                  <div className="text-[11px] text-muted-foreground mb-0.5">Type</div>
+                  <div className="text-foreground text-sm">{accountData?.status ?? "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-muted-foreground mb-0.5">Industry</div>
+                  <div className="text-foreground text-sm">{accountData?.industry ?? "—"}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-muted-foreground mb-0.5">Phone</div>
+                  <div className="text-foreground text-sm flex items-center gap-1">
+                    {accountData?.phone ? (
+                      <a href={`tel:${accountData.phone}`} className="text-blue-600 dark:text-blue-400 hover:underline">{accountData.phone}</a>
+                    ) : "—"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-muted-foreground mb-0.5">Annual Revenue</div>
+                  <div className="text-foreground text-sm">{accountData?.annualRevenue != null ? `$${accountData.annualRevenue.toLocaleString()}` : "—"}</div>
+                </div>
+                <div className="col-span-2">
+                  <div className="text-[11px] text-muted-foreground mb-0.5">Website</div>
+                  {accountData?.website ? (
+                    <a href={accountData.website.startsWith("http") ? accountData.website : `https://${accountData.website}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-sm flex items-center gap-1 truncate">
+                      <Globe className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{accountData.website}</span>
+                    </a>
+                  ) : <div className="text-foreground text-sm">—</div>}
+                </div>
+                <div className="col-span-2">
+                  <div className="text-[11px] text-muted-foreground mb-0.5">Billing Address</div>
+                  <div className="text-foreground text-sm whitespace-pre-line">
+                    {[accountData?.address, accountData?.city, accountData?.country].filter(Boolean).join("\n") || "—"}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Products */}
+            <Card className="border-border overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-amber-500 flex items-center justify-center">
+                    <Package className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">Products ({oppQuotes.length})</h3>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </div>
+              {oppQuotes.length > 0 ? (
+                <div className="p-4 text-sm flex flex-col gap-2">
+                  {oppQuotes.slice(0, 4).map((q) => (
+                    <Link key={q.id} href={`/quotes/${q.id}`}>
+                      <div className="flex items-center justify-between gap-2 hover:bg-muted/40 -mx-1 px-1 py-0.5 rounded cursor-pointer">
+                        <span className="text-blue-600 dark:text-blue-400 hover:underline truncate text-sm">{q.name}</span>
+                        <span className="text-[11px] text-muted-foreground shrink-0">{q.quoteNumber}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 text-xs text-muted-foreground">No products yet.</div>
+              )}
+            </Card>
+
+            {/* Contact Roles */}
+            <Card className="border-border overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-orange-50 dark:bg-orange-950/30 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded bg-orange-500 flex items-center justify-center">
+                    <Users className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">Contact Roles ({contactsData?.data.length ?? 0})</h3>
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              </div>
+              {contactsData?.data.length ? (
+                <div className="p-4 text-sm flex flex-col gap-2.5">
+                  {contactsData.data.slice(0, 4).map((c, idx) => {
+                    const initials = `${c.firstName[0] ?? ""}${c.lastName[0] ?? ""}`.toUpperCase();
+                    return (
+                      <div key={c.id} className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-950/50 flex items-center justify-center text-orange-700 dark:text-orange-300 text-[11px] font-bold shrink-0">
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Link href={`/contacts/${c.id}`}>
+                            <span className="text-blue-600 dark:text-blue-400 hover:underline text-sm cursor-pointer truncate block">
+                              {c.firstName} {c.lastName}
+                              {idx === 0 && <span className="ml-1.5 text-[9px] font-bold text-orange-700 dark:text-orange-300">PRIMARY</span>}
+                            </span>
+                          </Link>
+                          {c.title && <div className="text-[11px] text-muted-foreground truncate">Role: {c.title}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-4 text-xs text-muted-foreground">No contact roles assigned.</div>
+              )}
+            </Card>
+          </aside>
+        </div>
       </div>
       {numericId && (
         <QuickQuoteDialog
