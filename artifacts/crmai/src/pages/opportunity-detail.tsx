@@ -12,10 +12,12 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AISummary } from "@/components/ai-summary";
 import { EmailCompose } from "@/components/email-compose";
+import { EntityApprovals } from "@/components/entity-approvals";
+import { useAuth } from "@/context/auth";
 import {
   ArrowLeft, ArrowRight, Pencil, DollarSign, Calendar, Activity, Building2,
   Phone, Mail, Users, Briefcase, CheckCircle2, Clock, TrendingUp,
-  FileText, Plus, Package, X, Printer,
+  FileText, Plus, Package, X, Printer, ShieldCheck,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -69,7 +71,7 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
   demo: Briefcase,
 };
 
-type Tab = "activities" | "quotes" | "contacts" | "about";
+type Tab = "activities" | "quotes" | "contacts" | "approvals" | "about";
 
 interface OppQuote {
   id: number;
@@ -402,6 +404,8 @@ export default function OpportunityDetail() {
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const { data: opp, isLoading } = useQuery<OpportunityDetail>({
     queryKey: ["opportunity", id],
@@ -464,6 +468,7 @@ export default function OpportunityDetail() {
     { id: "activities", label: "Activities", count: activitiesData?.data.length },
     { id: "contacts", label: "Contacts", count: contactsData?.data.length },
     { id: "quotes", label: "Quotes", count: oppQuotes.length },
+    { id: "approvals", label: "Approvals" },
     { id: "about", label: "Details" },
   ];
 
@@ -749,6 +754,15 @@ export default function OpportunityDetail() {
               ))
             )}
           </div>
+        )}
+
+        {/* Approvals Tab */}
+        {activeTab === "approvals" && (
+          <EntityApprovals
+            entity="opportunity"
+            record={opp as unknown as Record<string, unknown>}
+            isAdmin={isAdmin}
+          />
         )}
 
         {/* Details Tab */}

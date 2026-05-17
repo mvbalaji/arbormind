@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { EntityApprovals } from "@/components/entity-approvals";
+import { useAuth } from "@/context/auth";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "border-yellow-500/30 text-yellow-600 bg-yellow-500/5",
@@ -79,6 +81,13 @@ interface OrderViewDialogProps {
 }
 
 function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
+  const [activeTab, setActiveTab] = useState<"details" | "approvals">("details");
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const approvalRecord: Record<string, unknown> = {
+    ...order,
+    orderValue: order.total,
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border text-foreground max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -88,7 +97,26 @@ function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
             <Badge variant="outline" className={`capitalize ${STATUS_COLORS[order.status] ?? ""}`}>{order.status}</Badge>
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 mt-2">
+        <div className="flex gap-1 border-b border-border mt-2">
+          {(["details", "approvals"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px capitalize ${
+                activeTab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t === "details" ? "Order Details" : "Approvals"}
+            </button>
+          ))}
+        </div>
+        {activeTab === "approvals" && (
+          <div className="mt-4">
+            <EntityApprovals entity="order" record={approvalRecord} isAdmin={isAdmin} />
+          </div>
+        )}
+        {activeTab === "details" && (
+        <div className="space-y-4 mt-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div><span className="text-muted-foreground">Account:</span> <span className="font-medium">{order.accountName ?? "—"}</span></div>
             <div><span className="text-muted-foreground">Contact:</span> <span className="font-medium">{order.contactName ?? "—"}</span></div>
@@ -136,6 +164,7 @@ function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
             </div>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

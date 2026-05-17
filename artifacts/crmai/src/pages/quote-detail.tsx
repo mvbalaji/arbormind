@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { EntityApprovals } from "@/components/entity-approvals";
+import { useAuth } from "@/context/auth";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "border-border text-muted-foreground",
@@ -60,6 +62,9 @@ export default function QuoteDetail() {
   const { data: accountsData } = useListAccounts({ limit: 200 });
   const accounts = accountsData?.data ?? [];
 
+  const [activeTab, setActiveTab] = useState<"details" | "approvals">("details");
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editStatus, setEditStatus] = useState("");
@@ -285,6 +290,30 @@ export default function QuoteDetail() {
           )}
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-1 border-b border-border">
+          {(["details", "approvals"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px capitalize ${
+                activeTab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t === "details" ? "Quote Details" : "Approvals"}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "approvals" && (
+          <EntityApprovals
+            entity="quote"
+            record={quote as unknown as Record<string, unknown>}
+            isAdmin={isAdmin}
+          />
+        )}
+
+        {activeTab === "details" && (<>
         {/* Status Workflow Bar */}
         <Card className="glass-panel border-border p-4">
           <div className="flex items-center gap-1">
@@ -647,6 +676,7 @@ export default function QuoteDetail() {
             </div>
           </Card>
         )}
+        </>)}
       </div>
     </Layout>
   );
