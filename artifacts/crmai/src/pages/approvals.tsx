@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   useListApprovalRoles,
   useCreateApprovalRole,
@@ -27,32 +27,31 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
   Building2, Briefcase, FileText, ShoppingCart, Plus, Pencil, Trash2,
-  ShieldCheck, ArrowRight, Layers, Users2,
+  ShieldCheck, ArrowRight, Users2, Eye, Download, Save, Copy, X, ChevronRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 type Entity = "account" | "opportunity" | "quote" | "order";
 type Operator = "gt" | "gte" | "lt" | "lte" | "eq" | "neq" | "contains";
 
-const ENTITY_META: Record<Entity, { label: string; icon: React.ComponentType<{ className?: string }>; color: string; fields: { id: string; label: string; numeric: boolean }[] }> = {
+const ENTITY_META: Record<Entity, { label: string; icon: React.ComponentType<{ className?: string }>; fields: { id: string; label: string; numeric: boolean }[] }> = {
   account: {
     label: "Account",
     icon: Building2,
-    color: "text-blue-600 bg-blue-500/10",
     fields: [
       { id: "creditScore", label: "Credit Score", numeric: true },
       { id: "annualRevenue", label: "Annual Revenue (£)", numeric: true },
@@ -62,7 +61,6 @@ const ENTITY_META: Record<Entity, { label: string; icon: React.ComponentType<{ c
   opportunity: {
     label: "Opportunity",
     icon: Briefcase,
-    color: "text-emerald-600 bg-emerald-500/10",
     fields: [
       { id: "discountPct", label: "Discount %", numeric: true },
       { id: "amount", label: "Deal Value (£)", numeric: true },
@@ -73,7 +71,6 @@ const ENTITY_META: Record<Entity, { label: string; icon: React.ComponentType<{ c
   quote: {
     label: "Quote",
     icon: FileText,
-    color: "text-purple-600 bg-purple-500/10",
     fields: [
       { id: "marginPct", label: "Margin %", numeric: true },
       { id: "paymentTermsDays", label: "Payment Terms (days)", numeric: true },
@@ -83,7 +80,6 @@ const ENTITY_META: Record<Entity, { label: string; icon: React.ComponentType<{ c
   order: {
     label: "Order",
     icon: ShoppingCart,
-    color: "text-orange-600 bg-orange-500/10",
     fields: [
       { id: "orderValue", label: "Order Value (£)", numeric: true },
       { id: "deliverySlaDays", label: "Delivery SLA (days)", numeric: true },
@@ -115,15 +111,50 @@ const emptyForm = (): CriterionForm => ({
   level: 1, roleId: null, active: true,
 });
 
+interface ThresholdSettings {
+  dynamicThresholds: boolean;
+  autoApproveBelow: boolean;
+  escalateSlaBreached: boolean;
+  defaultSource: "system" | "manual" | "ai";
+  overrideAllowed: "yes" | "no";
+}
+
+const DEFAULT_SETTINGS: ThresholdSettings = {
+  dynamicThresholds: true,
+  autoApproveBelow: false,
+  escalateSlaBreached: false,
+  defaultSource: "system",
+  overrideAllowed: "yes",
+};
+
+function loadSettings(entity: Entity): ThresholdSettings {
+  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+  try {
+    const raw = localStorage.getItem(`approval-settings-${entity}`);
+    if (!raw) return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+function saveSettings(entity: Entity, s: ThresholdSettings) {
+  try {
+    localStorage.setItem(`approval-settings-${entity}`, JSON.stringify(s));
+  } catch {
+    // ignore
+  }
+}
+
 export default function Approvals() {
-  const [tab, setTab] = useState<Entity>("account");
+  const [entity, setEntity] = useState<Entity>("opportunity");
   const [rolesOpen, setRolesOpen] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
 
   const rolesQuery = useListApprovalRoles();
   const configsQuery = useListApprovalConfigs();
-  const criteriaQuery = useListApprovalCriteria({ entity: tab });
+  const criteriaQuery = useListApprovalCriteria({ entity });
 
   const updateConfigMutation = useUpdateApprovalConfig();
   const createCriterionMutation = useCreateApprovalCriterion();
@@ -133,7 +164,7 @@ export default function Approvals() {
   const deleteRoleMutation = useDeleteApprovalRole();
 
   const roles: ApprovalRole[] = rolesQuery.data?.data ?? [];
-  const config = configsQuery.data?.data?.find((c) => c.entity === tab);
+  const config = configsQuery.data?.data?.find((c) => c.entity === entity);
   const criteria: ApprovalCriterion[] = criteriaQuery.data?.data ?? [];
 
   const rolesById = useMemo(() => {
@@ -144,6 +175,17 @@ export default function Approvals() {
 
   const [criterionForm, setCriterionForm] = useState<CriterionForm | null>(null);
   const [deletingCriterionId, setDeletingCriterionId] = useState<number | null>(null);
+  const [settings, setSettings] = useState<ThresholdSettings>(() => loadSettings("opportunity"));
+
+  useEffect(() => {
+    setSettings(loadSettings(entity));
+  }, [entity]);
+
+  const updateSetting = <K extends keyof ThresholdSettings>(key: K, value: ThresholdSettings[K]) => {
+    const next = { ...settings, [key]: value };
+    setSettings(next);
+    saveSettings(entity, next);
+  };
 
   const openCreate = () => setCriterionForm(emptyForm());
   const openEdit = (c: ApprovalCriterion) =>
@@ -161,20 +203,20 @@ export default function Approvals() {
 
   const refreshAll = async () => {
     await Promise.all([
-      qc.invalidateQueries({ queryKey: getListApprovalCriteriaQueryKey({ entity: tab }) }),
+      qc.invalidateQueries({ queryKey: getListApprovalCriteriaQueryKey({ entity }) }),
       qc.invalidateQueries({ queryKey: getListApprovalConfigsQueryKey() }),
     ]);
   };
 
   const saveCriterion = async () => {
     if (!criterionForm) return;
-    const fieldMeta = ENTITY_META[tab].fields.find((f) => f.id === criterionForm.field);
+    const fieldMeta = ENTITY_META[entity].fields.find((f) => f.id === criterionForm.field);
     if (!criterionForm.name.trim() || !criterionForm.field) {
       toast({ title: "Missing fields", description: "Name and field are required.", variant: "destructive" });
       return;
     }
     const payload = {
-      entity: tab as CreateApprovalCriterionInputEntity,
+      entity: entity as CreateApprovalCriterionInputEntity,
       name: criterionForm.name.trim(),
       field: criterionForm.field,
       operator: criterionForm.operator as CreateApprovalCriterionInputOperator,
@@ -214,7 +256,7 @@ export default function Approvals() {
 
   const toggleMultiLevel = async (next: boolean) => {
     try {
-      await updateConfigMutation.mutateAsync({ entity: tab, data: { multiLevel: next } });
+      await updateConfigMutation.mutateAsync({ entity, data: { multiLevel: next } });
       await qc.invalidateQueries({ queryKey: getListApprovalConfigsQueryKey() });
     } catch {
       toast({ title: "Error", description: "Could not update configuration.", variant: "destructive" });
@@ -223,7 +265,7 @@ export default function Approvals() {
 
   const toggleEnabled = async (next: boolean) => {
     try {
-      await updateConfigMutation.mutateAsync({ entity: tab, data: { enabled: next } });
+      await updateConfigMutation.mutateAsync({ entity, data: { enabled: next } });
       await qc.invalidateQueries({ queryKey: getListApprovalConfigsQueryKey() });
     } catch {
       toast({ title: "Error", description: "Could not update configuration.", variant: "destructive" });
@@ -232,211 +274,368 @@ export default function Approvals() {
 
   const multiLevel = config?.multiLevel ?? false;
   const enabled = config?.enabled ?? true;
-  const maxLevel = useMemo(() => {
-    return criteria.reduce((m, c) => Math.max(m, c.level), 1);
+
+  // Group criteria by name to build the role mapping matrix
+  const criteriaByName = useMemo(() => {
+    const m = new Map<string, ApprovalCriterion[]>();
+    for (const c of criteria) {
+      const arr = m.get(c.name) ?? [];
+      arr.push(c);
+      m.set(c.name, arr);
+    }
+    return m;
   }, [criteria]);
 
-  const groupedByLevel = useMemo(() => {
-    const groups: Record<number, ApprovalCriterion[]> = {};
-    for (const c of criteria) {
-      (groups[c.level] ||= []).push(c);
+  // For the criteria configuration table: one row per unique name (use lowest-level entry as canonical)
+  const canonicalCriteria = useMemo(() => {
+    const out: { canonical: ApprovalCriterion; levels: ApprovalCriterion[] }[] = [];
+    for (const [, levels] of criteriaByName) {
+      const sorted = [...levels].sort((a, b) => a.level - b.level);
+      out.push({ canonical: sorted[0], levels: sorted });
     }
-    return groups;
-  }, [criteria]);
+    return out;
+  }, [criteriaByName]);
+
+  // Build example flow for workflow preview
+  const exampleFlow = useMemo(() => {
+    const first = canonicalCriteria[0];
+    if (!first) return null;
+    const c = first.canonical;
+    const op = OPERATOR_LABEL[c.operator as Operator] ?? c.operator;
+    const val = c.threshold != null ? c.threshold.toLocaleString() : c.thresholdText ?? "—";
+    const fieldMeta = ENTITY_META[entity].fields.find((f) => f.id === c.field);
+    const roleNames = first.levels.map((l) => rolesById.get(l.roleId ?? -1)?.name).filter(Boolean) as string[];
+    return {
+      label: `${fieldMeta?.label ?? c.field} ${op} ${val}`,
+      roles: roleNames.length > 0 ? roleNames : ["Approver"],
+    };
+  }, [canonicalCriteria, rolesById, entity]);
 
   const currentFieldMeta = criterionForm
-    ? ENTITY_META[tab].fields.find((f) => f.id === criterionForm.field)
+    ? ENTITY_META[entity].fields.find((f) => f.id === criterionForm.field)
     : null;
+
+  const lastUpdated = config?.updatedAt ? new Date(config.updatedAt) : new Date();
+  const EntityIcon = ENTITY_META[entity].icon;
+
+  const handleClone = () => {
+    toast({
+      title: "Clone configuration",
+      description: "Pick a target entity in the dropdown then save — the current entity's criteria stay where they are.",
+    });
+  };
+
+  const handleExport = () => {
+    const data = {
+      entity,
+      enabled,
+      multiLevel,
+      settings,
+      criteria: criteria.map((c) => ({
+        name: c.name, field: c.field, operator: c.operator,
+        threshold: c.threshold, thresholdText: c.thresholdText,
+        level: c.level, roleId: c.roleId,
+        roleName: c.roleId != null ? rolesById.get(c.roleId)?.name : null,
+        active: c.active,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `approval-config-${entity}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Layout>
       <div className="flex flex-col gap-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="w-11 h-11 rounded-full bg-indigo-500/15 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-5 h-5 text-indigo-600" />
+        {/* Blue gradient header */}
+        <div className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 flex items-center justify-between text-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center backdrop-blur-sm">
+              <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">Approval Framework</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Configure criteria-based approval workflows for Accounts, Opportunities, Quotes, and Orders.
-              </p>
+              <h1 className="text-xl font-display font-bold tracking-tight">Approval Configuration</h1>
+              <p className="text-xs text-white/80">Manage criteria, role mapping, and routing rules per entity.</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setRolesOpen(true)}>
-              <Users2 className="w-4 h-4 mr-2" /> Manage Roles
-            </Button>
+          <Button variant="ghost" className="text-white hover:bg-white/10" onClick={() => setRolesOpen(true)}>
+            <Users2 className="w-4 h-4 mr-2" /> Manage Roles
+          </Button>
+        </div>
+
+        {/* Entity selector + metadata bar */}
+        <Card className="border-border px-4 py-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Entity:</span>
+              <Select value={entity} onValueChange={(v) => setEntity(v as Entity)}>
+                <SelectTrigger className="w-44 h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ENTITIES.map((e) => {
+                    const M = ENTITY_META[e];
+                    return (
+                      <SelectItem key={e} value={e}>
+                        <span className="inline-flex items-center gap-2">
+                          <M.icon className="w-3.5 h-3.5" /> {M.label}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="text-muted-foreground"><span className="font-medium text-foreground">Version:</span> v1.1</div>
+            <div className="text-muted-foreground"><span className="font-medium text-foreground">Views:</span> {canonicalCriteria.length}</div>
+            <div className="text-muted-foreground">
+              <span className="font-medium text-foreground">Last Updated:</span>{" "}
+              {format(lastUpdated, "MMM d, yyyy")}
+            </div>
+            <div className="ml-auto flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="enabled-toggle" className="text-xs text-muted-foreground cursor-pointer">Enabled</Label>
+                <Switch id="enabled-toggle" checked={enabled} onCheckedChange={toggleEnabled} />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="multi-toggle" className="text-xs text-muted-foreground cursor-pointer">Multi-level</Label>
+                <Switch id="multi-toggle" checked={multiLevel} onCheckedChange={toggleMultiLevel} />
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Two-column body */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* LEFT: Criteria Configuration + Role Mapping */}
+          <div className="lg:col-span-2 flex flex-col gap-4">
+            {/* Criteria Configuration card */}
+            <Card className="border-border overflow-hidden p-0">
+              <div className="px-4 py-3 border-b border-border bg-muted/30">
+                <div className="font-display font-semibold text-foreground">Criteria Configuration</div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-card border-b border-border">
+                    <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="text-left px-3 py-2 font-semibold">Criteria Name</th>
+                      <th className="text-left px-3 py-2 font-semibold">Field / Attribute</th>
+                      <th className="text-left px-3 py-2 font-semibold">Operator</th>
+                      <th className="text-left px-3 py-2 font-semibold">Threshold</th>
+                      <th className="text-left px-3 py-2 font-semibold">Approval Type</th>
+                      <th className="text-right px-3 py-2 font-semibold w-20">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border bg-card">
+                    {criteriaQuery.isLoading ? (
+                      <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">Loading…</td></tr>
+                    ) : canonicalCriteria.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-10 text-center text-muted-foreground">
+                          No criteria yet. Click <span className="font-medium">Add Criteria</span> to define one.
+                        </td>
+                      </tr>
+                    ) : canonicalCriteria.map(({ canonical: c, levels }) => {
+                      const fieldMeta = ENTITY_META[entity].fields.find((f) => f.id === c.field);
+                      const valueLabel = c.threshold != null
+                        ? c.threshold.toLocaleString()
+                        : c.thresholdText ?? "—";
+                      const isMulti = levels.length > 1;
+                      return (
+                        <tr key={c.id} className="hover:bg-muted/40 transition-colors">
+                          <td className="px-3 py-2 font-medium text-foreground">{c.name}</td>
+                          <td className="px-3 py-2 text-muted-foreground">{fieldMeta?.label ?? c.field}</td>
+                          <td className="px-3 py-2 font-mono text-xs text-foreground">{OPERATOR_LABEL[c.operator as Operator] ?? c.operator}</td>
+                          <td className="px-3 py-2 font-mono text-xs text-foreground">{valueLabel}</td>
+                          <td className="px-3 py-2">
+                            {isMulti ? (
+                              <Badge variant="outline" className="border-indigo-500/40 text-indigo-700 bg-indigo-500/10 text-xs">
+                                Multi-Level
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-border text-muted-foreground text-xs">
+                                Single
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)} aria-label={`Edit ${c.name}`}>
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeletingCriterionId(c.id)} aria-label={`Delete ${c.name}`}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="px-4 py-3 border-t border-border bg-card">
+                <Button size="sm" onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Plus className="w-4 h-4 mr-1.5" /> Add Criteria
+                </Button>
+              </div>
+            </Card>
+
+            {/* Approval Role Mapping card */}
+            <Card className="border-border overflow-hidden p-0">
+              <div className="px-4 py-3 border-b border-border bg-muted/30">
+                <div className="font-display font-semibold text-foreground">Approval Role Mapping</div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-card border-b border-border">
+                    <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="text-left px-3 py-2 font-semibold">Criteria Name</th>
+                      <th className="text-left px-3 py-2 font-semibold">Level 1 Role</th>
+                      <th className="text-left px-3 py-2 font-semibold">Level 2 Role</th>
+                      <th className="text-left px-3 py-2 font-semibold">Level 3 Role</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border bg-card">
+                    {canonicalCriteria.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">
+                          Add a criterion to map approval roles.
+                        </td>
+                      </tr>
+                    ) : canonicalCriteria.map(({ canonical: c, levels }) => {
+                      const roleAt = (lvl: number) => {
+                        const match = levels.find((l) => l.level === lvl);
+                        if (!match || match.roleId == null) return null;
+                        return rolesById.get(match.roleId) ?? null;
+                      };
+                      const l1 = roleAt(1);
+                      const l2 = roleAt(2);
+                      const l3 = roleAt(3);
+                      return (
+                        <tr key={c.id} className="hover:bg-muted/40 transition-colors">
+                          <td className="px-3 py-2 font-medium text-foreground">{c.name}</td>
+                          <td className="px-3 py-2 text-foreground">{l1?.name ?? <span className="text-muted-foreground">—</span>}</td>
+                          <td className="px-3 py-2 text-foreground">{l2?.name ?? <span className="text-muted-foreground">—</span>}</td>
+                          <td className="px-3 py-2 text-foreground">{l3?.name ?? <span className="text-muted-foreground">—</span>}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+
+          {/* RIGHT: Workflow Preview + Threshold Settings */}
+          <div className="flex flex-col gap-4">
+            {/* Workflow Preview */}
+            <Card className="border-border p-4">
+              <div className="font-display font-semibold text-foreground mb-3">Workflow Preview</div>
+              <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm space-y-2">
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <EntityIcon className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="font-medium">{ENTITY_META[entity].label}</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>Criteria Evaluation</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <Users2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="font-medium">Role Assignment</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>Approval Process</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-foreground">
+                  <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="font-medium">Audit Trail</span>
+                </div>
+              </div>
+
+              {exampleFlow && (
+                <div className="mt-3 rounded-lg border border-dashed border-border p-3 text-xs">
+                  <div className="text-muted-foreground mb-1.5">Example:</div>
+                  <div className="font-mono text-foreground mb-2">{exampleFlow.label}</div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {exampleFlow.roles.map((r, idx) => (
+                      <React.Fragment key={`${r}-${idx}`}>
+                        <span className="px-2 py-0.5 rounded bg-card border border-border text-xs">{r}</span>
+                        {idx < exampleFlow.roles.length - 1 && <ArrowRight className="w-3 h-3 text-muted-foreground" />}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Button size="sm" variant="outline" className="flex-1 min-w-0" onClick={() => toast({ title: "Workflow diagram", description: "Full diagram view coming soon." })}>
+                  <Eye className="w-3.5 h-3.5 mr-1.5" /> View Workflow Diagram
+                </Button>
+                <Button size="sm" variant="outline" className="flex-1 min-w-0" onClick={handleExport}>
+                  <Download className="w-3.5 h-3.5 mr-1.5" /> Export Configuration
+                </Button>
+              </div>
+            </Card>
+
+            {/* Threshold Settings */}
+            <Card className="border-border p-4">
+              <div className="font-display font-semibold text-foreground mb-3">Threshold Settings</div>
+              <div className="space-y-2.5 text-sm">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={settings.dynamicThresholds} onCheckedChange={(v) => updateSetting("dynamicThresholds", Boolean(v))} />
+                  <span className="text-foreground">Enable Dynamic Thresholds</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={settings.autoApproveBelow} onCheckedChange={(v) => updateSetting("autoApproveBelow", Boolean(v))} />
+                  <span className="text-foreground">Auto-Approve Below Threshold</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox checked={settings.escalateSlaBreached} onCheckedChange={(v) => updateSetting("escalateSlaBreached", Boolean(v))} />
+                  <span className="text-foreground">Escalate if SLA &gt; 24 hours</span>
+                </label>
+              </div>
+              <div className="mt-4 space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-sm text-muted-foreground">Default Threshold Source:</Label>
+                  <Select value={settings.defaultSource} onValueChange={(v) => updateSetting("defaultSource", v as ThresholdSettings["defaultSource"])}>
+                    <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="system">System Config</SelectItem>
+                      <SelectItem value="manual">Manual</SelectItem>
+                      <SelectItem value="ai">AI Suggested</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Label className="text-sm text-muted-foreground">Override Allowed:</Label>
+                  <Select value={settings.overrideAllowed} onValueChange={(v) => updateSetting("overrideAllowed", v as ThresholdSettings["overrideAllowed"])}>
+                    <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Entity)} className="w-full">
-          <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full sm:w-auto">
-            {ENTITIES.map((e) => {
-              const M = ENTITY_META[e];
-              return (
-                <TabsTrigger key={e} value={e} className="gap-2">
-                  <M.icon className="w-3.5 h-3.5" />
-                  <span>{M.label}</span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-
-          {ENTITIES.map((e) => (
-            <TabsContent key={e} value={e} className="mt-4 space-y-4">
-              {/* Config card */}
-              <Card className="p-4 border-border">
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2">
-                    {(() => { const Icon = ENTITY_META[e].icon; return (
-                      <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", ENTITY_META[e].color)}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                    ); })()}
-                    <div>
-                      <div className="font-display text-base font-semibold text-foreground">
-                        {ENTITY_META[e].label}_Approval_Config
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {criteria.length} {criteria.length === 1 ? "criterion" : "criteria"} configured
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-card">
-                      <div>
-                        <Label className="text-sm font-medium">Approvals enabled</Label>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          When off, no approval is required for {ENTITY_META[e].label.toLowerCase()}s.
-                        </p>
-                      </div>
-                      <Switch checked={enabled} onCheckedChange={toggleEnabled} aria-label="Toggle approvals enabled" />
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg border border-border p-3 bg-card">
-                      <div>
-                        <Label className="text-sm font-medium">Multi-level approval</Label>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {multiLevel
-                            ? `Approvals escalate from Level 1 to Level ${Math.max(maxLevel, 1)}.`
-                            : "Single approver per criterion — no escalation."}
-                        </p>
-                      </div>
-                      <Switch checked={multiLevel} onCheckedChange={toggleMultiLevel} aria-label="Toggle multi-level approval" />
-                    </div>
-                  </div>
-
-                  {multiLevel && criteria.length > 0 && (
-                    <div className="rounded-lg border border-dashed border-border p-3 bg-muted/30">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
-                        <Layers className="w-3 h-3" /> Approval Hierarchy
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {Array.from({ length: maxLevel }, (_, i) => i + 1).map((lvl, idx) => {
-                          const items = groupedByLevel[lvl] ?? [];
-                          const roleNames = Array.from(new Set(items.map((c) => rolesById.get(c.roleId ?? -1)?.name).filter(Boolean) as string[]));
-                          return (
-                            <React.Fragment key={lvl}>
-                              <div className="px-2.5 py-1 rounded-md bg-card border border-border text-xs">
-                                <div className="font-semibold text-foreground">Level {lvl}</div>
-                                <div className="text-muted-foreground">{roleNames.join(", ") || "—"}</div>
-                              </div>
-                              {idx < maxLevel - 1 && <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />}
-                            </React.Fragment>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Card>
-
-              {/* Criteria card */}
-              <Card className="border-border overflow-hidden p-0">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
-                  <div>
-                    <div className="text-sm font-semibold text-foreground">Criteria</div>
-                    <div className="text-xs text-muted-foreground">Conditions that trigger approval routing.</div>
-                  </div>
-                  <Button size="sm" onClick={openCreate}>
-                    <Plus className="w-4 h-4 mr-1.5" /> Add Criterion
-                  </Button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-card border-b border-border">
-                      <tr className="text-xs uppercase tracking-wide text-muted-foreground">
-                        <th className="text-left px-3 py-2 font-semibold">Name</th>
-                        <th className="text-left px-3 py-2 font-semibold">Condition</th>
-                        <th className="text-left px-3 py-2 font-semibold">Level</th>
-                        <th className="text-left px-3 py-2 font-semibold">Approver Role</th>
-                        <th className="text-left px-3 py-2 font-semibold">Status</th>
-                        <th className="text-right px-3 py-2 font-semibold w-24">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border bg-card">
-                      {criteriaQuery.isLoading ? (
-                        <tr><td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">Loading...</td></tr>
-                      ) : criteria.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="px-3 py-10 text-center text-muted-foreground">
-                            No criteria yet. Click <span className="font-medium">Add Criterion</span> to define one.
-                          </td>
-                        </tr>
-                      ) : criteria.map((c) => {
-                        const fieldMeta = ENTITY_META[e].fields.find((f) => f.id === c.field);
-                        const valueLabel = c.threshold != null
-                          ? c.threshold.toLocaleString()
-                          : c.thresholdText ?? "—";
-                        const role = c.roleId != null ? rolesById.get(c.roleId) : null;
-                        return (
-                          <tr key={c.id} className="hover:bg-muted/40 transition-colors">
-                            <td className="px-3 py-2 font-medium text-foreground">{c.name}</td>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              <span className="font-mono text-xs">
-                                {fieldMeta?.label ?? c.field}{" "}
-                                <span className="text-foreground">{OPERATOR_LABEL[c.operator as Operator] ?? c.operator}</span>{" "}
-                                {valueLabel}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2">
-                              <Badge variant="outline" className="font-mono">L{c.level}</Badge>
-                            </td>
-                            <td className="px-3 py-2 text-foreground">
-                              {role ? (
-                                <span className="inline-flex items-center gap-1">
-                                  <span>{role.name}</span>
-                                  <span className="text-xs text-muted-foreground">(L{role.level})</span>
-                                </span>
-                              ) : <span className="text-muted-foreground">Unassigned</span>}
-                            </td>
-                            <td className="px-3 py-2">
-                              <Badge variant="outline" className={c.active ? "border-emerald-500/40 text-emerald-700 bg-emerald-500/10" : "border-border text-muted-foreground"}>
-                                {c.active ? "Active" : "Inactive"}
-                              </Badge>
-                            </td>
-                            <td className="px-3 py-2">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)} aria-label={`Edit ${c.name}`}>
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeletingCriterionId(c.id)} aria-label={`Delete ${c.name}`}>
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
+        {/* Bottom action bar */}
+        <Card className="border-border p-3 flex flex-wrap items-center gap-2">
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { saveSettings(entity, settings); toast({ title: "Configuration saved", description: `${ENTITY_META[entity].label} approval settings updated.` }); }}>
+            <Save className="w-4 h-4 mr-2" /> Save Configuration
+          </Button>
+          <Button variant="outline" onClick={handleClone}>
+            <Copy className="w-4 h-4 mr-2" /> Clone for Another Entity
+          </Button>
+          <Button variant="ghost" className="text-muted-foreground" onClick={() => { setSettings(loadSettings(entity)); toast({ title: "Changes discarded" }); }}>
+            <X className="w-4 h-4 mr-2" /> Cancel
+          </Button>
+        </Card>
       </div>
 
       {/* Criterion Dialog */}
@@ -449,14 +648,14 @@ export default function Approvals() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
                 <Label htmlFor="cName">Name</Label>
-                <Input id="cName" value={criterionForm.name} onChange={(e) => setCriterionForm({ ...criterionForm, name: e.target.value })} placeholder="e.g. High Value Deals" />
+                <Input id="cName" value={criterionForm.name} onChange={(e) => setCriterionForm({ ...criterionForm, name: e.target.value })} placeholder="e.g. High Discount" />
               </div>
               <div>
                 <Label htmlFor="cField">Field</Label>
                 <Select value={criterionForm.field} onValueChange={(v) => setCriterionForm({ ...criterionForm, field: v })}>
                   <SelectTrigger id="cField"><SelectValue placeholder="Select field" /></SelectTrigger>
                   <SelectContent>
-                    {ENTITY_META[tab].fields.map((f) => (
+                    {ENTITY_META[entity].fields.map((f) => (
                       <SelectItem key={f.id} value={f.id}>{f.label}</SelectItem>
                     ))}
                   </SelectContent>
