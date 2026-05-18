@@ -360,7 +360,7 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
               <TableHead className="w-44">Approved By</TableHead>
               <TableHead className="w-44">Approved Date</TableHead>
               <TableHead>Comments</TableHead>
-              <TableHead className="w-10" />
+              <TableHead className="w-44 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -395,37 +395,60 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
                     <TableCell className="text-foreground whitespace-pre-wrap">{row.comment || <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="text-right">
                       {showActions && req && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-7 w-7">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {canManage(req) && (
-                              <>
-                                <DropdownMenuItem onClick={() => { setActionState({ id: req.id, mode: "approve" }); setActionComment(""); }}>
-                                  <CheckCircle2 className="w-3.5 h-3.5 mr-2 text-emerald-600" /> Approve
+                        <div className="inline-flex items-center rounded-md border border-border bg-card overflow-hidden">
+                          {canManage(req) ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => { setActionState({ id: req.id, mode: "approve" }); setActionComment(""); }}
+                                disabled={decisionMutation.isPending}
+                                className="px-3 h-8 text-xs font-medium text-primary hover:bg-primary/5 border-r border-border disabled:opacity-50">
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setActionState({ id: req.id, mode: "reject" }); setActionComment(""); }}
+                                disabled={decisionMutation.isPending}
+                                className="px-3 h-8 text-xs font-medium text-primary hover:bg-primary/5 border-r border-border disabled:opacity-50">
+                                Reject
+                              </button>
+                            </>
+                          ) : null}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="px-2 h-8 text-primary hover:bg-primary/5 inline-flex items-center justify-center"
+                                aria-label="More actions">
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {canManage(req) && (
+                                <>
+                                  <DropdownMenuItem onClick={() => { setActionState({ id: req.id, mode: "approve" }); setActionComment(""); }}>
+                                    <CheckCircle2 className="w-3.5 h-3.5 mr-2 text-emerald-600" /> Approve
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => { setActionState({ id: req.id, mode: "reject" }); setActionComment(""); }}>
+                                    <XCircle className="w-3.5 h-3.5 mr-2 text-red-600" /> Reject
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {canComment(req) && (
+                                <DropdownMenuItem onClick={() => { setActionState({ id: req.id, mode: "comment" }); setActionComment(""); }}>
+                                  Add Comment
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setActionState({ id: req.id, mode: "reject" }); setActionComment(""); }}>
-                                  <XCircle className="w-3.5 h-3.5 mr-2 text-red-600" /> Reject
+                              )}
+                              {canCancel(req) && (
+                                <DropdownMenuItem
+                                  onClick={() => cancelMutation.mutate(req.id)}
+                                  disabled={cancelMutation.isPending}>
+                                  Cancel Request
                                 </DropdownMenuItem>
-                              </>
-                            )}
-                            {canComment(req) && (
-                              <DropdownMenuItem onClick={() => { setActionState({ id: req.id, mode: "comment" }); setActionComment(""); }}>
-                                Add Comment
-                              </DropdownMenuItem>
-                            )}
-                            {canCancel(req) && (
-                              <DropdownMenuItem
-                                onClick={() => cancelMutation.mutate(req.id)}
-                                disabled={cancelMutation.isPending}>
-                                Cancel Request
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
