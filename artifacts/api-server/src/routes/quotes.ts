@@ -260,10 +260,27 @@ router.get("/quotes", async (req, res) => {
       itemsByQuote.get(item.quoteId)!.push(formatItem(item));
     }
 
+    // Batched lookup of clone-source quote numbers / names
+    const sourceIds = Array.from(new Set(
+      rawData.map(q => q.clonedFromQuoteId).filter((v): v is number => typeof v === "number")
+    ));
+    const sourceRows = sourceIds.length > 0
+      ? await db.select({ id: quotesTable.id, quoteNumber: quotesTable.quoteNumber, name: quotesTable.name })
+          .from(quotesTable).where(inArray(quotesTable.id, sourceIds))
+      : [];
+    const sourceById = new Map(sourceRows.map(r => [r.id, r]));
+
     const quoteWhere = opportunityId ? eq(quotesTable.opportunityId, parseInt(opportunityId)) : undefined;
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(quotesTable).where(quoteWhere);
     res.json({
-      data: rawData.map(q => formatQuote(q, itemsByQuote.get(q.id) ?? [])),
+      data: rawData.map(q => {
+        const src = q.clonedFromQuoteId ? sourceById.get(q.clonedFromQuoteId) : null;
+        return {
+          ...formatQuote(q, itemsByQuote.get(q.id) ?? []),
+          clonedFromQuoteNumber: src?.quoteNumber ?? null,
+          clonedFromQuoteName: src?.name ?? null,
+        };
+      }),
       total: Number(countResult.count),
       page: pageNum,
       limit: limitNum,

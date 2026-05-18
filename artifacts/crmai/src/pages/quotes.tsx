@@ -754,9 +754,8 @@ export default function Quotes() {
                   <th className="w-10 px-2 py-2.5 text-muted-foreground font-medium text-center border-r border-border">#</th>
                   <SortableHeader field="quoteNumber" label="Quote Number" />
                   <SortableHeader field="name" label="Quote Name" />
-                  <th className="px-3 py-2.5 font-medium text-foreground border-r border-border">
-                    <span className="inline-flex items-center gap-1">Syncing <ChevronDown className="w-3 h-3 opacity-50" /></span>
-                  </th>
+                  <th className="px-3 py-2.5 font-medium text-foreground border-r border-border text-center">Revision</th>
+                  <th className="px-3 py-2.5 font-medium text-foreground border-r border-border">Cloned From</th>
                   <SortableHeader field="validUntil" label="Expiration Date" />
                   <SortableHeader field="subtotal" label="Subtotal" align="right" />
                   <SortableHeader field="total" label="Total Price" align="right" />
@@ -766,10 +765,10 @@ export default function Quotes() {
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={10} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={11} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : sortedQuotes.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-6 py-12 text-center text-muted-foreground">
+                    <td colSpan={11} className="px-6 py-12 text-center text-muted-foreground">
                       <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       {searchQuery ? "No quotes match your search." : "No quotes yet. Create your first quote."}
                     </td>
@@ -802,12 +801,28 @@ export default function Quotes() {
                         <Link href={`/quotes/${q.id}`} className="text-primary hover:underline">
                           {q.name}
                         </Link>
-                        {q.version && q.version > 1 && (
-                          <span className="ml-2 text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">v{q.version}</span>
-                        )}
+                      </td>
+                      <td className="px-3 py-2 text-center border-r border-border">
+                        <Badge
+                          variant="secondary"
+                          className={`text-[10px] font-mono ${q.version && q.version > 1 ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground"}`}
+                        >
+                          v{q.version ?? 1}
+                        </Badge>
                       </td>
                       <td className="px-3 py-2 border-r border-border">
-                        <span className="inline-block w-3.5 h-3.5 border border-border rounded-sm bg-background" aria-label="Not syncing" />
+                        {q.clonedFromQuoteId ? (
+                          <Link
+                            href={`/quotes/${q.clonedFromQuoteId}`}
+                            className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-xs"
+                            title={q.clonedFromQuoteName ?? undefined}
+                          >
+                            <Copy className="w-3 h-3" />
+                            {q.clonedFromQuoteNumber ?? `#${q.clonedFromQuoteId}`}
+                          </Link>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-foreground border-r border-border">
                         {q.validUntil ? format(new Date(q.validUntil), "M/d/yyyy") : "-"}
