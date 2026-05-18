@@ -237,6 +237,21 @@ export default function QuoteDetail() {
               {quote.isLatestVersion === false && (
                 <Badge variant="outline" className="text-xs border-orange-500/30 text-orange-600 bg-orange-500/5">older version</Badge>
               )}
+              {quote.clonedFromQuoteId && (
+                <a
+                  href={`/quotes/${quote.clonedFromQuoteId}`}
+                  className="inline-flex items-center"
+                  title={quote.clonedFromQuoteName ?? undefined}
+                >
+                  <Badge
+                    variant="outline"
+                    className="text-xs border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 cursor-pointer gap-1"
+                  >
+                    <Copy className="w-3 h-3" />
+                    Cloned from {quote.clonedFromQuoteNumber ?? `#${quote.clonedFromQuoteId}`}
+                  </Badge>
+                </a>
+              )}
             </div>
           </div>
         </div>

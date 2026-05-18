@@ -738,6 +738,9 @@ export interface Quote {
   name: string;
   version: number;
   parentQuoteId?: number | null;
+  clonedFromQuoteId?: number | null;
+  clonedFromQuoteNumber?: string | null;
+  clonedFromQuoteName?: string | null;
   opportunityId?: number | null;
   opportunityName?: string | null;
   contactId?: number | null;

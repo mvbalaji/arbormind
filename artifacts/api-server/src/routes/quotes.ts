@@ -19,6 +19,7 @@ const quoteFields = {
   name: quotesTable.name,
   version: quotesTable.version,
   parentQuoteId: quotesTable.parentQuoteId,
+  clonedFromQuoteId: quotesTable.clonedFromQuoteId,
   opportunityId: quotesTable.opportunityId,
   opportunityName: opportunitiesTable.name,
   contactId: quotesTable.contactId,
@@ -375,10 +376,25 @@ router.get("/quotes/:id", async (req, res) => {
     const maxVersion = Math.max(...versions.map(v => v.version));
     const latestVersion = quote.version === maxVersion;
 
+    let clonedFromQuoteNumber: string | null = null;
+    let clonedFromQuoteName: string | null = null;
+    if (quote.clonedFromQuoteId) {
+      const [src] = await db
+        .select({ quoteNumber: quotesTable.quoteNumber, name: quotesTable.name })
+        .from(quotesTable)
+        .where(eq(quotesTable.id, quote.clonedFromQuoteId));
+      if (src) {
+        clonedFromQuoteNumber = src.quoteNumber;
+        clonedFromQuoteName = src.name;
+      }
+    }
+
     res.json({
       ...formatQuote(quote, quoteItems.map(formatItem)),
       versions,
       isLatestVersion: latestVersion,
+      clonedFromQuoteNumber,
+      clonedFromQuoteName,
     });
   } catch (err) {
     req.log.error(err);
@@ -564,6 +580,7 @@ router.post("/quotes/:id/clone", async (req, res) => {
             name: `${original.name} (Copy)`,
             version: 1,
             parentQuoteId: null,
+            clonedFromQuoteId: original.id,
             opportunityId: null,
             contactId: newContactId,
             accountId: newAccountId,

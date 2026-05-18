@@ -2968,6 +2968,15 @@ components:
         parentQuoteId:
           type: integer
           nullable: true
+        clonedFromQuoteId:
+          type: integer
+          nullable: true
+        clonedFromQuoteNumber:
+          type: string
+          nullable: true
+        clonedFromQuoteName:
+          type: string
+          nullable: true
         opportunityId:
           type: integer
           nullable: true
