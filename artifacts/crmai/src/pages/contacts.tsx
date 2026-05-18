@@ -212,13 +212,15 @@ export default function Contacts() {
   );
 }
 
-function ContactFormDialog({
-  open, onOpenChange, mode, initialData,
+export function ContactFormDialog({
+  open, onOpenChange, mode, initialData, lockedAccountId, onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   initialData?: { id: number } & ContactFormData;
+  lockedAccountId?: number;
+  onSaved?: () => void;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -227,8 +229,11 @@ function ContactFormDialog({
   const [formData, setFormData] = useState<ContactFormData>(initialData ?? defaultFormData);
 
   React.useEffect(() => {
-    if (open) setFormData(initialData ?? defaultFormData);
-  }, [open, initialData]);
+    if (open) {
+      const base = initialData ?? defaultFormData;
+      setFormData(lockedAccountId != null && !initialData ? { ...base, accountId: String(lockedAccountId) } : base);
+    }
+  }, [open, initialData, lockedAccountId]);
 
   const { data: accountsData } = useListAccounts({ limit: 100 });
   const accounts = accountsData?.data ?? [];
@@ -236,19 +241,21 @@ function ContactFormDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const invalidate = () => queryClient.invalidateQueries({ queryKey: getListContactsQueryKey() });
+    const effectiveAccountId = lockedAccountId != null ? lockedAccountId : (formData.accountId ? parseInt(formData.accountId) : undefined);
     const payload = {
       firstName: formData.firstName,
       lastName: formData.lastName,
       email: formData.email || undefined,
       phone: formData.phone || undefined,
       title: formData.title || undefined,
-      accountId: formData.accountId ? parseInt(formData.accountId) : undefined,
+      accountId: effectiveAccountId,
     };
     if (mode === "create") {
       createMutation.mutate({ data: payload }, {
         onSuccess: () => {
           toast({ title: "Contact created", description: "The contact has been added successfully." });
           invalidate();
+          onSaved?.();
           onOpenChange(false);
         },
         onError: () => toast({ title: "Error", description: "Failed to create contact.", variant: "destructive" }),
@@ -258,6 +265,7 @@ function ContactFormDialog({
         onSuccess: () => {
           toast({ title: "Contact updated", description: "Changes saved successfully." });
           invalidate();
+          onSaved?.();
           onOpenChange(false);
         },
         onError: () => toast({ title: "Error", description: "Failed to update contact.", variant: "destructive" }),
@@ -305,15 +313,19 @@ function ContactFormDialog({
               <Label htmlFor="accountId">Account</Label>
               <select
                 id="accountId"
-                className="w-full h-10 px-3 rounded-md bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                value={formData.accountId}
+                disabled={lockedAccountId != null}
+                className="w-full h-10 px-3 rounded-md bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                value={lockedAccountId != null ? String(lockedAccountId) : formData.accountId}
                 onChange={e => setFormData({ ...formData, accountId: e.target.value })}
               >
-                <option value="">No account</option>
+                {lockedAccountId == null && <option value="">No account</option>}
                 {(accounts as Array<{ id: number; name: string }>).map((a) => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
               </select>
+              {lockedAccountId != null && (
+                <p className="text-[11px] text-muted-foreground">Locked to this opportunity's account.</p>
+              )}
             </div>
           </div>
           <DialogFooter className="pt-4">

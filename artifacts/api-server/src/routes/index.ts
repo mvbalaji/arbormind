@@ -20,6 +20,7 @@ import emailSettingsRouter from "./email-settings";
 import ordersRouter from "./orders";
 import aiRouter from "./ai";
 import approvalsRouter from "./approvals";
+import entityNotesRouter from "./entity-notes";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(seedRouter);
 router.use(ordersRouter);
 router.use(aiRouter);
 router.use(approvalsRouter);
+router.use(entityNotesRouter);
 
 export default router;

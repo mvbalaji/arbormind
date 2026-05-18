@@ -14,13 +14,16 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { AISummary } from "@/components/ai-summary";
 import { EmailCompose } from "@/components/email-compose";
 import { EntityApprovals } from "@/components/entity-approvals";
+import { EntityNotes } from "@/components/entity-notes";
+import { ContactFormDialog } from "@/pages/contacts";
+import { useTabOrder } from "@/hooks/use-tab-order";
 import { useAuth } from "@/context/auth";
 import {
   ArrowLeft, ArrowRight, Pencil, DollarSign, Calendar, Activity, Building2,
   Phone, Mail, Users, Briefcase, Check, CheckCircle2, Clock, TrendingUp,
   FileText, Plus, Package, X, Printer, ShieldCheck,
   Filter, RotateCw, ChevronDown, ChevronRight, PhoneCall, CalendarPlus, ListTodo,
-  UserPlus, FilePlus, Copy, MoreVertical, Globe,
+  UserPlus, FilePlus, Copy, MoreVertical, Globe, GripVertical,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -75,7 +78,9 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
   demo: Briefcase,
 };
 
-type Tab = "activities" | "quotes" | "contacts" | "approvals" | "about" | "related";
+type Tab = "activities" | "quotes" | "contacts" | "approvals" | "notes" | "about" | "related";
+
+const DEFAULT_OPP_TAB_ORDER: readonly Tab[] = ["activities", "contacts", "quotes", "approvals", "notes", "about", "related"];
 
 interface OppQuote {
   id: number;
@@ -405,6 +410,10 @@ export default function OpportunityDetail() {
   const id = params.id;
   const [activeTab, setActiveTab] = useState<Tab>("activities");
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<{ id: number; firstName: string; lastName: string; email: string; phone: string; title: string; accountId: string } | null>(null);
+  const [draggedTab, setDraggedTab] = useState<Tab | null>(null);
+  const [tabDropTarget, setTabDropTarget] = useState<Tab | null>(null);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [activitySubTab, setActivitySubTab] = useState<"call" | "email" | "task" | "event">("call");
@@ -518,14 +527,17 @@ export default function OpportunityDetail() {
   const stageConfig = STAGE_CONFIG[opp.stage] ?? STAGE_CONFIG["prospecting"];
   const currentStep = stageConfig.step;
 
-  const TABS: { id: Tab; label: string; count?: number }[] = [
-    { id: "activities", label: "Activities", count: activitiesData?.data.length },
-    { id: "contacts", label: "Contacts", count: contactsData?.data.length },
-    { id: "quotes", label: "Quotes", count: oppQuotes.length },
-    { id: "approvals", label: "Approvals" },
-    { id: "about", label: "Details" },
-    { id: "related", label: "Related" },
-  ];
+  const TAB_META: Record<Tab, { label: string; count?: number }> = {
+    activities: { label: "Activities", count: activitiesData?.data.length },
+    contacts: { label: "Contacts", count: contactsData?.data.length },
+    quotes: { label: "Quotes", count: oppQuotes.length },
+    approvals: { label: "Approvals" },
+    notes: { label: "Notes & Attachments" },
+    about: { label: "Details" },
+    related: { label: "Related" },
+  };
+  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity`, DEFAULT_OPP_TAB_ORDER);
+  const TABS = tabOrder.map((id) => ({ id, ...TAB_META[id] }));
 
   return (
     <Layout>
@@ -728,24 +740,49 @@ export default function OpportunityDetail() {
         {/* Two-column layout: tabs + right sidebar (sidebar only on Details tab) */}
         <div className={`grid grid-cols-1 gap-6 ${activeTab === "about" ? "lg:grid-cols-[1fr_320px]" : ""}`}>
           <div className="min-w-0 flex flex-col gap-6">
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-border">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                activeTab === tab.id
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className="ml-2 text-xs bg-muted rounded-full px-1.5 py-0.5">{tab.count}</span>
-              )}
-            </button>
-          ))}
+        {/* Tabs — draggable to reorder */}
+        <div className="flex gap-1 border-b border-border overflow-x-auto">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const isDropTarget = tabDropTarget === tab.id && draggedTab !== tab.id;
+            return (
+              <button
+                key={tab.id}
+                draggable
+                onDragStart={(e) => {
+                  setDraggedTab(tab.id);
+                  e.dataTransfer.effectAllowed = "move";
+                  e.dataTransfer.setData("text/plain", tab.id);
+                }}
+                onDragOver={(e) => {
+                  if (draggedTab && draggedTab !== tab.id) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    setTabDropTarget(tab.id);
+                  }
+                }}
+                onDragLeave={() => setTabDropTarget((t) => (t === tab.id ? null : t))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedTab && draggedTab !== tab.id) moveTab(draggedTab, tab.id);
+                  setDraggedTab(null);
+                  setTabDropTarget(null);
+                }}
+                onDragEnd={() => { setDraggedTab(null); setTabDropTarget(null); }}
+                onClick={() => setActiveTab(tab.id)}
+                title="Drag to reorder"
+                className={`group px-3 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 whitespace-nowrap cursor-grab active:cursor-grabbing ${
+                  isActive ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                } ${isDropTarget ? "bg-primary/10 border-primary/40" : ""} ${draggedTab === tab.id ? "opacity-50" : ""}`}
+              >
+                <GripVertical className="w-3 h-3 opacity-40 group-hover:opacity-80" />
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span className="ml-1 text-xs bg-muted rounded-full px-1.5 py-0.5">{tab.count}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Activities Tab */}
@@ -973,6 +1010,15 @@ export default function OpportunityDetail() {
         {/* Contacts Tab */}
         {activeTab === "contacts" && (
           <div className="flex flex-col gap-3">
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => { setEditingContact(null); setContactDialogOpen(true); }}
+                className="gap-1.5"
+              >
+                <UserPlus className="w-3.5 h-3.5" /> Add Contact
+              </Button>
+            </div>
             {!contactsData?.data.length ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -982,9 +1028,9 @@ export default function OpportunityDetail() {
               contactsData.data.map((contact) => {
                 const initials = `${contact.firstName[0] ?? ""}${contact.lastName[0] ?? ""}`.toUpperCase();
                 return (
-                  <Link key={contact.id} href={`/contacts/${contact.id}`}>
-                    <Card className="glass-panel border-border hover:border-primary/30 transition-all cursor-pointer group p-4">
-                      <div className="flex items-center gap-4">
+                  <Card key={contact.id} className="glass-panel border-border hover:border-primary/30 transition-all group p-4">
+                    <div className="flex items-center gap-4">
+                      <Link href={`/contacts/${contact.id}`} className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer">
                         <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
                           {initials}
                         </div>
@@ -999,7 +1045,7 @@ export default function OpportunityDetail() {
                             <p className="text-xs text-muted-foreground">{contact.accountName}</p>
                           )}
                         </div>
-                        <div className="flex flex-col items-end gap-1 shrink-0">
+                        <div className="hidden sm:flex flex-col items-end gap-1 shrink-0">
                           {contact.email && (
                             <span className="text-xs text-muted-foreground">{contact.email}</span>
                           )}
@@ -1007,13 +1053,38 @@ export default function OpportunityDetail() {
                             <span className="text-xs text-muted-foreground">{contact.phone}</span>
                           )}
                         </div>
-                      </div>
-                    </Card>
-                  </Link>
+                      </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={(e) => {
+                          e.preventDefault(); e.stopPropagation();
+                          setEditingContact({
+                            id: contact.id,
+                            firstName: contact.firstName,
+                            lastName: contact.lastName,
+                            email: contact.email ?? "",
+                            phone: contact.phone ?? "",
+                            title: contact.title ?? "",
+                            accountId: contact.accountId ? String(contact.accountId) : "",
+                          });
+                          setContactDialogOpen(true);
+                        }}
+                        title="Edit contact"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </Card>
                 );
               })
             )}
           </div>
+        )}
+
+        {activeTab === "notes" && numericId && (
+          <EntityNotes entity="opportunity" entityId={numericId} />
         )}
 
         {/* Quotes Tab */}
@@ -1217,24 +1288,6 @@ export default function OpportunityDetail() {
               </div>
             </Card>
 
-            {/* Notes & Attachments */}
-            <Card className="border-border overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-purple-50 dark:bg-purple-950/30 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-purple-500 flex items-center justify-center">
-                    <FileText className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-foreground">Notes & Attachments (0)</h3>
-                </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              </div>
-              <div className="p-4 text-sm text-center">
-                <div className="text-xs text-muted-foreground italic mb-2">No files uploaded yet.</div>
-                <Button variant="outline" size="sm" disabled className="text-xs h-7">
-                  <Plus className="w-3 h-3 mr-1" /> Upload Files
-                </Button>
-              </div>
-            </Card>
           </div>
         )}
 
@@ -1482,6 +1535,16 @@ export default function OpportunityDetail() {
         opp={opp}
         oppId={id ?? ""}
         onSaved={() => queryClient.invalidateQueries({ queryKey: ["opportunity", id] })}
+      />
+      <ContactFormDialog
+        open={contactDialogOpen}
+        onOpenChange={(o) => { setContactDialogOpen(o); if (!o) setEditingContact(null); }}
+        mode={editingContact ? "edit" : "create"}
+        initialData={editingContact ?? undefined}
+        lockedAccountId={opp.accountId ?? undefined}
+        onSaved={() => {
+          queryClient.invalidateQueries({ queryKey: ["opportunity-contacts", id] });
+        }}
       />
     </Layout>
   );

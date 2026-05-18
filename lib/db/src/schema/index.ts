@@ -18,3 +18,4 @@ export * from "./orders";
 export * from "./opportunity-items";
 export * from "./approvals";
 export * from "./approval-requests";
+export * from "./entity-notes";
