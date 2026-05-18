@@ -408,7 +408,7 @@ function generateQuotePDF(quote: OppQuote, opp: OpportunityDetail) {
 export default function OpportunityDetail() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const [activeTab, setActiveTab] = useState<Tab>("activities");
+  const [activeTab, setActiveTab] = useState<Tab>("about");
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<{ id: number; firstName: string; lastName: string; email: string; phone: string; title: string; accountId: string } | null>(null);
