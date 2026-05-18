@@ -564,12 +564,13 @@ router.post("/quotes/:id/clone", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
-    const { accountId } = req.body as { accountId?: number };
+    const { accountId, name: nameInput } = req.body as { accountId?: number; name?: string };
     if (!accountId || !Number.isFinite(Number(accountId))) {
       res.status(400).json({ error: "accountId is required" });
       return;
     }
     const newAccountId = Number(accountId);
+    const customName = typeof nameInput === "string" ? nameInput.trim() : "";
 
     const result = await db.transaction(async (tx) => {
       const [original] = await tx.select().from(quotesTable).where(eq(quotesTable.id, id));
@@ -594,7 +595,7 @@ router.post("/quotes/:id/clone", async (req, res) => {
         try {
           const [row] = await tx.insert(quotesTable).values({
             quoteNumber,
-            name: `${original.name} (Copy)`,
+            name: customName || `${original.name} (Copy)`,
             version: 1,
             parentQuoteId: null,
             clonedFromQuoteId: original.id,

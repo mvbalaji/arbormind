@@ -341,6 +341,7 @@ function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: C
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const [accountId, setAccountId] = useState<number | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [nameInput, setNameInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -365,8 +366,13 @@ function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: C
       setAccountId(null);
       setSourcePickerOpen(false);
       setPickerOpen(false);
+      setNameInput(initialSource ? `${initialSource.name} (Copy)` : "");
     }
   }, [open, initialSource]);
+
+  React.useEffect(() => {
+    if (open && source) setNameInput((prev) => prev || `${source.name} (Copy)`);
+  }, [open, source]);
 
   const handleClone = async () => {
     if (!source || !accountId) return;
@@ -376,7 +382,7 @@ function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: C
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ accountId }),
+        body: JSON.stringify({ accountId, name: nameInput.trim() || undefined }),
       });
       if (!res.ok) throw new Error("Failed");
       await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
@@ -453,6 +459,19 @@ function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: C
               </PopoverContent>
             </Popover>
           </div>
+          {source && (
+            <div className="space-y-1.5">
+              <Label htmlFor="clone-quote-name" className="text-xs uppercase tracking-wide text-muted-foreground">Quote Name *</Label>
+              <Input
+                id="clone-quote-name"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                placeholder={`${source.name} (Copy)`}
+                className="h-9 bg-muted border-border text-sm"
+              />
+              <p className="text-xs text-muted-foreground">Defaults to "{source.name} (Copy)" — edit to give the clone a different name.</p>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Target Account *</Label>
             <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
@@ -530,7 +549,7 @@ function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: C
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
-          <Button onClick={handleClone} disabled={!source || !accountId || isSubmitting} className="gap-1.5">
+          <Button onClick={handleClone} disabled={!source || !accountId || !nameInput.trim() || isSubmitting} className="gap-1.5">
             <Copy className="w-3.5 h-3.5" />
             {isSubmitting ? "Cloning…" : "Clone Quote"}
           </Button>
