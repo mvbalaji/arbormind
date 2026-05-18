@@ -324,13 +324,39 @@ async function loadRequestWithAudit(requestId: number) {
 // List approval requests for an entity record (with audit trail per request)
 router.get("/approvals/requests", async (req, res) => {
   if (!requireAuth(req, res)) return;
+  const sessionUser = getSessionUser(req);
   try {
-    const { entity, entityId, status } = req.query;
-    if (!isEntity(entity)) { res.status(400).json({ error: "entity is required and must be one of " + ENTITIES.join(", ") }); return; }
-    const idNum = Number.parseInt(String(entityId ?? ""), 10);
-    if (!Number.isFinite(idNum) || idNum <= 0) { res.status(400).json({ error: "entityId is required" }); return; }
+    const { entity, entityId, status, scope } = req.query as Record<string, string | undefined>;
+    const scopeVal = scope === "mine" || scope === "team" || scope === "all" ? scope : null;
 
-    const filters = [eq(approvalRequestsTable.entity, entity), eq(approvalRequestsTable.entityId, idNum)];
+    const filters: any[] = [];
+
+    if (scopeVal) {
+      // List mode for the global Approvals page.
+      if (entity && isEntity(entity)) filters.push(eq(approvalRequestsTable.entity, entity));
+
+      if (scopeVal === "mine") {
+        const meId = sessionUser?.id ?? 0;
+        filters.push(sql`(${approvalRequestsTable.requestedBy} = ${meId} OR ${approvalRequestsTable.decidedBy} = ${meId})`);
+      } else if (scopeVal === "team") {
+        const meId = sessionUser?.id ?? 0;
+        const [me] = await db.select({ team: usersTable.team }).from(usersTable).where(eq(usersTable.id, meId));
+        const teamName = me?.team ?? null;
+        if (!teamName) { res.json({ data: [] }); return; }
+        const teammates = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.team, teamName));
+        const teamIds = teammates.map((t) => t.id);
+        if (teamIds.length === 0) { res.json({ data: [] }); return; }
+        filters.push(inArray(approvalRequestsTable.requestedBy, teamIds));
+      }
+      // scopeVal === "all" → no extra filter
+    } else {
+      // Legacy entity-detail mode used by the per-record Approvals tab.
+      if (!isEntity(entity)) { res.status(400).json({ error: "entity is required and must be one of " + ENTITIES.join(", ") }); return; }
+      const idNum = Number.parseInt(String(entityId ?? ""), 10);
+      if (!Number.isFinite(idNum) || idNum <= 0) { res.status(400).json({ error: "entityId is required" }); return; }
+      filters.push(eq(approvalRequestsTable.entity, entity), eq(approvalRequestsTable.entityId, idNum));
+    }
+
     if (status === "open") filters.push(eq(approvalRequestsTable.status, "open"));
     else if (status === "closed") filters.push(sql`${approvalRequestsTable.status} <> 'open'`);
 

@@ -61,6 +61,7 @@ const NAV_ITEMS = [
   { label: "Cases", href: "/cases", icon: LifeBuoy },
   { label: "Reports", href: "/reports", icon: BarChart3 },
   { label: "AI Assistant", href: "/ai-assistant", icon: Bot },
+  { label: "Approvals", href: "/approvals", icon: ShieldCheck },
   { label: "Support", href: "/support", icon: Mail },
   { label: "Team & Data", href: "/users", icon: Settings },
 ];
