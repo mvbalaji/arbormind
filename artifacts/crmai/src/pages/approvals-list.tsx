@@ -136,13 +136,36 @@ export default function ApprovalsList() {
   return (
     <Layout>
       <div className="flex flex-col gap-4 max-w-[1600px] mx-auto">
-        {/* Header */}
-        <Card className="border-border p-4 flex items-start gap-3">
+        {/* Header — Salesforce-style view switcher */}
+        <Card className="border-border p-4 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-indigo-500/15 flex items-center justify-center shrink-0">
             <ShieldCheck className="w-5 h-5 text-indigo-600" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-display font-semibold text-foreground text-lg">Approvals</div>
+            <div className="text-xs text-muted-foreground font-medium">Approvals</div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-primary font-display font-semibold text-lg hover:underline focus:outline-none">
+                  {SCOPE_LABEL[scope]}
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-64">
+                {(["mine", "all", "team"] as const).map((s) => (
+                  <DropdownMenuItem
+                    key={s}
+                    onClick={() => setScope(s)}
+                    className="flex items-center justify-between gap-3">
+                    <span className={cn(scope === s && "font-semibold text-foreground")}>{SCOPE_LABEL[s]}</span>
+                    {scope === s && (
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Pinned</span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <div className="text-xs text-muted-foreground mt-0.5">
               {rows.length} record{rows.length === 1 ? "" : "s"} · {counts.open} open · {counts.approved} approved · {counts.rejected} rejected
             </div>
@@ -151,23 +174,6 @@ export default function ApprovalsList() {
 
         {/* Toolbar */}
         <Card className="border-border p-3 flex flex-wrap items-center gap-3">
-          <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5">
-            {(["mine", "all", "team"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setScope(s)}
-                className={cn(
-                  "px-3 h-8 text-xs font-medium rounded-md transition-colors",
-                  scope === s
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {SCOPE_LABEL[s]}
-              </button>
-            ))}
-          </div>
-
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Status</span>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
