@@ -725,8 +725,8 @@ export default function OpportunityDetail() {
         {/* AI Summary */}
         <AISummary entityType="opportunity" entityData={opp as unknown as Record<string, unknown>} />
 
-        {/* Two-column layout: tabs + right sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        {/* Two-column layout: tabs + right sidebar (sidebar only on Details tab) */}
+        <div className={`grid grid-cols-1 gap-6 ${activeTab === "about" ? "lg:grid-cols-[1fr_320px]" : ""}`}>
           <div className="min-w-0 flex flex-col gap-6">
         {/* Tabs */}
         <div className="flex gap-1 border-b border-border">
@@ -1331,7 +1331,8 @@ export default function OpportunityDetail() {
           </div>
         )}
           </div>
-          {/* Right Sidebar */}
+          {/* Right Sidebar — only on Details (about) tab */}
+          {activeTab === "about" && (
           <aside className="flex flex-col gap-4">
             {/* Account Details */}
             <Card className="border-border overflow-hidden">
@@ -1458,6 +1459,7 @@ export default function OpportunityDetail() {
               )}
             </Card>
           </aside>
+          )}
         </div>
       </div>
       {numericId && (
