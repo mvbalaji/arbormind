@@ -62,7 +62,6 @@ const NAV_ITEMS = [
   { label: "Reports", href: "/reports", icon: BarChart3 },
   { label: "AI Assistant", href: "/ai-assistant", icon: Bot },
   { label: "Support", href: "/support", icon: Mail },
-  { label: "Approvals", href: "/admin/approvals", icon: ShieldCheck, adminOnly: true },
   { label: "Team & Data", href: "/users", icon: Settings },
 ];
 
@@ -155,6 +154,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     Team & Settings
                   </Link>
                 </DropdownMenuItem>
+                {user?.role === "admin" && (
+                  <DropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href="/admin/approvals" className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4" />
+                      Approval Configuration
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer" onClick={() => void logout()}>
                   <LogOut className="w-4 h-4 mr-2" />
@@ -295,6 +302,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       Team & Settings
                     </Link>
                   </DropdownMenuItem>
+                  {user?.role === "admin" && (
+                    <DropdownMenuItem className="cursor-pointer" asChild>
+                      <Link href="/admin/approvals" className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4" />
+                        Approval Configuration
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer" onClick={() => void logout()}>
                     <LogOut className="w-4 h-4 mr-2" />
