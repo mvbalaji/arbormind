@@ -198,20 +198,20 @@ export default function Accounts() {
         </div>
 
         {/* Table */}
-        <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
+        <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
+          <div className="overflow-auto max-h-[calc(100vh-260px)]">
             <table className="w-full text-sm min-w-[900px]">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Account Name</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Location</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Phone</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Industry</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Email</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Account Owner</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">Contacts</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">Deals</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">Actions</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Name</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Location</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Phone</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Industry</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Email</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Owner</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold">Contacts</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold">Deals</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
