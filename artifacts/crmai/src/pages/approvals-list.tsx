@@ -232,7 +232,7 @@ export default function ApprovalsList() {
         <Card className="border-border overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableRow className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 hover:bg-blue-700 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide [&_th]:font-semibold [&_th]:text-xs">
                 <TableHead className="w-10 text-center">#</TableHead>
                 <TableHead className="w-44">Record</TableHead>
                 <TableHead>Step / Role</TableHead>
