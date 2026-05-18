@@ -129,7 +129,8 @@ export default function ApprovalsList() {
   }, [rows]);
 
   const isAdmin = user?.role === "admin";
-  const canDecide = (r: ApprovalRequest) => r.status === "open" && isAdmin;
+  const canApprove = user?.role === "admin" || user?.role === "manager";
+  const canDecide = (r: ApprovalRequest) => r.status === "open" && canApprove;
   const canCancel = (r: ApprovalRequest) => r.status === "open" && (user?.id === r.requestedBy || isAdmin);
 
   return (

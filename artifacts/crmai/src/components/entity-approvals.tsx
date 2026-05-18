@@ -245,7 +245,7 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
     );
   }
 
-  const canManage = (r: ApprovalRequest) => r.status === "open" && (isAdmin || user?.role === "admin");
+  const canManage = (r: ApprovalRequest) => r.status === "open" && (isAdmin || user?.role === "admin" || user?.role === "manager");
   const canCancel = (r: ApprovalRequest) => r.status === "open" && (user?.id === r.requestedBy || isAdmin);
   const canComment = (r: ApprovalRequest) => r.status === "open" && !!user;
 

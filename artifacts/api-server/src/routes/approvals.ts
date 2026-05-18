@@ -425,8 +425,32 @@ router.post("/approvals/requests", async (req, res) => {
     if (!Number.isFinite(idNum) || idNum <= 0) { res.status(400).json({ error: "Invalid entityId" }); return; }
 
     const lvl = Number.isFinite(Number(level)) && Number(level) > 0 ? Number(level) : 1;
-    const roleIdNum = roleId != null && Number.isFinite(Number(roleId)) ? Number(roleId) : null;
+    let roleIdNum = roleId != null && Number.isFinite(Number(roleId)) ? Number(roleId) : null;
     const trimmedComment = typeof comment === "string" && comment.trim() ? comment.trim() : null;
+
+    // Default approver group when none specified: "Manager and above"
+    // (managers + admins). Find or create the role on demand so the UI's
+    // "Assigned To" column reflects the default approver pool.
+    if (roleIdNum == null) {
+      const DEFAULT_ROLE = "Manager and above";
+      const [existingRole] = await db
+        .select({ id: approvalRolesTable.id })
+        .from(approvalRolesTable)
+        .where(eq(approvalRolesTable.name, DEFAULT_ROLE));
+      if (existingRole) {
+        roleIdNum = existingRole.id;
+      } else {
+        const [createdRole] = await db
+          .insert(approvalRolesTable)
+          .values({
+            name: DEFAULT_ROLE,
+            level: 1,
+            description: "Default approver group — managers and admins.",
+          })
+          .returning({ id: approvalRolesTable.id });
+        roleIdNum = createdRole?.id ?? null;
+      }
+    }
 
     const [created] = await db.insert(approvalRequestsTable).values({
       entity,
@@ -455,7 +479,7 @@ router.post("/approvals/requests", async (req, res) => {
 router.post("/approvals/requests/:id/decision", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const user = getSessionUser(req);
-  if (user.role !== "admin") { res.status(403).json({ error: "Forbidden — only admins can approve or reject" }); return; }
+  if (user.role !== "admin" && user.role !== "manager") { res.status(403).json({ error: "Forbidden — only managers and admins can approve or reject" }); return; }
   try {
     const id = parseId(req.params.id, res);
     if (id == null) return;
