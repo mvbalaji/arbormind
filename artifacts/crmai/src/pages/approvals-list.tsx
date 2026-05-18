@@ -232,7 +232,8 @@ export default function ApprovalsList() {
                 </TableHead>
                 <TableHead className="w-28">Status</TableHead>
                 <TableHead className="w-40">Submitted By</TableHead>
-                <TableHead className="w-40">Decided By</TableHead>
+                <TableHead className="w-40">Approved By</TableHead>
+                <TableHead className="w-44">Approved Date</TableHead>
                 <TableHead>Comment</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
@@ -240,11 +241,11 @@ export default function ApprovalsList() {
             <TableBody>
               {query.isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">Loading…</TableCell>
+                  <TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-8">Loading…</TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-10">
+                  <TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-10">
                     No approval requests in <span className="font-semibold text-foreground">{SCOPE_LABEL[scope]}</span>.
                   </TableCell>
                 </TableRow>
@@ -271,8 +272,14 @@ export default function ApprovalsList() {
                       <TableCell className={cn("font-medium capitalize", STATUS_TONE[r.status])}>{r.status}</TableCell>
                       <TableCell className="text-foreground">{r.requestedByName ?? "—"}</TableCell>
                       <TableCell className="text-foreground">
-                        {r.decidedByName ?? <span className="text-muted-foreground">—</span>}
-                        {r.decidedAt && <div className="text-xs text-muted-foreground">{fmtDateTime(r.decidedAt)}</div>}
+                        {r.status === "approved"
+                          ? (r.decidedByName ?? <span className="text-muted-foreground">—</span>)
+                          : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-foreground tabular-nums">
+                        {r.status === "approved" && r.decidedAt
+                          ? fmtDateTime(r.decidedAt)
+                          : <span className="text-muted-foreground">—</span>}
                       </TableCell>
                       <TableCell className="text-foreground whitespace-pre-wrap max-w-md">
                         {r.comment || <span className="text-muted-foreground">—</span>}

@@ -58,6 +58,7 @@ interface Row {
   statusTone: "submitted" | "approved" | "rejected" | "noresponse" | "cancelled" | "commented";
   assignedTo: string;
   actualApprover: string;
+  approvedDate: string | null;
   comment: string;
   isRequest: boolean;
 }
@@ -80,6 +81,9 @@ function buildRows(requests: ApprovalRequest[]): Row[] {
   const rows: Row[] = [];
   for (const r of requests) {
     const assigned = r.roleName ?? "—";
+    const approvedEvent = r.events.find((e) => e.event === "approved");
+    const approverName = r.status === "approved" ? (r.decidedByName ?? approvedEvent?.actorName ?? null) : null;
+    const approvedAt = r.status === "approved" ? (r.decidedAt ?? approvedEvent?.createdAt ?? null) : null;
 
     rows.push({
       key: `r-${r.id}-submit`,
@@ -89,7 +93,8 @@ function buildRows(requests: ApprovalRequest[]): Row[] {
       status: "Submitted",
       statusTone: "submitted",
       assignedTo: assigned,
-      actualApprover: r.requestedByName ?? "—",
+      actualApprover: approverName ?? "—",
+      approvedDate: approvedAt,
       comment: r.comment ?? "",
       isRequest: true,
     });
@@ -124,7 +129,8 @@ function buildRows(requests: ApprovalRequest[]): Row[] {
         status,
         statusTone: tone,
         assignedTo: assigned,
-        actualApprover: ev.actorName ?? "—",
+        actualApprover: ev.event === "approved" ? (ev.actorName ?? "—") : "—",
+        approvedDate: ev.event === "approved" ? ev.createdAt : null,
         comment: ev.comment ?? "",
         isRequest: false,
       });
@@ -140,6 +146,7 @@ function buildRows(requests: ApprovalRequest[]): Row[] {
         statusTone: "noresponse",
         assignedTo: assigned,
         actualApprover: "—",
+        approvedDate: null,
         comment: "",
         isRequest: false,
       });
@@ -350,7 +357,8 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
               </TableHead>
               <TableHead className="w-32">Status</TableHead>
               <TableHead className="w-44">Assigned To</TableHead>
-              <TableHead className="w-44">Actual Approver</TableHead>
+              <TableHead className="w-44">Approved By</TableHead>
+              <TableHead className="w-44">Approved Date</TableHead>
               <TableHead>Comments</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -358,11 +366,11 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
           <TableBody>
             {requestsQuery.isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">Loading…</TableCell>
+                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">Loading…</TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-10">
+                <TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-10">
                   No approval history yet. Click <span className="font-semibold text-foreground">Submit for Approval</span> to start a request.
                 </TableCell>
               </TableRow>
@@ -381,6 +389,9 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
                     <TableCell className={cn("font-medium", STATUS_TONE[row.statusTone])}>{row.status}</TableCell>
                     <TableCell className="text-foreground">{row.assignedTo}</TableCell>
                     <TableCell className="text-primary">{row.actualApprover}</TableCell>
+                    <TableCell className="text-foreground tabular-nums">
+                      {row.approvedDate ? fmtDateTime(row.approvedDate) : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
                     <TableCell className="text-foreground whitespace-pre-wrap">{row.comment || <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="text-right">
                       {showActions && req && (
