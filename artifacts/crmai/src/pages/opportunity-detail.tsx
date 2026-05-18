@@ -420,6 +420,7 @@ export default function OpportunityDetail() {
   const [recapText, setRecapText] = useState("");
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+  const [newTeamMember, setNewTeamMember] = useState("");
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -1364,22 +1365,84 @@ export default function OpportunityDetail() {
                   <Users className="w-4 h-4 text-primary" /> Opty Team
                 </p>
               </div>
-              <div className="px-4 pb-4">
-                {opp.teamMembers ? (
-                  <div className="flex flex-wrap gap-2">
-                    {opp.teamMembers.split(",").map(m => m.trim()).filter(Boolean).map((member, i) => {
-                      const initials = member.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
-                      return (
-                        <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 border border-border rounded-full">
-                          <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">{initials}</div>
-                          <span className="text-sm text-foreground">{member}</span>
+              <div className="px-4 pb-4 space-y-3">
+                {(() => {
+                  const members = (opp.teamMembers ?? "")
+                    .split(",")
+                    .map((m) => m.trim())
+                    .filter(Boolean);
+                  const saveMembers = async (next: string[]) => {
+                    const body = { teamMembers: next.join(", ") };
+                    const res = await fetch(`/api/opportunities/${id}`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      credentials: "include",
+                      body: JSON.stringify(body),
+                    });
+                    if (res.ok) {
+                      queryClient.invalidateQueries({ queryKey: ["opportunity", id] });
+                    }
+                  };
+                  const handleAdd = () => {
+                    const name = newTeamMember.trim();
+                    if (!name) return;
+                    if (members.some((m) => m.toLowerCase() === name.toLowerCase())) {
+                      setNewTeamMember("");
+                      return;
+                    }
+                    saveMembers([...members, name]);
+                    setNewTeamMember("");
+                  };
+                  const handleRemove = (name: string) => {
+                    saveMembers(members.filter((m) => m !== name));
+                  };
+                  return (
+                    <>
+                      {members.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No team members yet. Add one below.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {members.map((member) => {
+                            const initials = member.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+                            return (
+                              <div key={member} className="flex items-center gap-2 pl-2 pr-1 py-1 bg-muted/50 border border-border rounded-full group">
+                                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">{initials}</div>
+                                <span className="text-sm text-foreground">{member}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemove(member)}
+                                  className="w-5 h-5 rounded-full hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center"
+                                  aria-label={`Remove ${member}`}
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No team members assigned. Edit the opportunity to add team members.</p>
-                )}
+                      )}
+                      <div className="flex items-center gap-2 pt-1">
+                        <Input
+                          value={newTeamMember}
+                          onChange={(e) => setNewTeamMember(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); handleAdd(); }
+                          }}
+                          placeholder="Add team member name…"
+                          className="h-9 text-sm bg-muted border-border flex-1"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={handleAdd}
+                          disabled={!newTeamMember.trim()}
+                          className="gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add
+                        </Button>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </Card>
           </div>
