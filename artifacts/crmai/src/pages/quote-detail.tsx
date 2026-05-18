@@ -259,6 +259,14 @@ export default function QuoteDetail() {
                 </a>
               )}
             </div>
+            {(quote.createdByName || quote.createdAt) && (
+              <div className="mt-1 text-xs text-muted-foreground">
+                Created by <span className="font-medium text-foreground">{quote.createdByName ?? "System"}</span>
+                {quote.createdAt && (
+                  <> on {format(new Date(quote.createdAt), "MMM d, yyyy 'at' h:mm a")}</>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
