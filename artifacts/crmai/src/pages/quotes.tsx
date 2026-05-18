@@ -5,7 +5,7 @@ import {
   CreateQuoteInputStatus,
   type CreateQuoteInput, type CreateQuoteItemInput,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Plus, MoreHorizontal, Pencil, Trash2, X, Package, Download, ChevronUp, ChevronDown, Settings, RefreshCw, ArrowUpDown, Filter, Search } from "lucide-react";
+import { FileText, Plus, MoreHorizontal, Pencil, Trash2, X, Package, Download, ChevronUp, ChevronDown, Settings, RefreshCw, ArrowUpDown, Filter, Search, Copy, ChevronsUpDown, Check } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { useListAccounts } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
@@ -324,10 +327,162 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
 type SortField = "quoteNumber" | "name" | "validUntil" | "subtotal" | "total";
 type SortDir = "asc" | "desc";
 
+interface CloneQuoteDialogProps {
+  quote: { id: number; name: string; quoteNumber: string } | null;
+  onOpenChange: (open: boolean) => void;
+}
+
+function CloneQuoteDialog({ quote, onOpenChange }: CloneQuoteDialogProps) {
+  const [accountId, setAccountId] = useState<number | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: accountsData } = useListAccounts({ limit: 200 });
+  const accounts = (accountsData?.data ?? []) as Array<{ id: number; name: string; industry?: string | null; city?: string | null }>;
+  const selectedAccount = accounts.find((a) => a.id === accountId) ?? null;
+
+  const { data: contactsPreview } = useQuery<{ data: Array<{ id: number; firstName: string; lastName: string; email: string | null }> }>({
+    queryKey: ["clone-quote-contacts", accountId],
+    queryFn: async () => {
+      const res = await fetch(`/api/contacts?accountId=${accountId}&limit=10&sort=id`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!accountId,
+  });
+
+  React.useEffect(() => {
+    if (!quote) { setAccountId(null); setPickerOpen(false); }
+  }, [quote]);
+
+  const handleClone = async () => {
+    if (!quote || !accountId) return;
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/quotes/${quote.id}/clone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ accountId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+      toast({ title: "Quote cloned", description: `A copy of ${quote.quoteNumber} was created for ${selectedAccount?.name ?? "the selected account"}.` });
+      onOpenChange(false);
+    } catch {
+      toast({ title: "Clone failed", description: "Could not clone quote.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!quote} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Copy className="w-4 h-4 text-primary" />
+            Clone Quote {quote?.quoteNumber}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="text-sm text-muted-foreground">
+            Cloning <span className="font-medium text-foreground">{quote?.name}</span>. Select the target account — its primary contact will be auto-populated on the new quote.
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Target Account *</Label>
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={pickerOpen}
+                  className="w-full h-9 justify-between bg-muted border-border text-sm font-normal"
+                >
+                  {selectedAccount ? (
+                    <span className="truncate">{selectedAccount.name}</span>
+                  ) : (
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Search className="w-3.5 h-3.5" />
+                      Search for an account…
+                    </span>
+                  )}
+                  <ChevronsUpDown className="w-3.5 h-3.5 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
+                <Command>
+                  <CommandInput placeholder="Search by account name…" />
+                  <CommandList>
+                    <CommandEmpty>No account found.</CommandEmpty>
+                    <CommandGroup>
+                      {accounts.map((a) => (
+                        <CommandItem
+                          key={a.id}
+                          value={`${a.name} ${a.industry ?? ""} ${a.city ?? ""}`}
+                          onSelect={() => { setAccountId(a.id); setPickerOpen(false); }}
+                          className="flex items-center gap-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{a.name}</div>
+                            {(a.industry || a.city) && (
+                              <div className="text-xs text-muted-foreground truncate">
+                                {[a.industry, a.city].filter(Boolean).join(" · ")}
+                              </div>
+                            )}
+                          </div>
+                          <Check className={`w-3.5 h-3.5 ${accountId === a.id ? "opacity-100" : "opacity-0"}`} />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+          {accountId && (
+            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1.5">
+              <div className="text-xs uppercase tracking-wide text-muted-foreground">Auto-populated contacts</div>
+              {!contactsPreview ? (
+                <div className="text-sm text-muted-foreground">Loading…</div>
+              ) : contactsPreview.data.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No contacts exist for this account — the clone will have no contact set.</div>
+              ) : (
+                <ul className="space-y-1">
+                  {contactsPreview.data.slice(0, 5).map((c, i) => (
+                    <li key={c.id} className="text-sm flex items-center gap-2">
+                      <span className="font-medium">{c.firstName} {c.lastName}</span>
+                      {c.email && <span className="text-muted-foreground text-xs">· {c.email}</span>}
+                      {i === 0 && <Badge variant="outline" className="text-[10px] py-0">Primary</Badge>}
+                    </li>
+                  ))}
+                  {contactsPreview.data.length > 5 && (
+                    <li className="text-xs text-muted-foreground">+ {contactsPreview.data.length - 5} more</li>
+                  )}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+          <Button onClick={handleClone} disabled={!accountId || isSubmitting} className="gap-1.5">
+            <Copy className="w-3.5 h-3.5" />
+            {isSubmitting ? "Cloning…" : "Clone Quote"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Quotes() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<({ id: number } & QuoteFormData) | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [cloningQuote, setCloningQuote] = useState<{ id: number; name: string; quoteNumber: string } | null>(null);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [searchQuery, setSearchQuery] = useState("");
@@ -640,6 +795,12 @@ export default function Quotes() {
                             >
                               <Pencil className="w-4 h-4 mr-2" /> Edit
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setCloningQuote({ id: q.id, name: q.name, quoteNumber: q.quoteNumber })}
+                              className="cursor-pointer hover:bg-muted"
+                            >
+                              <Copy className="w-4 h-4 mr-2" /> Clone
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-muted" />
                             <DropdownMenuItem
                               onClick={() => setDeletingId(q.id)}
@@ -675,6 +836,10 @@ export default function Quotes() {
         onOpenChange={(o) => { if (!o) setEditingQuote(null); }}
         mode="edit"
         initialData={editingQuote ?? undefined}
+      />
+      <CloneQuoteDialog
+        quote={cloningQuote}
+        onOpenChange={(o) => { if (!o) setCloningQuote(null); }}
       />
       <AlertDialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
         <AlertDialogContent className="bg-card border-border text-foreground">

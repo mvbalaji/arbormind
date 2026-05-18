@@ -526,6 +526,89 @@ router.post("/quotes/:id/version", async (req, res) => {
   }
 });
 
+// Clone a quote to a different account; copies items and auto-populates contact from the new account
+router.post("/quotes/:id/clone", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const { accountId } = req.body as { accountId?: number };
+    if (!accountId || !Number.isFinite(Number(accountId))) {
+      res.status(400).json({ error: "accountId is required" });
+      return;
+    }
+    const newAccountId = Number(accountId);
+
+    const result = await db.transaction(async (tx) => {
+      const [original] = await tx.select().from(quotesTable).where(eq(quotesTable.id, id));
+      if (!original) return { error: "Quote not found", status: 404 as const };
+
+      const [account] = await tx.select().from(accountsTable).where(eq(accountsTable.id, newAccountId));
+      if (!account) return { error: "Target account not found", status: 400 as const };
+
+      // Pick first contact of target account (deterministic: oldest contact wins)
+      const accountContacts = await tx.select().from(contactsTable)
+        .where(eq(contactsTable.accountId, newAccountId))
+        .orderBy(contactsTable.id)
+        .limit(1);
+      const newContactId = accountContacts[0]?.id ?? null;
+
+      // Try up to 3 times to allocate a unique quote number (handles concurrent clones)
+      let inserted: typeof original | null = null;
+      for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
+        const [maxQuote] = await tx.select({ maxNum: sql<string>`max(quote_number)` }).from(quotesTable);
+        const nextNum = maxQuote?.maxNum ? parseInt(maxQuote.maxNum.replace("QT-", "")) + 1 + attempt : 1001 + attempt;
+        const quoteNumber = `QT-${nextNum}`;
+        try {
+          const [row] = await tx.insert(quotesTable).values({
+            quoteNumber,
+            name: `${original.name} (Copy)`,
+            version: 1,
+            parentQuoteId: null,
+            opportunityId: null,
+            contactId: newContactId,
+            accountId: newAccountId,
+            status: "draft",
+            validUntil: original.validUntil,
+            subtotal: original.subtotal,
+            discount: original.discount,
+            tax: original.tax,
+            total: original.total,
+            notes: original.notes,
+          }).returning();
+          inserted = row;
+        } catch (e: unknown) {
+          const code = (e as { code?: string } | null)?.code;
+          if (code !== "23505" || attempt === 2) throw e;
+        }
+      }
+      if (!inserted) return { error: "Could not allocate quote number", status: 500 as const };
+
+      const originalItems = await tx.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      if (originalItems.length > 0) {
+        await tx.insert(quoteItemsTable).values(originalItems.map(item => ({
+          quoteId: inserted!.id,
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          discount: item.discount,
+          total: item.total,
+        })));
+      }
+      return { quote: inserted, contactsPopulated: accountContacts.length };
+    });
+
+    if ("error" in result) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.status(201).json({ ...formatQuote(result.quote, []), contactsPopulated: result.contactsPopulated });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/quotes/:id/pdf", async (req, res) => {
   try {
     const id = parseId(req.params.id);
