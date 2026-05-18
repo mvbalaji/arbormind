@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import {
-  useGetQuote, useUpdateQuote, useCreateQuoteVersion, useSendQuote,
+  useGetQuote, useUpdateQuote, useCreateQuoteVersion, useSendQuote, useDeleteQuote,
   useListProducts, useListOpportunityItems,
   useListOpportunities, useListContacts, useListAccounts,
   getGetQuoteQueryKey, getListQuotesQueryKey,
   CreateQuoteInputStatus,
 } from "@workspace/api-client-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
@@ -16,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Download, Send, Copy, CheckCircle, XCircle, Clock,
-  FileText, Package, Building2, User, History, Pencil, Plus, X, Save,
+  FileText, Package, Building2, User, History, Pencil, Plus, X, Save, Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +51,8 @@ export default function QuoteDetail() {
   const updateMutation = useUpdateQuote();
   const versionMutation = useCreateQuoteVersion();
   const sendMutation = useSendQuote();
+  const deleteMutation = useDeleteQuote();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { data: productsData } = useListProducts({ limit: 200 });
   const products = productsData?.data ?? [];
   const queryClient = useQueryClient();
@@ -303,7 +309,51 @@ export default function QuoteDetail() {
               <Package className="w-4 h-4 mr-2" /> Convert to Order
             </Button>
           )}
+          {!isEditing && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDeleteOpen(true)}
+              className="border-red-500/30 text-red-600 hover:bg-red-500/10 ml-auto"
+            >
+              <Trash2 className="w-4 h-4 mr-2" /> Delete
+            </Button>
+          )}
         </div>
+
+        <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+          <AlertDialogContent className="bg-card border-border text-foreground">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Quote?</AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground">
+                This will permanently delete <span className="font-medium text-foreground">{quote.quoteNumber}</span>
+                {quote.name ? <> — <span className="font-medium text-foreground">{quote.name}</span></> : null}.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={deleteMutation.isPending}
+                onClick={async (e) => {
+                  e.preventDefault();
+                  try {
+                    await deleteMutation.mutateAsync({ id: quoteId });
+                    await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+                    toast({ title: "Quote deleted", description: `${quote.quoteNumber} has been removed.` });
+                    setIsDeleteOpen(false);
+                    navigate("/quotes");
+                  } catch {
+                    toast({ title: "Delete failed", description: "Could not delete quote.", variant: "destructive" });
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleteMutation.isPending ? "Deleting…" : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-border">
