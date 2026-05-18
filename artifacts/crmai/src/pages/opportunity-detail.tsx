@@ -8,7 +8,9 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
+import { ChevronsUpDown } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -422,6 +424,8 @@ export default function OpportunityDetail() {
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [newTeamMember, setNewTeamMember] = useState("");
+  const [teamPickerOpen, setTeamPickerOpen] = useState(false);
+  const ownerSeededRef = React.useRef<number | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -453,6 +457,33 @@ export default function OpportunityDetail() {
       return res.json();
     },
   });
+
+  // Auto-add the opportunity owner as a default team member (one time per opp)
+  React.useEffect(() => {
+    if (!opp || !id) return;
+    const oppId = Number(id);
+    if (ownerSeededRef.current === oppId) return;
+    const owner = opp.assignedToName?.trim();
+    if (!owner) return;
+    const existing = (opp.teamMembers ?? "")
+      .split(",")
+      .map((m) => m.trim())
+      .filter(Boolean);
+    if (existing.some((m) => m.toLowerCase() === owner.toLowerCase())) {
+      ownerSeededRef.current = oppId;
+      return;
+    }
+    ownerSeededRef.current = oppId;
+    const next = [owner, ...existing].join(", ");
+    fetch(`/api/opportunities/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ teamMembers: next }),
+    }).then((res) => {
+      if (res.ok) queryClient.invalidateQueries({ queryKey: ["opportunity", id] });
+    });
+  }, [opp, id, queryClient]);
 
   const { data: accountData } = useQuery<{
     id: number; name: string; industry: string | null; website: string | null; phone: string | null;
@@ -1438,35 +1469,62 @@ export default function OpportunityDetail() {
                         );
                         const roleLabel = (r: string) =>
                           r ? r.charAt(0).toUpperCase() + r.slice(1) : "";
+                        const pickUser = (name: string) => {
+                          if (!name) return;
+                          if (members.some((m) => m.toLowerCase() === name.toLowerCase())) return;
+                          saveMembers([...members, name]);
+                          setNewTeamMember("");
+                          setTeamPickerOpen(false);
+                        };
                         return (
-                          <div className="flex items-center gap-2 pt-1">
-                            <Select value={newTeamMember} onValueChange={setNewTeamMember}>
-                              <SelectTrigger className="h-9 text-sm bg-muted border-border flex-1">
-                                <SelectValue placeholder="Select a user to add…" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {available.length === 0 ? (
-                                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                                    All users are already on the team.
-                                  </div>
-                                ) : (
-                                  available.map((u) => (
-                                    <SelectItem key={u.id} value={u.name}>
-                                      <span className="font-medium">{u.name}</span>
-                                      <span className="text-muted-foreground"> — {roleLabel(u.role)}</span>
-                                    </SelectItem>
-                                  ))
-                                )}
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              size="sm"
-                              onClick={handleAdd}
-                              disabled={!newTeamMember.trim()}
-                              className="gap-1.5"
-                            >
-                              <Plus className="w-3.5 h-3.5" /> Add
-                            </Button>
+                          <div className="pt-1">
+                            <Popover open={teamPickerOpen} onOpenChange={setTeamPickerOpen}>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={teamPickerOpen}
+                                  className="w-full h-9 justify-between bg-muted border-border text-sm font-normal"
+                                >
+                                  <span className="flex items-center gap-2 text-muted-foreground">
+                                    <Plus className="w-3.5 h-3.5" />
+                                    Search and add team member…
+                                  </span>
+                                  <ChevronsUpDown className="w-3.5 h-3.5 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Search by name, email or role…" />
+                                  <CommandList>
+                                    <CommandEmpty>
+                                      {available.length === 0 ? "All users are already on the team." : "No user found."}
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {available.map((u) => (
+                                        <CommandItem
+                                          key={u.id}
+                                          value={`${u.name} ${u.email} ${u.role}`}
+                                          onSelect={() => pickUser(u.name)}
+                                          className="flex items-center gap-2"
+                                        >
+                                          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                                            {u.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            <div className="text-sm font-medium truncate">{u.name}</div>
+                                            <div className="text-xs text-muted-foreground truncate">
+                                              {roleLabel(u.role)}{u.email ? ` · ${u.email}` : ""}
+                                            </div>
+                                          </div>
+                                          <Check className={`w-3.5 h-3.5 ${newTeamMember === u.name ? "opacity-100" : "opacity-0"}`} />
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         );
                       })()}
