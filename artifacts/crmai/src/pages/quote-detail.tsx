@@ -16,6 +16,7 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -71,7 +72,10 @@ export default function QuoteDetail() {
   const [activeTab, setActiveTab] = useState<"details" | "approvals">("details");
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const [isEditing, setIsEditing] = useState(false);
+  type EditSection = "header" | "parties" | "items" | "notes";
+  const [editingSection, setEditingSection] = useState<EditSection | null>(null);
+  const startEdit = (s: EditSection) => setEditingSection(s);
+  const cancelEdit = () => setEditingSection(null);
   const [editName, setEditName] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editValidUntil, setEditValidUntil] = useState("");
@@ -84,7 +88,7 @@ export default function QuoteDetail() {
   const [editAccountId, setEditAccountId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (quote && isEditing) {
+    if (quote && editingSection) {
       setEditName(quote.name);
       setEditStatus(quote.status);
       setEditValidUntil(quote.validUntil ? quote.validUntil.split("T")[0] : "");
@@ -102,7 +106,7 @@ export default function QuoteDetail() {
         discount: it.discount ?? 0,
       })));
     }
-  }, [isEditing, quote]);
+  }, [editingSection, quote]);
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
@@ -143,7 +147,7 @@ export default function QuoteDetail() {
         },
       });
       toast({ title: "Quote updated" });
-      setIsEditing(false);
+      setEditingSection(null);
       invalidate();
     } catch {
       toast({ title: "Error", description: "Could not save quote. Only the latest version can be edited.", variant: "destructive" });
@@ -230,10 +234,25 @@ export default function QuoteDetail() {
           </Button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              {isEditing ? (
-                <Input value={editName} onChange={e => setEditName(e.target.value)} className="max-w-xs bg-muted border-border text-lg font-bold" />
+              {editingSection === "header" ? (
+                <>
+                  <Input value={editName} onChange={e => setEditName(e.target.value)} className="max-w-xs bg-muted border-border text-lg font-bold" />
+                  <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground h-8">
+                    <Save className="w-3.5 h-3.5 mr-1" /> Save
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={cancelEdit} className="border-border h-8">
+                    Cancel
+                  </Button>
+                </>
               ) : (
-                <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">{quote.name}</h1>
+                <>
+                  <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">{quote.name}</h1>
+                  {canEdit && (
+                    <Button variant="ghost" size="icon" onClick={() => startEdit("header")} className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Edit name">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </>
               )}
               <Badge variant="outline" className={`capitalize ${STATUS_COLORS[quote.status] ?? ""}`}>
                 {quote.status}
@@ -274,27 +293,12 @@ export default function QuoteDetail() {
           <Button variant="outline" size="sm" onClick={handleDownloadPdf} className="border-border">
             <Download className="w-4 h-4 mr-2" /> Download PDF
           </Button>
-          {canEdit && !isEditing && (
-            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="border-border">
-              <Pencil className="w-4 h-4 mr-2" /> Edit Quote
-            </Button>
-          )}
-          {isEditing && (
-            <>
-              <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground">
-                <Save className="w-4 h-4 mr-2" /> {updateMutation.isPending ? "Saving..." : "Save Changes"}
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(false)} className="border-border">
-                Cancel
-              </Button>
-            </>
-          )}
-          {!isEditing && quote.status === "draft" && (
+          {quote.status === "draft" && (
             <Button size="sm" onClick={handleSend} disabled={sendMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
               <Send className="w-4 h-4 mr-2" /> Send to Customer
             </Button>
           )}
-          {!isEditing && quote.status === "sent" && (
+          {quote.status === "sent" && (
             <>
               <Button size="sm" onClick={() => handleStatusChange("accepted")} className="bg-green-600 hover:bg-green-700 text-white">
                 <CheckCircle className="w-4 h-4 mr-2" /> Accept
@@ -307,26 +311,24 @@ export default function QuoteDetail() {
               </Button>
             </>
           )}
-          {canEdit && !isEditing && (
+          {canEdit && (
             <Button variant="outline" size="sm" onClick={handleCreateVersion} disabled={versionMutation.isPending} className="border-border">
               <Copy className="w-4 h-4 mr-2" /> Create New Version
             </Button>
           )}
-          {!isEditing && quote.status === "accepted" && (
+          {quote.status === "accepted" && (
             <Button size="sm" onClick={() => navigate(`/orders?fromQuote=${quoteId}`)} className="bg-primary hover:bg-primary/90 text-foreground">
               <Package className="w-4 h-4 mr-2" /> Convert to Order
             </Button>
           )}
-          {!isEditing && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsDeleteOpen(true)}
-              className="border-red-500/30 text-red-600 hover:bg-red-500/10 ml-auto"
-            >
-              <Trash2 className="w-4 h-4 mr-2" /> Delete
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsDeleteOpen(true)}
+            className="border-red-500/30 text-red-600 hover:bg-red-500/10 ml-auto"
+          >
+            <Trash2 className="w-4 h-4 mr-2" /> Delete
+          </Button>
         </div>
 
         <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
@@ -427,75 +429,94 @@ export default function QuoteDetail() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="glass-panel border-border p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-3">
-              <FileText className="w-4 h-4" />
-              <span className="text-xs font-semibold uppercase">Opportunity</span>
-            </div>
-            {isEditing ? (
-              <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
-                value={editOpportunityId ?? ""}
-                onChange={e => setEditOpportunityId(e.target.value ? parseInt(e.target.value) : null)}>
-                <option value="">None</option>
-                {opportunities.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-              </select>
-            ) : quote.opportunityId ? (
-              <button className="text-primary hover:underline font-medium text-left" onClick={() => navigate(`/opportunities`)}>
-                {quote.opportunityName ?? `Opportunity #${quote.opportunityId}`}
-              </button>
-            ) : (
-              <p className="text-foreground font-medium">—</p>
-            )}
-          </Card>
-          <Card className="glass-panel border-border p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-3">
-              <Building2 className="w-4 h-4" />
-              <span className="text-xs font-semibold uppercase">Account</span>
-            </div>
-            {isEditing ? (
-              <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
-                value={editAccountId ?? ""}
-                onChange={e => setEditAccountId(e.target.value ? parseInt(e.target.value) : null)}>
-                <option value="">None</option>
-                {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            ) : (
-              <p className="text-foreground font-medium">{quote.accountName ?? "—"}</p>
-            )}
-          </Card>
-          <Card className="glass-panel border-border p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-3">
-              <User className="w-4 h-4" />
-              <span className="text-xs font-semibold uppercase">Contact</span>
-            </div>
-            {isEditing ? (
-              <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
-                value={editContactId ?? ""}
-                onChange={e => setEditContactId(e.target.value ? parseInt(e.target.value) : null)}>
-                <option value="">None</option>
-                {contacts.map(c => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
-              </select>
-            ) : (
-              <>
-                <p className="text-foreground font-medium">{quote.contactName ?? "—"}</p>
-                {quote.contactEmail && <p className="text-xs text-muted-foreground mt-1">{quote.contactEmail}</p>}
-              </>
-            )}
-          </Card>
-          <Card className="glass-panel border-border p-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-3">
-              <Clock className="w-4 h-4" />
-              <span className="text-xs font-semibold uppercase">Valid Until</span>
-            </div>
-            {isEditing ? (
-              <Input type="date" value={editValidUntil} onChange={e => setEditValidUntil(e.target.value)} className="bg-muted border-border h-8" />
-            ) : (
-              <p className="text-foreground font-medium">
-                {quote.validUntil ? format(new Date(quote.validUntil), "MMM d, yyyy") : "—"}
-              </p>
-            )}
-          </Card>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Customer Details</h3>
+            {editingSection === "parties" ? (
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground h-8">
+                  <Save className="w-3.5 h-3.5 mr-1" /> Save
+                </Button>
+                <Button variant="outline" size="sm" onClick={cancelEdit} className="border-border h-8">
+                  Cancel
+                </Button>
+              </div>
+            ) : canEdit ? (
+              <Button variant="ghost" size="sm" onClick={() => startEdit("parties")} className="h-7 text-xs text-muted-foreground hover:text-foreground">
+                <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+              </Button>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="glass-panel border-border p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                <FileText className="w-4 h-4" />
+                <span className="text-xs font-semibold uppercase">Opportunity</span>
+              </div>
+              {editingSection === "parties" ? (
+                <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
+                  value={editOpportunityId ?? ""}
+                  onChange={e => setEditOpportunityId(e.target.value ? parseInt(e.target.value) : null)}>
+                  <option value="">None</option>
+                  {opportunities.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+              ) : quote.opportunityId ? (
+                <button className="text-primary hover:underline font-medium text-left" onClick={() => navigate(`/opportunities`)}>
+                  {quote.opportunityName ?? `Opportunity #${quote.opportunityId}`}
+                </button>
+              ) : (
+                <p className="text-foreground font-medium">—</p>
+              )}
+            </Card>
+            <Card className="glass-panel border-border p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                <Building2 className="w-4 h-4" />
+                <span className="text-xs font-semibold uppercase">Account</span>
+              </div>
+              {editingSection === "parties" ? (
+                <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
+                  value={editAccountId ?? ""}
+                  onChange={e => setEditAccountId(e.target.value ? parseInt(e.target.value) : null)}>
+                  <option value="">None</option>
+                  {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              ) : (
+                <p className="text-foreground font-medium">{quote.accountName ?? "—"}</p>
+              )}
+            </Card>
+            <Card className="glass-panel border-border p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                <User className="w-4 h-4" />
+                <span className="text-xs font-semibold uppercase">Contact</span>
+              </div>
+              {editingSection === "parties" ? (
+                <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
+                  value={editContactId ?? ""}
+                  onChange={e => setEditContactId(e.target.value ? parseInt(e.target.value) : null)}>
+                  <option value="">None</option>
+                  {contacts.map(c => <option key={c.id} value={c.id}>{c.firstName} {c.lastName}</option>)}
+                </select>
+              ) : (
+                <>
+                  <p className="text-foreground font-medium">{quote.contactName ?? "—"}</p>
+                  {quote.contactEmail && <p className="text-xs text-muted-foreground mt-1">{quote.contactEmail}</p>}
+                </>
+              )}
+            </Card>
+            <Card className="glass-panel border-border p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                <Clock className="w-4 h-4" />
+                <span className="text-xs font-semibold uppercase">Valid Until</span>
+              </div>
+              {editingSection === "parties" ? (
+                <Input type="date" value={editValidUntil} onChange={e => setEditValidUntil(e.target.value)} className="bg-muted border-border h-8" />
+              ) : (
+                <p className="text-foreground font-medium">
+                  {quote.validUntil ? format(new Date(quote.validUntil), "MMM d, yyyy") : "—"}
+                </p>
+              )}
+            </Card>
+          </div>
         </div>
 
         {/* Opportunity Line Items (source reference) */}
@@ -507,7 +528,7 @@ export default function QuoteDetail() {
                 <h3 className="font-semibold text-foreground">Opportunity Line Items</h3>
                 <Badge variant="secondary" className="text-xs">{opportunityItems.length} items from opportunity</Badge>
               </div>
-              {isEditing && editItems.length === 0 && (
+              {editingSection === "items" && editItems.length === 0 && (
                 <Button type="button" variant="outline" size="sm"
                   className="border-blue-500/30 text-blue-600 hover:bg-blue-500/10 text-xs"
                   onClick={() => setEditItems(opportunityItems.map(oi => ({
@@ -552,14 +573,30 @@ export default function QuoteDetail() {
         {/* Line Items */}
         <Card className="glass-panel border-border">
           <div className="p-4 border-b border-border flex items-center justify-between">
-            <h3 className="font-semibold text-foreground">Line Items</h3>
-            {isEditing && (
-              <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-border text-xs">
-                <Plus className="w-3 h-3 mr-1" /> Add Item
-              </Button>
-            )}
+            <h3 className="font-semibold text-foreground">Line Items & Totals</h3>
+            <div className="flex items-center gap-2">
+              {editingSection === "items" && (
+                <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-border text-xs">
+                  <Plus className="w-3 h-3 mr-1" /> Add Item
+                </Button>
+              )}
+              {editingSection === "items" ? (
+                <>
+                  <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground h-8">
+                    <Save className="w-3.5 h-3.5 mr-1" /> Save
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={cancelEdit} className="border-border h-8">
+                    Cancel
+                  </Button>
+                </>
+              ) : canEdit ? (
+                <Button variant="ghost" size="sm" onClick={() => startEdit("items")} className="h-7 text-xs text-muted-foreground hover:text-foreground">
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                </Button>
+              ) : null}
+            </div>
           </div>
-          {isEditing ? (
+          {editingSection === "items" ? (
             <div className="p-4 space-y-2">
               <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground uppercase px-1 mb-1">
                 <span className="col-span-4">Product</span>
@@ -607,7 +644,7 @@ export default function QuoteDetail() {
                       value={item.discount} onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                   </div>
                   <div className="col-span-1 text-right text-sm font-medium text-foreground">
-                    ${lineTotal(item).toFixed(2)}
+                    £{lineTotal(item).toFixed(2)}
                   </div>
                   <div className="col-span-1 flex justify-end">
                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600"
@@ -649,7 +686,7 @@ export default function QuoteDetail() {
 
           {/* Totals */}
           <div className="p-4 border-t border-border space-y-2">
-            {isEditing ? (
+            {editingSection === "items" ? (
               <>
                 <div className="grid grid-cols-2 gap-3 max-w-xs ml-auto">
                   <div>
@@ -669,7 +706,7 @@ export default function QuoteDetail() {
                   </div>
                   {editDiscountAmt > 0 && (
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Discount ({editDiscount}%)</span><span>-${editDiscountAmt.toFixed(2)}</span>
+                      <span>Discount ({editDiscount}%)</span><span>-£{editDiscountAmt.toFixed(2)}</span>
                     </div>
                   )}
                   {editTaxAmt > 0 && (
@@ -706,18 +743,35 @@ export default function QuoteDetail() {
         </Card>
 
         {/* Notes */}
-        {isEditing ? (
+        {(canEdit || quote.notes) && (
           <Card className="glass-panel border-border p-4">
-            <Label className="font-semibold text-foreground mb-2 block">Notes & Terms</Label>
-            <Input value={editNotes} onChange={e => setEditNotes(e.target.value)}
-              className="bg-muted border-border" placeholder="Internal notes or terms..." />
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-foreground">Notes & Terms</h3>
+              {editingSection === "notes" ? (
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground h-8">
+                    <Save className="w-3.5 h-3.5 mr-1" /> Save
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={cancelEdit} className="border-border h-8">
+                    Cancel
+                  </Button>
+                </div>
+              ) : canEdit ? (
+                <Button variant="ghost" size="sm" onClick={() => startEdit("notes")} className="h-7 text-xs text-muted-foreground hover:text-foreground">
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                </Button>
+              ) : null}
+            </div>
+            {editingSection === "notes" ? (
+              <Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)}
+                className="bg-muted border-border min-h-[100px]" placeholder="Internal notes or terms..." />
+            ) : quote.notes ? (
+              <p className="text-muted-foreground text-sm whitespace-pre-wrap">{quote.notes}</p>
+            ) : (
+              <p className="text-muted-foreground text-sm italic">No notes yet.</p>
+            )}
           </Card>
-        ) : quote.notes ? (
-          <Card className="glass-panel border-border p-4">
-            <h3 className="font-semibold text-foreground mb-2">Notes & Terms</h3>
-            <p className="text-muted-foreground text-sm whitespace-pre-wrap">{quote.notes}</p>
-          </Card>
-        ) : null}
+        )}
 
         {/* Version History */}
         {quote.versions && quote.versions.length > 1 && (
