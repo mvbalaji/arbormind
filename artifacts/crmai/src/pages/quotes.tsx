@@ -852,10 +852,8 @@ export default function Quotes() {
                       <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
                         ₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
-                      <td className="px-3 py-2 border-r border-border">
-                        <Link href={`/quotes/${q.id}`} className="text-primary hover:underline">
-                          {q.opportunityName || "—"}
-                        </Link>
+                      <td className="px-3 py-2 border-r border-border text-foreground">
+                        {q.createdByName || "—"}
                       </td>
                       <td className="px-2 py-2 text-right">
                         <DropdownMenu>

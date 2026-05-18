@@ -2998,6 +2998,15 @@ components:
         accountName:
           type: string
           nullable: true
+        createdByUserId:
+          type: integer
+          nullable: true
+        createdByName:
+          type: string
+          nullable: true
+        createdByEmail:
+          type: string
+          nullable: true
         status:
           type: string
           enum: [draft, sent, accepted, rejected, expired]

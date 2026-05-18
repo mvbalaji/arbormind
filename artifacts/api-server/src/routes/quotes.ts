@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable, opportunityItemsTable } from "@workspace/db";
+import { quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable, opportunityItemsTable, usersTable } from "@workspace/db";
 import { eq, sql, inArray, desc, and } from "drizzle-orm";
 import PDFDocument from "pdfkit";
 import nodemailer from "nodemailer";
@@ -28,6 +28,9 @@ const quoteFields = {
   contactEmail: contactsTable.email,
   accountId: quotesTable.accountId,
   accountName: accountsTable.name,
+  createdByUserId: quotesTable.createdByUserId,
+  createdByName: usersTable.name,
+  createdByEmail: usersTable.email,
   status: quotesTable.status,
   validUntil: quotesTable.validUntil,
   subtotal: quotesTable.subtotal,
@@ -242,7 +245,8 @@ router.get("/quotes", async (req, res) => {
       .from(quotesTable)
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
-      .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id));
+      .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
+      .leftJoin(usersTable, eq(quotesTable.createdByUserId, usersTable.id));
 
     const rawData = await (opportunityId
       ? baseQuery.where(eq(quotesTable.opportunityId, parseInt(opportunityId)))
@@ -339,6 +343,7 @@ router.post("/quotes", async (req, res) => {
       total: total.toString(),
       version: 1,
       parentQuoteId: null,
+      createdByUserId: (req.session as any)?.user?.id ?? (req as any).user?.id ?? null,
     };
     const [quote] = await db.insert(quotesTable).values(insertData).returning();
 
@@ -371,6 +376,7 @@ router.get("/quotes/:id", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
+      .leftJoin(usersTable, eq(quotesTable.createdByUserId, usersTable.id))
       .where(eq(quotesTable.id, id));
 
     if (!quote) {
@@ -537,6 +543,7 @@ router.post("/quotes/:id/version", async (req, res) => {
       tax: original.tax,
       total: original.total,
       notes: original.notes,
+      createdByUserId: (req.session as any)?.user?.id ?? (req as any).user?.id ?? null,
     }).returning();
 
     const originalItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
@@ -599,6 +606,7 @@ router.post("/quotes/:id/clone", async (req, res) => {
             version: 1,
             parentQuoteId: null,
             clonedFromQuoteId: original.id,
+            createdByUserId: (req.session as any)?.user?.id ?? (req as any).user?.id ?? null,
             opportunityId: null,
             contactId: newContactId,
             accountId: newAccountId,
@@ -655,6 +663,7 @@ router.get("/quotes/:id/pdf", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
+      .leftJoin(usersTable, eq(quotesTable.createdByUserId, usersTable.id))
       .where(eq(quotesTable.id, id));
 
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
@@ -683,6 +692,7 @@ router.post("/quotes/:id/send", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
+      .leftJoin(usersTable, eq(quotesTable.createdByUserId, usersTable.id))
       .where(eq(quotesTable.id, id));
 
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }

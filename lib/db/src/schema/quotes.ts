@@ -14,6 +14,7 @@ export const quotesTable = pgTable("quotes", {
   version: integer("version").notNull().default(1),
   parentQuoteId: integer("parent_quote_id"),
   clonedFromQuoteId: integer("cloned_from_quote_id"),
+  createdByUserId: integer("created_by_user_id").references(() => usersTable.id),
   opportunityId: integer("opportunity_id").references(() => opportunitiesTable.id),
   contactId: integer("contact_id").references(() => contactsTable.id),
   accountId: integer("account_id").references(() => accountsTable.id),

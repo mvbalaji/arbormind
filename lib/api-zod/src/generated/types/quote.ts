@@ -25,6 +25,9 @@ export interface Quote {
   contactEmail?: string | null;
   accountId?: number | null;
   accountName?: string | null;
+  createdByUserId?: number | null;
+  createdByName?: string | null;
+  createdByEmail?: string | null;
   status: QuoteStatus;
   validUntil?: Date | null;
   subtotal: number;
