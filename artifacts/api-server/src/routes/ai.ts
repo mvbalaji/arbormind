@@ -84,8 +84,8 @@ async function getCRMContext(): Promise<string> {
 - Leads: ${leadsCount[0].count} total
 - Contacts: ${contactsCount[0].count} total
 - Accounts: ${accountsCount[0].count} total
-- Opportunities: ${oppsCount[0].count} total (pipeline value: $${Number(pipelineValue[0].total).toLocaleString()})
-- Won deals: ${wonDeals[0].count} (total revenue: $${Number(wonDeals[0].revenue).toLocaleString()})
+- Opportunities: ${oppsCount[0].count} total (pipeline value: £${Number(pipelineValue[0].total).toLocaleString()})
+- Won deals: ${wonDeals[0].count} (total revenue: £${Number(wonDeals[0].revenue).toLocaleString()})
 - Activities: ${activitiesCount[0].count} total
 - Cases: ${casesCount[0].count} total
 - Quotes: ${quotesCount[0].count} total
@@ -95,7 +95,7 @@ Recent Leads:
 ${recentLeads.map(l => `  - ${l.firstName} ${l.lastName} (${l.company ?? 'no company'}) - ${l.status}, score: ${l.score ?? 'N/A'}`).join('\n')}
 
 Top Open Opportunities:
-${topOpps.map(o => `  - ${o.name}: $${Number(o.amount ?? 0).toLocaleString()} (${o.stage})`).join('\n')}`;
+${topOpps.map(o => `  - ${o.name}: £${Number(o.amount ?? 0).toLocaleString()} (${o.stage})`).join('\n')}`;
 }
 
 router.post("/ai/chat", async (req, res) => {
@@ -217,7 +217,7 @@ router.post("/ai/summary", async (req, res) => {
         const winRate = (Number(s.wonCount) + Number(s.lostCount)) > 0
           ? Math.round(Number(s.wonCount) / (Number(s.wonCount) + Number(s.lostCount)) * 100)
           : 0;
-        dataContext = `Opportunities: ${s.total} total, ${s.openCount} open (pipeline: $${Number(s.totalPipeline).toLocaleString()}), ${s.wonCount} won, ${s.lostCount} lost. Win rate: ${winRate}%. Avg probability: ${Math.round(Number(s.avgProbability))}%.`;
+        dataContext = `Opportunities: ${s.total} total, ${s.openCount} open (pipeline: £${Number(s.totalPipeline).toLocaleString()}), ${s.wonCount} won, ${s.lostCount} lost. Win rate: ${winRate}%. Avg probability: ${Math.round(Number(s.avgProbability))}%.`;
         break;
       }
       case "activities": {
@@ -237,7 +237,7 @@ router.post("/ai/summary", async (req, res) => {
           accepted: sql<number>`count(*) filter (where status = 'accepted')`,
           totalValue: sql<number>`coalesce(sum(total), 0)`,
         }).from(quotesTable);
-        dataContext = `Quotes: ${stats[0].total} total, ${stats[0].draft} draft, ${stats[0].sent} sent, ${stats[0].accepted} accepted. Total value: $${Number(stats[0].totalValue).toLocaleString()}.`;
+        dataContext = `Quotes: ${stats[0].total} total, ${stats[0].draft} draft, ${stats[0].sent} sent, ${stats[0].accepted} accepted. Total value: £${Number(stats[0].totalValue).toLocaleString()}.`;
         break;
       }
       default:

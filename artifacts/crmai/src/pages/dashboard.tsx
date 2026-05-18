@@ -84,7 +84,7 @@ function AIInsightsBanner({ stats }: { stats: ReturnType<typeof useGetDashboardS
 
   if ((stats.winRate ?? 0) < 30) insights.push({ icon: AlertCircle, color: "text-orange-600", type: "warn", text: `Win rate at ${stats.winRate}% — review lost deal reasons to improve conversion.` });
   if ((stats.openCases ?? 0) > 5) insights.push({ icon: AlertCircle, color: "text-rose-600", type: "warn", text: `${stats.openCases} open support cases need attention.` });
-  if ((stats.wonDealsThisMonth ?? 0) > 0) insights.push({ icon: CheckCircle2, color: "text-emerald-600", type: "success", text: `${stats.wonDealsThisMonth} deals closed this month totaling $${(stats.revenueThisMonth ?? 0).toLocaleString()}.` });
+  if ((stats.wonDealsThisMonth ?? 0) > 0) insights.push({ icon: CheckCircle2, color: "text-emerald-600", type: "success", text: `${stats.wonDealsThisMonth} deals closed this month totaling £${(stats.revenueThisMonth ?? 0).toLocaleString()}.` });
   if ((stats.totalLeads ?? 0) > 10) insights.push({ icon: Zap, color: "text-blue-600", type: "info", text: `${stats.totalLeads} leads in pipeline. Focus on top-scored leads for fastest conversion.` });
 
   if (insights.length === 0) return null;
@@ -172,7 +172,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <KPICard
             title="Revenue This Month"
-            value={isLoading ? <Skeleton className="h-7 w-24" /> : `$${(Number(stats?.revenueThisMonth) || 0).toLocaleString()}`}
+            value={isLoading ? <Skeleton className="h-7 w-24" /> : `£${(Number(stats?.revenueThisMonth) || 0).toLocaleString()}`}
             trend={`↑ ${Number(stats?.wonDealsThisMonth) || 0} deals closed`}
             trendUp={true}
             icon={DollarSign}
@@ -180,7 +180,7 @@ export default function Dashboard() {
           />
           <KPICard
             title="Pipeline Value"
-            value={isLoading ? <Skeleton className="h-7 w-24" /> : `$${((Number(stats?.totalPipelineValue) || 0) / 1000).toFixed(0)}k`}
+            value={isLoading ? <Skeleton className="h-7 w-24" /> : `£${((Number(stats?.totalPipelineValue) || 0) / 1000).toFixed(0)}k`}
             subtitle={`${Number(stats?.openOpportunities) || 0} open deals`}
             icon={TrendingUp}
             color="text-blue-600 bg-blue-100 dark:bg-blue-950"
@@ -233,12 +233,12 @@ export default function Dashboard() {
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
                       <XAxis dataKey="name" className="fill-muted-foreground" fontSize={11} tickLine={false} axisLine={false} />
                       <YAxis className="fill-muted-foreground" fontSize={11} tickLine={false} axisLine={false}
-                        tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`} />
+                        tickFormatter={(v: number) => `£${(v / 1000).toFixed(0)}k`} />
                       <RechartsTooltip
                         cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
                         contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", color: "hsl(var(--foreground))", fontSize: "12px" }}
                         formatter={(value: number, _name: string, entry: { payload?: { count?: number } }) => [
-                          `$${value.toLocaleString()}`,
+                          `£${value.toLocaleString()}`,
                           `Value (${entry.payload?.count ?? 0} deals)`,
                         ]}
                       />
@@ -403,7 +403,7 @@ export default function Dashboard() {
                             <p className="text-xs text-muted-foreground">{deal.accountName ?? "—"}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-sm font-bold text-emerald-600">${(Number(deal.amount) || 0).toLocaleString()}</p>
+                            <p className="text-sm font-bold text-emerald-600">£{(Number(deal.amount) || 0).toLocaleString()}</p>
                             <Badge variant="outline" className={cn("text-[10px] capitalize mt-0.5", STAGE_BADGE[deal.stage] ?? "")}>
                               {STAGE_LABELS[deal.stage] ?? deal.stage}
                             </Badge>
@@ -477,7 +477,7 @@ export default function Dashboard() {
                   <div key={s.stage} className="text-center p-3 rounded-xl bg-muted/50 border border-border">
                     <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{STAGE_LABELS[s.stage]}</div>
                     <div className="text-xl font-bold font-display" style={{ color: STAGE_COLORS[i] }}>{Number(s.count) || 0}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">${((Number(s.totalValue) || 0) / 1000).toFixed(0)}k</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">£{((Number(s.totalValue) || 0) / 1000).toFixed(0)}k</div>
                   </div>
                 ))}
               </div>

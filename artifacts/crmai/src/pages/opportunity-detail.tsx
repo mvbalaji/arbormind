@@ -309,7 +309,7 @@ function QuickQuoteDialog({
               </div>
               <div className="flex justify-between font-bold text-foreground border-t border-border pt-2">
                 <span>Total</span>
-                <span>${total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                <span>£{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
               </div>
             </div>
           )}
@@ -386,11 +386,11 @@ function generateQuotePDF(quote: OppQuote, opp: OpportunityDetail) {
     <tbody>
       <tr>
         <td>${quote.name}</td>
-        <td style="text-align:right">$${quote.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td style="text-align:right">£${quote.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
       </tr>
       <tr class="total-row">
         <td><strong>Total</strong></td>
-        <td style="text-align:right"><strong>$${quote.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+        <td style="text-align:right"><strong>£${quote.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
       </tr>
     </tbody>
   </table>
@@ -637,7 +637,7 @@ export default function OpportunityDetail() {
               </div>
               <div className="px-4 py-3">
                 <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Amount</div>
-                <div className="text-sm text-foreground font-medium">{opp.amount !== null ? `$${opp.amount.toLocaleString()}` : "—"}</div>
+                <div className="text-sm text-foreground font-medium">{opp.amount !== null ? `£${opp.amount.toLocaleString()}` : "—"}</div>
               </div>
               <div className="px-4 py-3">
                 <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Opportunity Owner</div>
@@ -1184,7 +1184,7 @@ export default function OpportunityDetail() {
                         Valid until {format(new Date(q.validUntil), "MMM d, yyyy")}
                       </span>
                     )}
-                    <span className="font-semibold text-foreground text-sm">${q.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span className="font-semibold text-foreground text-sm">£{q.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     <Badge variant="outline" className={`capitalize text-xs ${QUOTE_STATUS_COLORS[q.status] ?? ""}`}>
                       {q.status}
                     </Badge>
@@ -1374,7 +1374,7 @@ export default function OpportunityDetail() {
                   { label: "Account", value: opp.accountName },
                   { label: "Stage", value: stageConfig.label },
                   { label: "Contact", value: [opp.contactFirstName, opp.contactLastName].filter(Boolean).join(" ") || null },
-                  { label: "Amount", value: opp.amount !== null ? `$${opp.amount.toLocaleString()}` : null },
+                  { label: "Amount", value: opp.amount !== null ? `£${opp.amount.toLocaleString()}` : null },
                   { label: "Close Date", value: opp.closeDate ? format(new Date(opp.closeDate), "MMM d, yyyy") : null },
                   { label: "Win Probability", value: opp.probability !== null ? `${opp.probability}%` : null },
                   { label: "Lead Source", value: opp.leadSource },
@@ -1579,7 +1579,7 @@ export default function OpportunityDetail() {
                 </div>
                 <div>
                   <div className="text-[11px] text-muted-foreground mb-0.5">Annual Revenue</div>
-                  <div className="text-foreground text-sm">{accountData?.annualRevenue != null ? `$${accountData.annualRevenue.toLocaleString()}` : "—"}</div>
+                  <div className="text-foreground text-sm">{accountData?.annualRevenue != null ? `£${accountData.annualRevenue.toLocaleString()}` : "—"}</div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-[11px] text-muted-foreground mb-0.5">Website</div>

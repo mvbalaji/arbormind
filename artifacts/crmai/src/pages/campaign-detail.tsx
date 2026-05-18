@@ -333,7 +333,7 @@ export default function CampaignDetail() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Budget</p>
-            <p className="text-xl font-bold text-foreground">{campaign.budget ? `$${campaign.budget.toLocaleString()}` : "—"}</p>
+            <p className="text-xl font-bold text-foreground">{campaign.budget ? `£${campaign.budget.toLocaleString()}` : "—"}</p>
             {spendProgress != null && (
               <div className="mt-2">
                 <div className="w-full bg-muted/50 rounded-full h-1">
@@ -345,7 +345,7 @@ export default function CampaignDetail() {
           </Card>
           <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Expected Revenue</p>
-            <p className="text-xl font-bold text-foreground">{campaign.expectedRevenue ? `$${campaign.expectedRevenue.toLocaleString()}` : "—"}</p>
+            <p className="text-xl font-bold text-foreground">{campaign.expectedRevenue ? `£${campaign.expectedRevenue.toLocaleString()}` : "—"}</p>
           </Card>
           <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Target className="w-3 h-3" /> ROI (Projected)</p>
@@ -355,7 +355,7 @@ export default function CampaignDetail() {
           </Card>
           <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Actual Cost</p>
-            <p className="text-xl font-bold text-foreground">{campaign.actualCost ? `$${campaign.actualCost.toLocaleString()}` : "—"}</p>
+            <p className="text-xl font-bold text-foreground">{campaign.actualCost ? `£${campaign.actualCost.toLocaleString()}` : "—"}</p>
           </Card>
         </div>
 

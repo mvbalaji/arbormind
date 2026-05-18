@@ -319,7 +319,7 @@ export default function AccountDetail() {
                   <div className="text-xs text-muted-foreground mt-0.5">Won Deals</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-foreground">${(totalDealValue / 1000).toFixed(0)}k</div>
+                  <div className="text-xl font-bold text-foreground">£{(totalDealValue / 1000).toFixed(0)}k</div>
                   <div className="text-xs text-muted-foreground mt-0.5">Pipeline Value</div>
                 </div>
               </div>
@@ -423,7 +423,7 @@ export default function AccountDetail() {
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        {opp.amount != null && <p className="text-lg font-bold text-foreground">${Number(opp.amount).toLocaleString()}</p>}
+                        {opp.amount != null && <p className="text-lg font-bold text-foreground">£{Number(opp.amount).toLocaleString()}</p>}
                         {opp.probability != null && <p className="text-xs text-muted-foreground">{opp.probability}% likely</p>}
                       </div>
                     </div>
@@ -514,7 +514,7 @@ export default function AccountDetail() {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-lg font-bold text-foreground">${Number(q.total).toLocaleString()}</p>
+                      <p className="text-lg font-bold text-foreground">£{Number(q.total).toLocaleString()}</p>
                     </div>
                   </div>
                 </Card>
@@ -572,8 +572,8 @@ export default function AccountDetail() {
                 { label: "Phone", value: account.phone },
                 { label: "Email", value: account.email },
                 { label: "Employees", value: account.employees?.toLocaleString() },
-                { label: "Annual Revenue", value: account.annualRevenue ? `$${Number(account.annualRevenue).toLocaleString()}` : null },
-                { label: "Amount", value: account.amount ? `$${Number(account.amount).toLocaleString()}` : null },
+                { label: "Annual Revenue", value: account.annualRevenue ? `£${Number(account.annualRevenue).toLocaleString()}` : null },
+                { label: "Amount", value: account.amount ? `£${Number(account.amount).toLocaleString()}` : null },
                 { label: "Close Date", value: account.closeDate },
                 { label: "Probability", value: account.probability != null ? `${account.probability}%` : null },
                 { label: "Forecast Category", value: account.forecastCategory },

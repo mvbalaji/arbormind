@@ -283,7 +283,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
               </div>
               <div className="border-t border-border pt-2 mt-2 space-y-1 text-sm">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal</span><span>${subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                  <span>Subtotal</span><span>£{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                 </div>
                 {discountAmt > 0 && (
                   <div className="flex justify-between text-muted-foreground">
@@ -294,12 +294,12 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                 {taxAmt > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Tax ({formData.tax}%)</span>
-                    <span>${taxAmt.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span>£{taxAmt.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1">
                   <span>Total</span>
-                  <span>${total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                  <span>£{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
@@ -847,10 +847,10 @@ export default function Quotes() {
                         {q.validUntil ? format(new Date(q.validUntil), "M/d/yyyy") : "-"}
                       </td>
                       <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
-                        ₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        £{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
-                        ₱{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        £{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-3 py-2 border-r border-border text-foreground">
                         <div className="flex flex-col leading-tight">

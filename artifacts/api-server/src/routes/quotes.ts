@@ -159,9 +159,9 @@ function generatePdfDoc(quote: QuoteForPdf, items: QuoteItemForPdf[]): PDFKit.PD
   for (const item of items) {
     doc.text(item.productName, colX[0], y, { width: 195 });
     doc.text(Number(item.quantity).toString(), colX[1], y, { width: 60, align: "right" });
-    doc.text(`$${Number(item.unitPrice).toFixed(2)}`, colX[2], y, { width: 60, align: "right" });
+    doc.text(`£${Number(item.unitPrice).toFixed(2)}`, colX[2], y, { width: 60, align: "right" });
     doc.text(`${Number(item.discount)}%`, colX[3], y, { width: 60, align: "right" });
-    doc.text(`$${Number(item.total).toFixed(2)}`, colX[4], y, { width: 85, align: "right" });
+    doc.text(`£${Number(item.total).toFixed(2)}`, colX[4], y, { width: 85, align: "right" });
     y += 16;
     if (y > 700) { doc.addPage(); y = 50; }
   }
@@ -177,25 +177,25 @@ function generatePdfDoc(quote: QuoteForPdf, items: QuoteItemForPdf[]): PDFKit.PD
 
   doc.font("Helvetica").fontSize(10);
   doc.text("Subtotal:", 380, y, { width: 80, align: "right" });
-  doc.text(`$${subtotal.toFixed(2)}`, 460, y, { width: 85, align: "right" });
+  doc.text(`£${subtotal.toFixed(2)}`, 460, y, { width: 85, align: "right" });
   y += 16;
 
   if (discount > 0) {
     doc.text(`Discount (${discount}%):`, 380, y, { width: 80, align: "right" });
-    doc.text(`-$${(subtotal * discount / 100).toFixed(2)}`, 460, y, { width: 85, align: "right" });
+    doc.text(`-£${(subtotal * discount / 100).toFixed(2)}`, 460, y, { width: 85, align: "right" });
     y += 16;
   }
 
   if (tax > 0) {
     doc.text(`Tax (${tax}%):`, 380, y, { width: 80, align: "right" });
-    doc.text(`$${(subtotal * (1 - discount / 100) * tax / 100).toFixed(2)}`, 460, y, { width: 85, align: "right" });
+    doc.text(`£${(subtotal * (1 - discount / 100) * tax / 100).toFixed(2)}`, 460, y, { width: 85, align: "right" });
     y += 16;
   }
 
   y += 4;
   doc.font("Helvetica-Bold").fontSize(12);
   doc.text("Total:", 380, y, { width: 80, align: "right" });
-  doc.text(`$${total.toFixed(2)}`, 460, y, { width: 85, align: "right" });
+  doc.text(`£${total.toFixed(2)}`, 460, y, { width: 85, align: "right" });
 
   if (quote.notes) {
     y += 40;
@@ -757,7 +757,7 @@ router.post("/quotes/:id/send", async (req, res) => {
               <p>Please find attached the quotation <strong>${quote.quoteNumber}</strong> for <strong>${quote.name}</strong>.</p>
               <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
                 <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Quote Number</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">${quote.quoteNumber}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Total</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">$${Number(quote.total).toFixed(2)}</td></tr>
+                <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Total</td><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">£${Number(quote.total).toFixed(2)}</td></tr>
                 ${quote.validUntil ? `<tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Valid Until</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${new Date(quote.validUntil).toLocaleDateString()}</td></tr>` : ""}
               </table>
               <p>Please review the attached PDF for full details.</p>

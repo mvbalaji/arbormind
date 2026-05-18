@@ -538,9 +538,9 @@ export default function QuoteDetail() {
                     <tr key={item.id} className="hover:bg-blue-500/5 transition-colors">
                       <td className="px-4 py-2 text-foreground">{item.productName}</td>
                       <td className="px-4 py-2 text-right text-muted-foreground">{item.quantity}</td>
-                      <td className="px-4 py-2 text-right text-muted-foreground">${item.unitPrice.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">£{item.unitPrice.toFixed(2)}</td>
                       <td className="px-4 py-2 text-right text-muted-foreground">{item.discount}%</td>
-                      <td className="px-4 py-2 text-right font-medium text-foreground">${item.total.toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right font-medium text-foreground">£{item.total.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -637,9 +637,9 @@ export default function QuoteDetail() {
                     <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 text-foreground font-medium">{item.productName}</td>
                       <td className="px-4 py-3 text-right text-muted-foreground">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">${item.unitPrice.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right text-muted-foreground">£{item.unitPrice.toFixed(2)}</td>
                       <td className="px-4 py-3 text-right text-muted-foreground">{item.discount}%</td>
-                      <td className="px-4 py-3 text-right font-semibold text-foreground">${item.total.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground">£{item.total.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -665,7 +665,7 @@ export default function QuoteDetail() {
                 </div>
                 <div className="border-t border-border pt-2 mt-2 space-y-1 text-sm max-w-xs ml-auto">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Subtotal</span><span>${editSubtotal.toFixed(2)}</span>
+                    <span>Subtotal</span><span>£{editSubtotal.toFixed(2)}</span>
                   </div>
                   {editDiscountAmt > 0 && (
                     <div className="flex justify-between text-muted-foreground">
@@ -674,18 +674,18 @@ export default function QuoteDetail() {
                   )}
                   {editTaxAmt > 0 && (
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Tax ({editTax}%)</span><span>${editTaxAmt.toFixed(2)}</span>
+                      <span>Tax ({editTax}%)</span><span>£{editTaxAmt.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-foreground text-lg border-t border-border pt-1 mt-1">
-                    <span>Total</span><span>${editTotal.toFixed(2)}</span>
+                    <span>Total</span><span>£{editTotal.toFixed(2)}</span>
                   </div>
                 </div>
               </>
             ) : (
               <>
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Subtotal</span><span>${quote.subtotal.toFixed(2)}</span>
+                  <span>Subtotal</span><span>£{quote.subtotal.toFixed(2)}</span>
                 </div>
                 {quote.discount > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
@@ -694,11 +694,11 @@ export default function QuoteDetail() {
                 )}
                 {quote.tax > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Tax ({quote.tax}%)</span><span>${(quote.subtotal * (1 - quote.discount / 100) * quote.tax / 100).toFixed(2)}</span>
+                    <span>Tax ({quote.tax}%)</span><span>£{(quote.subtotal * (1 - quote.discount / 100) * quote.tax / 100).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-foreground text-lg border-t border-border pt-2 mt-2">
-                  <span>Total</span><span>${quote.total.toFixed(2)}</span>
+                  <span>Total</span><span>£{quote.total.toFixed(2)}</span>
                 </div>
               </>
             )}

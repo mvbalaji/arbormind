@@ -619,7 +619,7 @@ export default function LeadDetail() {
               <FieldRow label="Lead Source" value={lead.source?.replace(/_/g, " ")} icon={Target} />
               <FieldRow label="Industry" value={lead.industry} icon={Building2} />
               <FieldRow label="Employees" value={lead.employees?.toLocaleString()} icon={Users} />
-              <FieldRow label="Annual Revenue" value={lead.annualRevenue ? `$${lead.annualRevenue.toLocaleString()}` : null} icon={DollarSign} />
+              <FieldRow label="Annual Revenue" value={lead.annualRevenue ? `£${lead.annualRevenue.toLocaleString()}` : null} icon={DollarSign} />
               {lead.score != null && (
                 <div className="py-2 border-b border-border/50 last:border-0">
                   <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
