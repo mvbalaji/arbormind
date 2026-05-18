@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
@@ -442,6 +443,15 @@ export default function OpportunityDetail() {
       return res.json() as Promise<{ data: RelatedActivity[] }>;
     },
     enabled: !!id,
+  });
+
+  const { data: usersData } = useQuery<{ data: Array<{ id: number; name: string; email: string; role: string }> }>({
+    queryKey: ["users", "all"],
+    queryFn: async () => {
+      const res = await fetch(`/api/users?limit=200`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
   });
 
   const { data: accountData } = useQuery<{
@@ -1421,25 +1431,45 @@ export default function OpportunityDetail() {
                           })}
                         </div>
                       )}
-                      <div className="flex items-center gap-2 pt-1">
-                        <Input
-                          value={newTeamMember}
-                          onChange={(e) => setNewTeamMember(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") { e.preventDefault(); handleAdd(); }
-                          }}
-                          placeholder="Add team member name…"
-                          className="h-9 text-sm bg-muted border-border flex-1"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={handleAdd}
-                          disabled={!newTeamMember.trim()}
-                          className="gap-1.5"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Add
-                        </Button>
-                      </div>
+                      {(() => {
+                        const allUsers = usersData?.data ?? [];
+                        const available = allUsers.filter(
+                          (u) => !members.some((m) => m.toLowerCase() === u.name.toLowerCase())
+                        );
+                        const roleLabel = (r: string) =>
+                          r ? r.charAt(0).toUpperCase() + r.slice(1) : "";
+                        return (
+                          <div className="flex items-center gap-2 pt-1">
+                            <Select value={newTeamMember} onValueChange={setNewTeamMember}>
+                              <SelectTrigger className="h-9 text-sm bg-muted border-border flex-1">
+                                <SelectValue placeholder="Select a user to add…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {available.length === 0 ? (
+                                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                                    All users are already on the team.
+                                  </div>
+                                ) : (
+                                  available.map((u) => (
+                                    <SelectItem key={u.id} value={u.name}>
+                                      <span className="font-medium">{u.name}</span>
+                                      <span className="text-muted-foreground"> — {roleLabel(u.role)}</span>
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              onClick={handleAdd}
+                              disabled={!newTeamMember.trim()}
+                              className="gap-1.5"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Add
+                            </Button>
+                          </div>
+                        );
+                      })()}
                     </>
                   );
                 })()}
