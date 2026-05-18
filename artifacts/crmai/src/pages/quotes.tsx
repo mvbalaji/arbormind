@@ -327,12 +327,18 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
 type SortField = "quoteNumber" | "name" | "validUntil" | "subtotal" | "total";
 type SortDir = "asc" | "desc";
 
+type CloneSource = { id: number; name: string; quoteNumber: string };
+
 interface CloneQuoteDialogProps {
-  quote: { id: number; name: string; quoteNumber: string } | null;
+  open: boolean;
+  initialSource: CloneSource | null;
+  sourceQuotes: CloneSource[];
   onOpenChange: (open: boolean) => void;
 }
 
-function CloneQuoteDialog({ quote, onOpenChange }: CloneQuoteDialogProps) {
+function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: CloneQuoteDialogProps) {
+  const [source, setSource] = useState<CloneSource | null>(initialSource);
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const [accountId, setAccountId] = useState<number | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -354,14 +360,19 @@ function CloneQuoteDialog({ quote, onOpenChange }: CloneQuoteDialogProps) {
   });
 
   React.useEffect(() => {
-    if (!quote) { setAccountId(null); setPickerOpen(false); }
-  }, [quote]);
+    if (open) {
+      setSource(initialSource);
+      setAccountId(null);
+      setSourcePickerOpen(false);
+      setPickerOpen(false);
+    }
+  }, [open, initialSource]);
 
   const handleClone = async () => {
-    if (!quote || !accountId) return;
+    if (!source || !accountId) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/quotes/${quote.id}/clone`, {
+      const res = await fetch(`/api/quotes/${source.id}/clone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -369,7 +380,7 @@ function CloneQuoteDialog({ quote, onOpenChange }: CloneQuoteDialogProps) {
       });
       if (!res.ok) throw new Error("Failed");
       await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
-      toast({ title: "Quote cloned", description: `A copy of ${quote.quoteNumber} was created for ${selectedAccount?.name ?? "the selected account"}.` });
+      toast({ title: "Quote cloned", description: `A copy of ${source.quoteNumber} was created for ${selectedAccount?.name ?? "the selected account"}.` });
       onOpenChange(false);
     } catch {
       toast({ title: "Clone failed", description: "Could not clone quote.", variant: "destructive" });
@@ -379,17 +390,68 @@ function CloneQuoteDialog({ quote, onOpenChange }: CloneQuoteDialogProps) {
   };
 
   return (
-    <Dialog open={!!quote} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border text-foreground sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Copy className="w-4 h-4 text-primary" />
-            Clone Quote {quote?.quoteNumber}
+            Clone Quote{source ? ` ${source.quoteNumber}` : ""}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="text-sm text-muted-foreground">
-            Cloning <span className="font-medium text-foreground">{quote?.name}</span>. Select the target account — its primary contact will be auto-populated on the new quote.
+            Pick the quote to clone and the target account — the account's primary contact will be auto-populated on the new quote.
+          </div>
+          {/* Source quote picker */}
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Source Quote *</Label>
+            <Popover open={sourcePickerOpen} onOpenChange={setSourcePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={sourcePickerOpen}
+                  className="w-full h-9 justify-between bg-muted border-border text-sm font-normal"
+                >
+                  {source ? (
+                    <span className="truncate">
+                      <span className="font-mono text-xs text-muted-foreground mr-1">{source.quoteNumber}</span>
+                      {source.name}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Search className="w-3.5 h-3.5" />
+                      Search for a quote to clone…
+                    </span>
+                  )}
+                  <ChevronsUpDown className="w-3.5 h-3.5 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
+                <Command>
+                  <CommandInput placeholder="Search by quote number or name…" />
+                  <CommandList>
+                    <CommandEmpty>No quote found.</CommandEmpty>
+                    <CommandGroup>
+                      {sourceQuotes.map((q) => (
+                        <CommandItem
+                          key={q.id}
+                          value={`${q.quoteNumber} ${q.name}`}
+                          onSelect={() => { setSource(q); setSourcePickerOpen(false); }}
+                          className="flex items-center gap-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{q.name}</div>
+                            <div className="text-xs text-muted-foreground font-mono truncate">{q.quoteNumber}</div>
+                          </div>
+                          <Check className={`w-3.5 h-3.5 ${source?.id === q.id ? "opacity-100" : "opacity-0"}`} />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Target Account *</Label>
@@ -468,7 +530,7 @@ function CloneQuoteDialog({ quote, onOpenChange }: CloneQuoteDialogProps) {
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
-          <Button onClick={handleClone} disabled={!accountId || isSubmitting} className="gap-1.5">
+          <Button onClick={handleClone} disabled={!source || !accountId || isSubmitting} className="gap-1.5">
             <Copy className="w-3.5 h-3.5" />
             {isSubmitting ? "Cloning…" : "Clone Quote"}
           </Button>
@@ -482,7 +544,8 @@ export default function Quotes() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<({ id: number } & QuoteFormData) | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [cloningQuote, setCloningQuote] = useState<{ id: number; name: string; quoteNumber: string } | null>(null);
+  const [cloneOpen, setCloneOpen] = useState(false);
+  const [cloneInitialSource, setCloneInitialSource] = useState<CloneSource | null>(null);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [searchQuery, setSearchQuery] = useState("");
@@ -659,6 +722,15 @@ export default function Quotes() {
             >
               New Quote
             </Button>
+            <Button
+              variant="outline"
+              onClick={() => { setCloneInitialSource(null); setCloneOpen(true); }}
+              className="border-border text-foreground hover:bg-muted h-9 gap-1.5"
+              title="Clone an existing quote into a different account"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Clone Quote
+            </Button>
           </div>
         </div>
 
@@ -796,7 +868,7 @@ export default function Quotes() {
                               <Pencil className="w-4 h-4 mr-2" /> Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => setCloningQuote({ id: q.id, name: q.name, quoteNumber: q.quoteNumber })}
+                              onClick={() => { setCloneInitialSource({ id: q.id, name: q.name, quoteNumber: q.quoteNumber }); setCloneOpen(true); }}
                               className="cursor-pointer hover:bg-muted"
                             >
                               <Copy className="w-4 h-4 mr-2" /> Clone
@@ -838,8 +910,10 @@ export default function Quotes() {
         initialData={editingQuote ?? undefined}
       />
       <CloneQuoteDialog
-        quote={cloningQuote}
-        onOpenChange={(o) => { if (!o) setCloningQuote(null); }}
+        open={cloneOpen}
+        initialSource={cloneInitialSource}
+        sourceQuotes={allQuotes.map((q) => ({ id: q.id, name: q.name, quoteNumber: q.quoteNumber }))}
+        onOpenChange={(o) => { setCloneOpen(o); if (!o) setCloneInitialSource(null); }}
       />
       <AlertDialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
         <AlertDialogContent className="bg-card border-border text-foreground">
