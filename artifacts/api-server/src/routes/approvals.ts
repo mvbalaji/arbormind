@@ -488,10 +488,13 @@ router.post("/approvals/requests/:id/decision", async (req, res) => {
       res.status(400).json({ error: "decision must be 'approved' or 'rejected'" });
       return;
     }
+    const trimmedComment = typeof comment === "string" && comment.trim() ? comment.trim() : null;
+    if (decision === "rejected" && !trimmedComment) {
+      res.status(400).json({ error: "A comment is required when rejecting an approval request." });
+      return;
+    }
     const [existing] = await db.select().from(approvalRequestsTable).where(eq(approvalRequestsTable.id, id));
     if (!existing) { res.status(404).json({ error: "Request not found" }); return; }
-
-    const trimmedComment = typeof comment === "string" && comment.trim() ? comment.trim() : null;
     const now = new Date();
 
     const finalId = await db.transaction(async (tx) => {

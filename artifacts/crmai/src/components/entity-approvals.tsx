@@ -315,10 +315,21 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
           <Textarea
             value={actionComment}
             onChange={(e) => setActionComment(e.target.value)}
-            placeholder={actionState.mode === "comment" ? "Type your comment…" : "Optional comment…"}
+            placeholder={
+              actionState.mode === "comment"
+                ? "Type your comment…"
+                : actionState.mode === "reject"
+                  ? "Reason for rejection (required)…"
+                  : "Optional comment…"
+            }
             className="text-sm min-h-[60px] bg-card"
             rows={2}
           />
+          {actionState.mode === "reject" && !actionComment.trim() && (
+            <div className="text-xs text-red-600 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5" /> A comment is required to reject this request.
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <Button size="sm" variant="ghost" onClick={() => { setActionState(null); setActionComment(""); }}>
               Cancel
@@ -332,7 +343,7 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
             ) : (
               <Button size="sm"
                 className={actionState.mode === "approve" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}
-                disabled={decisionMutation.isPending}
+                disabled={decisionMutation.isPending || (actionState.mode === "reject" && !actionComment.trim())}
                 onClick={() => decisionMutation.mutate({
                   id: actionState.id,
                   decision: actionState.mode === "approve" ? "approved" : "rejected",
