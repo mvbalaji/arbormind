@@ -480,6 +480,8 @@ export default function OpportunityDetail() {
   const { data: quotesData } = useListQuotes(numericId ? { opportunityId: numericId } : undefined);
   const oppQuotes: OppQuote[] = (quotesData?.data ?? []) as OppQuote[];
 
+  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity`, DEFAULT_OPP_TAB_ORDER);
+
   const updateOppMutation = useUpdateOpportunity();
   const { toast: toastTop } = useToast();
   const advanceStage = () => {
@@ -536,7 +538,6 @@ export default function OpportunityDetail() {
     about: { label: "Details" },
     related: { label: "Related" },
   };
-  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity`, DEFAULT_OPP_TAB_ORDER);
   const TABS = tabOrder.map((id) => ({ id, ...TAB_META[id] }));
 
   return (
