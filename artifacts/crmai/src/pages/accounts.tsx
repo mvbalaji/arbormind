@@ -211,7 +211,7 @@ export default function Accounts() {
                   <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Owner</th>
                   <th className="px-4 py-2.5 text-center text-xs font-semibold">Contacts</th>
                   <th className="px-4 py-2.5 text-center text-xs font-semibold">Deals</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold">Actions</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -295,15 +295,50 @@ export default function Accounts() {
                           <Briefcase className="w-3 h-3" /> {acc.dealCount ?? 0}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                            onClick={() => setEditingAccount({
+                              id: acc.id,
+                              name: acc.name,
+                              industry: acc.industry ?? "",
+                              website: acc.website ?? "",
+                              phone: acc.phone ?? "",
+                              email: acc.email ?? "",
+                              city: acc.city ?? "",
+                              country: acc.country ?? "",
+                              employees: acc.employees != null ? String(acc.employees) : "",
+                              annualRevenue: acc.annualRevenue != null ? String(acc.annualRevenue) : "",
+                              description: acc.description ?? "",
+                              status: acc.status ?? "active",
+                              stage: acc.stage ?? "",
+                              amount: acc.amount != null ? String(acc.amount) : "",
+                              closeDate: acc.closeDate ?? "",
+                              probability: acc.probability != null ? String(acc.probability) : "",
+                              forecastCategory: acc.forecastCategory ?? "",
+                              nextStep: acc.nextStep ?? "",
+                              optyOwner: acc.optyOwner ?? "",
+                              optyTeam: acc.optyTeam ?? "",
+                            })}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                                <MoreHorizontal className="w-3.5 h-3.5" />
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" aria-label={`More actions for ${acc.name}`}>
+                                <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/accounts/${acc.id}`} className="flex items-center gap-2 cursor-pointer text-sm">
+                                  <ExternalLink className="w-3.5 h-3.5" /> View
+                                </Link>
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => setEditingAccount({
                                   id: acc.id,
