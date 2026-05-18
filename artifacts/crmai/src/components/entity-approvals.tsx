@@ -340,30 +340,34 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
 
       {/* Table */}
       <Card className="border-border overflow-hidden">
-        {requestsQuery.isLoading ? (
-          <div className="p-6 text-sm text-muted-foreground">Loading…</div>
-        ) : rows.length === 0 ? (
-          <div className="p-6 text-sm text-muted-foreground">
-            No approval history yet. Click <span className="font-semibold text-foreground">Submit for Approval</span> to start a request.
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="w-10 text-center">#</TableHead>
-                <TableHead>Step Name</TableHead>
-                <TableHead className="w-44">
-                  <span className="inline-flex items-center gap-1">Date <ChevronDown className="w-3 h-3" /></span>
-                </TableHead>
-                <TableHead className="w-32">Status</TableHead>
-                <TableHead className="w-44">Assigned To</TableHead>
-                <TableHead className="w-44">Actual Approver</TableHead>
-                <TableHead>Comments</TableHead>
-                <TableHead className="w-10" />
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="w-10 text-center">#</TableHead>
+              <TableHead>Step Name</TableHead>
+              <TableHead className="w-44">
+                <span className="inline-flex items-center gap-1">Date <ChevronDown className="w-3 h-3" /></span>
+              </TableHead>
+              <TableHead className="w-32">Status</TableHead>
+              <TableHead className="w-44">Assigned To</TableHead>
+              <TableHead className="w-44">Actual Approver</TableHead>
+              <TableHead>Comments</TableHead>
+              <TableHead className="w-10" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {requestsQuery.isLoading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">Loading…</TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row, i) => {
+            ) : rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-10">
+                  No approval history yet. Click <span className="font-semibold text-foreground">Submit for Approval</span> to start a request.
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((row, i) => {
                 const req = requestById.get(row.requestId);
                 const showActions = req && (canManage(req) || canCancel(req) || canComment(req)) && row.isRequest;
                 return (
@@ -415,10 +419,10 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
                     </TableCell>
                   </TableRow>
                 );
-              })}
-            </TableBody>
-          </Table>
-        )}
+              })
+            )}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );
