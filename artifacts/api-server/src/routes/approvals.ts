@@ -8,7 +8,7 @@ import {
   approvalAuditEventsTable,
   usersTable,
 } from "@workspace/db";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -374,7 +374,7 @@ router.get("/approvals/requests", async (req, res) => {
         createdAt: approvalAuditEventsTable.createdAt,
       })
       .from(approvalAuditEventsTable)
-      .where(sql`${approvalAuditEventsTable.requestId} = ANY(${ids})`)
+      .where(inArray(approvalAuditEventsTable.requestId, ids))
       .orderBy(approvalAuditEventsTable.createdAt, approvalAuditEventsTable.id);
 
     const eventsByRequest = new Map<number, typeof allEvents>();

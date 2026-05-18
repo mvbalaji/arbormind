@@ -114,11 +114,16 @@ router.get("/opportunities/:id", async (req, res) => {
 router.put("/opportunities/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    const { createdAt: _ca, updatedAt: _ua, id: _id, ...rawBody } = req.body ?? {};
+    const patch: Record<string, unknown> = { ...rawBody };
+    if (typeof patch.closeDate === "string") {
+      patch.closeDate = patch.closeDate ? new Date(patch.closeDate) : null;
+    }
     const opportunity = await db.transaction(async (tx) => {
       const [prev] = await tx.select({ stage: opportunitiesTable.stage }).from(opportunitiesTable).where(eq(opportunitiesTable.id, id)).for("update");
       if (!prev) return null;
       const [updated] = await tx.update(opportunitiesTable)
-        .set({ ...req.body, updatedAt: new Date() })
+        .set({ ...patch, updatedAt: new Date() })
         .where(eq(opportunitiesTable.id, id))
         .returning();
       if (req.body.stage && prev.stage !== updated.stage) {
