@@ -22,7 +22,9 @@ import aiRouter from "./ai";
 import approvalsRouter from "./approvals";
 import entityNotesRouter from "./entity-notes";
 import accessControlRouter from "./access-control";
+import recordAccessRouter from "./record-access";
 import { seedAccessControl } from "../lib/access-control";
+import { seedRecordAccess } from "../lib/record-access";
 
 const router: IRouter = Router();
 
@@ -49,8 +51,11 @@ router.use(aiRouter);
 router.use(approvalsRouter);
 router.use(entityNotesRouter);
 router.use(accessControlRouter);
+router.use(recordAccessRouter);
 
-// Idempotent seed of roles, screens, and default admin access on startup.
+// Idempotent seed of roles, screens, record types, and default admin
+// access on startup.
 void seedAccessControl();
+void seedRecordAccess();
 
 export default router;

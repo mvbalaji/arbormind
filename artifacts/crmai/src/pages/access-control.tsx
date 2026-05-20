@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, History, Lock } from "lucide-react";
+import { Shield, History, Lock, Database } from "lucide-react";
 import { format } from "date-fns";
 
 type AccessLevel = "none" | "view" | "read_only" | "edit";
@@ -24,6 +24,30 @@ interface AuditRow {
   roleKey: string;
   previousLevel: string | null;
   newLevel: string;
+  changedByName: string | null;
+  createdAt: string;
+}
+
+type RecordPerms = { canView: boolean; canReadOnly: boolean; canEdit: boolean; canCreate: boolean; canDelete: boolean };
+const PERM_COLS: Array<{ key: keyof RecordPerms; label: string }> = [
+  { key: "canView", label: "View" },
+  { key: "canReadOnly", label: "Read-Only" },
+  { key: "canEdit", label: "Edit" },
+  { key: "canCreate", label: "Create" },
+  { key: "canDelete", label: "Delete" },
+];
+interface RecordType { key: string; name: string; sortOrder: number }
+interface RecordMatrixResponse {
+  recordTypes: RecordType[];
+  roles: Role[];
+  matrix: Record<string, Record<string, RecordPerms>>;
+}
+interface RecordAuditRow {
+  id: number;
+  recordTypeKey: string;
+  roleKey: string;
+  previousPermissions: RecordPerms | null;
+  newPermissions: RecordPerms;
   changedByName: string | null;
   createdAt: string;
 }
@@ -68,6 +92,62 @@ export default function AccessControlPage() {
       return r.json();
     },
     enabled: isAdmin,
+  });
+
+  const { data: recordData, isLoading: recordLoading } = useQuery<RecordMatrixResponse>({
+    queryKey: ["record-access", "matrix"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/record-access/matrix", { credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load record access matrix");
+      return r.json();
+    },
+    enabled: isAdmin,
+  });
+
+  const { data: recordAudit } = useQuery<{ data: RecordAuditRow[] }>({
+    queryKey: ["record-access", "audit"],
+    queryFn: async () => {
+      const r = await fetch("/api/admin/record-access/audit?limit=200", { credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load record audit log");
+      return r.json();
+    },
+    enabled: isAdmin,
+  });
+
+  const recordMutate = useMutation({
+    mutationFn: async (input: { recordTypeKey: string; roleKey: string; column: keyof RecordPerms; value: boolean }) => {
+      const r = await fetch(
+        `/api/admin/record-access/types/${encodeURIComponent(input.recordTypeKey)}/roles/${encodeURIComponent(input.roleKey)}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ [input.column]: input.value }),
+        }
+      );
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error(e.error || "Save failed");
+      }
+      return r.json();
+    },
+    onMutate: ({ recordTypeKey, roleKey, column }) => {
+      setPending((p) => ({ ...p, [`r:${recordTypeKey}:${roleKey}:${column}`]: true }));
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["record-access"] });
+      toast({ title: "Record access updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Update failed", description: err.message, variant: "destructive" });
+    },
+    onSettled: (_d, _e, vars) => {
+      setPending((p) => {
+        const next = { ...p };
+        delete next[`r:${vars.recordTypeKey}:${vars.roleKey}:${vars.column}`];
+        return next;
+      });
+    },
   });
 
   const mutate = useMutation({
@@ -140,7 +220,12 @@ export default function AccessControlPage() {
 
         <Tabs defaultValue="matrix" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="matrix">Permissions Matrix</TabsTrigger>
+            <TabsTrigger value="matrix">
+              <Shield className="w-4 h-4 mr-1.5" /> Screen Access
+            </TabsTrigger>
+            <TabsTrigger value="records">
+              <Database className="w-4 h-4 mr-1.5" /> Record Access
+            </TabsTrigger>
             <TabsTrigger value="audit">
               <History className="w-4 h-4 mr-1.5" /> Audit Trail
             </TabsTrigger>
@@ -221,6 +306,123 @@ export default function AccessControlPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="records">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Record Type × Role Permissions</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Control which roles can View, Read-Only, Edit, Create, or Delete each record type. Administrator always has full access.
+                </p>
+              </CardHeader>
+              <CardContent>
+                {recordLoading ? (
+                  <div className="text-sm text-muted-foreground py-8 text-center">Loading…</div>
+                ) : !recordData ? (
+                  <div className="text-sm text-destructive py-8 text-center">Failed to load record access matrix.</div>
+                ) : (
+                  <div className="overflow-x-auto rounded-md border border-border">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 border-b border-indigo-800">
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap" rowSpan={2}>Record Type</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap" rowSpan={2}>Role</th>
+                          {PERM_COLS.map((c) => (
+                            <th key={c.key} className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">{c.label}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {recordData.recordTypes.map((rt) => (
+                          <React.Fragment key={rt.key}>
+                            {recordData.roles.map((role, idx) => {
+                              const perms = recordData.matrix[rt.key]?.[role.key];
+                              const isAdmin = role.key === "admin";
+                              return (
+                                <tr key={`${rt.key}:${role.key}`} className="hover:bg-muted/20">
+                                  {idx === 0 ? (
+                                    <td className="px-4 py-2 font-medium text-foreground whitespace-nowrap align-top" rowSpan={recordData.roles.length}>
+                                      {rt.name}
+                                    </td>
+                                  ) : null}
+                                  <td className="px-4 py-2 text-foreground whitespace-nowrap">{role.label}</td>
+                                  {PERM_COLS.map((c) => {
+                                    const checked = perms?.[c.key] ?? false;
+                                    const pendKey = `r:${rt.key}:${role.key}:${c.key}`;
+                                    return (
+                                      <td key={c.key} className="px-3 py-2 text-center">
+                                        <input
+                                          type="checkbox"
+                                          checked={checked}
+                                          disabled={isAdmin || pending[pendKey]}
+                                          onChange={(e) =>
+                                            recordMutate.mutate({
+                                              recordTypeKey: rt.key,
+                                              roleKey: role.key,
+                                              column: c.key,
+                                              value: e.target.checked,
+                                            })
+                                          }
+                                          className="w-4 h-4 rounded border-border accent-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                          aria-label={`${c.label} ${rt.name} for ${role.label}`}
+                                        />
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {recordAudit?.data?.length ? (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Recent Record Access Changes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto rounded-md border border-border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/40 border-b border-border">
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">When</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Record Type</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Changes</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Changed By</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {recordAudit.data.map((row) => {
+                          const diffs: string[] = [];
+                          for (const c of PERM_COLS) {
+                            const prev = row.previousPermissions?.[c.key] ?? false;
+                            const next = row.newPermissions[c.key];
+                            if (prev !== next) diffs.push(`${c.label}: ${prev ? "✓" : "✗"} → ${next ? "✓" : "✗"}`);
+                          }
+                          return (
+                            <tr key={row.id}>
+                              <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">{format(new Date(row.createdAt), "dd MMM yyyy HH:mm")}</td>
+                              <td className="px-3 py-2 text-foreground">{row.recordTypeKey}</td>
+                              <td className="px-3 py-2 text-foreground">{row.roleKey}</td>
+                              <td className="px-3 py-2 text-foreground text-xs">{diffs.join(", ") || "—"}</td>
+                              <td className="px-3 py-2 text-foreground">{row.changedByName ?? "—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
           </TabsContent>
 
           <TabsContent value="audit">

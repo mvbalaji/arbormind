@@ -20,3 +20,4 @@ export * from "./approvals";
 export * from "./approval-requests";
 export * from "./entity-notes";
 export * from "./access-control";
+export * from "./record-access";
