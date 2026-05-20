@@ -434,7 +434,7 @@ export default function Leads() {
                   </tr>
                 ) : (
                   sortedLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-muted/30 transition-colors group divide-x divide-border">
+                    <tr key={lead.id} className="hover:bg-muted/30 transition-colors group">
                       <td className="px-3 py-2.5 text-center">
                         <Checkbox
                           checked={selectedIds.has(lead.id)}
