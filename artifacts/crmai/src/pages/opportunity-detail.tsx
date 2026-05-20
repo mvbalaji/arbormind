@@ -798,34 +798,34 @@ export default function OpportunityDetail() {
               </div>
             </div>
 
-            {/* Highlight fields row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-border border-b border-border bg-card">
-              <div className="px-4 py-3">
-                <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Account Name</div>
+            {/* Highlight fields — inline flow, no table dividers */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3 border-b border-border bg-card text-sm">
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Account:</span>
                 {opp.accountId ? (
                   <Link href={`/accounts/${opp.accountId}`}>
-                    <span className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium truncate block">{opp.accountName ?? "—"}</span>
+                    <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium">{opp.accountName ?? "—"}</span>
                   </Link>
                 ) : (
-                  <div className="text-sm text-foreground font-medium">{opp.accountName ?? "—"}</div>
+                  <span className="text-foreground font-medium">{opp.accountName ?? "—"}</span>
                 )}
               </div>
-              <div className="px-4 py-3">
-                <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Close Date</div>
-                <div className="text-sm text-foreground font-medium">{opp.closeDate ? format(new Date(opp.closeDate), "yyyy-MM-dd") : "—"}</div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Close Date:</span>
+                <span className="text-foreground font-medium">{opp.closeDate ? format(new Date(opp.closeDate), "yyyy-MM-dd") : "—"}</span>
               </div>
-              <div className="px-4 py-3">
-                <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Amount</div>
-                <div className="text-sm text-foreground font-medium">{opp.amount !== null ? `£${opp.amount.toLocaleString()}` : "—"}</div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Amount:</span>
+                <span className="text-foreground font-medium">{opp.amount !== null ? `£${opp.amount.toLocaleString()}` : "—"}</span>
               </div>
-              <div className="px-4 py-3">
-                <div className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Opportunity Owner</div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-[10px] font-bold shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Owner:</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-950/50 flex items-center justify-center text-emerald-700 dark:text-emerald-300 text-[10px] font-bold shrink-0">
                     {(opp.assignedToName ?? "—").charAt(0).toUpperCase()}
-                  </div>
-                  <span className="text-sm text-foreground font-medium truncate">{opp.assignedToName ?? "—"}</span>
-                </div>
+                  </span>
+                  <span className="text-foreground font-medium">{opp.assignedToName ?? "—"}</span>
+                </span>
               </div>
             </div>
 
