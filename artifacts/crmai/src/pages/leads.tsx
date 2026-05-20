@@ -81,6 +81,102 @@ const defaultFormData: LeadFormData = {
   industry: "", employees: "", annualRevenue: "", description: "",
 };
 
+type LeadColKey = "name" | "company" | "phone" | "email" | "status" | "score" | "createdAt" | "owner" | "actions";
+
+const LEAD_COL_DEFAULTS: Record<LeadColKey, number> = {
+  name: 200,
+  company: 180,
+  phone: 160,
+  email: 220,
+  status: 150,
+  score: 90,
+  createdAt: 140,
+  owner: 150,
+  actions: 120,
+};
+
+const LEAD_COL_ORDER: LeadColKey[] = ["name", "company", "phone", "email", "status", "score", "createdAt", "owner", "actions"];
+const LEAD_COL_MIN = 60;
+const LEAD_COL_STORAGE_KEY = "col-widths:leads:v1";
+
+function loadLeadColWidths(): Record<LeadColKey, number> {
+  if (typeof window === "undefined") return { ...LEAD_COL_DEFAULTS };
+  try {
+    const raw = window.localStorage.getItem(LEAD_COL_STORAGE_KEY);
+    if (!raw) return { ...LEAD_COL_DEFAULTS };
+    const parsed = JSON.parse(raw) as Partial<Record<LeadColKey, number>>;
+    const merged: Record<LeadColKey, number> = { ...LEAD_COL_DEFAULTS };
+    for (const k of LEAD_COL_ORDER) {
+      const v = parsed[k];
+      if (typeof v === "number" && Number.isFinite(v) && v >= LEAD_COL_MIN) merged[k] = v;
+    }
+    return merged;
+  } catch {
+    return { ...LEAD_COL_DEFAULTS };
+  }
+}
+
+function useLeadColResize() {
+  const [widths, setWidths] = useState<Record<LeadColKey, number>>(() => loadLeadColWidths());
+  const draggingRef = React.useRef<{ key: LeadColKey; startX: number; startWidth: number } | null>(null);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(LEAD_COL_STORAGE_KEY, JSON.stringify(widths));
+    } catch {
+      // ignore quota errors
+    }
+  }, [widths]);
+
+  React.useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const d = draggingRef.current;
+      if (!d) return;
+      const delta = e.clientX - d.startX;
+      const next = Math.max(LEAD_COL_MIN, d.startWidth + delta);
+      setWidths((prev) => (prev[d.key] === next ? prev : { ...prev, [d.key]: next }));
+    };
+    const onUp = () => {
+      if (draggingRef.current) {
+        draggingRef.current = null;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const startResize = (key: LeadColKey) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    draggingRef.current = { key, startX: e.clientX, startWidth: widths[key] };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  const resetWidths = () => setWidths({ ...LEAD_COL_DEFAULTS });
+
+  return { widths, startResize, resetWidths };
+}
+
+function ColResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
+  return (
+    <span
+      role="separator"
+      aria-orientation="vertical"
+      onMouseDown={onMouseDown}
+      onClick={(e) => e.stopPropagation()}
+      className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize select-none hover:bg-white/40 active:bg-white/60 transition-colors"
+      title="Drag to resize"
+    />
+  );
+}
+
 export default function Leads() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
@@ -91,6 +187,7 @@ export default function Leads() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [convertingId, setConvertingId] = useState<{ id: number; name: string; company?: string | null } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
+  const { widths: colWidths, startResize: startColResize, resetWidths: resetColWidths } = useLeadColResize();
   const { data, isLoading } = useListLeads({ search, limit: 200 });
 
   const allLeads = data?.data ?? [];
@@ -204,19 +301,34 @@ export default function Leads() {
 
         {/* Table */}
         <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
+          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+            <button
+              type="button"
+              onClick={resetColWidths}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              title="Reset column widths to defaults"
+            >
+              Reset column widths
+            </button>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="text-sm" style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
+              <colgroup>
+                {LEAD_COL_ORDER.map((k) => (
+                  <col key={k} style={{ width: `${colWidths[k]}px` }} />
+                ))}
+              </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Company</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Phone</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Lead Status</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Score</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Created Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</th>
+                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name<ColResizeHandle onMouseDown={startColResize("name")} /></th>
+                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Company<ColResizeHandle onMouseDown={startColResize("company")} /></th>
+                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Phone<ColResizeHandle onMouseDown={startColResize("phone")} /></th>
+                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Email<ColResizeHandle onMouseDown={startColResize("email")} /></th>
+                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Lead Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>
+                  <th className="relative px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Score<ColResizeHandle onMouseDown={startColResize("score")} /></th>
+                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Created Date<ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>
+                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner<ColResizeHandle onMouseDown={startColResize("owner")} /></th>
+                  <th className="relative px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
