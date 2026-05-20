@@ -83,7 +83,7 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
 
 type Tab = "activities" | "quotes" | "contacts" | "approvals" | "notes" | "about";
 
-const DEFAULT_OPP_TAB_ORDER: readonly Tab[] = ["about", "activities", "contacts", "quotes", "approvals", "notes"];
+const DEFAULT_OPP_TAB_ORDER: readonly Tab[] = ["about", "quotes", "approvals", "activities", "notes", "contacts"];
 
 interface OppQuote {
   id: number;
@@ -687,7 +687,7 @@ export default function OpportunityDetail() {
   });
   const oppItems: OpportunityItem[] = oppItemsData?.data ?? [];
 
-  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity:v3`, DEFAULT_OPP_TAB_ORDER);
+  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity:v4`, DEFAULT_OPP_TAB_ORDER);
 
   const updateOppMutation = useUpdateOpportunity();
   const { toast: toastTop } = useToast();
