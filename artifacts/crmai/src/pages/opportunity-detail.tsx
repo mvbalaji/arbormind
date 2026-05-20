@@ -1724,6 +1724,18 @@ export default function OpportunityDetail() {
         showPrimaryContactOption
         primaryContactLabel="Set as primary contact for this opportunity"
         defaultPrimary={editingContact ? editingContact.id === opp.contactId : false}
+        primaryContactCheckboxDisabled={!!editingContact && editingContact.id === opp.contactId}
+        primaryContactHint={(() => {
+          if (editingContact && editingContact.id === opp.contactId) {
+            return "This contact is the current primary. Promote another contact to change it.";
+          }
+          if (opp.contactId != null) {
+            const current = contactsData?.data.find((c) => c.id === opp.contactId);
+            const name = current ? `${current.firstName} ${current.lastName}` : "the current primary contact";
+            return `Only one primary is allowed. Checking this will replace ${name}.`;
+          }
+          return undefined;
+        })()}
         onSaved={async (saved) => {
           if (saved.isPrimary && numericId && saved.id !== opp.contactId) {
             try {

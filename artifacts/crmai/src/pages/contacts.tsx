@@ -217,6 +217,8 @@ export function ContactFormDialog({
   showPrimaryContactOption = false,
   primaryContactLabel = "Set as primary contact",
   defaultPrimary = false,
+  primaryContactHint,
+  primaryContactCheckboxDisabled = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -227,6 +229,8 @@ export function ContactFormDialog({
   showPrimaryContactOption?: boolean;
   primaryContactLabel?: string;
   defaultPrimary?: boolean;
+  primaryContactHint?: string;
+  primaryContactCheckboxDisabled?: boolean;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -337,17 +341,26 @@ export function ContactFormDialog({
             </div>
           </div>
           {showPrimaryContactOption && (
-            <div className="flex items-center gap-2 pt-1">
-              <input
-                id="isPrimaryContact"
-                type="checkbox"
-                checked={isPrimary}
-                onChange={(e) => setIsPrimary(e.target.checked)}
-                className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
-              />
-              <Label htmlFor="isPrimaryContact" className="cursor-pointer text-sm font-normal">
-                {primaryContactLabel}
-              </Label>
+            <div className="pt-1">
+              <div className="flex items-center gap-2">
+                <input
+                  id="isPrimaryContact"
+                  type="checkbox"
+                  checked={isPrimary}
+                  disabled={primaryContactCheckboxDisabled}
+                  onChange={(e) => setIsPrimary(e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+                />
+                <Label
+                  htmlFor="isPrimaryContact"
+                  className={`text-sm font-normal ${primaryContactCheckboxDisabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                >
+                  {primaryContactLabel}
+                </Label>
+              </div>
+              {primaryContactHint && (
+                <p className="text-[11px] text-muted-foreground mt-1 ml-6">{primaryContactHint}</p>
+              )}
             </div>
           )}
           <DialogFooter className="pt-4">
