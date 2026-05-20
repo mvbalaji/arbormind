@@ -244,8 +244,8 @@ export default function Leads() {
     <Layout>
       <div className="flex flex-col gap-0">
         {/* Page Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between mb-3 gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <h1 className="text-lg font-semibold text-foreground">Leads</h1>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -267,6 +267,15 @@ export default function Leads() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
+              <Input
+                placeholder="Search leads..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-8 text-xs w-60 bg-card border-border"
+              />
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -300,15 +309,6 @@ export default function Leads() {
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 mb-2">
-          <div className="relative flex-shrink-0">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
-            <Input
-              placeholder="Search leads..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-xs w-60 bg-card border-border"
-            />
-          </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
