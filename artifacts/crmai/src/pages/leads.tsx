@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import {
   Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink,
-  ChevronDown, Filter, UserCheck, Upload, ListFilter, Eye, Users,
+  ChevronDown, Filter, UserCheck, Upload, ListFilter, Eye, Users, ArrowUpDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -191,6 +191,8 @@ export default function Leads() {
   const [convertingId, setConvertingId] = useState<{ id: number; name: string; company?: string | null } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [sortField, setSortField] = useState<string>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const { widths: colWidths, startResize: startColResize, resetWidths: resetColWidths } = useLeadColResize();
   const { data, isLoading } = useListLeads({ search, limit: 200 });
 
@@ -205,6 +207,51 @@ export default function Leads() {
   });
 
   const total = leads.length;
+
+  const sortedLeads = React.useMemo(() => {
+    return [...leads].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "name":
+          cmp = `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim()
+            .localeCompare(`${b.firstName ?? ""} ${b.lastName ?? ""}`.trim());
+          break;
+        case "company": cmp = (a.company ?? "").localeCompare(b.company ?? ""); break;
+        case "phone": cmp = (a.phone ?? "").localeCompare(b.phone ?? ""); break;
+        case "email": cmp = (a.email ?? "").localeCompare(b.email ?? ""); break;
+        case "status": cmp = (a.status ?? "").localeCompare(b.status ?? ""); break;
+        case "score": cmp = (a.score ?? 0) - (b.score ?? 0); break;
+        case "createdAt":
+          cmp = (a.createdAt ? new Date(a.createdAt).getTime() : 0)
+              - (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          break;
+        case "owner": cmp = (a.assignedToName ?? "").localeCompare(b.assignedToName ?? ""); break;
+        default: cmp = 0;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [leads, sortField, sortDir]);
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const SortHeader = ({ field, children, align = "left" }: { field: string; children: React.ReactNode; align?: "left" | "center" | "right" }) => (
+    <button
+      type="button"
+      onClick={() => toggleSort(field)}
+      aria-sort={sortField === field ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+      className={cn(
+        "inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-white hover:text-white/80 transition-colors whitespace-nowrap",
+        align === "center" && "justify-center",
+        align === "right" && "justify-end"
+      )}
+    >
+      {children}
+      <ArrowUpDown className={cn("w-3 h-3", sortField === field ? "opacity-100" : "opacity-50")} />
+    </button>
+  );
 
   const visibleIds = React.useMemo(() => new Set(leads.map((l) => l.id)), [leads]);
   const visibleSelectedCount = React.useMemo(() => {
@@ -355,14 +402,14 @@ export default function Leads() {
                       className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
                     />
                   </th>
-                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name<ColResizeHandle onMouseDown={startColResize("name")} /></th>
-                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Company<ColResizeHandle onMouseDown={startColResize("company")} /></th>
-                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Phone<ColResizeHandle onMouseDown={startColResize("phone")} /></th>
-                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Email<ColResizeHandle onMouseDown={startColResize("email")} /></th>
-                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Lead Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>
-                  <th className="relative px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Score<ColResizeHandle onMouseDown={startColResize("score")} /></th>
-                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Created Date<ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>
-                  <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner<ColResizeHandle onMouseDown={startColResize("owner")} /></th>
+                  <th className="relative px-4 py-3 text-left"><SortHeader field="name">Name</SortHeader><ColResizeHandle onMouseDown={startColResize("name")} /></th>
+                  <th className="relative px-4 py-3 text-left"><SortHeader field="company">Company</SortHeader><ColResizeHandle onMouseDown={startColResize("company")} /></th>
+                  <th className="relative px-4 py-3 text-left"><SortHeader field="phone">Phone</SortHeader><ColResizeHandle onMouseDown={startColResize("phone")} /></th>
+                  <th className="relative px-4 py-3 text-left"><SortHeader field="email">Email</SortHeader><ColResizeHandle onMouseDown={startColResize("email")} /></th>
+                  <th className="relative px-4 py-3 text-left"><SortHeader field="status">Lead Status</SortHeader><ColResizeHandle onMouseDown={startColResize("status")} /></th>
+                  <th className="relative px-4 py-3 text-center"><SortHeader field="score" align="center">Score</SortHeader><ColResizeHandle onMouseDown={startColResize("score")} /></th>
+                  <th className="relative px-4 py-3 text-left"><SortHeader field="createdAt">Created Date</SortHeader><ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>
+                  <th className="relative px-4 py-3 text-left"><SortHeader field="owner">Owner</SortHeader><ColResizeHandle onMouseDown={startColResize("owner")} /></th>
                   <th className="relative px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
@@ -386,7 +433,7 @@ export default function Leads() {
                     </td>
                   </tr>
                 ) : (
-                  leads.map((lead) => (
+                  sortedLeads.map((lead) => (
                     <tr key={lead.id} className="hover:bg-muted/30 transition-colors group divide-x divide-border">
                       <td className="px-3 py-2.5 text-center">
                         <Checkbox
