@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useListQuotes, useCreateQuote, useListProducts, useUpdateOpportunity, getListQuotesQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput } from "@workspace/api-client-react";
+import { useListQuotes, useCreateQuote, useListProducts, useUpdateOpportunity, useListOpportunityItems, useUpdateOpportunityItems, getListQuotesQueryKey, getListOpportunityItemsQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput, type OpportunityItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
@@ -114,6 +114,163 @@ interface QuickQuoteItem {
 }
 
 const DEFAULT_ITEM: QuickQuoteItem = { productId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 };
+
+function OpportunityProductsDialog({
+  open, onOpenChange, opportunityId, initialItems,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  opportunityId: number;
+  initialItems: OpportunityItem[];
+}) {
+  const [items, setItems] = useState<QuickQuoteItem[]>([]);
+  const { data: productsData } = useListProducts({ limit: 200 });
+  const products = productsData?.data ?? [];
+  const updateMutation = useUpdateOpportunityItems();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (open) {
+      setItems(initialItems.map(it => ({
+        productId: it.productId ?? null,
+        productName: it.productName,
+        quantity: Number(it.quantity),
+        unitPrice: Number(it.unitPrice),
+        discount: Number(it.discount),
+      })));
+    }
+  }, [open, initialItems]);
+
+  const lineTotal = (item: QuickQuoteItem) => item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100);
+  const total = items.reduce((sum, it) => sum + lineTotal(it), 0);
+
+  const addItem = () => setItems(prev => [...prev, { ...DEFAULT_ITEM }]);
+  const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx));
+  const updateItem = (idx: number, changes: Partial<QuickQuoteItem>) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...changes } : it));
+  const pickProduct = (idx: number, productId: number) => {
+    const prod = products.find(p => p.id === productId);
+    if (prod) updateItem(idx, { productId: prod.id, productName: prod.name, unitPrice: prod.unitPrice, discount: 0 });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanItems: CreateQuoteItemInput[] = items
+      .filter(it => it.productName && it.quantity > 0)
+      .map(it => ({
+        productId: it.productId || null,
+        productName: it.productName,
+        quantity: it.quantity || 1,
+        unitPrice: it.unitPrice || 0,
+        discount: it.discount || 0,
+      }));
+    try {
+      await updateMutation.mutateAsync({ id: opportunityId, data: { items: cleanItems } });
+      await queryClient.invalidateQueries({ queryKey: getListOpportunityItemsQueryKey(opportunityId) });
+      await queryClient.invalidateQueries({ queryKey: ["opportunity", String(opportunityId)] });
+      await queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      toast({ title: "Products saved", description: `${cleanItems.length} product(s) on this opportunity.` });
+      onOpenChange(false);
+    } catch {
+      toast({ title: "Error", description: "Could not save products.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border text-foreground max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Manage Products on this Opportunity</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-sm font-semibold">Products / Line Items</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-border text-xs">
+                <Plus className="w-3 h-3 mr-1" /> Add Product
+              </Button>
+            </div>
+            {items.length === 0 ? (
+              <div className="border border-dashed border-border rounded-lg p-5 text-center text-muted-foreground text-sm cursor-pointer hover:border-primary/30 transition-colors" onClick={addItem}>
+                <Package className="w-5 h-5 mx-auto mb-1.5 opacity-40" />
+                Click to add products
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-12 gap-1 text-xs text-muted-foreground uppercase px-1">
+                  <span className="col-span-4">Product</span>
+                  <span className="col-span-2 text-right">Qty</span>
+                  <span className="col-span-2 text-right">Price</span>
+                  <span className="col-span-2 text-right">Disc%</span>
+                  <span className="col-span-1 text-right">Total</span>
+                  <span className="col-span-1"></span>
+                </div>
+                {items.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-1 items-center bg-muted/50 rounded-lg p-2">
+                    <div className="col-span-4">
+                      <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-sm"
+                        value={item.productId ?? ""} onChange={e => {
+                          const val = e.target.value;
+                          val === "" ? updateItem(idx, { productId: null, productName: "", unitPrice: 0 }) : pickProduct(idx, parseInt(val));
+                        }}>
+                        <option value="" className="bg-card">Custom</option>
+                        {products.map(p => <option key={p.id} value={p.id} className="bg-card">{p.name}</option>)}
+                      </select>
+                      {!item.productId && (
+                        <Input className="mt-1 h-7 text-xs bg-muted border-border" placeholder="Name..."
+                          value={item.productName} onChange={e => updateItem(idx, { productName: e.target.value })} />
+                      )}
+                    </div>
+                    <div className="col-span-2">
+                      <Input type="number" min="1" className="h-8 bg-muted border-border text-right text-sm"
+                        value={item.quantity} onChange={e => updateItem(idx, { quantity: parseFloat(e.target.value) || 1 })} />
+                    </div>
+                    <div className="col-span-2">
+                      <Input type="number" min="0" step="0.01" className="h-8 bg-muted border-border text-right text-sm"
+                        value={item.unitPrice} onChange={e => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                    <div className="col-span-2">
+                      <Input type="number" min="0" max="100" className="h-8 bg-muted border-border text-right text-sm"
+                        value={item.discount} onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                    <div className="col-span-1 text-right text-xs font-medium text-foreground">
+                      £{lineTotal(item).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </div>
+                    <div className="col-span-1 flex justify-end">
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600" onClick={() => removeItem(idx)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {items.length > 0 && (
+            <div className="flex justify-end border-t border-border pt-3">
+              <div className="text-sm text-muted-foreground">
+                Total: <span className="ml-2 text-base font-semibold text-foreground">£{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Saving will update the opportunity's total amount based on these line items.
+          </p>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" className="border-border" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={updateMutation.isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
+              {updateMutation.isPending ? "Saving…" : "Save Products"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const QUOTE_STATUS_COLORS: Record<string, string> = {
   draft: "border-border text-muted-foreground",
@@ -413,6 +570,7 @@ export default function OpportunityDetail() {
   const id = params.id;
   const [activeTab, setActiveTab] = useState<Tab>("about");
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
+  const [isProductsOpen, setIsProductsOpen] = useState(false);
   const [contactDialogOpen, setContactDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<{ id: number; firstName: string; lastName: string; email: string; phone: string; title: string; accountId: string } | null>(null);
   const [draggedTab, setDraggedTab] = useState<Tab | null>(null);
@@ -521,6 +679,13 @@ export default function OpportunityDetail() {
   const numericId = id ? parseInt(id) : undefined;
   const { data: quotesData } = useListQuotes(numericId ? { opportunityId: numericId } : undefined);
   const oppQuotes: OppQuote[] = (quotesData?.data ?? []) as OppQuote[];
+  const { data: oppItemsData } = useListOpportunityItems(numericId ?? 0, {
+    query: {
+      enabled: !!numericId,
+      queryKey: getListOpportunityItemsQueryKey(numericId ?? 0),
+    },
+  });
+  const oppItems: OpportunityItem[] = oppItemsData?.data ?? [];
 
   const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity`, DEFAULT_OPP_TAB_ORDER);
 
@@ -1270,23 +1435,53 @@ export default function OpportunityDetail() {
                   <div className="w-6 h-6 rounded bg-amber-500 flex items-center justify-center">
                     <Package className="w-3.5 h-3.5 text-white" />
                   </div>
-                  <h3 className="text-sm font-semibold text-foreground">Products ({oppQuotes.length})</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Products ({oppItems.length})</h3>
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-foreground hover:bg-amber-100 dark:hover:bg-amber-950/50"
+                  onClick={() => setIsProductsOpen(true)}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  {oppItems.length === 0 ? "Add Products" : "Manage"}
+                </Button>
               </div>
               <div className="p-4 text-sm">
-                {oppQuotes.length === 0 ? (
-                  <div className="text-xs text-muted-foreground italic">No products linked. Add quote line items to populate.</div>
+                {oppItems.length === 0 ? (
+                  <div className="text-xs text-muted-foreground italic">
+                    No products on this opportunity yet. Click <span className="font-medium text-foreground">Add Products</span> to add line items.
+                  </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {oppQuotes.slice(0, 3).map((q) => (
-                      <div key={q.id} className="flex items-center justify-between text-sm">
-                        <Link href={`/quotes/${q.id}`}>
-                          <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer truncate">{q.name}</span>
-                        </Link>
-                        <span className="text-xs text-muted-foreground">{q.quoteNumber}</span>
+                    <div className="grid grid-cols-12 gap-2 text-[10px] uppercase tracking-wide text-muted-foreground pb-1.5 border-b border-border">
+                      <span className="col-span-6">Product</span>
+                      <span className="col-span-2 text-right">Qty</span>
+                      <span className="col-span-2 text-right">Price</span>
+                      <span className="col-span-2 text-right">Total</span>
+                    </div>
+                    {oppItems.map((it) => (
+                      <div key={it.id} className="grid grid-cols-12 gap-2 text-sm items-center">
+                        <span className="col-span-6 truncate text-foreground">
+                          {it.productId ? (
+                            <Link href={`/products/${it.productId}`}>
+                              <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">{it.productName}</span>
+                            </Link>
+                          ) : (
+                            it.productName
+                          )}
+                        </span>
+                        <span className="col-span-2 text-right text-foreground">{Number(it.quantity)}</span>
+                        <span className="col-span-2 text-right text-foreground">£{Number(it.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                        <span className="col-span-2 text-right font-medium text-foreground">£{Number(it.total).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                       </div>
                     ))}
+                    <div className="flex justify-end pt-1.5 mt-1 border-t border-border text-sm">
+                      <span className="text-muted-foreground mr-2">Total:</span>
+                      <span className="font-semibold text-foreground">
+                        £{oppItems.reduce((s, it) => s + Number(it.total), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1669,12 +1864,20 @@ export default function OpportunityDetail() {
         </div>
       </div>
       {numericId && (
-        <QuickQuoteDialog
-          open={isQuoteOpen}
-          onOpenChange={setIsQuoteOpen}
-          opportunityId={numericId}
-          opportunityName={opp.name}
-        />
+        <>
+          <OpportunityProductsDialog
+            open={isProductsOpen}
+            onOpenChange={setIsProductsOpen}
+            opportunityId={numericId}
+            initialItems={oppItems}
+          />
+          <QuickQuoteDialog
+            open={isQuoteOpen}
+            onOpenChange={setIsQuoteOpen}
+            opportunityId={numericId}
+            opportunityName={opp.name}
+          />
+        </>
       )}
       <EmailCompose
         open={isEmailOpen}
