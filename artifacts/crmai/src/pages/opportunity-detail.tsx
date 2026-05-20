@@ -81,9 +81,9 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
   demo: Briefcase,
 };
 
-type Tab = "activities" | "quotes" | "contacts" | "approvals" | "notes" | "about" | "related";
+type Tab = "activities" | "quotes" | "contacts" | "approvals" | "notes" | "about";
 
-const DEFAULT_OPP_TAB_ORDER: readonly Tab[] = ["about", "activities", "contacts", "quotes", "approvals", "notes", "related"];
+const DEFAULT_OPP_TAB_ORDER: readonly Tab[] = ["about", "activities", "contacts", "quotes", "approvals", "notes"];
 
 interface OppQuote {
   id: number;
@@ -687,7 +687,7 @@ export default function OpportunityDetail() {
   });
   const oppItems: OpportunityItem[] = oppItemsData?.data ?? [];
 
-  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity:v2`, DEFAULT_OPP_TAB_ORDER);
+  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity:v3`, DEFAULT_OPP_TAB_ORDER);
 
   const updateOppMutation = useUpdateOpportunity();
   const { toast: toastTop } = useToast();
@@ -743,7 +743,6 @@ export default function OpportunityDetail() {
     approvals: { label: "Approvals" },
     notes: { label: "Notes & Attachments" },
     about: { label: "Details" },
-    related: { label: "Related" },
   };
   const TABS = tabOrder.map((id) => ({ id, ...TAB_META[id] }));
 
@@ -936,6 +935,9 @@ export default function OpportunityDetail() {
 
             </div>
           </Card>
+
+          {/* AI Insights — below the stage pipeline */}
+          <AISummary entityType="opportunity" entityData={opp as unknown as Record<string, unknown>} />
         </div>
 
         {/* Two-column layout: tabs + right sidebar (sidebar only on Details tab) */}
@@ -1369,175 +1371,6 @@ export default function OpportunityDetail() {
             record={opp as unknown as Record<string, unknown>}
             isAdmin={isAdmin}
           />
-        )}
-
-        {/* Details Tab */}
-        {/* Related Tab */}
-        {activeTab === "related" && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* AI Insights — right column, above Account Details */}
-            <div className="lg:col-start-2 lg:row-start-1">
-              <AISummary entityType="opportunity" entityData={opp as unknown as Record<string, unknown>} />
-            </div>
-            {/* Account Details */}
-            <Card className="border-border overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center">
-                    <Building2 className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-foreground">Account Details</h3>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2 text-xs text-foreground hover:bg-blue-100 dark:hover:bg-blue-950/50"
-                  onClick={() => setIsEditOpen(true)}
-                >
-                  <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
-                </Button>
-              </div>
-              <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Account Name</div>
-                  {opp.accountId ? (
-                    <Link href={`/accounts/${opp.accountId}`}>
-                      <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">{opp.accountName ?? "—"}</span>
-                    </Link>
-                  ) : (
-                    <div className="text-foreground">{opp.accountName ?? "—"}</div>
-                  )}
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Type</div>
-                  <div className="text-foreground">—</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Owner</div>
-                  <div className="text-foreground">{opp.assignedToName ?? "—"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Stage</div>
-                  <div className="text-foreground">{stageConfig.label}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Close Date</div>
-                  <div className="text-foreground">{opp.closeDate ? format(new Date(opp.closeDate), "yyyy-MM-dd") : "—"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-0.5">Probability</div>
-                  <div className="text-foreground">{opp.probability !== null ? `${opp.probability}%` : "—"}</div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Products */}
-            <Card className="border-border overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-amber-500 flex items-center justify-center">
-                    <Package className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-foreground">Products ({oppItems.length})</h3>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2 text-xs text-foreground hover:bg-amber-100 dark:hover:bg-amber-950/50"
-                  onClick={() => setIsProductsOpen(true)}
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  {oppItems.length === 0 ? "Add Products" : "Manage"}
-                </Button>
-              </div>
-              <div className="p-4 text-sm">
-                {oppItems.length === 0 ? (
-                  <div className="text-xs text-muted-foreground italic">
-                    No products on this opportunity yet. Click <span className="font-medium text-foreground">Add Products</span> to add line items.
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <div className="grid grid-cols-12 gap-2 text-[10px] uppercase tracking-wide text-muted-foreground pb-1.5 border-b border-border">
-                      <span className="col-span-6">Product</span>
-                      <span className="col-span-2 text-right">Qty</span>
-                      <span className="col-span-2 text-right">Price</span>
-                      <span className="col-span-2 text-right">Total</span>
-                    </div>
-                    {oppItems.map((it) => (
-                      <div key={it.id} className="grid grid-cols-12 gap-2 text-sm items-center">
-                        <span className="col-span-6 truncate text-foreground">
-                          {it.productId ? (
-                            <Link href={`/products/${it.productId}`}>
-                              <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">{it.productName}</span>
-                            </Link>
-                          ) : (
-                            it.productName
-                          )}
-                        </span>
-                        <span className="col-span-2 text-right text-foreground">{Number(it.quantity)}</span>
-                        <span className="col-span-2 text-right text-foreground">£{Number(it.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                        <span className="col-span-2 text-right font-medium text-foreground">£{Number(it.total).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-end pt-1.5 mt-1 border-t border-border text-sm">
-                      <span className="text-muted-foreground mr-2">Total:</span>
-                      <span className="font-semibold text-foreground">
-                        £{oppItems.reduce((s, it) => s + Number(it.total), 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            {/* Contact Roles */}
-            <Card className="border-border overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-orange-50 dark:bg-orange-950/30 border-b border-border">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-orange-500 flex items-center justify-center">
-                    <Users className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-foreground">Contact Roles ({contactsData?.data.length ?? 0})</h3>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2 text-xs text-foreground hover:bg-orange-100 dark:hover:bg-orange-950/50"
-                  onClick={() => setActiveTab("contacts")}
-                >
-                  <Pencil className="w-3.5 h-3.5 mr-1" /> Manage
-                </Button>
-              </div>
-              <div className="p-4 text-sm">
-                {!contactsData?.data.length ? (
-                  <div className="text-xs text-muted-foreground italic">No contact roles assigned.</div>
-                ) : (
-                  <div className="flex flex-col gap-2.5">
-                    {contactsData.data.slice(0, 5).map((c, idx) => {
-                      const initials = `${c.firstName[0] ?? ""}${c.lastName[0] ?? ""}`.toUpperCase();
-                      return (
-                        <div key={c.id} className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-950/50 flex items-center justify-center text-orange-700 dark:text-orange-300 text-xs font-bold shrink-0">
-                            {initials}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <Link href={`/contacts/${c.id}`}>
-                              <span className="text-blue-600 dark:text-blue-400 hover:underline text-sm cursor-pointer">{c.firstName} {c.lastName}</span>
-                            </Link>
-                            {idx === 0 && (
-                              <Badge variant="outline" className="ml-2 text-[10px] px-1.5 py-0 border-orange-300 text-orange-700 dark:text-orange-300">PRIMARY</Badge>
-                            )}
-                            {c.title && <div className="text-xs text-muted-foreground">Role: {c.title}</div>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </Card>
-
-          </div>
         )}
 
         {activeTab === "about" && (
