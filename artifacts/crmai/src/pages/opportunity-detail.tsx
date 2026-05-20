@@ -772,6 +772,9 @@ export default function OpportunityDetail() {
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEditOpen(true)} title="Edit opportunity details">
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 border-border" title="Follow this opportunity">
                   <Plus className="w-3.5 h-3.5" /> Follow
                 </Button>
@@ -921,9 +924,6 @@ export default function OpportunityDetail() {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-                <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEditOpen(true)}>
-                  <Pencil className="w-3.5 h-3.5" /> Edit Details
-                </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEmailOpen(true)}>
                   <Mail className="w-3.5 h-3.5" /> Send Email
                 </Button>
