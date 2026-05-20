@@ -319,7 +319,7 @@ export default function Leads() {
                 ))}
               </colgroup>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
                   <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name<ColResizeHandle onMouseDown={startColResize("name")} /></th>
                   <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Company<ColResizeHandle onMouseDown={startColResize("company")} /></th>
                   <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Phone<ColResizeHandle onMouseDown={startColResize("phone")} /></th>
@@ -352,7 +352,7 @@ export default function Leads() {
                   </tr>
                 ) : (
                   leads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-muted/30 transition-colors group">
+                    <tr key={lead.id} className="hover:bg-muted/30 transition-colors group divide-x divide-border">
                       <td className="px-4 py-2.5">
                         <Link href={`/leads/${lead.id}`}>
                           <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
