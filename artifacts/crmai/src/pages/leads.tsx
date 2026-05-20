@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import {
   Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink,
-  ChevronDown, Filter, Mail, UserCheck, Upload, ListFilter, Eye, Users,
+  ChevronDown, Filter, UserCheck, Upload, ListFilter, Eye, Users,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -307,14 +307,6 @@ export default function Leads() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5"
-              onClick={() => setEmailOpen(true)}
-            >
-              <Mail className="w-3.5 h-3.5" /> Send Email
-            </Button>
             <Button
               size="sm"
               variant="outline"
