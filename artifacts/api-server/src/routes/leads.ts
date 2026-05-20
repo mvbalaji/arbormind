@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTable, leadContactsTable } from "@workspace/db";
 import { eq, ilike, or, sql, and } from "drizzle-orm";
+import { computeLeadScore } from "../lib/lead-scoring";
 
 const router: IRouter = Router();
 
@@ -73,7 +74,23 @@ router.get("/leads", async (req, res) => {
 
 router.post("/leads", async (req, res) => {
   try {
-    const [lead] = await db.insert(leadsTable).values(req.body).returning();
+    const body = { ...req.body };
+    // Auto-compute lead score unless caller explicitly supplied one (manual override).
+    if (body.score == null || body.score === "") {
+      body.score = computeLeadScore({
+        email: body.email,
+        phone: body.phone,
+        company: body.company,
+        title: body.title,
+        industry: body.industry,
+        description: body.description,
+        source: body.source,
+        status: body.status,
+        employees: body.employees,
+        annualRevenue: body.annualRevenue,
+      }).total;
+    }
+    const [lead] = await db.insert(leadsTable).values(body).returning();
     res.status(201).json(formatLead(lead));
   } catch (err) {
     req.log.error(err);
@@ -111,6 +128,40 @@ router.put("/leads/:id", async (req, res) => {
     for (const key of allowedFields) {
       if (key in req.body) updateData[key] = req.body[key];
     }
+
+    // Auto-recompute score if the caller did not explicitly send `score`,
+    // but did change a field that feeds the scoring rubric. Manual `score`
+    // values in the request body always take precedence.
+    const scoringFields = [
+      "email", "phone", "company", "title", "industry",
+      "description", "source", "status", "employees", "annualRevenue",
+    ] as const;
+    const shouldRescore =
+      !("score" in req.body) &&
+      scoringFields.some((k) => k in req.body);
+
+    if (shouldRescore) {
+      const id = parseInt(req.params.id);
+      const [current] = await db.select(leadFields).from(leadsTable)
+        .leftJoin(usersTable, eq(leadsTable.assignedTo, usersTable.id))
+        .where(eq(leadsTable.id, id));
+      if (current) {
+        const merged = { ...formatLead(current), ...req.body };
+        updateData.score = computeLeadScore({
+          email: merged.email,
+          phone: merged.phone,
+          company: merged.company,
+          title: merged.title,
+          industry: merged.industry,
+          description: merged.description,
+          source: merged.source,
+          status: merged.status,
+          employees: merged.employees,
+          annualRevenue: merged.annualRevenue,
+        }).total;
+      }
+    }
+
     const [lead] = await db.update(leadsTable)
       .set(updateData)
       .where(eq(leadsTable.id, parseInt(req.params.id)))
