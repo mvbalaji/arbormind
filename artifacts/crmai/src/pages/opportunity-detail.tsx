@@ -81,9 +81,9 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
   demo: Briefcase,
 };
 
-type Tab = "activities" | "quotes" | "contacts" | "approvals" | "notes" | "about";
+type Tab = "activities" | "quotes" | "approvals" | "notes" | "about";
 
-const DEFAULT_OPP_TAB_ORDER: readonly Tab[] = ["about", "quotes", "approvals", "activities", "notes", "contacts"];
+const DEFAULT_OPP_TAB_ORDER: readonly Tab[] = ["about", "quotes", "approvals", "activities", "notes"];
 
 interface OppQuote {
   id: number;
@@ -687,7 +687,7 @@ export default function OpportunityDetail() {
   });
   const oppItems: OpportunityItem[] = oppItemsData?.data ?? [];
 
-  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity:v4`, DEFAULT_OPP_TAB_ORDER);
+  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity:v5`, DEFAULT_OPP_TAB_ORDER);
 
   const updateOppMutation = useUpdateOpportunity();
   const { toast: toastTop } = useToast();
@@ -738,7 +738,6 @@ export default function OpportunityDetail() {
 
   const TAB_META: Record<Tab, { label: string; count?: number }> = {
     activities: { label: "Activities", count: activitiesData?.data.length },
-    contacts: { label: "Contacts", count: contactsData?.data.length },
     quotes: { label: "Quotes", count: oppQuotes.length },
     approvals: { label: "Approvals" },
     notes: { label: "Notes & Attachments" },
@@ -1210,82 +1209,6 @@ export default function OpportunityDetail() {
           );
         })()}
 
-        {/* Contacts Tab */}
-        {activeTab === "contacts" && (
-          <div className="flex flex-col gap-3">
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                onClick={() => { setEditingContact(null); setContactDialogOpen(true); }}
-                className="gap-1.5"
-              >
-                <UserPlus className="w-3.5 h-3.5" /> Add Contact
-              </Button>
-            </div>
-            {!contactsData?.data.length ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                No contacts linked to this opportunity.
-              </div>
-            ) : (
-              contactsData.data.map((contact) => {
-                const initials = `${contact.firstName[0] ?? ""}${contact.lastName[0] ?? ""}`.toUpperCase();
-                return (
-                  <Card key={contact.id} className="glass-panel border-border hover:border-primary/30 transition-all group p-4">
-                    <div className="flex items-center gap-4">
-                      <Link href={`/contacts/${contact.id}`} className="flex items-center gap-4 flex-1 min-w-0 cursor-pointer">
-                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">
-                          {initials}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground group-hover:text-primary transition-colors">
-                            {contact.firstName} {contact.lastName}
-                          </p>
-                          {contact.title && (
-                            <p className="text-xs text-muted-foreground">{contact.title}</p>
-                          )}
-                          {contact.accountName && (
-                            <p className="text-xs text-muted-foreground">{contact.accountName}</p>
-                          )}
-                        </div>
-                        <div className="hidden sm:flex flex-col items-end gap-1 shrink-0">
-                          {contact.email && (
-                            <span className="text-xs text-muted-foreground">{contact.email}</span>
-                          )}
-                          {contact.phone && (
-                            <span className="text-xs text-muted-foreground">{contact.phone}</span>
-                          )}
-                        </div>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                        onClick={(e) => {
-                          e.preventDefault(); e.stopPropagation();
-                          setEditingContact({
-                            id: contact.id,
-                            firstName: contact.firstName,
-                            lastName: contact.lastName,
-                            email: contact.email ?? "",
-                            phone: contact.phone ?? "",
-                            title: contact.title ?? "",
-                            accountId: contact.accountId ? String(contact.accountId) : "",
-                          });
-                          setContactDialogOpen(true);
-                        }}
-                        title="Edit contact"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </Card>
-                );
-              })
-            )}
-          </div>
-        )}
-
         {activeTab === "notes" && numericId && (
           <EntityNotes entity="opportunity" entityId={numericId} />
         )}
@@ -1700,14 +1623,6 @@ export default function OpportunityDetail() {
                   </div>
                   <h3 className="text-sm font-semibold text-foreground">Contact Roles ({contactsData?.data.length ?? 0})</h3>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7 px-2 text-xs text-foreground hover:bg-orange-100 dark:hover:bg-orange-950/50"
-                  onClick={() => setActiveTab("contacts")}
-                >
-                  <Pencil className="w-3.5 h-3.5 mr-1" /> Manage
-                </Button>
               </div>
               {contactsData?.data.length ? (
                 <div className="p-4 text-sm flex flex-col gap-2.5">
