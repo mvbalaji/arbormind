@@ -777,9 +777,6 @@ export default function OpportunityDetail() {
           </Card>
         </div>
 
-        {/* AI Summary */}
-        <AISummary entityType="opportunity" entityData={opp as unknown as Record<string, unknown>} />
-
         {/* Two-column layout: tabs + right sidebar (sidebar only on Details tab) */}
         <div className={`grid grid-cols-1 gap-6 ${activeTab === "about" ? "lg:grid-cols-[1fr_320px]" : ""}`}>
           <div className="min-w-0 flex flex-col gap-6">
@@ -1217,6 +1214,10 @@ export default function OpportunityDetail() {
         {/* Related Tab */}
         {activeTab === "related" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* AI Insights — right column, above Account Details */}
+            <div className="lg:col-start-2 lg:row-start-1">
+              <AISummary entityType="opportunity" entityData={opp as unknown as Record<string, unknown>} />
+            </div>
             {/* Account Details */}
             <Card className="border-border overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40 border-b border-border">
