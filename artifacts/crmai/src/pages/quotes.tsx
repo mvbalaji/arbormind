@@ -660,10 +660,10 @@ export default function Quotes() {
   };
 
   const SortableHeader = ({ field, label, align = "left" }: { field: SortField; label: string; align?: "left" | "right" }) => (
-    <th className={`px-3 py-2.5 font-medium text-foreground border-r border-border last:border-r-0 ${align === "right" ? "text-right" : "text-left"}`}>
+    <th className={`px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 last:border-r-0 ${align === "right" ? "text-right" : "text-left"}`}>
       <button
         onClick={() => toggleSort(field)}
-        className={`inline-flex items-center gap-1 hover:text-primary transition-colors ${align === "right" ? "flex-row-reverse" : ""}`}
+        className={`inline-flex items-center gap-1 text-white hover:text-white/80 transition-colors ${align === "right" ? "flex-row-reverse" : ""}`}
       >
         <span>{label}</span>
         <SortIcon field={field} />
@@ -759,27 +759,27 @@ export default function Quotes() {
         <Card className="border-border overflow-hidden p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs uppercase bg-muted/40 border-b border-border">
-                <tr>
-                  <th className="w-10 px-3 py-2.5 border-r border-border">
+              <thead className="text-xs sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800">
+                  <th className="w-10 px-3 py-3 border-r border-blue-500/40">
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={toggleSelectAll}
                       aria-label="Select all quotes"
-                      className="rounded border-border cursor-pointer"
+                      className="rounded border-white/40 cursor-pointer"
                     />
                   </th>
-                  <th className="w-10 px-2 py-2.5 text-muted-foreground font-medium text-center border-r border-border">#</th>
+                  <th className="w-10 px-2 py-3 text-white/80 font-semibold uppercase tracking-wide text-center border-r border-blue-500/40">#</th>
                   <SortableHeader field="quoteNumber" label="Quote Number" />
                   <SortableHeader field="name" label="Quote Name" />
-                  <th className="px-3 py-2.5 font-medium text-foreground border-r border-border text-center">Revision</th>
-                  <th className="px-3 py-2.5 font-medium text-foreground border-r border-border">Cloned From</th>
+                  <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision</th>
+                  <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From</th>
                   <SortableHeader field="validUntil" label="Expiration Date" />
                   <SortableHeader field="subtotal" label="Subtotal" align="right" />
                   <SortableHeader field="total" label="Total Price" align="right" />
-                  <th className="px-3 py-2.5 font-medium text-foreground border-r border-border">Created By</th>
-                  <th className="w-10 px-2 py-2.5"></th>
+                  <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Created By</th>
+                  <th className="w-10 px-2 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
