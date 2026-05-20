@@ -1802,23 +1802,42 @@ export default function OpportunityDetail() {
                   <div className="w-6 h-6 rounded bg-amber-500 flex items-center justify-center">
                     <Package className="w-3.5 h-3.5 text-white" />
                   </div>
-                  <h3 className="text-sm font-semibold text-foreground">Products ({oppQuotes.length})</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Products ({oppItems.length})</h3>
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-foreground hover:bg-amber-100 dark:hover:bg-amber-950/50"
+                  onClick={() => setIsProductsOpen(true)}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" />
+                  {oppItems.length === 0 ? "Add" : "Manage"}
+                </Button>
               </div>
-              {oppQuotes.length > 0 ? (
+              {oppItems.length > 0 ? (
                 <div className="p-4 text-sm flex flex-col gap-2">
-                  {oppQuotes.slice(0, 4).map((q) => (
-                    <Link key={q.id} href={`/quotes/${q.id}`}>
-                      <div className="flex items-center justify-between gap-2 hover:bg-muted/40 -mx-1 px-1 py-0.5 rounded cursor-pointer">
-                        <span className="text-blue-600 dark:text-blue-400 hover:underline truncate text-sm">{q.name}</span>
-                        <span className="text-[11px] text-muted-foreground shrink-0">{q.quoteNumber}</span>
-                      </div>
-                    </Link>
+                  {oppItems.slice(0, 4).map((it) => (
+                    <div key={it.id} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="truncate text-foreground" title={it.productName}>
+                        {it.productId ? (
+                          <Link href={`/products/${it.productId}`}>
+                            <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">{it.productName}</span>
+                          </Link>
+                        ) : (
+                          it.productName
+                        )}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground shrink-0">
+                        {Number(it.quantity)} × £{Number(it.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
                   ))}
+                  {oppItems.length > 4 ? (
+                    <div className="text-[11px] text-muted-foreground pt-1">+ {oppItems.length - 4} more…</div>
+                  ) : null}
                 </div>
               ) : (
-                <div className="p-4 text-xs text-muted-foreground">No products yet.</div>
+                <div className="p-4 text-xs text-muted-foreground italic">No products on this opportunity yet.</div>
               )}
             </Card>
 
