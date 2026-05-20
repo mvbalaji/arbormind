@@ -1623,13 +1623,23 @@ export default function OpportunityDetail() {
                   </div>
                   <h3 className="text-sm font-semibold text-foreground">Contact Roles ({contactsData?.data.length ?? 0})</h3>
                 </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-foreground hover:bg-orange-100 dark:hover:bg-orange-950/50"
+                  onClick={() => { setEditingContact(null); setContactDialogOpen(true); }}
+                  disabled={!opp.accountId}
+                  title={opp.accountId ? "Add a contact to this account" : "Set an account first"}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                </Button>
               </div>
               {contactsData?.data.length ? (
                 <div className="p-4 text-sm flex flex-col gap-2.5">
                   {contactsData.data.slice(0, 4).map((c, idx) => {
                     const initials = `${c.firstName[0] ?? ""}${c.lastName[0] ?? ""}`.toUpperCase();
                     return (
-                      <div key={c.id} className="flex items-center gap-2.5">
+                      <div key={c.id} className="flex items-center gap-2.5 group">
                         <div className="w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-950/50 flex items-center justify-center text-orange-700 dark:text-orange-300 text-[11px] font-bold shrink-0">
                           {initials}
                         </div>
@@ -1642,6 +1652,26 @@ export default function OpportunityDetail() {
                           </Link>
                           {c.title && <div className="text-[11px] text-muted-foreground truncate">Role: {c.title}</div>}
                         </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            setEditingContact({
+                              id: c.id,
+                              firstName: c.firstName,
+                              lastName: c.lastName,
+                              email: c.email ?? "",
+                              phone: c.phone ?? "",
+                              title: c.title ?? "",
+                              accountId: c.accountId ? String(c.accountId) : "",
+                            });
+                            setContactDialogOpen(true);
+                          }}
+                          title="Edit contact"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </Button>
                       </div>
                     );
                   })}
