@@ -26,6 +26,15 @@ import { Search, Plus, Mail, Phone, Building2, MoreHorizontal, Pencil, Trash2, E
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { ColumnsMenu } from "@/components/columns-menu";
+
+const CONTACT_TOGGLEABLE_COLS = [
+  { key: "name" as const, label: "Name" },
+  { key: "contactInfo" as const, label: "Contact Info" },
+  { key: "account" as const, label: "Account / Title" },
+  { key: "owner" as const, label: "Owner" },
+];
 
 interface ContactFormData {
   firstName: string;
@@ -46,6 +55,8 @@ export default function Contacts() {
   const [editingContact, setEditingContact] = useState<{ id: number } & ContactFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListContacts({ search, limit: 50 });
+  const colVis = useColumnVisibility<"name" | "contactInfo" | "account" | "owner">("col-visibility:contacts:v1", CONTACT_TOGGLEABLE_COLS);
+  const contactColSpan = colVis.visible.size + 1;
 
   return (
     <Layout>
@@ -78,14 +89,17 @@ export default function Contacts() {
         <AISummary entityType="contacts" />
 
         <Card className="glass-panel border-border overflow-hidden">
+          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+            <ColumnsMenu columns={CONTACT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
                 <tr className="divide-x divide-border">
-                  <th className="px-6 py-4 font-medium">Name</th>
-                  <th className="px-6 py-4 font-medium">Contact Info</th>
-                  <th className="px-6 py-4 font-medium">Account / Title</th>
-                  <th className="px-6 py-4 font-medium">Owner</th>
+                  {colVis.isVisible("name") && <th className="px-6 py-4 font-medium">Name</th>}
+                  {colVis.isVisible("contactInfo") && <th className="px-6 py-4 font-medium">Contact Info</th>}
+                  {colVis.isVisible("account") && <th className="px-6 py-4 font-medium">Account / Title</th>}
+                  {colVis.isVisible("owner") && <th className="px-6 py-4 font-medium">Owner</th>}
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -93,14 +107,14 @@ export default function Contacts() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      <td className="px-6 py-4" colSpan={5}>
+                      <td className="px-6 py-4" colSpan={contactColSpan}>
                         <div className="h-10 bg-muted/50 rounded animate-pulse w-full" />
                       </td>
                     </tr>
                   ))
                 ) : data?.data?.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                    <td colSpan={contactColSpan} className="px-6 py-12 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center">
                         <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
                           <Search className="w-6 h-6 text-muted-foreground" />
@@ -112,44 +126,52 @@ export default function Contacts() {
                 ) : (
                   data?.data?.map((contact) => (
                     <tr key={contact.id} className="hover:bg-muted/50 transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs border border-primary/30">
-                            {contact.firstName[0]}{contact.lastName[0]}
+                      {colVis.isVisible("name") && (
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs border border-primary/30">
+                              {contact.firstName[0]}{contact.lastName[0]}
+                            </div>
+                            <div>
+                              <Link href={`/contacts/${contact.id}`}>
+                                <div className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1 group/link">
+                                  {contact.firstName} {contact.lastName}
+                                  <ExternalLink className="w-3 h-3 opacity-0 group-hover/link:opacity-60 transition-opacity" />
+                                </div>
+                              </Link>
+                              <div className="text-xs text-muted-foreground">Added {format(new Date(contact.createdAt), "MMM d, yyyy")}</div>
+                            </div>
                           </div>
-                          <div>
-                            <Link href={`/contacts/${contact.id}`}>
-                              <div className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1 group/link">
-                                {contact.firstName} {contact.lastName}
-                                <ExternalLink className="w-3 h-3 opacity-0 group-hover/link:opacity-60 transition-opacity" />
-                              </div>
-                            </Link>
-                            <div className="text-xs text-muted-foreground">Added {format(new Date(contact.createdAt), "MMM d, yyyy")}</div>
+                        </td>
+                      )}
+                      {colVis.isVisible("contactInfo") && (
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Mail className="w-3.5 h-3.5" />
+                              <span className="truncate max-w-[150px]">{contact.email ?? "-"}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Phone className="w-3.5 h-3.5" />
+                              <span>{contact.phone ?? "-"}</span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Mail className="w-3.5 h-3.5" />
-                            <span className="truncate max-w-[150px]">{contact.email ?? "-"}</span>
+                        </td>
+                      )}
+                      {colVis.isVisible("account") && (
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 font-medium text-foreground">
+                              <Building2 className="w-3.5 h-3.5 text-primary" />
+                              {contact.accountName ?? <span className="text-muted-foreground font-normal">No Account</span>}
+                            </div>
+                            <div className="text-xs text-muted-foreground ml-5">{contact.title ?? "-"}</div>
                           </div>
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Phone className="w-3.5 h-3.5" />
-                            <span>{contact.phone ?? "-"}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2 font-medium text-foreground">
-                            <Building2 className="w-3.5 h-3.5 text-primary" />
-                            {contact.accountName ?? <span className="text-muted-foreground font-normal">No Account</span>}
-                          </div>
-                          <div className="text-xs text-muted-foreground ml-5">{contact.title ?? "-"}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-muted-foreground">{contact.ownerName ?? "-"}</td>
+                        </td>
+                      )}
+                      {colVis.isVisible("owner") && (
+                        <td className="px-6 py-4 text-muted-foreground">{contact.ownerName ?? "-"}</td>
+                      )}
                       <td className="px-6 py-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

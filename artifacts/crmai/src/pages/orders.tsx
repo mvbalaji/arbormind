@@ -29,6 +29,19 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { EntityApprovals } from "@/components/entity-approvals";
 import { useAuth } from "@/context/auth";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { ColumnsMenu } from "@/components/columns-menu";
+
+type OrderColKey = "orderNumber" | "account" | "opportunity" | "quote" | "total" | "status" | "date";
+const ORDER_TOGGLEABLE_COLS = [
+  { key: "orderNumber" as const, label: "Order #" },
+  { key: "account" as const, label: "Account" },
+  { key: "opportunity" as const, label: "Opportunity" },
+  { key: "quote" as const, label: "Quote" },
+  { key: "total" as const, label: "Total" },
+  { key: "status" as const, label: "Status" },
+  { key: "date" as const, label: "Date" },
+];
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "border-yellow-500/30 text-yellow-600 bg-yellow-500/5",
@@ -491,6 +504,8 @@ export default function Orders() {
   const [viewingOrder, setViewingOrder] = useState<OrderViewDialogProps["order"] | null>(null);
   const [editingOrder, setEditingOrder] = useState<EditOrderData | null>(null);
   const { data, isLoading } = useListOrders();
+  const colVis = useColumnVisibility<OrderColKey>("col-visibility:orders:v1", ORDER_TOGGLEABLE_COLS);
+  const orderColSpan = colVis.visible.size + 1;
   const createFromQuoteMutation = useCreateOrderFromQuote();
   const updateMutation = useUpdateOrder();
   const deleteMutation = useDeleteOrder();
@@ -555,82 +570,99 @@ export default function Orders() {
         </div>
 
         <Card className="glass-panel border-border">
+          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+            <ColumnsMenu columns={ORDER_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr className="divide-x divide-border">
-                  <th className="px-6 py-4 font-medium">Order #</th>
-                  <th className="px-6 py-4 font-medium">Account</th>
-                  <th className="px-6 py-4 font-medium">Opportunity</th>
-                  <th className="px-6 py-4 font-medium">Quote</th>
-                  <th className="px-6 py-4 font-medium text-right">Total</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Date</th>
+                  {colVis.isVisible("orderNumber") && <th className="px-6 py-4 font-medium">Order #</th>}
+                  {colVis.isVisible("account") && <th className="px-6 py-4 font-medium">Account</th>}
+                  {colVis.isVisible("opportunity") && <th className="px-6 py-4 font-medium">Opportunity</th>}
+                  {colVis.isVisible("quote") && <th className="px-6 py-4 font-medium">Quote</th>}
+                  {colVis.isVisible("total") && <th className="px-6 py-4 font-medium text-right">Total</th>}
+                  {colVis.isVisible("status") && <th className="px-6 py-4 font-medium">Status</th>}
+                  {colVis.isVisible("date") && <th className="px-6 py-4 font-medium">Date</th>}
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={orderColSpan} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.length === 0 ? (
-                  <tr><td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
+                  <tr><td colSpan={orderColSpan} className="px-6 py-12 text-center text-muted-foreground">
                     <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No orders yet. Create an order or convert an accepted quote.
                   </td></tr>
                 ) : data?.data?.map(order => (
                   <tr key={order.id} className="hover:bg-muted/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <button
-                        className="font-medium text-primary hover:underline cursor-pointer font-mono"
-                        onClick={() => setViewingOrder({
-                          orderNumber: order.orderNumber,
-                          accountName: order.accountName,
-                          contactName: order.contactName,
-                          quoteNumber: order.quoteNumber,
-                          opportunityName: order.opportunityName,
-                          status: order.status,
-                          total: order.total,
-                          subtotal: order.subtotal,
-                          discount: order.discount,
-                          tax: order.tax,
-                          notes: order.notes,
-                          orderDate: order.orderDate,
-                          items: order.items,
-                        })}
-                      >
-                        {order.orderNumber}
-                      </button>
-                      {order.contactName && (
-                        <div className="text-xs text-muted-foreground mt-1">{order.contactName}</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {order.accountName ?? "—"}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {order.opportunityName ?? "—"}
-                    </td>
-                    <td className="px-6 py-4">
-                      {order.quoteNumber ? (
-                        <span
-                          className="text-primary cursor-pointer hover:underline font-mono text-xs"
-                          onClick={() => order.quoteId && navigate(`/quotes/${order.quoteId}`)}
+                    {colVis.isVisible("orderNumber") && (
+                      <td className="px-6 py-4">
+                        <button
+                          className="font-medium text-primary hover:underline cursor-pointer font-mono"
+                          onClick={() => setViewingOrder({
+                            orderNumber: order.orderNumber,
+                            accountName: order.accountName,
+                            contactName: order.contactName,
+                            quoteNumber: order.quoteNumber,
+                            opportunityName: order.opportunityName,
+                            status: order.status,
+                            total: order.total,
+                            subtotal: order.subtotal,
+                            discount: order.discount,
+                            tax: order.tax,
+                            notes: order.notes,
+                            orderDate: order.orderDate,
+                            items: order.items,
+                          })}
                         >
-                          {order.quoteNumber}
-                        </span>
-                      ) : "—"}
-                    </td>
-                    <td className="px-6 py-4 text-right font-semibold text-foreground">
-                      ${order.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className={`capitalize ${STATUS_COLORS[order.status] ?? ""}`}>
-                        {order.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {format(new Date(order.orderDate), "MMM d, yyyy")}
-                    </td>
+                          {order.orderNumber}
+                        </button>
+                        {order.contactName && (
+                          <div className="text-xs text-muted-foreground mt-1">{order.contactName}</div>
+                        )}
+                      </td>
+                    )}
+                    {colVis.isVisible("account") && (
+                      <td className="px-6 py-4 text-muted-foreground">
+                        {order.accountName ?? "—"}
+                      </td>
+                    )}
+                    {colVis.isVisible("opportunity") && (
+                      <td className="px-6 py-4 text-muted-foreground">
+                        {order.opportunityName ?? "—"}
+                      </td>
+                    )}
+                    {colVis.isVisible("quote") && (
+                      <td className="px-6 py-4">
+                        {order.quoteNumber ? (
+                          <span
+                            className="text-primary cursor-pointer hover:underline font-mono text-xs"
+                            onClick={() => order.quoteId && navigate(`/quotes/${order.quoteId}`)}
+                          >
+                            {order.quoteNumber}
+                          </span>
+                        ) : "—"}
+                      </td>
+                    )}
+                    {colVis.isVisible("total") && (
+                      <td className="px-6 py-4 text-right font-semibold text-foreground">
+                        ${order.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </td>
+                    )}
+                    {colVis.isVisible("status") && (
+                      <td className="px-6 py-4">
+                        <Badge variant="outline" className={`capitalize ${STATUS_COLORS[order.status] ?? ""}`}>
+                          {order.status}
+                        </Badge>
+                      </td>
+                    )}
+                    {colVis.isVisible("date") && (
+                      <td className="px-6 py-4 text-muted-foreground">
+                        {format(new Date(order.orderDate), "MMM d, yyyy")}
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

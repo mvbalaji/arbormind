@@ -14,6 +14,16 @@ import { Search, Plus, MoreHorizontal, Pencil, Trash2, Megaphone, TrendingUp, Do
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { ColumnsMenu } from "@/components/columns-menu";
+
+const CAMPAIGN_TOGGLEABLE_COLS = [
+  { key: "campaign" as const, label: "Campaign" },
+  { key: "type" as const, label: "Type" },
+  { key: "status" as const, label: "Status" },
+  { key: "dates" as const, label: "Dates" },
+  { key: "budget" as const, label: "Budget / Rev." },
+];
 
 interface Campaign {
   id: number;
@@ -106,6 +116,8 @@ export default function Campaigns() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const colVis = useColumnVisibility<"campaign" | "type" | "status" | "dates" | "budget">("col-visibility:campaigns:v1", CAMPAIGN_TOGGLEABLE_COLS);
+  const campaignColSpan = colVis.visible.size + 1;
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -210,27 +222,30 @@ export default function Campaigns() {
         )}
 
         <Card className="glass-panel border-border overflow-hidden">
+          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+            <ColumnsMenu columns={CAMPAIGN_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
                 <tr className="divide-x divide-border">
-                  <th className="px-6 py-4 font-medium">Campaign</th>
-                  <th className="px-6 py-4 font-medium">Type</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Dates</th>
-                  <th className="px-6 py-4 font-medium text-right">Budget / Rev.</th>
+                  {colVis.isVisible("campaign") && <th className="px-6 py-4 font-medium">Campaign</th>}
+                  {colVis.isVisible("type") && <th className="px-6 py-4 font-medium">Type</th>}
+                  {colVis.isVisible("status") && <th className="px-6 py-4 font-medium">Status</th>}
+                  {colVis.isVisible("dates") && <th className="px-6 py-4 font-medium">Dates</th>}
+                  {colVis.isVisible("budget") && <th className="px-6 py-4 font-medium text-right">Budget / Rev.</th>}
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                  <tr><td colSpan={campaignColSpan} className="px-6 py-8 text-center text-muted-foreground">
                     <div className="space-y-3">
                       {[0,1,2].map(i => <Skeleton key={i} className="h-10 w-full" />)}
                     </div>
                   </td></tr>
                 ) : campaigns.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-16 text-center">
+                  <tr><td colSpan={campaignColSpan} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <Megaphone className="w-12 h-12 text-muted-foreground/30" />
                       <p className="text-muted-foreground">No campaigns yet. Create your first campaign.</p>
@@ -239,40 +254,50 @@ export default function Campaigns() {
                 ) : (
                   campaigns.map((campaign) => (
                     <tr key={campaign.id} className="hover:bg-muted/50 transition-colors group">
-                      <td className="px-6 py-4">
-                        <Link href={`/campaigns/${campaign.id}`}>
-                          <div className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
-                            {campaign.name}
-                            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
-                          </div>
-                        </Link>
-                        {campaign.description && (
-                          <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[260px]">{campaign.description}</div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-muted-foreground">{TYPE_LABELS[campaign.type] ?? campaign.type}</td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className={`capitalize ${STATUS_COLORS[campaign.status] ?? ""}`}>
-                          {campaign.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-muted-foreground text-xs">
-                        {campaign.startDate && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {format(new Date(campaign.startDate), "MMM d")}
-                            {campaign.endDate && ` → ${format(new Date(campaign.endDate), "MMM d, yyyy")}`}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="text-xs text-muted-foreground">
-                          {campaign.budget != null && <div>Budget: ${campaign.budget.toLocaleString()}</div>}
-                          {campaign.expectedRevenue != null && (
-                            <div className="text-chart-3">Rev: ${campaign.expectedRevenue.toLocaleString()}</div>
+                      {colVis.isVisible("campaign") && (
+                        <td className="px-6 py-4">
+                          <Link href={`/campaigns/${campaign.id}`}>
+                            <div className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
+                              {campaign.name}
+                              <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                            </div>
+                          </Link>
+                          {campaign.description && (
+                            <div className="text-xs text-muted-foreground mt-0.5 truncate max-w-[260px]">{campaign.description}</div>
                           )}
-                        </div>
-                      </td>
+                        </td>
+                      )}
+                      {colVis.isVisible("type") && (
+                        <td className="px-6 py-4 text-muted-foreground">{TYPE_LABELS[campaign.type] ?? campaign.type}</td>
+                      )}
+                      {colVis.isVisible("status") && (
+                        <td className="px-6 py-4">
+                          <Badge variant="outline" className={`capitalize ${STATUS_COLORS[campaign.status] ?? ""}`}>
+                            {campaign.status}
+                          </Badge>
+                        </td>
+                      )}
+                      {colVis.isVisible("dates") && (
+                        <td className="px-6 py-4 text-muted-foreground text-xs">
+                          {campaign.startDate && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {format(new Date(campaign.startDate), "MMM d")}
+                              {campaign.endDate && ` → ${format(new Date(campaign.endDate), "MMM d, yyyy")}`}
+                            </div>
+                          )}
+                        </td>
+                      )}
+                      {colVis.isVisible("budget") && (
+                        <td className="px-6 py-4 text-right">
+                          <div className="text-xs text-muted-foreground">
+                            {campaign.budget != null && <div>Budget: ${campaign.budget.toLocaleString()}</div>}
+                            {campaign.expectedRevenue != null && (
+                              <div className="text-chart-3">Rev: ${campaign.expectedRevenue.toLocaleString()}</div>
+                            )}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-6 py-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

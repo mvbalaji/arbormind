@@ -25,6 +25,20 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { ColumnsMenu } from "@/components/columns-menu";
+
+type AccountColKey = "name" | "location" | "phone" | "industry" | "email" | "owner" | "contacts" | "deals";
+const ACCOUNT_TOGGLEABLE_COLS = [
+  { key: "name" as const, label: "Account Name" },
+  { key: "location" as const, label: "Location" },
+  { key: "phone" as const, label: "Phone" },
+  { key: "industry" as const, label: "Industry" },
+  { key: "email" as const, label: "Email" },
+  { key: "owner" as const, label: "Account Owner" },
+  { key: "contacts" as const, label: "Contacts" },
+  { key: "deals" as const, label: "Deals" },
+];
 
 interface AccountFormData {
   name: string;
@@ -75,6 +89,8 @@ export default function Accounts() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<{ id: number } & AccountFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const colVis = useColumnVisibility<AccountColKey>("col-visibility:accounts:v1", ACCOUNT_TOGGLEABLE_COLS);
+  const accountColSpan = colVis.visible.size + 1;
   const { data, isLoading } = useListAccounts({ search, limit: 100 });
 
   const allAccounts = data?.data ?? [];
@@ -194,6 +210,7 @@ export default function Accounts() {
             </DropdownMenuContent>
           </DropdownMenu>
           <div className="flex-1" />
+          <ColumnsMenu columns={ACCOUNT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           <span className="text-xs text-muted-foreground">{total} account{total !== 1 ? "s" : ""}</span>
         </div>
 
@@ -203,21 +220,21 @@ export default function Accounts() {
             <table className="w-full text-sm min-w-[900px]">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide divide-x divide-blue-500/40">
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Name</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Location</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Phone</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Industry</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Email</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Owner</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold">Contacts</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold">Deals</th>
+                  {colVis.isVisible("name") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Name</th>}
+                  {colVis.isVisible("location") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Location</th>}
+                  {colVis.isVisible("phone") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Phone</th>}
+                  {colVis.isVisible("industry") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Industry</th>}
+                  {colVis.isVisible("email") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Email</th>}
+                  {colVis.isVisible("owner") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Owner</th>}
+                  {colVis.isVisible("contacts") && <th className="px-4 py-2.5 text-center text-xs font-semibold">Contacts</th>}
+                  {colVis.isVisible("deals") && <th className="px-4 py-2.5 text-center text-xs font-semibold">Deals</th>}
                   <th className="px-4 py-2.5 text-center text-xs font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                    <td colSpan={accountColSpan} className="px-4 py-8 text-center text-muted-foreground text-sm">
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                         Loading accounts...
@@ -226,7 +243,7 @@ export default function Accounts() {
                   </tr>
                 ) : filteredAccounts.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center">
+                    <td colSpan={accountColSpan} className="px-4 py-12 text-center">
                       <div className="text-muted-foreground text-sm mb-3">No accounts found.</div>
                       <Button size="sm" onClick={() => setIsCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         <Plus className="w-3.5 h-3.5 mr-1.5" /> Create your first account
@@ -236,65 +253,81 @@ export default function Accounts() {
                 ) : (
                   filteredAccounts.map((acc) => (
                     <tr key={acc.id} className="hover:bg-muted/30 transition-colors group">
-                      <td className="px-4 py-2.5">
-                        <Link href={`/accounts/${acc.id}`}>
-                          <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
-                            {acc.name}
-                            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
-                          </div>
-                        </Link>
-                        {acc.website && (
-                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <LinkIcon className="w-2.5 h-2.5" />
-                            <span className="truncate max-w-[140px]">{acc.website.replace(/^https?:\/\//, "")}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                        {acc.city ? (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 flex-shrink-0" />
-                            {acc.city}{acc.country ? `, ${acc.country}` : ""}
-                          </div>
-                        ) : <span>—</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-foreground">
-                        {acc.phone ? (
-                          <div className="flex items-center gap-1">
-                            <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                            {acc.phone}
-                          </div>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-foreground">
-                        {acc.industry ?? <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-foreground">
-                        {acc.email ? (
-                          <div className="flex items-center gap-1">
-                            <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                            <span className="truncate max-w-[140px]">{acc.email}</span>
-                          </div>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-foreground">
-                        {acc.ownerName ? (
-                          <div className="flex items-center gap-1">
-                            <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                            {acc.ownerName}
-                          </div>
-                        ) : <span className="text-muted-foreground italic">Unassigned</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className="inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded text-xs font-medium text-foreground">
-                          <Users className="w-3 h-3 text-muted-foreground" /> {acc.contactCount ?? 0}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className="inline-flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded text-xs font-medium text-primary border border-primary/20">
-                          <Briefcase className="w-3 h-3" /> {acc.dealCount ?? 0}
-                        </span>
-                      </td>
+                      {colVis.isVisible("name") && (
+                        <td className="px-4 py-2.5">
+                          <Link href={`/accounts/${acc.id}`}>
+                            <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
+                              {acc.name}
+                              <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                            </div>
+                          </Link>
+                          {acc.website && (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <LinkIcon className="w-2.5 h-2.5" />
+                              <span className="truncate max-w-[140px]">{acc.website.replace(/^https?:\/\//, "")}</span>
+                            </div>
+                          )}
+                        </td>
+                      )}
+                      {colVis.isVisible("location") && (
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                          {acc.city ? (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              {acc.city}{acc.country ? `, ${acc.country}` : ""}
+                            </div>
+                          ) : <span>—</span>}
+                        </td>
+                      )}
+                      {colVis.isVisible("phone") && (
+                        <td className="px-4 py-2.5 text-xs text-foreground">
+                          {acc.phone ? (
+                            <div className="flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                              {acc.phone}
+                            </div>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                      )}
+                      {colVis.isVisible("industry") && (
+                        <td className="px-4 py-2.5 text-xs text-foreground">
+                          {acc.industry ?? <span className="text-muted-foreground">—</span>}
+                        </td>
+                      )}
+                      {colVis.isVisible("email") && (
+                        <td className="px-4 py-2.5 text-xs text-foreground">
+                          {acc.email ? (
+                            <div className="flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                              <span className="truncate max-w-[140px]">{acc.email}</span>
+                            </div>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                      )}
+                      {colVis.isVisible("owner") && (
+                        <td className="px-4 py-2.5 text-xs text-foreground">
+                          {acc.ownerName ? (
+                            <div className="flex items-center gap-1">
+                              <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                              {acc.ownerName}
+                            </div>
+                          ) : <span className="text-muted-foreground italic">Unassigned</span>}
+                        </td>
+                      )}
+                      {colVis.isVisible("contacts") && (
+                        <td className="px-4 py-2.5 text-center">
+                          <span className="inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded text-xs font-medium text-foreground">
+                            <Users className="w-3 h-3 text-muted-foreground" /> {acc.contactCount ?? 0}
+                          </span>
+                        </td>
+                      )}
+                      {colVis.isVisible("deals") && (
+                        <td className="px-4 py-2.5 text-center">
+                          <span className="inline-flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded text-xs font-medium text-primary border border-primary/20">
+                            <Briefcase className="w-3 h-3" /> {acc.dealCount ?? 0}
+                          </span>
+                        </td>
+                      )}
                       <td className="px-4 py-2.5">
                         <div className="flex items-center justify-center gap-1">
                           <Button

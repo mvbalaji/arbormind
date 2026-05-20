@@ -21,6 +21,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Package, Plus, MoreHorizontal, Pencil, Trash2, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { ColumnsMenu } from "@/components/columns-menu";
+
+type ProductColKey = "name" | "category" | "price" | "status";
+const PRODUCT_TOGGLEABLE_COLS = [
+  { key: "name" as const, label: "Name / Code" },
+  { key: "category" as const, label: "Category" },
+  { key: "price" as const, label: "Unit Price" },
+  { key: "status" as const, label: "Status" },
+];
 
 interface ProductFormData {
   name: string;
@@ -149,6 +159,8 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState<({ id: number } & ProductFormData) | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListProducts({ search: search || undefined });
+  const colVis = useColumnVisibility<ProductColKey>("col-visibility:products:v1", PRODUCT_TOGGLEABLE_COLS);
+  const productColSpan = colVis.visible.size + 1;
   const deleteMutation = useDeleteProduct();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -191,45 +203,56 @@ export default function Products() {
         </div>
 
         <Card className="glass-panel border-border">
+          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+            <ColumnsMenu columns={PRODUCT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr className="divide-x divide-border">
-                  <th className="px-6 py-4 font-medium">Name / Code</th>
-                  <th className="px-6 py-4 font-medium">Category</th>
-                  <th className="px-6 py-4 font-medium text-right">Unit Price</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
+                  {colVis.isVisible("name") && <th className="px-6 py-4 font-medium">Name / Code</th>}
+                  {colVis.isVisible("category") && <th className="px-6 py-4 font-medium">Category</th>}
+                  {colVis.isVisible("price") && <th className="px-6 py-4 font-medium text-right">Unit Price</th>}
+                  {colVis.isVisible("status") && <th className="px-6 py-4 font-medium">Status</th>}
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={productColSpan} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.length === 0 ? (
-                  <tr><td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                  <tr><td colSpan={productColSpan} className="px-6 py-12 text-center text-muted-foreground">
                     <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No products found. Add your first product to start quoting.
                   </td></tr>
                 ) : data?.data?.map(prod => (
                   <tr key={prod.id} className="hover:bg-muted/50 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-foreground flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <Package className="w-4 h-4 text-primary" />
+                    {colVis.isVisible("name") && (
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-foreground flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                            <Package className="w-4 h-4 text-primary" />
+                          </div>
+                          {prod.name}
                         </div>
-                        {prod.name}
-                      </div>
-                      {prod.code && <div className="text-xs text-muted-foreground mt-1 ml-10 font-mono">{prod.code}</div>}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">{prod.category || "-"}</td>
-                    <td className="px-6 py-4 text-right font-semibold text-foreground">
-                      ${prod.unitPrice.toLocaleString()} <span className="text-xs text-muted-foreground">{prod.currency}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant="outline" className={prod.isActive ? "border-green-500/30 text-green-600 bg-green-500/5" : "border-border text-muted-foreground"}>
-                        {prod.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </td>
+                        {prod.code && <div className="text-xs text-muted-foreground mt-1 ml-10 font-mono">{prod.code}</div>}
+                      </td>
+                    )}
+                    {colVis.isVisible("category") && (
+                      <td className="px-6 py-4 text-muted-foreground">{prod.category || "-"}</td>
+                    )}
+                    {colVis.isVisible("price") && (
+                      <td className="px-6 py-4 text-right font-semibold text-foreground">
+                        ${prod.unitPrice.toLocaleString()} <span className="text-xs text-muted-foreground">{prod.currency}</span>
+                      </td>
+                    )}
+                    {colVis.isVisible("status") && (
+                      <td className="px-6 py-4">
+                        <Badge variant="outline" className={prod.isActive ? "border-green-500/30 text-green-600 bg-green-500/5" : "border-border text-muted-foreground"}>
+                          {prod.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

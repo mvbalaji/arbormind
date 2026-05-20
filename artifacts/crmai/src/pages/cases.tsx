@@ -22,6 +22,16 @@ import {
 import { LifeBuoy, Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { ColumnsMenu } from "@/components/columns-menu";
+
+const CASE_TOGGLEABLE_COLS = [
+  { key: "caseNumber" as const, label: "Case #" },
+  { key: "subject" as const, label: "Subject" },
+  { key: "priority" as const, label: "Priority" },
+  { key: "status" as const, label: "Status" },
+  { key: "opened" as const, label: "Opened" },
+];
 
 const PRIORITY_COLORS: Record<string, string> = {
   low: "bg-blue-50 text-blue-700 border-blue-200",
@@ -54,6 +64,8 @@ export default function Cases() {
   const [editingCase, setEditingCase] = useState<{ id: number } & CaseFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListCases({ limit: 50 });
+  const colVis = useColumnVisibility<"caseNumber" | "subject" | "priority" | "status" | "opened">("col-visibility:cases:v1", CASE_TOGGLEABLE_COLS);
+  const caseColSpan = colVis.visible.size + 1;
 
   return (
     <Layout>
@@ -72,44 +84,57 @@ export default function Cases() {
         </div>
 
         <Card className="glass-panel border-border">
+          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+            <ColumnsMenu columns={CASE_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                 <tr className="divide-x divide-border">
-                  <th className="px-6 py-4 font-medium">Case #</th>
-                  <th className="px-6 py-4 font-medium">Subject</th>
-                  <th className="px-6 py-4 font-medium">Priority</th>
-                  <th className="px-6 py-4 font-medium">Status</th>
-                  <th className="px-6 py-4 font-medium">Opened</th>
+                  {colVis.isVisible("caseNumber") && <th className="px-6 py-4 font-medium">Case #</th>}
+                  {colVis.isVisible("subject") && <th className="px-6 py-4 font-medium">Subject</th>}
+                  {colVis.isVisible("priority") && <th className="px-6 py-4 font-medium">Priority</th>}
+                  {colVis.isVisible("status") && <th className="px-6 py-4 font-medium">Status</th>}
+                  {colVis.isVisible("opened") && <th className="px-6 py-4 font-medium">Opened</th>}
                   <th className="px-6 py-4 font-medium text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={caseColSpan} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : data?.data?.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">No cases found.</td></tr>
+                  <tr><td colSpan={caseColSpan} className="px-6 py-8 text-center text-muted-foreground">No cases found.</td></tr>
                 ) : (
                   data?.data?.map((c) => (
                     <tr key={c.id} className="hover:bg-muted/50 transition-colors group">
-                      <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{c.caseNumber}</td>
-                      <td className="px-6 py-4">
-                        <div className="font-medium text-foreground">{c.subject}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{c.contactName ?? c.accountName ?? "-"}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className={`capitalize ${PRIORITY_COLORS[c.priority] ?? ""}`}>
-                          {c.priority}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline" className={`capitalize ${STATUS_COLORS[c.status] ?? "bg-muted border-border text-muted-foreground"}`}>
-                          {c.status.replace("_", " ")}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-muted-foreground">
-                        {format(new Date(c.createdAt), "MMM d, yyyy")}
-                      </td>
+                      {colVis.isVisible("caseNumber") && (
+                        <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{c.caseNumber}</td>
+                      )}
+                      {colVis.isVisible("subject") && (
+                        <td className="px-6 py-4">
+                          <div className="font-medium text-foreground">{c.subject}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{c.contactName ?? c.accountName ?? "-"}</div>
+                        </td>
+                      )}
+                      {colVis.isVisible("priority") && (
+                        <td className="px-6 py-4">
+                          <Badge variant="outline" className={`capitalize ${PRIORITY_COLORS[c.priority] ?? ""}`}>
+                            {c.priority}
+                          </Badge>
+                        </td>
+                      )}
+                      {colVis.isVisible("status") && (
+                        <td className="px-6 py-4">
+                          <Badge variant="outline" className={`capitalize ${STATUS_COLORS[c.status] ?? "bg-muted border-border text-muted-foreground"}`}>
+                            {c.status.replace("_", " ")}
+                          </Badge>
+                        </td>
+                      )}
+                      {colVis.isVisible("opened") && (
+                        <td className="px-6 py-4 text-muted-foreground">
+                          {format(new Date(c.createdAt), "MMM d, yyyy")}
+                        </td>
+                      )}
                       <td className="px-6 py-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

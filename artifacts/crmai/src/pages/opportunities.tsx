@@ -13,6 +13,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/context/auth";
 import { AISummary } from "@/components/ai-summary";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { ColumnsMenu } from "@/components/columns-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -214,6 +216,16 @@ const defaultDealForm: NewDealForm = {
 
 type ViewMode = "list" | "kanban";
 
+const OPPORTUNITY_TOGGLEABLE_COLS = [
+  { key: "name" as const, label: "Opportunity" },
+  { key: "account" as const, label: "Account" },
+  { key: "stage" as const, label: "Stage" },
+  { key: "amount" as const, label: "Value" },
+  { key: "closeDate" as const, label: "Close Date" },
+  { key: "owner" as const, label: "Owner" },
+  { key: "status" as const, label: "Status" },
+];
+
 export default function Opportunities() {
   const { data, isLoading } = useListOpportunities({ limit: 200 });
   const updateMutation = useUpdateOpportunity();
@@ -231,6 +243,11 @@ export default function Opportunities() {
   const [activeViewId, setActiveViewId] = useState<ListViewId>("all");
   const [viewPickerOpen, setViewPickerOpen] = useState(false);
   const [viewPickerSearch, setViewPickerSearch] = useState("");
+  const colVis = useColumnVisibility<"name" | "account" | "stage" | "amount" | "closeDate" | "owner" | "status">(
+    "col-visibility:opportunities:v1",
+    OPPORTUNITY_TOGGLEABLE_COLS,
+  );
+  const opportunityColSpan = colVis.visible.size + 2;
 
   const activeView = LIST_VIEWS.find((v) => v.id === activeViewId) ?? LIST_VIEWS[0];
 
@@ -528,6 +545,9 @@ export default function Opportunities() {
           </div>
         ) : viewMode === "list" ? (
           <Card className="border-border overflow-hidden shadow-sm">
+            <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+              <ColumnsMenu columns={OPPORTUNITY_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
+            </div>
             <div className="overflow-auto max-h-[calc(100vh-260px)]">
               <table className="w-full text-sm bg-card">
                 <thead className="sticky top-0 z-10">
@@ -540,17 +560,21 @@ export default function Opportunities() {
                         className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
                       />
                     </th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="name">Opportunity</SortHeader></th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="account">Account</SortHeader></th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="stage">Stage</SortHeader></th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="amount">Value</SortHeader></th>
-                    <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="closeDate">Close Date</SortHeader></th>
-                    <th className="text-left px-3 py-3">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</span>
-                    </th>
-                    <th className="text-left px-3 py-3">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</span>
-                    </th>
+                    {colVis.isVisible("name") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="name">Opportunity</SortHeader></th>}
+                    {colVis.isVisible("account") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="account">Account</SortHeader></th>}
+                    {colVis.isVisible("stage") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="stage">Stage</SortHeader></th>}
+                    {colVis.isVisible("amount") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="amount">Value</SortHeader></th>}
+                    {colVis.isVisible("closeDate") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="closeDate">Close Date</SortHeader></th>}
+                    {colVis.isVisible("owner") && (
+                      <th className="text-left px-3 py-3">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</span>
+                      </th>
+                    )}
+                    {colVis.isVisible("status") && (
+                      <th className="text-left px-3 py-3">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</span>
+                      </th>
+                    )}
                     <th className="text-center px-3 py-3">
                       <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</span>
                     </th>
@@ -559,7 +583,7 @@ export default function Opportunities() {
                 <tbody className="divide-y divide-border bg-card">
                   {sortedOpps.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="text-center py-12 text-muted-foreground">
+                      <td colSpan={opportunityColSpan} className="text-center py-12 text-muted-foreground">
                         {searchQuery ? "No opportunities match your search." : "No opportunities yet. Create your first one!"}
                       </td>
                     </tr>
@@ -578,47 +602,61 @@ export default function Opportunities() {
                               aria-label={`Select ${opp.name}`}
                             />
                           </td>
-                          <td className="px-3 py-3">
-                            <Link href={`/opportunities/${opp.id}`}>
-                              <span className="font-medium text-foreground hover:text-primary hover:underline transition-colors cursor-pointer">
-                                {opp.name}
+                          {colVis.isVisible("name") && (
+                            <td className="px-3 py-3">
+                              <Link href={`/opportunities/${opp.id}`}>
+                                <span className="font-medium text-foreground hover:text-primary hover:underline transition-colors cursor-pointer">
+                                  {opp.name}
+                                </span>
+                              </Link>
+                            </td>
+                          )}
+                          {colVis.isVisible("account") && (
+                            <td className="px-3 py-3 text-foreground">
+                              {opp.accountName ?? "—"}
+                            </td>
+                          )}
+                          {colVis.isVisible("stage") && (
+                            <td className="px-3 py-3">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center justify-center text-xs font-semibold pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
+                                  STAGE_BADGE_COLORS[opp.stage] ?? "bg-gray-500 text-white border-gray-500"
+                                )}
+                                style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" }}
+                              >
+                                {STAGES.find(s => s.id === opp.stage)?.label ?? opp.stage}
                               </span>
-                            </Link>
-                          </td>
-                          <td className="px-3 py-3 text-foreground">
-                            {opp.accountName ?? "—"}
-                          </td>
-                          <td className="px-3 py-3">
-                            <span
-                              className={cn(
-                                "inline-flex items-center justify-center text-xs font-semibold pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
-                                STAGE_BADGE_COLORS[opp.stage] ?? "bg-gray-500 text-white border-gray-500"
-                              )}
-                              style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" }}
-                            >
-                              {STAGES.find(s => s.id === opp.stage)?.label ?? opp.stage}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 font-semibold text-foreground">
-                            £{(Number(opp.amount) || 0).toLocaleString()}
-                          </td>
-                          <td className="px-3 py-3 text-foreground">
-                            {opp.closeDate ? format(new Date(opp.closeDate), "dd MMM yyyy") : "—"}
-                          </td>
-                          <td className="px-3 py-3">
-                            <span className="inline-flex items-center gap-1 text-foreground text-sm">
-                              {opp.assignedToName ?? "Unassigned"}
-                              <ChevronDown className="w-3 h-3 text-muted-foreground" />
-                            </span>
-                          </td>
-                          <td className="px-3 py-3">
-                            <Badge
-                              variant="outline"
-                              className={cn("text-xs font-medium rounded-md px-2.5 py-0.5", status.cls)}
-                            >
-                              {status.label}
-                            </Badge>
-                          </td>
+                            </td>
+                          )}
+                          {colVis.isVisible("amount") && (
+                            <td className="px-3 py-3 font-semibold text-foreground">
+                              £{(Number(opp.amount) || 0).toLocaleString()}
+                            </td>
+                          )}
+                          {colVis.isVisible("closeDate") && (
+                            <td className="px-3 py-3 text-foreground">
+                              {opp.closeDate ? format(new Date(opp.closeDate), "dd MMM yyyy") : "—"}
+                            </td>
+                          )}
+                          {colVis.isVisible("owner") && (
+                            <td className="px-3 py-3">
+                              <span className="inline-flex items-center gap-1 text-foreground text-sm">
+                                {opp.assignedToName ?? "Unassigned"}
+                                <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                              </span>
+                            </td>
+                          )}
+                          {colVis.isVisible("status") && (
+                            <td className="px-3 py-3">
+                              <Badge
+                                variant="outline"
+                                className={cn("text-xs font-medium rounded-md px-2.5 py-0.5", status.cls)}
+                              >
+                                {status.label}
+                              </Badge>
+                            </td>
+                          )}
                           <td className="px-3 py-3">
                             <div className="flex items-center justify-center gap-1">
                               <Link href={`/opportunities/${opp.id}`}>

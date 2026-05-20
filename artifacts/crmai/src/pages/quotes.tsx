@@ -29,6 +29,20 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { AISummary } from "@/components/ai-summary";
 import { formatDistanceToNow } from "date-fns";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { ColumnsMenu } from "@/components/columns-menu";
+
+type QuoteColKey = "quoteNumber" | "name" | "revision" | "clonedFrom" | "validUntil" | "subtotal" | "total" | "createdBy";
+const QUOTE_TOGGLEABLE_COLS = [
+  { key: "quoteNumber" as const, label: "Quote Number" },
+  { key: "name" as const, label: "Quote Name" },
+  { key: "revision" as const, label: "Revision" },
+  { key: "clonedFrom" as const, label: "Cloned From" },
+  { key: "validUntil" as const, label: "Expiration Date" },
+  { key: "subtotal" as const, label: "Subtotal" },
+  { key: "total" as const, label: "Total Price" },
+  { key: "createdBy" as const, label: "Created By" },
+];
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "border-border text-muted-foreground",
@@ -568,6 +582,8 @@ export default function Quotes() {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [searchQuery, setSearchQuery] = useState("");
+  const colVis = useColumnVisibility<QuoteColKey>("col-visibility:quotes:v1", QUOTE_TOGGLEABLE_COLS);
+  const quoteColSpan = colVis.visible.size + 3;
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
   const { data, isLoading, refetch, isFetching } = useListQuotes();
@@ -757,6 +773,9 @@ export default function Quotes() {
 
         {/* Table */}
         <Card className="border-border overflow-hidden p-0">
+          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+            <ColumnsMenu columns={QUOTE_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs sticky top-0 z-10">
@@ -771,23 +790,23 @@ export default function Quotes() {
                     />
                   </th>
                   <th className="w-10 px-2 py-3 text-white/80 font-semibold uppercase tracking-wide text-center border-r border-blue-500/40">#</th>
-                  <SortableHeader field="quoteNumber" label="Quote Number" />
-                  <SortableHeader field="name" label="Quote Name" />
-                  <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision</th>
-                  <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From</th>
-                  <SortableHeader field="validUntil" label="Expiration Date" />
-                  <SortableHeader field="subtotal" label="Subtotal" align="right" />
-                  <SortableHeader field="total" label="Total Price" align="right" />
-                  <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Created By</th>
+                  {colVis.isVisible("quoteNumber") && <SortableHeader field="quoteNumber" label="Quote Number" />}
+                  {colVis.isVisible("name") && <SortableHeader field="name" label="Quote Name" />}
+                  {colVis.isVisible("revision") && <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision</th>}
+                  {colVis.isVisible("clonedFrom") && <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From</th>}
+                  {colVis.isVisible("validUntil") && <SortableHeader field="validUntil" label="Expiration Date" />}
+                  {colVis.isVisible("subtotal") && <SortableHeader field="subtotal" label="Subtotal" align="right" />}
+                  {colVis.isVisible("total") && <SortableHeader field="total" label="Total Price" align="right" />}
+                  {colVis.isVisible("createdBy") && <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Created By</th>}
                   <th className="w-10 px-2 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={11} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                  <tr><td colSpan={quoteColSpan} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                 ) : sortedQuotes.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-6 py-12 text-center text-muted-foreground">
+                    <td colSpan={quoteColSpan} className="px-6 py-12 text-center text-muted-foreground">
                       <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       {searchQuery ? "No quotes match your search." : "No quotes yet. Create your first quote."}
                     </td>
@@ -811,57 +830,73 @@ export default function Quotes() {
                         />
                       </td>
                       <td className="px-2 py-2 text-center text-muted-foreground border-r border-border">{idx + 1}</td>
-                      <td className="px-3 py-2 border-r border-border">
-                        <Link href={`/quotes/${q.id}`} className="text-primary hover:underline font-mono text-sm">
-                          {q.quoteNumber}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2 border-r border-border">
-                        <Link href={`/quotes/${q.id}`} className="text-primary hover:underline">
-                          {q.name}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2 text-center border-r border-border">
-                        <Badge
-                          variant="secondary"
-                          className={`text-[10px] font-mono ${q.version && q.version > 1 ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground"}`}
-                        >
-                          v{q.version ?? 1}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2 border-r border-border">
-                        {q.clonedFromQuoteId ? (
-                          <Link
-                            href={`/quotes/${q.clonedFromQuoteId}`}
-                            className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-xs"
-                            title={q.clonedFromQuoteName ?? undefined}
-                          >
-                            <Copy className="w-3 h-3" />
-                            {q.clonedFromQuoteNumber ?? `#${q.clonedFromQuoteId}`}
+                      {colVis.isVisible("quoteNumber") && (
+                        <td className="px-3 py-2 border-r border-border">
+                          <Link href={`/quotes/${q.id}`} className="text-primary hover:underline font-mono text-sm">
+                            {q.quoteNumber}
                           </Link>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-foreground border-r border-border">
-                        {q.validUntil ? format(new Date(q.validUntil), "M/d/yyyy") : "-"}
-                      </td>
-                      <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
-                        £{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
-                        £{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-3 py-2 border-r border-border text-foreground">
-                        <div className="flex flex-col leading-tight">
-                          <span>{q.createdByName || "—"}</span>
-                          {q.createdAt && (
-                            <span className="text-xs text-muted-foreground">
-                              {format(new Date(q.createdAt), "M/d/yyyy h:mm a")}
-                            </span>
+                        </td>
+                      )}
+                      {colVis.isVisible("name") && (
+                        <td className="px-3 py-2 border-r border-border">
+                          <Link href={`/quotes/${q.id}`} className="text-primary hover:underline">
+                            {q.name}
+                          </Link>
+                        </td>
+                      )}
+                      {colVis.isVisible("revision") && (
+                        <td className="px-3 py-2 text-center border-r border-border">
+                          <Badge
+                            variant="secondary"
+                            className={`text-[10px] font-mono ${q.version && q.version > 1 ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground"}`}
+                          >
+                            v{q.version ?? 1}
+                          </Badge>
+                        </td>
+                      )}
+                      {colVis.isVisible("clonedFrom") && (
+                        <td className="px-3 py-2 border-r border-border">
+                          {q.clonedFromQuoteId ? (
+                            <Link
+                              href={`/quotes/${q.clonedFromQuoteId}`}
+                              className="inline-flex items-center gap-1 text-primary hover:underline font-mono text-xs"
+                              title={q.clonedFromQuoteName ?? undefined}
+                            >
+                              <Copy className="w-3 h-3" />
+                              {q.clonedFromQuoteNumber ?? `#${q.clonedFromQuoteId}`}
+                            </Link>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
                           )}
-                        </div>
-                      </td>
+                        </td>
+                      )}
+                      {colVis.isVisible("validUntil") && (
+                        <td className="px-3 py-2 text-foreground border-r border-border">
+                          {q.validUntil ? format(new Date(q.validUntil), "M/d/yyyy") : "-"}
+                        </td>
+                      )}
+                      {colVis.isVisible("subtotal") && (
+                        <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
+                          £{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      )}
+                      {colVis.isVisible("total") && (
+                        <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
+                          £{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      )}
+                      {colVis.isVisible("createdBy") && (
+                        <td className="px-3 py-2 border-r border-border text-foreground">
+                          <div className="flex flex-col leading-tight">
+                            <span>{q.createdByName || "—"}</span>
+                            {q.createdAt && (
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(q.createdAt), "M/d/yyyy h:mm a")}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-2 py-2 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
