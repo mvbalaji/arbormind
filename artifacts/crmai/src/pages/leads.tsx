@@ -385,7 +385,7 @@ export default function Leads() {
               Reset column widths
             </button>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[calc(100vh-260px)]">
             <table className="text-sm" style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
               <colgroup>
                 {LEAD_COL_ORDER.map((k) => (
