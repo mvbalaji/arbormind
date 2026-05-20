@@ -410,7 +410,7 @@ export default function Leads() {
                   <th className="relative px-4 py-3 text-center"><SortHeader field="score" align="center">Score</SortHeader><ColResizeHandle onMouseDown={startColResize("score")} /></th>
                   <th className="relative px-4 py-3 text-left"><SortHeader field="createdAt">Created Date</SortHeader><ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>
                   <th className="relative px-4 py-3 text-left"><SortHeader field="owner">Owner</SortHeader><ColResizeHandle onMouseDown={startColResize("owner")} /></th>
-                  <th className="relative px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
+                  <th className="relative px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap sticky right-0 z-20 bg-blue-700 dark:bg-blue-800 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.25)]">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -480,7 +480,7 @@ export default function Leads() {
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">
                         {lead.assignedToName ?? <span className="italic">Unassigned</span>}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="px-3 py-2.5 sticky right-0 z-10 bg-card group-hover:bg-muted/30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]">
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             variant="ghost"
