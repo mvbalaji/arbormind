@@ -253,7 +253,7 @@ export default function Leads() {
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-sm text-foreground">{lead.company ?? <span className="text-muted-foreground">—</span>}</td>
-                      <td className="px-4 py-2.5 text-sm text-foreground">{lead.phone ?? <span className="text-muted-foreground">—</span>}</td>
+                      <td className="px-4 py-2.5 text-sm text-foreground whitespace-nowrap">{lead.phone ?? <span className="text-muted-foreground">—</span>}</td>
                       <td className="px-4 py-2.5 text-sm text-foreground">{lead.email ?? <span className="text-muted-foreground">—</span>}</td>
                       <td className="px-4 py-2.5">
                         <span
