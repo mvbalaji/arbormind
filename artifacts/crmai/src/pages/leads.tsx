@@ -20,10 +20,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import {
   Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink,
-  ChevronDown, Filter, Mail, UserCheck, Upload, ListFilter,
+  ChevronDown, Filter, Mail, UserCheck, Upload, ListFilter, Eye,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -81,9 +82,10 @@ const defaultFormData: LeadFormData = {
   industry: "", employees: "", annualRevenue: "", description: "",
 };
 
-type LeadColKey = "name" | "company" | "phone" | "email" | "status" | "score" | "createdAt" | "owner" | "actions";
+type LeadColKey = "select" | "name" | "company" | "phone" | "email" | "status" | "score" | "createdAt" | "owner" | "actions";
 
 const LEAD_COL_DEFAULTS: Record<LeadColKey, number> = {
+  select: 40,
   name: 200,
   company: 180,
   phone: 160,
@@ -92,10 +94,11 @@ const LEAD_COL_DEFAULTS: Record<LeadColKey, number> = {
   score: 90,
   createdAt: 140,
   owner: 150,
-  actions: 120,
+  actions: 160,
 };
 
-const LEAD_COL_ORDER: LeadColKey[] = ["name", "company", "phone", "email", "status", "score", "createdAt", "owner", "actions"];
+const LEAD_COL_ORDER: LeadColKey[] = ["select", "name", "company", "phone", "email", "status", "score", "createdAt", "owner", "actions"];
+const LEAD_COL_RESIZABLE: ReadonlySet<LeadColKey> = new Set<LeadColKey>(["name", "company", "phone", "email", "status", "score", "createdAt", "owner", "actions"]);
 const LEAD_COL_MIN = 60;
 const LEAD_COL_STORAGE_KEY = "col-widths:leads:v1";
 
@@ -187,6 +190,7 @@ export default function Leads() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [convertingId, setConvertingId] = useState<{ id: number; name: string; company?: string | null } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const { widths: colWidths, startResize: startColResize, resetWidths: resetColWidths } = useLeadColResize();
   const { data, isLoading } = useListLeads({ search, limit: 200 });
 
@@ -201,6 +205,40 @@ export default function Leads() {
   });
 
   const total = leads.length;
+
+  const visibleIds = React.useMemo(() => new Set(leads.map((l) => l.id)), [leads]);
+  const visibleSelectedCount = React.useMemo(() => {
+    let count = 0;
+    for (const id of selectedIds) { if (visibleIds.has(id)) count++; }
+    return count;
+  }, [selectedIds, visibleIds]);
+  const allVisibleSelected = visibleIds.size > 0 && visibleSelectedCount === visibleIds.size;
+  const someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
+
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of visibleIds) next.delete(id);
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of visibleIds) next.add(id);
+        return next;
+      });
+    }
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
     <Layout>
@@ -320,6 +358,14 @@ export default function Leads() {
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
+                  <th className="px-3 py-3 text-center">
+                    <Checkbox
+                      checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all leads"
+                      className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
+                    />
+                  </th>
                   <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name<ColResizeHandle onMouseDown={startColResize("name")} /></th>
                   <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Company<ColResizeHandle onMouseDown={startColResize("company")} /></th>
                   <th className="relative px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Phone<ColResizeHandle onMouseDown={startColResize("phone")} /></th>
@@ -334,7 +380,7 @@ export default function Leads() {
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                    <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground text-sm">
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                         Loading leads...
@@ -343,7 +389,7 @@ export default function Leads() {
                   </tr>
                 ) : leads.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center">
+                    <td colSpan={10} className="px-4 py-12 text-center">
                       <div className="text-muted-foreground text-sm mb-3">No leads found.</div>
                       <Button size="sm" onClick={() => setIsCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         <Plus className="w-3.5 h-3.5 mr-1.5" /> Create your first lead
@@ -353,6 +399,13 @@ export default function Leads() {
                 ) : (
                   leads.map((lead) => (
                     <tr key={lead.id} className="hover:bg-muted/30 transition-colors group divide-x divide-border">
+                      <td className="px-3 py-2.5 text-center">
+                        <Checkbox
+                          checked={selectedIds.has(lead.id)}
+                          onCheckedChange={() => toggleSelect(lead.id)}
+                          aria-label={`Select ${lead.firstName} ${lead.lastName}`}
+                        />
+                      </td>
                       <td className="px-4 py-2.5">
                         <Link href={`/leads/${lead.id}`}>
                           <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
@@ -391,53 +444,67 @@ export default function Leads() {
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">
                         {lead.assignedToName ?? <span className="italic">Unassigned</span>}
                       </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {!lead.isConverted && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2 text-xs text-primary hover:bg-primary/5"
-                              onClick={() => setConvertingId({ id: lead.id, name: `${lead.firstName} ${lead.lastName}`, company: lead.company })}
-                            >
-                              <ArrowRightLeft className="w-3 h-3 mr-1" /> Convert
-                            </Button>
-                          )}
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                            onClick={() => setEditingLead({
+                              id: lead.id,
+                              firstName: lead.firstName,
+                              lastName: lead.lastName,
+                              email: lead.email ?? "",
+                              phone: lead.phone ?? "",
+                              company: lead.company ?? "",
+                              title: lead.title ?? "",
+                              source: lead.source ?? "",
+                              status: lead.status,
+                              assignedTo: (lead.assignedTo?.toString()) ?? "",
+                              score: (lead.score?.toString()) ?? "",
+                              industry: lead.industry ?? "",
+                              employees: (lead.employees ?? "").toString(),
+                              annualRevenue: (lead.annualRevenue ?? "").toString(),
+                              description: lead.description ?? "",
+                            })}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            Edit
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                                <MoreHorizontal className="w-3.5 h-3.5" />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                aria-label={`More actions for ${lead.firstName} ${lead.lastName}`}
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
-                              <DropdownMenuItem
-                                onClick={() => setEditingLead({
-                                  id: lead.id,
-                                  firstName: lead.firstName,
-                                  lastName: lead.lastName,
-                                  email: lead.email ?? "",
-                                  phone: lead.phone ?? "",
-                                  company: lead.company ?? "",
-                                  title: lead.title ?? "",
-                                  source: lead.source ?? "",
-                                  status: lead.status,
-                                  assignedTo: (lead.assignedTo?.toString()) ?? "",
-                                  score: (lead.score?.toString()) ?? "",
-                                  industry: lead.industry ?? "",
-                                  employees: (lead.employees ?? "").toString(),
-                                  annualRevenue: (lead.annualRevenue ?? "").toString(),
-                                  description: lead.description ?? "",
-                                })}
-                                className="cursor-pointer text-sm"
-                              >
-                                <Pencil className="w-3.5 h-3.5 mr-2 text-muted-foreground" /> Edit
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/leads/${lead.id}`} className="flex items-center gap-2 cursor-pointer">
+                                  <Eye className="w-4 h-4" />
+                                  View Details
+                                </Link>
                               </DropdownMenuItem>
+                              {!lead.isConverted && (
+                                <DropdownMenuItem
+                                  onClick={() => setConvertingId({ id: lead.id, name: `${lead.firstName} ${lead.lastName}`, company: lead.company })}
+                                  className="cursor-pointer"
+                                >
+                                  <ArrowRightLeft className="w-4 h-4 mr-2" />
+                                  Convert
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => setDeletingId(lead.id)}
-                                className="cursor-pointer text-sm text-destructive focus:text-destructive"
+                                className="text-destructive focus:text-destructive cursor-pointer"
                               >
-                                <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
