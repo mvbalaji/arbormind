@@ -1392,7 +1392,14 @@ export default function OpportunityDetail() {
                   </div>
                   <h3 className="text-sm font-semibold text-foreground">Account Details</h3>
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-foreground hover:bg-blue-100 dark:hover:bg-blue-950/50"
+                  onClick={() => setIsEditOpen(true)}
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                </Button>
               </div>
               <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                 <div>
@@ -1496,7 +1503,14 @@ export default function OpportunityDetail() {
                   </div>
                   <h3 className="text-sm font-semibold text-foreground">Contact Roles ({contactsData?.data.length ?? 0})</h3>
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-foreground hover:bg-orange-100 dark:hover:bg-orange-950/50"
+                  onClick={() => setActiveTab("contacts")}
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Manage
+                </Button>
               </div>
               <div className="p-4 text-sm">
                 {!contactsData?.data.length ? (
@@ -1744,7 +1758,14 @@ export default function OpportunityDetail() {
                   </div>
                   <h3 className="text-sm font-semibold text-foreground">Account Details</h3>
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-foreground hover:bg-blue-100 dark:hover:bg-blue-950/50"
+                  onClick={() => setIsEditOpen(true)}
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                </Button>
               </div>
               <div className="p-4 grid grid-cols-2 gap-x-3 gap-y-3 text-sm">
                 <div className="col-span-2">
@@ -1850,7 +1871,14 @@ export default function OpportunityDetail() {
                   </div>
                   <h3 className="text-sm font-semibold text-foreground">Contact Roles ({contactsData?.data.length ?? 0})</h3>
                 </div>
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs text-foreground hover:bg-orange-100 dark:hover:bg-orange-950/50"
+                  onClick={() => setActiveTab("contacts")}
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Manage
+                </Button>
               </div>
               {contactsData?.data.length ? (
                 <div className="p-4 text-sm flex flex-col gap-2.5">
