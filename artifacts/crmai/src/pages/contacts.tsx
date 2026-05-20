@@ -214,26 +214,34 @@ export default function Contacts() {
 
 export function ContactFormDialog({
   open, onOpenChange, mode, initialData, lockedAccountId, onSaved,
+  showPrimaryContactOption = false,
+  primaryContactLabel = "Set as primary contact",
+  defaultPrimary = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   initialData?: { id: number } & ContactFormData;
   lockedAccountId?: number;
-  onSaved?: () => void;
+  onSaved?: (saved: { id: number; isPrimary: boolean }) => void;
+  showPrimaryContactOption?: boolean;
+  primaryContactLabel?: string;
+  defaultPrimary?: boolean;
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createMutation = useCreateContact();
   const updateMutation = useUpdateContact();
   const [formData, setFormData] = useState<ContactFormData>(initialData ?? defaultFormData);
+  const [isPrimary, setIsPrimary] = useState<boolean>(defaultPrimary);
 
   React.useEffect(() => {
     if (open) {
       const base = initialData ?? defaultFormData;
       setFormData(lockedAccountId != null && !initialData ? { ...base, accountId: String(lockedAccountId) } : base);
+      setIsPrimary(defaultPrimary);
     }
-  }, [open, initialData, lockedAccountId]);
+  }, [open, initialData, lockedAccountId, defaultPrimary]);
 
   const { data: accountsData } = useListAccounts({ limit: 100 });
   const accounts = accountsData?.data ?? [];
@@ -252,10 +260,10 @@ export function ContactFormDialog({
     };
     if (mode === "create") {
       createMutation.mutate({ data: payload }, {
-        onSuccess: () => {
+        onSuccess: (created) => {
           toast({ title: "Contact created", description: "The contact has been added successfully." });
           invalidate();
-          onSaved?.();
+          onSaved?.({ id: created.id, isPrimary });
           onOpenChange(false);
         },
         onError: () => toast({ title: "Error", description: "Failed to create contact.", variant: "destructive" }),
@@ -265,7 +273,7 @@ export function ContactFormDialog({
         onSuccess: () => {
           toast({ title: "Contact updated", description: "Changes saved successfully." });
           invalidate();
-          onSaved?.();
+          onSaved?.({ id: initialData.id, isPrimary });
           onOpenChange(false);
         },
         onError: () => toast({ title: "Error", description: "Failed to update contact.", variant: "destructive" }),
@@ -328,6 +336,20 @@ export function ContactFormDialog({
               )}
             </div>
           </div>
+          {showPrimaryContactOption && (
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                id="isPrimaryContact"
+                type="checkbox"
+                checked={isPrimary}
+                onChange={(e) => setIsPrimary(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer"
+              />
+              <Label htmlFor="isPrimaryContact" className="cursor-pointer text-sm font-normal">
+                {primaryContactLabel}
+              </Label>
+            </div>
+          )}
           <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
             <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">

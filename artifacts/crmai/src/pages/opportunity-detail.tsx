@@ -36,6 +36,7 @@ interface OpportunityDetail {
   name: string;
   accountId: number | null;
   accountName: string | null;
+  contactId: number | null;
   contactFirstName: string | null;
   contactLastName: string | null;
   stage: string;
@@ -1636,8 +1637,9 @@ export default function OpportunityDetail() {
               </div>
               {contactsData?.data.length ? (
                 <div className="p-4 text-sm flex flex-col gap-2.5">
-                  {contactsData.data.slice(0, 4).map((c, idx) => {
+                  {contactsData.data.slice(0, 4).map((c) => {
                     const initials = `${c.firstName[0] ?? ""}${c.lastName[0] ?? ""}`.toUpperCase();
+                    const isPrimaryContact = opp.contactId != null && c.id === opp.contactId;
                     return (
                       <div key={c.id} className="flex items-center gap-2.5 group">
                         <div className="w-7 h-7 rounded-full bg-orange-100 dark:bg-orange-950/50 flex items-center justify-center text-orange-700 dark:text-orange-300 text-[11px] font-bold shrink-0">
@@ -1647,7 +1649,7 @@ export default function OpportunityDetail() {
                           <Link href={`/contacts/${c.id}`}>
                             <span className="text-blue-600 dark:text-blue-400 hover:underline text-sm cursor-pointer truncate block">
                               {c.firstName} {c.lastName}
-                              {idx === 0 && <span className="ml-1.5 text-[9px] font-bold text-orange-700 dark:text-orange-300">PRIMARY</span>}
+                              {isPrimaryContact && <span className="ml-1.5 text-[9px] font-bold text-orange-700 dark:text-orange-300">PRIMARY</span>}
                             </span>
                           </Link>
                           {c.title && <div className="text-[11px] text-muted-foreground truncate">Role: {c.title}</div>}
@@ -1719,7 +1721,32 @@ export default function OpportunityDetail() {
         mode={editingContact ? "edit" : "create"}
         initialData={editingContact ?? undefined}
         lockedAccountId={opp.accountId ?? undefined}
-        onSaved={() => {
+        showPrimaryContactOption
+        primaryContactLabel="Set as primary contact for this opportunity"
+        defaultPrimary={editingContact ? editingContact.id === opp.contactId : false}
+        onSaved={async (saved) => {
+          if (saved.isPrimary && numericId && saved.id !== opp.contactId) {
+            try {
+              const res = await fetch(`/api/opportunities/${numericId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ contactId: saved.id }),
+              });
+              if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+              }
+              queryClient.invalidateQueries({ queryKey: ["opportunity", id] });
+              toastTop({ title: "Primary contact updated" });
+            } catch (err) {
+              console.error("Failed to set primary contact", err);
+              toastTop({
+                title: "Couldn't set primary contact",
+                description: "The contact was saved, but updating the opportunity's primary contact failed.",
+                variant: "destructive",
+              });
+            }
+          }
           queryClient.invalidateQueries({ queryKey: ["opportunity-contacts", id] });
         }}
       />
