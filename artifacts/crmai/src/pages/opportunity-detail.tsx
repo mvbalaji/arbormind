@@ -775,6 +775,19 @@ export default function OpportunityDetail() {
                 <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEditOpen(true)} title="Edit opportunity details">
                   <Pencil className="w-3.5 h-3.5" /> Edit
                 </Button>
+                <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEmailOpen(true)} title="Send an email">
+                  <Mail className="w-3.5 h-3.5" /> Send Email
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-border"
+                  disabled={opp.stage !== "proposal"}
+                  title={opp.stage !== "proposal" ? "Create Quote is enabled when stage is Proposal/Price Quote" : "Create a new quote"}
+                  onClick={() => { setActiveTab("quotes"); setIsQuoteOpen(true); }}
+                >
+                  <FileText className="w-3.5 h-3.5" /> Create Quote
+                </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 border-border" title="Follow this opportunity">
                   <Plus className="w-3.5 h-3.5" /> Follow
                 </Button>
@@ -922,22 +935,6 @@ export default function OpportunityDetail() {
                 );
               })()}
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-                <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEmailOpen(true)}>
-                  <Mail className="w-3.5 h-3.5" /> Send Email
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 border-border"
-                  disabled={opp.stage !== "proposal"}
-                  title={opp.stage !== "proposal" ? "Create Quote is enabled when stage is Proposal/Price Quote" : "Create a new quote"}
-                  onClick={() => { setActiveTab("quotes"); setIsQuoteOpen(true); }}
-                >
-                  <FileText className="w-3.5 h-3.5" /> Create Quote
-                </Button>
-              </div>
             </div>
           </Card>
         </div>
