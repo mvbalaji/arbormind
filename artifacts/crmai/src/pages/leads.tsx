@@ -24,7 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import {
   Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink,
-  ChevronDown, Filter, Mail, UserCheck, Upload, ListFilter, Eye,
+  ChevronDown, Filter, Mail, UserCheck, Upload, ListFilter, Eye, Users,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -246,6 +246,9 @@ export default function Leads() {
         {/* Page Header */}
         <div className="flex items-center justify-between mb-3 gap-3">
           <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="p-1.5 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
             <h1 className="text-lg font-semibold text-foreground">Leads</h1>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
