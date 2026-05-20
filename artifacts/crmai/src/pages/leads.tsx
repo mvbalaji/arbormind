@@ -197,17 +197,17 @@ export default function Leads() {
         <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 z-10">
-                <tr className="bg-[#3D4F5C] border-b-2 border-[#D62828]">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Company</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Phone</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Lead Status</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white">Score</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Created Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white">Owner</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white">Actions</th>
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Name</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Company</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Phone</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Email</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Lead Status</th>
+                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">Score</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Created Date</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Owner</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
