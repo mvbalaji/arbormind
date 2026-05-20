@@ -998,8 +998,9 @@ export default function OpportunityDetail() {
           ];
           const current = subTabs.find((t) => t.id === activitySubTab) ?? subTabs[0];
 
-          const upcoming = (activitiesData?.data ?? []).filter((a) => a.status !== "completed" && a.status !== "cancelled");
-          const completed = (activitiesData?.data ?? []).filter((a) => a.status === "completed" || a.status === "cancelled");
+          const filteredActivities = (activitiesData?.data ?? []).filter((a) => a.type === activitySubTab);
+          const upcoming = filteredActivities.filter((a) => a.status !== "completed" && a.status !== "cancelled");
+          const completed = filteredActivities.filter((a) => a.status === "completed" || a.status === "cancelled");
 
           const handleAdd = async () => {
             const text = recapText.trim();
@@ -1037,7 +1038,7 @@ export default function OpportunityDetail() {
             });
           };
           const expandAll = () => {
-            const allIds = (activitiesData?.data ?? []).map((a) => a.id);
+            const allIds = filteredActivities.map((a) => a.id);
             setExpandedSteps(expandedSteps.size === allIds.length ? new Set() : new Set(allIds));
           };
 
@@ -1107,9 +1108,9 @@ export default function OpportunityDetail() {
                     size="sm"
                     className="h-7 px-2 text-xs"
                     onClick={expandAll}
-                    disabled={!activitiesData?.data.length}
+                    disabled={!filteredActivities.length}
                   >
-                    {expandedSteps.size > 0 && expandedSteps.size === (activitiesData?.data.length ?? 0) ? "Collapse All" : "Expand All"}
+                    {expandedSteps.size > 0 && expandedSteps.size === filteredActivities.length ? "Collapse All" : "Expand All"}
                   </Button>
                 </div>
               </div>
@@ -1200,10 +1201,10 @@ export default function OpportunityDetail() {
                 </div>
               )}
 
-              {!activitiesData?.data.length && (
+              {!filteredActivities.length && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  No activities logged yet. Use the form above to add one.
+                  No {current.type} activities logged yet. Use the form above to add one.
                 </div>
               )}
             </div>
@@ -1705,8 +1706,31 @@ export default function OpportunityDetail() {
       <EmailCompose
         open={isEmailOpen}
         onOpenChange={setIsEmailOpen}
-        defaultTo={opp.accountName ?? undefined}
+        defaultTo={
+          (opp.contactId != null
+            ? contactsData?.data.find((c) => c.id === opp.contactId)?.email
+            : contactsData?.data[0]?.email) ?? ""
+        }
+        recipientName={
+          (opp.contactId != null
+            ? (() => {
+                const c = contactsData?.data.find((cc) => cc.id === opp.contactId);
+                return c ? `${c.firstName} ${c.lastName}` : "";
+              })()
+            : (() => {
+                const c = contactsData?.data[0];
+                return c ? `${c.firstName} ${c.lastName}` : "";
+              })()) || ""
+        }
         defaultSubject={`Re: ${opp.name}`}
+        opportunityId={numericId ?? undefined}
+        contactId={opp.contactId ?? undefined}
+        accountId={opp.accountId ?? undefined}
+        onSent={() => {
+          queryClient.invalidateQueries({ queryKey: ["opportunity-activities", id] });
+          setActiveTab("activities");
+          setActivitySubTab("email");
+        }}
       />
       <OppEditDialog
         open={isEditOpen}
