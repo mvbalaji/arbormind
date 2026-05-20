@@ -760,7 +760,7 @@ export default function Quotes() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs sticky top-0 z-10">
-                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
                   <th className="w-10 px-3 py-3 border-r border-blue-500/40">
                     <input
                       type="checkbox"

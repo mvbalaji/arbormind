@@ -202,7 +202,7 @@ export default function Accounts() {
           <div className="overflow-auto max-h-[calc(100vh-260px)]">
             <table className="w-full text-sm min-w-[900px]">
               <thead className="sticky top-0 z-10">
-                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide divide-x divide-blue-500/40">
                   <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Name</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold">Location</th>
                   <th className="px-4 py-2.5 text-left text-xs font-semibold">Phone</th>

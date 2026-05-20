@@ -245,7 +245,7 @@ export default function AccessControlPage() {
                   <div className="overflow-x-auto rounded-md border border-border">
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 z-10">
-                        <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800">
+                        <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Screen</th>
                           {data.roles.map((r) => (
                             <th key={r.key} className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">
@@ -325,7 +325,7 @@ export default function AccessControlPage() {
                   <div className="overflow-x-auto rounded-md border border-border">
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 z-10">
-                        <tr className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 border-b border-indigo-800">
+                        <tr className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 border-b border-indigo-800 divide-x divide-indigo-500/40">
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap" rowSpan={2}>Record Type</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap" rowSpan={2}>Role</th>
                           {PERM_COLS.map((c) => (

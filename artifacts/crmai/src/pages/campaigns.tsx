@@ -213,7 +213,7 @@ export default function Campaigns() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
-                <tr>
+                <tr className="divide-x divide-border">
                   <th className="px-6 py-4 font-medium">Campaign</th>
                   <th className="px-6 py-4 font-medium">Type</th>
                   <th className="px-6 py-4 font-medium">Status</th>

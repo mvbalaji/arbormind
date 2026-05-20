@@ -81,7 +81,7 @@ export default function Contacts() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
-                <tr>
+                <tr className="divide-x divide-border">
                   <th className="px-6 py-4 font-medium">Name</th>
                   <th className="px-6 py-4 font-medium">Contact Info</th>
                   <th className="px-6 py-4 font-medium">Account / Title</th>
