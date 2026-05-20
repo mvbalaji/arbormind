@@ -792,7 +792,6 @@ export default function OpportunityDetail() {
                   <Plus className="w-3.5 h-3.5" /> Follow
                 </Button>
                 <Button size="sm" variant="outline" className="border-border" title="Create a new case linked to this opportunity">New Case</Button>
-                <Button size="sm" variant="outline" className="border-border" title="Add a new note">New Note</Button>
                 <Button size="sm" variant="outline" className="border-border" title="Clone this opportunity">Clone</Button>
                 <Button size="sm" variant="outline" className="border-border p-2" aria-label="More actions">
                   <MoreVertical className="w-3.5 h-3.5" />
