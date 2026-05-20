@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenuLabel, DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -24,7 +25,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import {
   Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink,
-  ChevronDown, Filter, UserCheck, Upload, ListFilter, Eye, Users, ArrowUpDown,
+  ChevronDown, Filter, UserCheck, Upload, ListFilter, Eye, Users, ArrowUpDown, Columns3,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -101,6 +102,35 @@ const LEAD_COL_ORDER: LeadColKey[] = ["select", "name", "company", "phone", "ema
 const LEAD_COL_RESIZABLE: ReadonlySet<LeadColKey> = new Set<LeadColKey>(["name", "company", "phone", "email", "status", "score", "createdAt", "owner", "actions"]);
 const LEAD_COL_MIN = 60;
 const LEAD_COL_STORAGE_KEY = "col-widths:leads:v1";
+
+type LeadToggleableCol = "name" | "company" | "phone" | "email" | "status" | "score" | "createdAt" | "owner";
+const LEAD_TOGGLEABLE_COLS: { key: LeadToggleableCol; label: string }[] = [
+  { key: "name", label: "Name" },
+  { key: "company", label: "Company" },
+  { key: "phone", label: "Phone" },
+  { key: "email", label: "Email" },
+  { key: "status", label: "Lead Status" },
+  { key: "score", label: "Score" },
+  { key: "createdAt", label: "Created Date" },
+  { key: "owner", label: "Owner" },
+];
+const LEAD_VIS_STORAGE_KEY = "col-visibility:leads:v1";
+
+function loadLeadColVisibility(): Set<LeadToggleableCol> {
+  const all = new Set<LeadToggleableCol>(LEAD_TOGGLEABLE_COLS.map((c) => c.key));
+  if (typeof window === "undefined") return all;
+  try {
+    const raw = window.localStorage.getItem(LEAD_VIS_STORAGE_KEY);
+    if (!raw) return all;
+    const parsed = JSON.parse(raw) as string[];
+    if (!Array.isArray(parsed)) return all;
+    const valid = LEAD_TOGGLEABLE_COLS.map((c) => c.key);
+    const filtered = parsed.filter((k): k is LeadToggleableCol => (valid as string[]).includes(k));
+    return new Set<LeadToggleableCol>(filtered);
+  } catch {
+    return all;
+  }
+}
 
 function loadLeadColWidths(): Record<LeadColKey, number> {
   if (typeof window === "undefined") return { ...LEAD_COL_DEFAULTS };
@@ -193,6 +223,28 @@ export default function Leads() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [sortField, setSortField] = useState<string>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [visibleCols, setVisibleCols] = useState<Set<LeadToggleableCol>>(() => loadLeadColVisibility());
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(LEAD_VIS_STORAGE_KEY, JSON.stringify(Array.from(visibleCols)));
+    } catch {
+      // ignore
+    }
+  }, [visibleCols]);
+  const toggleCol = (key: LeadToggleableCol) => {
+    setVisibleCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        if (next.size <= 1) return prev;
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+  const isColVisible = (key: LeadToggleableCol) => visibleCols.has(key);
+  const visibleColCount = 2 + visibleCols.size;
   const { widths: colWidths, startResize: startColResize, resetWidths: resetColWidths } = useLeadColResize();
   const { data, isLoading } = useListLeads({ search, limit: 200 });
 
@@ -375,7 +427,42 @@ export default function Leads() {
 
         {/* Table */}
         <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
-          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  title="Show or hide columns"
+                >
+                  <Columns3 className="w-3.5 h-3.5" />
+                  Columns
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel className="text-xs">Toggle columns</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {LEAD_TOGGLEABLE_COLS.map((c) => (
+                  <DropdownMenuCheckboxItem
+                    key={c.key}
+                    checked={visibleCols.has(c.key)}
+                    onCheckedChange={() => toggleCol(c.key)}
+                    onSelect={(e) => e.preventDefault()}
+                    className="text-sm cursor-pointer"
+                  >
+                    {c.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setVisibleCols(new Set(LEAD_TOGGLEABLE_COLS.map((c) => c.key)))}
+                  className="text-xs cursor-pointer"
+                >
+                  Show all
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button
               type="button"
               onClick={resetColWidths}
@@ -388,7 +475,7 @@ export default function Leads() {
           <div className="overflow-auto max-h-[calc(100vh-340px)]">
             <table className="text-sm" style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
               <colgroup>
-                {LEAD_COL_ORDER.map((k) => (
+                {LEAD_COL_ORDER.filter((k) => k === "select" || k === "actions" || isColVisible(k as LeadToggleableCol)).map((k) => (
                   <col key={k} style={{ width: `${colWidths[k]}px` }} />
                 ))}
               </colgroup>
@@ -402,21 +489,21 @@ export default function Leads() {
                       className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
                     />
                   </th>
-                  <th className="relative px-4 py-3 text-left"><SortHeader field="name">Name</SortHeader><ColResizeHandle onMouseDown={startColResize("name")} /></th>
-                  <th className="relative px-4 py-3 text-left"><SortHeader field="company">Company</SortHeader><ColResizeHandle onMouseDown={startColResize("company")} /></th>
-                  <th className="relative px-4 py-3 text-left"><SortHeader field="phone">Phone</SortHeader><ColResizeHandle onMouseDown={startColResize("phone")} /></th>
-                  <th className="relative px-4 py-3 text-left"><SortHeader field="email">Email</SortHeader><ColResizeHandle onMouseDown={startColResize("email")} /></th>
-                  <th className="relative px-4 py-3 text-left"><SortHeader field="status">Lead Status</SortHeader><ColResizeHandle onMouseDown={startColResize("status")} /></th>
-                  <th className="relative px-4 py-3 text-center"><SortHeader field="score" align="center">Score</SortHeader><ColResizeHandle onMouseDown={startColResize("score")} /></th>
-                  <th className="relative px-4 py-3 text-left"><SortHeader field="createdAt">Created Date</SortHeader><ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>
-                  <th className="relative px-4 py-3 text-left"><SortHeader field="owner">Owner</SortHeader><ColResizeHandle onMouseDown={startColResize("owner")} /></th>
+                  {isColVisible("name") && <th className="relative px-4 py-3 text-left"><SortHeader field="name">Name</SortHeader><ColResizeHandle onMouseDown={startColResize("name")} /></th>}
+                  {isColVisible("company") && <th className="relative px-4 py-3 text-left"><SortHeader field="company">Company</SortHeader><ColResizeHandle onMouseDown={startColResize("company")} /></th>}
+                  {isColVisible("phone") && <th className="relative px-4 py-3 text-left"><SortHeader field="phone">Phone</SortHeader><ColResizeHandle onMouseDown={startColResize("phone")} /></th>}
+                  {isColVisible("email") && <th className="relative px-4 py-3 text-left"><SortHeader field="email">Email</SortHeader><ColResizeHandle onMouseDown={startColResize("email")} /></th>}
+                  {isColVisible("status") && <th className="relative px-4 py-3 text-left"><SortHeader field="status">Lead Status</SortHeader><ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                  {isColVisible("score") && <th className="relative px-4 py-3 text-center"><SortHeader field="score" align="center">Score</SortHeader><ColResizeHandle onMouseDown={startColResize("score")} /></th>}
+                  {isColVisible("createdAt") && <th className="relative px-4 py-3 text-left"><SortHeader field="createdAt">Created Date</SortHeader><ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>}
+                  {isColVisible("owner") && <th className="relative px-4 py-3 text-left"><SortHeader field="owner">Owner</SortHeader><ColResizeHandle onMouseDown={startColResize("owner")} /></th>}
                   <th className="relative px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap sticky right-0 z-20 bg-blue-700 dark:bg-blue-800 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.25)]">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                    <td colSpan={visibleColCount} className="px-4 py-8 text-center text-muted-foreground text-sm">
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                         Loading leads...
@@ -425,7 +512,7 @@ export default function Leads() {
                   </tr>
                 ) : leads.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-12 text-center">
+                    <td colSpan={visibleColCount} className="px-4 py-12 text-center">
                       <div className="text-muted-foreground text-sm mb-3">No leads found.</div>
                       <Button size="sm" onClick={() => setIsCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                         <Plus className="w-3.5 h-3.5 mr-1.5" /> Create your first lead
@@ -442,44 +529,60 @@ export default function Leads() {
                           aria-label={`Select ${lead.firstName} ${lead.lastName}`}
                         />
                       </td>
-                      <td className="px-4 py-2.5">
-                        <Link href={`/leads/${lead.id}`}>
-                          <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
-                            {lead.firstName} {lead.lastName}
-                            <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
-                          </div>
-                        </Link>
-                        {lead.isConverted && (
-                          <span className="text-xs text-muted-foreground italic">Converted</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-sm text-foreground">{lead.company ?? <span className="text-muted-foreground">—</span>}</td>
-                      <td className="px-4 py-2.5 text-sm text-foreground whitespace-nowrap">{lead.phone ?? <span className="text-muted-foreground">—</span>}</td>
-                      <td className="px-4 py-2.5 text-sm text-foreground">{lead.email ?? <span className="text-muted-foreground">—</span>}</td>
-                      <td className="px-4 py-2.5">
-                        <span
-                          className={cn(
-                            "inline-flex items-center justify-center text-xs font-semibold capitalize pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
-                            STATUS_BADGE_COLORS[lead.status] ?? "bg-gray-500 text-white border-gray-500"
+                      {isColVisible("name") && (
+                        <td className="px-4 py-2.5">
+                          <Link href={`/leads/${lead.id}`}>
+                            <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
+                              {lead.firstName} {lead.lastName}
+                              <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                            </div>
+                          </Link>
+                          {lead.isConverted && (
+                            <span className="text-xs text-muted-foreground italic">Converted</span>
                           )}
-                          style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" }}
-                        >
-                          {lead.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        {lead.score != null ? (
-                          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-xs font-bold ${SCORE_COLORS(lead.score)}`}>
-                            {lead.score}
+                        </td>
+                      )}
+                      {isColVisible("company") && (
+                        <td className="px-4 py-2.5 text-sm text-foreground">{lead.company ?? <span className="text-muted-foreground">—</span>}</td>
+                      )}
+                      {isColVisible("phone") && (
+                        <td className="px-4 py-2.5 text-sm text-foreground whitespace-nowrap">{lead.phone ?? <span className="text-muted-foreground">—</span>}</td>
+                      )}
+                      {isColVisible("email") && (
+                        <td className="px-4 py-2.5 text-sm text-foreground">{lead.email ?? <span className="text-muted-foreground">—</span>}</td>
+                      )}
+                      {isColVisible("status") && (
+                        <td className="px-4 py-2.5">
+                          <span
+                            className={cn(
+                              "inline-flex items-center justify-center text-xs font-semibold capitalize pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
+                              STATUS_BADGE_COLORS[lead.status] ?? "bg-gray-500 text-white border-gray-500"
+                            )}
+                            style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" }}
+                          >
+                            {lead.status}
                           </span>
-                        ) : <span className="text-muted-foreground">—</span>}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                        {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : "—"}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                        {lead.assignedToName ?? <span className="italic">Unassigned</span>}
-                      </td>
+                        </td>
+                      )}
+                      {isColVisible("score") && (
+                        <td className="px-4 py-2.5 text-center">
+                          {lead.score != null ? (
+                            <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-xs font-bold ${SCORE_COLORS(lead.score)}`}>
+                              {lead.score}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </td>
+                      )}
+                      {isColVisible("createdAt") && (
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                          {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : "—"}
+                        </td>
+                      )}
+                      {isColVisible("owner") && (
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                          {lead.assignedToName ?? <span className="italic">Unassigned</span>}
+                        </td>
+                      )}
                       <td className="px-3 py-2.5 sticky right-0 z-10 bg-card group-hover:bg-muted/30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]">
                         <div className="flex items-center justify-center gap-1">
                           <Button
