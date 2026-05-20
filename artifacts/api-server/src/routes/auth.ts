@@ -201,33 +201,37 @@ router.get(
   }
 );
 
-router.get("/auth/me", (req, res) => {
+router.get("/auth/me", async (req, res) => {
   const isAuth = req.isAuthenticated?.();
   const hasUser = !!(req.user);
   const sessionUser = !!(req.session?.user);
   console.log("[Auth/Me] Request - session:", { sessionId: req.session?.id, cookie: req.headers.cookie?.substring(0, 100), isAuth, hasUser, sessionUser, user: req.session?.user?.email || req.user || "none" });
-  
-  // If session has user but req.user doesn't, use session user
+
+  let userData: { role?: string; [k: string]: unknown } | null = null;
   if ((isAuth && req.user) || req.session?.user) {
-    const userData = req.user || req.session.user;
+    userData = (req.user || req.session.user) as { role?: string; [k: string]: unknown };
+  } else if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    userData = {
+      id: 0,
+      email: "dev@crmai.local",
+      name: "Dev Admin",
+      role: "admin",
+      avatarUrl: null,
+    };
+  }
+
+  if (!userData) {
+    res.status(401).json({ user: null });
+    return;
+  }
+
+  try {
+    const { getScreenAccessForRole } = await import("../lib/access-control");
+    const screenAccess = await getScreenAccessForRole(userData.role ?? "");
+    res.json({ user: { ...userData, screenAccess } });
+  } catch {
     res.json({ user: userData });
-    return;
   }
-  // When Google OAuth is not configured, return a dev-mode admin user
-  // so the CRM remains accessible during development without credentials.
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    res.json({
-      user: {
-        id: 0,
-        email: "dev@crmai.local",
-        name: "Dev Admin",
-        role: "admin",
-        avatarUrl: null,
-      },
-    });
-    return;
-  }
-  res.status(401).json({ user: null });
 });
 
 router.post("/auth/login", (req, res) => {

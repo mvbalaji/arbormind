@@ -3,7 +3,10 @@ import { db } from "@workspace/db";
 import { contactsTable, usersTable, accountsTable, activitiesTable, opportunitiesTable } from "@workspace/db";
 import { eq, ilike, or, sql, and } from "drizzle-orm";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/contacts", requireScreenAccess("contacts"));
 
 const contactFields = {
   id: contactsTable.id,

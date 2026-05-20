@@ -3,7 +3,10 @@ import { db } from "@workspace/db";
 import { opportunitiesTable, usersTable, accountsTable, contactsTable, activitiesTable, opportunityItemsTable, opportunityStageHistoryTable } from "@workspace/db";
 import { eq, ilike, sql, and, isNull, asc } from "drizzle-orm";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/opportunities", requireScreenAccess("opportunities"));
 
 const oppFields = {
   id: opportunitiesTable.id,

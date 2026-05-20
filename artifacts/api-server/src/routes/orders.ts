@@ -3,7 +3,10 @@ import { db } from "@workspace/db";
 import { ordersTable, orderItemsTable, quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable } from "@workspace/db";
 import { eq, sql, inArray, desc } from "drizzle-orm";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/orders", requireScreenAccess("orders"));
 
 function parseId(raw: string): number | null {
   const n = parseInt(raw, 10);

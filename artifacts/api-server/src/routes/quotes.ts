@@ -6,7 +6,10 @@ import PDFDocument from "pdfkit";
 import nodemailer from "nodemailer";
 import { Writable } from "stream";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/quotes", requireScreenAccess("quotes"));
 
 function parseId(raw: string): number | null {
   const n = parseInt(raw, 10);

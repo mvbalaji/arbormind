@@ -3,7 +3,10 @@ import { db } from "@workspace/db";
 import { campaignsTable } from "@workspace/db";
 import { eq, ilike, or, sql, and } from "drizzle-orm";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/campaigns", requireScreenAccess("campaigns"));
 
 function formatCampaign(c: Record<string, unknown>) {
   return {

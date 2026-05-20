@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
+export type ScreenAccessLevel = "none" | "view" | "read_only" | "edit";
+
 export interface AuthUser {
   id: number;
   email: string;
@@ -7,6 +9,25 @@ export interface AuthUser {
   role: string;
   avatarUrl?: string | null;
   username?: string;
+  screenAccess?: Record<string, ScreenAccessLevel>;
+}
+
+const LEVEL_RANK: Record<ScreenAccessLevel, number> = {
+  none: 0, view: 1, read_only: 2, edit: 3,
+};
+
+export function useScreenAccess(screenKey: string) {
+  const { user } = useAuth();
+  const level: ScreenAccessLevel = user?.role === "admin"
+    ? "edit"
+    : (user?.screenAccess?.[screenKey] ?? "none");
+  const meets = (req: ScreenAccessLevel) => LEVEL_RANK[level] >= LEVEL_RANK[req];
+  return {
+    level,
+    canView: meets("view"),
+    canRead: meets("read_only"),
+    canEdit: meets("edit"),
+  };
 }
 
 interface AuthContextValue {

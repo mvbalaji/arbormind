@@ -6,7 +6,10 @@ import {
 } from "@workspace/db";
 import { eq, sql, gte, lt, and } from "drizzle-orm";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/reports", requireScreenAccess("reports"));
 
 router.get("/reports/dashboard", async (req, res) => {
   try {

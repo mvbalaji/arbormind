@@ -3,7 +3,10 @@ import { db } from "@workspace/db";
 import { productsTable } from "@workspace/db";
 import { eq, ilike, sql } from "drizzle-orm";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/products", requireScreenAccess("products"));
 
 router.get("/products", async (req, res) => {
   try {

@@ -3,7 +3,10 @@ import { db } from "@workspace/db";
 import { casesTable, usersTable, contactsTable, accountsTable } from "@workspace/db";
 import { eq, ilike, sql, and } from "drizzle-orm";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/cases", requireScreenAccess("cases"));
 
 const caseFields = {
   id: casesTable.id,

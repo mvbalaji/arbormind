@@ -3,7 +3,10 @@ import { db } from "@workspace/db";
 import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitiesTable } from "@workspace/db";
 import { eq, sql, and } from "drizzle-orm";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/activities", requireScreenAccess("activities"));
 
 const activityFields = {
   id: activitiesTable.id,

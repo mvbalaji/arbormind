@@ -47,23 +47,24 @@ import { useAuth } from "@/context/auth";
 import { useTheme } from "@/context/theme";
 import { NotificationBell } from "@/components/notification-bell";
 
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Leads", href: "/leads", icon: UserPlus },
-  { label: "Contacts", href: "/contacts", icon: Users },
-  { label: "Accounts", href: "/accounts", icon: Building2 },
-  { label: "Opportunities", href: "/opportunities", icon: Briefcase },
-  { label: "Campaigns", href: "/campaigns", icon: Megaphone },
-  { label: "Activities", href: "/activities", icon: Activity },
-  { label: "Products", href: "/products", icon: Package },
-  { label: "Quotes", href: "/quotes", icon: FileText },
-  { label: "Orders", href: "/orders", icon: ShoppingCart },
-  { label: "Cases", href: "/cases", icon: LifeBuoy },
-  { label: "Reports", href: "/reports", icon: BarChart3 },
-  { label: "AI Assistant", href: "/ai-assistant", icon: Bot },
-  { label: "Approvals", href: "/approvals", icon: ShieldCheck },
-  { label: "Support", href: "/support", icon: Mail },
-  { label: "Team & Data", href: "/users", icon: Settings },
+const NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: string; adminOnly?: boolean }> = [
+  { label: "Dashboard", href: "/", icon: LayoutDashboard, screenKey: "dashboard" },
+  { label: "Leads", href: "/leads", icon: UserPlus, screenKey: "leads" },
+  { label: "Contacts", href: "/contacts", icon: Users, screenKey: "contacts" },
+  { label: "Accounts", href: "/accounts", icon: Building2, screenKey: "accounts" },
+  { label: "Opportunities", href: "/opportunities", icon: Briefcase, screenKey: "opportunities" },
+  { label: "Campaigns", href: "/campaigns", icon: Megaphone, screenKey: "campaigns" },
+  { label: "Activities", href: "/activities", icon: Activity, screenKey: "activities" },
+  { label: "Products", href: "/products", icon: Package, screenKey: "products" },
+  { label: "Quotes", href: "/quotes", icon: FileText, screenKey: "quotes" },
+  { label: "Orders", href: "/orders", icon: ShoppingCart, screenKey: "orders" },
+  { label: "Cases", href: "/cases", icon: LifeBuoy, screenKey: "cases" },
+  { label: "Reports", href: "/reports", icon: BarChart3, screenKey: "reports" },
+  { label: "AI Assistant", href: "/ai-assistant", icon: Bot, screenKey: "ai-assistant" },
+  { label: "Approvals", href: "/approvals", icon: ShieldCheck, screenKey: "approvals" },
+  { label: "Support", href: "/support", icon: Mail, screenKey: "support" },
+  { label: "Team & Data", href: "/users", icon: Settings, screenKey: "users" },
+  { label: "Access Control", href: "/admin/access-control", icon: ShieldCheck, screenKey: "access-control", adminOnly: true },
 ];
 
 // 4 pinned tabs for the mobile bottom bar; "More" is the 5th slot
@@ -89,9 +90,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return location === href || location.startsWith(href + "/");
   };
 
-  const visibleNavItems = NAV_ITEMS.filter(
-    (item) => !item.adminOnly || user?.role === "admin",
-  );
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    if (item.adminOnly && user?.role !== "admin") return false;
+    // Admin always sees everything; for other roles, hide screens with no access.
+    if (user?.role === "admin") return true;
+    if (!item.screenKey) return true;
+    const lvl = user?.screenAccess?.[item.screenKey];
+    return lvl != null && lvl !== "none";
+  });
 
   return (
     <TooltipProvider delayDuration={200}>

@@ -4,7 +4,10 @@ import { accountsTable, usersTable, contactsTable, opportunitiesTable, activitie
 import type { InsertAccount } from "@workspace/db";
 import { eq, ilike, sql, and, desc, inArray } from "drizzle-orm";
 
+import { requireScreenAccess } from "../lib/access-control";
+
 const router: IRouter = Router();
+router.use("/accounts", requireScreenAccess("accounts"));
 
 const accountFields = {
   id: accountsTable.id,

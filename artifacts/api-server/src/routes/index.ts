@@ -21,6 +21,8 @@ import ordersRouter from "./orders";
 import aiRouter from "./ai";
 import approvalsRouter from "./approvals";
 import entityNotesRouter from "./entity-notes";
+import accessControlRouter from "./access-control";
+import { seedAccessControl } from "../lib/access-control";
 
 const router: IRouter = Router();
 
@@ -46,5 +48,9 @@ router.use(ordersRouter);
 router.use(aiRouter);
 router.use(approvalsRouter);
 router.use(entityNotesRouter);
+router.use(accessControlRouter);
+
+// Idempotent seed of roles, screens, and default admin access on startup.
+void seedAccessControl();
 
 export default router;

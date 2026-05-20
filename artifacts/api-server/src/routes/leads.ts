@@ -3,8 +3,10 @@ import { db } from "@workspace/db";
 import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTable, leadContactsTable } from "@workspace/db";
 import { eq, ilike, or, sql, and } from "drizzle-orm";
 import { computeLeadScore } from "../lib/lead-scoring";
+import { requireScreenAccess } from "../lib/access-control";
 
 const router: IRouter = Router();
+router.use("/leads", requireScreenAccess("leads"));
 
 const leadFields = {
   id: leadsTable.id,
