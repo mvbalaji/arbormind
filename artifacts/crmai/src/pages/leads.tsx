@@ -28,6 +28,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { EmailCompose } from "@/components/email-compose";
+import { cn } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-50 text-blue-700 border-blue-200",
@@ -35,6 +36,14 @@ const STATUS_COLORS: Record<string, string> = {
   qualified: "bg-green-50 text-green-700 border-green-200",
   unqualified: "bg-red-50 text-red-700 border-red-200",
   converted: "bg-gray-100 text-gray-600 border-gray-200",
+};
+
+const STATUS_BADGE_COLORS: Record<string, string> = {
+  new: "bg-blue-600 text-white border-blue-600",
+  contacted: "bg-purple-500 text-white border-purple-500",
+  qualified: "bg-emerald-600 text-white border-emerald-600",
+  unqualified: "bg-red-500 text-white border-red-500",
+  converted: "bg-gray-500 text-white border-gray-500",
 };
 
 const SCORE_COLORS = (score: number) =>
@@ -197,17 +206,17 @@ export default function Leads() {
         <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Name</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Company</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Phone</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Email</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Lead Status</th>
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">Score</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Created Date</th>
-                  <th className="px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground">Owner</th>
-                  <th className="px-4 py-2.5 text-right text-xs font-semibold text-muted-foreground">Actions</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Company</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Phone</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Lead Status</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Score</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Created Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -247,9 +256,15 @@ export default function Leads() {
                       <td className="px-4 py-2.5 text-sm text-foreground">{lead.phone ?? <span className="text-muted-foreground">—</span>}</td>
                       <td className="px-4 py-2.5 text-sm text-foreground">{lead.email ?? <span className="text-muted-foreground">—</span>}</td>
                       <td className="px-4 py-2.5">
-                        <Badge variant="outline" className={`text-xs capitalize font-medium border ${STATUS_COLORS[lead.status] ?? ""}`}>
+                        <span
+                          className={cn(
+                            "inline-flex items-center justify-center text-xs font-semibold capitalize pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
+                            STATUS_BADGE_COLORS[lead.status] ?? "bg-gray-500 text-white border-gray-500"
+                          )}
+                          style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" }}
+                        >
                           {lead.status}
-                        </Badge>
+                        </span>
                       </td>
                       <td className="px-4 py-2.5 text-center">
                         {lead.score != null ? (
