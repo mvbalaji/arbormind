@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
@@ -90,6 +90,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const moreBtnRef = useRef<HTMLDivElement>(null);
   const [visibleNavCount, setVisibleNavCount] = useState<number>(Number.MAX_SAFE_INTEGER);
 
+  // Per-user, user-controlled nav tab order (persisted to localStorage).
+  const navOrderKey = `crmai:navOrder:${user?.id ?? "anon"}`;
+  const [navOrder, setNavOrder] = useState<string[]>([]);
+  const [dragHref, setDragHref] = useState<string | null>(null);
+  const [dragOverHref, setDragOverHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(navOrderKey);
+      setNavOrder(raw ? (JSON.parse(raw) as string[]) : []);
+    } catch {
+      setNavOrder([]);
+    }
+  }, [navOrderKey]);
+
+  const persistNavOrder = (next: string[]) => {
+    setNavOrder(next);
+    try { localStorage.setItem(navOrderKey, JSON.stringify(next)); } catch { /* ignore */ }
+  };
+
   useLayoutEffect(() => {
     const container = navContainerRef.current;
     const measure = navMeasureRef.current;
@@ -124,14 +144,36 @@ export function Layout({ children }: { children: React.ReactNode }) {
     };
   }, [user?.role, user?.screenAccess]);
 
-  const visibleNavItems = NAV_ITEMS.filter((item) => {
-    if (item.adminOnly && user?.role !== "admin") return false;
-    // Admin always sees everything; for other roles, hide screens with no access.
-    if (user?.role === "admin") return true;
-    if (!item.screenKey) return true;
-    const lvl = user?.screenAccess?.[item.screenKey];
-    return lvl != null && lvl !== "none";
-  });
+  const visibleNavItems = useMemo(() => {
+    const allowed = NAV_ITEMS.filter((item) => {
+      if (item.adminOnly && user?.role !== "admin") return false;
+      if (user?.role === "admin") return true;
+      if (!item.screenKey) return true;
+      const lvl = user?.screenAccess?.[item.screenKey];
+      return lvl != null && lvl !== "none";
+    });
+    if (navOrder.length === 0) return allowed;
+    const byHref = new Map(allowed.map((i) => [i.href, i] as const));
+    const ordered: typeof allowed = [];
+    for (const href of navOrder) {
+      const it = byHref.get(href);
+      if (it) { ordered.push(it); byHref.delete(href); }
+    }
+    for (const it of allowed) if (byHref.has(it.href)) ordered.push(it);
+    return ordered;
+  }, [user?.role, user?.screenAccess, navOrder]);
+
+  const reorderNav = (sourceHref: string, targetHref: string) => {
+    if (sourceHref === targetHref) return;
+    const hrefs = visibleNavItems.map((i) => i.href);
+    const from = hrefs.indexOf(sourceHref);
+    const to = hrefs.indexOf(targetHref);
+    if (from < 0 || to < 0) return;
+    const next = hrefs.slice();
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    persistNavOrder(next);
+  };
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -305,23 +347,61 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div ref={navContainerRef} className="flex items-stretch gap-0 px-2 overflow-hidden">
               {visibleNavItems.slice(0, visibleNavCount).map((item) => {
                 const active = isActive(item.href);
+                const isDragging = dragHref === item.href;
+                const isDragOver = dragOverHref === item.href && dragHref !== null && dragHref !== item.href;
                 return (
-                  <Link key={item.href} href={item.href}>
-                    <div
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer relative",
-                        active
-                          ? "text-white"
-                          : "text-sidebar-foreground/70 hover:bg-white/10 hover:text-white"
-                      )}
-                    >
-                      <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
-                      {item.label}
-                      {active && (
-                        <span className="absolute left-2 right-2 bottom-0 h-0.5 bg-white rounded-t-full" />
-                      )}
-                    </div>
-                  </Link>
+                  <div
+                    key={item.href}
+                    draggable
+                    onDragStart={(e) => {
+                      setDragHref(item.href);
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", item.href);
+                    }}
+                    onDragOver={(e) => {
+                      if (!dragHref) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverHref !== item.href) setDragOverHref(item.href);
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverHref === item.href) setDragOverHref(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const src = e.dataTransfer.getData("text/plain") || dragHref;
+                      if (src) reorderNav(src, item.href);
+                      setDragHref(null);
+                      setDragOverHref(null);
+                    }}
+                    onDragEnd={() => {
+                      setDragHref(null);
+                      setDragOverHref(null);
+                    }}
+                    className={cn(
+                      "relative",
+                      isDragging && "opacity-40",
+                      isDragOver && "before:absolute before:left-0 before:top-1 before:bottom-1 before:w-0.5 before:bg-white before:rounded-full"
+                    )}
+                    title="Drag to reorder"
+                  >
+                    <Link href={item.href}>
+                      <div
+                        className={cn(
+                          "flex items-center gap-1.5 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors cursor-grab active:cursor-grabbing relative",
+                          active
+                            ? "text-white"
+                            : "text-sidebar-foreground/70 hover:bg-white/10 hover:text-white"
+                        )}
+                      >
+                        <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                        {item.label}
+                        {active && (
+                          <span className="absolute left-2 right-2 bottom-0 h-0.5 bg-white rounded-t-full" />
+                        )}
+                      </div>
+                    </Link>
+                  </div>
                 );
               })}
 
