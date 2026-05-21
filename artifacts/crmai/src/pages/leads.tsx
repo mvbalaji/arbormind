@@ -426,7 +426,7 @@ export default function Leads() {
         <AISummary entityType="leads" />
 
         {/* Table */}
-        <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
+        <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
           <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

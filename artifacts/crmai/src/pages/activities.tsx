@@ -173,7 +173,7 @@ export default function Activities() {
         )}
 
         {viewMode === "list" && (
-        <Card className="glass-panel border-border">
+        <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800">
           <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
             <ColumnsMenu columns={ACTIVITY_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>

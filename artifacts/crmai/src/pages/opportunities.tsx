@@ -544,7 +544,7 @@ export default function Opportunities() {
             ))}
           </div>
         ) : viewMode === "list" ? (
-          <Card className="border-border overflow-hidden shadow-sm">
+          <Card className="border-2 border-blue-700 dark:border-blue-800 overflow-hidden shadow-sm">
             <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
               <ColumnsMenu columns={OPPORTUNITY_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
             </div>
