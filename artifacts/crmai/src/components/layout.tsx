@@ -63,8 +63,7 @@ const NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: str
   { label: "AI Assistant", href: "/ai-assistant", icon: Bot, screenKey: "ai-assistant" },
   { label: "Approvals", href: "/approvals", icon: ShieldCheck, screenKey: "approvals" },
   { label: "Support", href: "/support", icon: Mail, screenKey: "support" },
-  { label: "Team & Data", href: "/users", icon: Settings, screenKey: "users" },
-  { label: "Access Control", href: "/admin/access-control", icon: ShieldCheck, screenKey: "access-control", adminOnly: true },
+  { label: "User Management", href: "/users", icon: Settings, screenKey: "users" },
 ];
 
 // 4 pinned tabs for the mobile bottom bar; "More" is the 5th slot

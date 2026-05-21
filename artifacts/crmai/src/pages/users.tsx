@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
 import { DataImport } from "@/components/data-import";
 import { cn } from "@/lib/utils";
+import { AccessControlInline } from "./access-control";
 
 interface AppUser {
   id: number;
@@ -81,7 +82,7 @@ export default function Users() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("sales");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"team" | "import" | "mail">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "access" | "import" | "mail">("team");
 
   // Mail settings state
   const [mailSettings, setMailSettings] = useState<MailSettings>(defaultSettings);
@@ -229,7 +230,7 @@ export default function Users() {
       <div className="flex flex-col gap-6">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Team & Data</h1>
+            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">User Management</h1>
             <p className="text-muted-foreground mt-1 text-sm">Manage team members, access control, data imports and mail configuration.</p>
           </div>
         </div>
@@ -238,6 +239,7 @@ export default function Users() {
         <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
           {([
             { id: "team", label: "Team Settings", icon: UsersIcon },
+            { id: "access", label: "Access Control", icon: Shield },
             { id: "import", label: "Data Import", icon: Upload },
             { id: "mail", label: "Mail Settings", icon: Mail },
           ] as const).map((tab) => (
@@ -256,6 +258,9 @@ export default function Users() {
             </button>
           ))}
         </div>
+
+        {/* Access Control Tab */}
+        {activeTab === "access" && <AccessControlInline />}
 
         {/* Data Import Tab */}
         {activeTab === "import" && <DataImport />}

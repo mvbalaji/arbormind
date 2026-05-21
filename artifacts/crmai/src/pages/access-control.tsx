@@ -67,6 +67,14 @@ const LEVEL_BADGE: Record<AccessLevel, string> = {
 };
 
 export default function AccessControlPage() {
+  return (
+    <Layout>
+      <AccessControlInline />
+    </Layout>
+  );
+}
+
+export function AccessControlInline() {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -188,15 +196,13 @@ export default function AccessControlPage() {
 
   if (!isAdmin) {
     return (
-      <Layout>
-        <div className="max-w-2xl mx-auto mt-20 text-center">
-          <Lock className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-          <h2 className="text-xl font-semibold mb-2">Restricted Area</h2>
-          <p className="text-muted-foreground text-sm">
-            The Access Control Configuration Screen is visible to System Administrators only.
-          </p>
-        </div>
-      </Layout>
+      <div className="max-w-2xl mx-auto mt-20 text-center">
+        <Lock className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+        <h2 className="text-xl font-semibold mb-2">Restricted Area</h2>
+        <p className="text-muted-foreground text-sm">
+          The Access Control Configuration Screen is visible to System Administrators only.
+        </p>
+      </div>
     );
   }
 
@@ -206,17 +212,16 @@ export default function AccessControlPage() {
   }, {});
 
   return (
-    <Layout>
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Shield className="w-6 h-6 text-blue-600" />
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Access Control</h1>
-            <p className="text-sm text-muted-foreground">
-              Define which roles can view, read, or edit each screen. Administrator role always has full edit access.
-            </p>
-          </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Shield className="w-6 h-6 text-blue-600" />
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Access Control</h2>
+          <p className="text-sm text-muted-foreground">
+            Define which roles can view, read, or edit each screen. Administrator role always has full edit access.
+          </p>
         </div>
+      </div>
 
         <Tabs defaultValue="matrix" className="space-y-4">
           <TabsList>
@@ -474,8 +479,7 @@ export default function AccessControlPage() {
               </CardContent>
             </Card>
           </TabsContent>
-        </Tabs>
-      </div>
-    </Layout>
+      </Tabs>
+    </div>
   );
 }
