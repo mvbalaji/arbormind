@@ -208,13 +208,13 @@ export default function Products() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
-                <tr className="divide-x divide-border">
-                  {colVis.isVisible("name") && <th className="px-6 py-4 font-medium">Name / Code</th>}
-                  {colVis.isVisible("category") && <th className="px-6 py-4 font-medium">Category</th>}
-                  {colVis.isVisible("price") && <th className="px-6 py-4 font-medium text-right">Unit Price</th>}
-                  {colVis.isVisible("status") && <th className="px-6 py-4 font-medium">Status</th>}
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
+                  {colVis.isVisible("name") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name / Code</th>}
+                  {colVis.isVisible("category") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Category</th>}
+                  {colVis.isVisible("price") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Unit Price</th>}
+                  {colVis.isVisible("status") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</th>}
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

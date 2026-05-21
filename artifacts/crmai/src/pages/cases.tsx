@@ -89,14 +89,14 @@ export default function Cases() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
-                <tr className="divide-x divide-border">
-                  {colVis.isVisible("caseNumber") && <th className="px-6 py-4 font-medium">Case #</th>}
-                  {colVis.isVisible("subject") && <th className="px-6 py-4 font-medium">Subject</th>}
-                  {colVis.isVisible("priority") && <th className="px-6 py-4 font-medium">Priority</th>}
-                  {colVis.isVisible("status") && <th className="px-6 py-4 font-medium">Status</th>}
-                  {colVis.isVisible("opened") && <th className="px-6 py-4 font-medium">Opened</th>}
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
+                  {colVis.isVisible("caseNumber") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Case #</th>}
+                  {colVis.isVisible("subject") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Subject</th>}
+                  {colVis.isVisible("priority") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Priority</th>}
+                  {colVis.isVisible("status") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</th>}
+                  {colVis.isVisible("opened") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Opened</th>}
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

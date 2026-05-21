@@ -94,13 +94,13 @@ export default function Contacts() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
-                <tr className="divide-x divide-border">
-                  {colVis.isVisible("name") && <th className="px-6 py-4 font-medium">Name</th>}
-                  {colVis.isVisible("contactInfo") && <th className="px-6 py-4 font-medium">Contact Info</th>}
-                  {colVis.isVisible("account") && <th className="px-6 py-4 font-medium">Account / Title</th>}
-                  {colVis.isVisible("owner") && <th className="px-6 py-4 font-medium">Owner</th>}
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
+                  {colVis.isVisible("name") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name</th>}
+                  {colVis.isVisible("contactInfo") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Contact Info</th>}
+                  {colVis.isVisible("account") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Account / Title</th>}
+                  {colVis.isVisible("owner") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</th>}
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

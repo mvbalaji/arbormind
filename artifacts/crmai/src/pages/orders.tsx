@@ -575,16 +575,16 @@ export default function Orders() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
-                <tr className="divide-x divide-border">
-                  {colVis.isVisible("orderNumber") && <th className="px-6 py-4 font-medium">Order #</th>}
-                  {colVis.isVisible("account") && <th className="px-6 py-4 font-medium">Account</th>}
-                  {colVis.isVisible("opportunity") && <th className="px-6 py-4 font-medium">Opportunity</th>}
-                  {colVis.isVisible("quote") && <th className="px-6 py-4 font-medium">Quote</th>}
-                  {colVis.isVisible("total") && <th className="px-6 py-4 font-medium text-right">Total</th>}
-                  {colVis.isVisible("status") && <th className="px-6 py-4 font-medium">Status</th>}
-                  {colVis.isVisible("date") && <th className="px-6 py-4 font-medium">Date</th>}
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
+                  {colVis.isVisible("orderNumber") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Order #</th>}
+                  {colVis.isVisible("account") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Account</th>}
+                  {colVis.isVisible("opportunity") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Opportunity</th>}
+                  {colVis.isVisible("quote") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Quote</th>}
+                  {colVis.isVisible("total") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Total</th>}
+                  {colVis.isVisible("status") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</th>}
+                  {colVis.isVisible("date") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Date</th>}
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

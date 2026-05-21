@@ -179,14 +179,14 @@ export default function Activities() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
-                <tr className="divide-x divide-border">
-                  {colVis.isVisible("icon") && <th className="px-6 py-4 font-medium w-12"></th>}
-                  {colVis.isVisible("subject") && <th className="px-6 py-4 font-medium">Subject</th>}
-                  {colVis.isVisible("related") && <th className="px-6 py-4 font-medium">Related To</th>}
-                  {colVis.isVisible("date") && <th className="px-6 py-4 font-medium">Date</th>}
-                  {colVis.isVisible("status") && <th className="px-6 py-4 font-medium">Status</th>}
-                  <th className="px-6 py-4 font-medium text-right">Actions</th>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
+                  {colVis.isVisible("icon") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap w-12"></th>}
+                  {colVis.isVisible("subject") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Subject</th>}
+                  {colVis.isVisible("related") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Related To</th>}
+                  {colVis.isVisible("date") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Date</th>}
+                  {colVis.isVisible("status") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</th>}
+                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -207,7 +207,7 @@ export default function Activities() {
                           </td>
                         )}
                         {colVis.isVisible("subject") && (
-                          <td className="px-6 py-4 font-medium text-foreground">{act.subject}</td>
+                          <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap text-foreground">{act.subject}</td>
                         )}
                         {colVis.isVisible("related") && (
                           <td className="px-6 py-4 text-muted-foreground">
