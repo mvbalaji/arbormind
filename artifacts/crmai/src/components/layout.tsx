@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard,
@@ -83,6 +83,46 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (href === "/") return location === "/" || location === "/dashboard";
     return location === href || location.startsWith(href + "/");
   };
+
+  // Refs + state for Salesforce-style overflow into a "More" dropdown.
+  const navContainerRef = useRef<HTMLDivElement>(null);
+  const navMeasureRef = useRef<HTMLDivElement>(null);
+  const moreBtnRef = useRef<HTMLDivElement>(null);
+  const [visibleNavCount, setVisibleNavCount] = useState<number>(Number.MAX_SAFE_INTEGER);
+
+  useLayoutEffect(() => {
+    const container = navContainerRef.current;
+    const measure = navMeasureRef.current;
+    if (!container || !measure) return;
+    const compute = () => {
+      const containerWidth = container.clientWidth;
+      const items = Array.from(measure.children) as HTMLElement[];
+      const widths = items.map((el) => el.getBoundingClientRect().width);
+      const total = widths.reduce((a, b) => a + b, 0);
+      if (total <= containerWidth) {
+        setVisibleNavCount(items.length);
+        return;
+      }
+      const moreWidth = moreBtnRef.current?.getBoundingClientRect().width ?? 80;
+      const limit = containerWidth - moreWidth - 8;
+      let used = 0;
+      let count = 0;
+      for (let i = 0; i < widths.length; i++) {
+        if (used + widths[i] > limit) break;
+        used += widths[i];
+        count++;
+      }
+      setVisibleNavCount(Math.max(1, count));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(container);
+    window.addEventListener("resize", compute);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", compute);
+    };
+  }, [user?.role, user?.screenAccess]);
 
   const visibleNavItems = NAV_ITEMS.filter((item) => {
     if (item.adminOnly && user?.role !== "admin") return false;
@@ -246,10 +286,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          {/* Salesforce-style horizontal top nav (desktop only) */}
-          <nav className="hidden md:block border-b border-sidebar-border flex-shrink-0 z-10" style={{ background: "hsl(var(--sidebar))" }}>
-            <div className="flex items-stretch gap-0 px-2 overflow-x-auto custom-scrollbar">
-              {visibleNavItems.map((item) => {
+          {/* Salesforce-style horizontal top nav (desktop only) — overflows into a "More" dropdown */}
+          <nav className="hidden md:block border-b border-sidebar-border flex-shrink-0 z-10 relative" style={{ background: "hsl(var(--sidebar))" }}>
+            {/* Hidden measurer: renders every item off-screen so we can read their natural widths */}
+            <div
+              ref={navMeasureRef}
+              aria-hidden="true"
+              className="absolute -top-[9999px] left-0 flex items-stretch px-2 pointer-events-none"
+            >
+              {visibleNavItems.map((item) => (
+                <div key={`m-${item.href}`} className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium whitespace-nowrap">
+                  <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  {item.label}
+                </div>
+              ))}
+            </div>
+
+            <div ref={navContainerRef} className="flex items-stretch gap-0 px-2 overflow-hidden">
+              {visibleNavItems.slice(0, visibleNavCount).map((item) => {
                 const active = isActive(item.href);
                 return (
                   <Link key={item.href} href={item.href}>
@@ -270,6 +324,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 );
               })}
+
+              {visibleNavCount < visibleNavItems.length && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div
+                      ref={moreBtnRef}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer relative",
+                        visibleNavItems.slice(visibleNavCount).some((i) => isActive(i.href))
+                          ? "text-white"
+                          : "text-sidebar-foreground/70 hover:bg-white/10 hover:text-white"
+                      )}
+                    >
+                      <MoreHorizontal className="w-3.5 h-3.5 flex-shrink-0" />
+                      More
+                      <ChevronDown className="w-3 h-3" />
+                      {visibleNavItems.slice(visibleNavCount).some((i) => isActive(i.href)) && (
+                        <span className="absolute left-2 right-2 bottom-0 h-0.5 bg-white rounded-t-full" />
+                      )}
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    {visibleNavItems.slice(visibleNavCount).map((item) => (
+                      <DropdownMenuItem key={item.href} asChild className="cursor-pointer">
+                        <Link href={item.href} className={cn(
+                          "flex items-center gap-2 text-sm",
+                          isActive(item.href) && "text-primary font-medium"
+                        )}>
+                          <item.icon className="w-3.5 h-3.5 text-muted-foreground" />
+                          {item.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </nav>
 
