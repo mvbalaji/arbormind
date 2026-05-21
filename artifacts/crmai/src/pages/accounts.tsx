@@ -152,6 +152,39 @@ export default function Accounts() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <div className="relative flex-shrink-0">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
+              <Input
+                placeholder="Search accounts..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 h-8 text-xs w-60 bg-card border-border"
+              />
+            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                  <Filter className="w-3.5 h-3.5" />
+                  {industryFilter ? industryFilter : "Industry"}
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-44">
+                <DropdownMenuItem onClick={() => setIndustryFilter("")} className="text-sm cursor-pointer">
+                  All Industries
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {INDUSTRY_OPTIONS.map((ind) => (
+                  <DropdownMenuItem
+                    key={ind}
+                    onClick={() => setIndustryFilter(ind)}
+                    className={`text-sm cursor-pointer ${industryFilter === ind ? "text-primary font-medium" : ""}`}
+                  >
+                    {ind}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Action Buttons */}
@@ -176,39 +209,6 @@ export default function Accounts() {
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 mb-2">
-          <div className="relative flex-shrink-0">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
-            <Input
-              placeholder="Search accounts..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 h-8 text-xs w-60 bg-card border-border"
-            />
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                <Filter className="w-3.5 h-3.5" />
-                {industryFilter ? industryFilter : "Industry"}
-                <ChevronDown className="w-3 h-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44">
-              <DropdownMenuItem onClick={() => setIndustryFilter("")} className="text-sm cursor-pointer">
-                All Industries
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              {INDUSTRY_OPTIONS.map((ind) => (
-                <DropdownMenuItem
-                  key={ind}
-                  onClick={() => setIndustryFilter(ind)}
-                  className={`text-sm cursor-pointer ${industryFilter === ind ? "text-primary font-medium" : ""}`}
-                >
-                  {ind}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
           <div className="flex-1" />
           <ColumnsMenu columns={ACCOUNT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           <span className="text-xs text-muted-foreground">{total} account{total !== 1 ? "s" : ""}</span>
