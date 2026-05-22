@@ -212,6 +212,10 @@ function ColResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) =
 
 export default function Leads() {
   const { user } = useAuth();
+  const { toast: pageToast } = useToast();
+  const pageQueryClient = useQueryClient();
+  const ownerUpdateMutation = useUpdateLead();
+  const { data: ownerUsersData } = useListUsers({ limit: 100 });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
@@ -219,6 +223,9 @@ export default function Leads() {
   const [editingLead, setEditingLead] = useState<{ id: number } & LeadFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [changeOwnerOpen, setChangeOwnerOpen] = useState(false);
+  const [newOwnerId, setNewOwnerId] = useState<string>("");
+  const [changeOwnerBusy, setChangeOwnerBusy] = useState(false);
   const [convertingId, setConvertingId] = useState<{ id: number; name: string; company?: string | null } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -411,8 +418,15 @@ export default function Leads() {
               size="sm"
               variant="outline"
               className="h-8 text-xs gap-1.5"
+              disabled={selectedIds.size === 0}
+              onClick={() => {
+                setNewOwnerId("");
+                setChangeOwnerOpen(true);
+              }}
+              title={selectedIds.size === 0 ? "Select one or more leads first" : "Change owner of selected leads"}
             >
               <UserCheck className="w-3.5 h-3.5" /> Change Owner
+              {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
             </Button>
             {(() => {
               const selectedLeads = leads.filter((l) => selectedIds.has(l.id));
@@ -772,6 +786,83 @@ export default function Leads() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog open={changeOwnerOpen} onOpenChange={(o) => { if (!changeOwnerBusy) setChangeOwnerOpen(o); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">
+              Change Owner ({selectedIds.size} lead{selectedIds.size !== 1 ? "s" : ""})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label className="text-xs font-medium">New owner</Label>
+            <select
+              value={newOwnerId}
+              onChange={(e) => setNewOwnerId(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              disabled={changeOwnerBusy}
+            >
+              <option value="">— Unassigned —</option>
+              {ownerUsersData?.data?.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              The selected leads will be reassigned to this owner.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" disabled={changeOwnerBusy} onClick={() => setChangeOwnerOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              disabled={changeOwnerBusy || selectedIds.size === 0}
+              onClick={async () => {
+                setChangeOwnerBusy(true);
+                const targets = leads.filter((l) => selectedIds.has(l.id));
+                const ownerVal = newOwnerId ? parseInt(newOwnerId) : null;
+                const results = await Promise.allSettled(
+                  targets.map((l) =>
+                    ownerUpdateMutation.mutateAsync({
+                      id: l.id,
+                      data: {
+                        firstName: l.firstName,
+                        lastName: l.lastName,
+                        email: l.email ?? undefined,
+                        phone: l.phone ?? undefined,
+                        company: l.company ?? undefined,
+                        title: l.title ?? undefined,
+                        status: l.status as "new" | "contacted" | "qualified" | "unqualified" | "converted",
+                        source: l.source ?? undefined,
+                        score: l.score ?? undefined,
+                        industry: l.industry ?? undefined,
+                        description: l.description ?? undefined,
+                        employees: l.employees ?? undefined,
+                        annualRevenue: l.annualRevenue ?? undefined,
+                        assignedTo: ownerVal,
+                      },
+                    })
+                  )
+                );
+                const ok = results.filter((r) => r.status === "fulfilled").length;
+                const fail = results.length - ok;
+                pageQueryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
+                pageToast({
+                  title: fail === 0 ? "Owner updated" : "Some updates failed",
+                  description: `${ok} succeeded${fail ? `, ${fail} failed` : ""}.`,
+                  variant: fail === 0 ? "default" : "destructive",
+                });
+                setChangeOwnerBusy(false);
+                setChangeOwnerOpen(false);
+                setSelectedIds(new Set());
+              }}
+            >
+              {changeOwnerBusy ? "Updating..." : "Apply"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
