@@ -554,7 +554,7 @@ function AccountFormDialog({
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Annual Revenue ($)</Label>
+            <Label className="text-xs font-medium">Annual Revenue (£)</Label>
             <Input type="number" className="h-9 text-sm" value={formData.annualRevenue} onChange={f("annualRevenue")} />
           </div>
           <div className="space-y-1.5">
@@ -577,7 +577,7 @@ function AccountFormDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Amount ($)</Label>
+              <Label className="text-xs font-medium">Amount (£)</Label>
               <Input type="number" className="h-9 text-sm" value={formData.amount} onChange={f("amount")} />
             </div>
             <div className="space-y-1.5">

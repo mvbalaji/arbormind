@@ -771,9 +771,9 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
             <div className="space-y-1.5"><Label className="text-xs">End Date</Label><Input type="date" className="bg-muted border-border h-9" value={form.endDate} onChange={f("endDate")} /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Budget ($)</Label><Input type="number" className="bg-muted border-border h-9" value={form.budget} onChange={f("budget")} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">Actual Cost ($)</Label><Input type="number" className="bg-muted border-border h-9" value={form.actualCost} onChange={f("actualCost")} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">Expected Rev. ($)</Label><Input type="number" className="bg-muted border-border h-9" value={form.expectedRevenue} onChange={f("expectedRevenue")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Budget (£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.budget} onChange={f("budget")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Actual Cost (£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.actualCost} onChange={f("actualCost")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Expected Rev. (£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.expectedRevenue} onChange={f("expectedRevenue")} /></div>
           </div>
 
           {/* Goals */}

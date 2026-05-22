@@ -461,11 +461,11 @@ function CampaignFormDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Budget ($)</Label>
+              <Label>Budget (£)</Label>
               <Input type="number" min="0" className="bg-muted border-border" value={form.budget} onChange={f("budget")} placeholder="0" />
             </div>
             <div className="space-y-2">
-              <Label>Expected Revenue ($)</Label>
+              <Label>Expected Revenue (£)</Label>
               <Input type="number" min="0" className="bg-muted border-border" value={form.expectedRevenue} onChange={f("expectedRevenue")} placeholder="0" />
             </div>
           </div>

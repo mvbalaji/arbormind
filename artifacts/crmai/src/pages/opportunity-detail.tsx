@@ -1876,7 +1876,7 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Amount ($)</Label>
+            <div className="space-y-1.5"><Label className="text-xs">Amount (£)</Label>
               <Input type="number" className="bg-muted border-border h-9" value={form.amount} onChange={f("amount")} />
             </div>
             <div className="space-y-1.5"><Label className="text-xs">Win Probability (%)</Label>
