@@ -18,6 +18,8 @@ import {
 } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { CustomReportBuilder } from "@/components/custom-report-builder";
 
 const COLORS = [
   "hsl(217 91% 60%)", // blue
@@ -119,6 +121,13 @@ export default function Reports() {
           </Badge>
         </div>
 
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="custom">Custom Reports</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6 mt-4">
         {/* KPI ROW */}
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-3">
           <KpiCard icon={PoundSterling} label="Pipeline Value" value={gbp(stats?.totalPipelineValue ?? 0)}
@@ -392,6 +401,12 @@ export default function Reports() {
             </CardContent>
           </Card>
         </div>
+          </TabsContent>
+
+          <TabsContent value="custom" className="mt-4">
+            <CustomReportBuilder />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
