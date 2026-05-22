@@ -2,7 +2,7 @@ import { Router } from "express";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { db } from "@workspace/db";
-import { allowedUsersTable } from "@workspace/db";
+import { allowedUsersTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { SessionData } from "express-session";
 
@@ -284,24 +284,34 @@ router.post("/auth/impersonate", async (req, res) => {
   }
 
   try {
-    let target: typeof allowedUsersTable.$inferSelect | undefined;
+    type TargetShape = { id: number; email: string; name: string | null; role: string; avatarUrl: string | null; isActive: boolean };
+    let target: TargetShape | undefined;
+
     if (targetId && !Number.isNaN(targetId)) {
-      [target] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.id, targetId));
+      const [row] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.id, targetId));
+      if (row) target = { id: row.id, email: row.email, name: row.name, role: row.role, avatarUrl: row.avatarUrl, isActive: row.isActive };
     }
     if (!target && targetEmail) {
-      [target] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.email, targetEmail));
+      const [row] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.email, targetEmail));
+      if (row) target = { id: row.id, email: row.email, name: row.name, role: row.role, avatarUrl: row.avatarUrl, isActive: row.isActive };
+    }
+    // Fallback: impersonate a CRM team member directly from the users table
+    // (covers seeded reps/managers that aren't in the allowed_users access list).
+    if (!target && targetEmail) {
+      const [row] = await db.select().from(usersTable).where(eq(usersTable.email, targetEmail));
+      if (row) target = { id: row.id, email: row.email, name: row.name, role: row.role, avatarUrl: row.avatarUrl, isActive: row.isActive };
     }
 
     if (!target) {
       res.status(404).json({
         error: targetEmail
-          ? `${targetEmail} doesn't have app access yet. Grant access from the App Access Control table first.`
+          ? `${targetEmail} was not found in app access or CRM team members.`
           : "User not found",
       });
       return;
     }
     if (!target.isActive) {
-      res.status(400).json({ error: "That user's access has been revoked." });
+      res.status(400).json({ error: "That user is inactive." });
       return;
     }
     if (target.email === actor.email) {
