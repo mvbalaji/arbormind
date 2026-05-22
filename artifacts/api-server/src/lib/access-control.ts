@@ -35,6 +35,11 @@ export const SEED_SCREENS: Array<{ key: string; name: string; category: string; 
   { key: "access-control", name: "Access Control", category: "Admin", sortOrder: 170 },
 ];
 
+// Admin-only screens that non-admin roles should NOT see at all.
+const ADMIN_ONLY_SCREENS = new Set(["access-control", "approvals"]);
+// Screens reps typically don't edit (view only).
+const REP_VIEW_ONLY = new Set(["reports", "users", "products", "campaigns"]);
+
 let seeded = false;
 export async function seedAccessControl(): Promise<void> {
   if (seeded) return;
@@ -43,9 +48,25 @@ export async function seedAccessControl(): Promise<void> {
     await db.insert(screensTable).values(SEED_SCREENS).onConflictDoNothing();
     // Default admin → edit everywhere
     const adminRows = SEED_SCREENS.map((s) => ({
-      screenKey: s.key, roleKey: "admin", accessLevel: "edit",
+      screenKey: s.key, roleKey: "admin", accessLevel: "edit" as const,
     }));
     await db.insert(screenAccessTable).values(adminRows).onConflictDoNothing();
+
+    // Sensible defaults for non-admin roles so impersonation shows a useful app.
+    // Existing custom rules are preserved via onConflictDoNothing.
+    const nonAdminRoles = ["md", "vp", "sales_director", "sales_manager", "sales_rep"];
+    const nonAdminRows = nonAdminRoles.flatMap((roleKey) =>
+      SEED_SCREENS
+        .filter((s) => !ADMIN_ONLY_SCREENS.has(s.key))
+        .map((s) => {
+          let accessLevel: "view" | "edit" = "edit";
+          if (roleKey === "sales_rep" && REP_VIEW_ONLY.has(s.key)) accessLevel = "view";
+          return { screenKey: s.key, roleKey, accessLevel };
+        }),
+    );
+    if (nonAdminRows.length > 0) {
+      await db.insert(screenAccessTable).values(nonAdminRows).onConflictDoNothing();
+    }
     seeded = true;
   } catch (err) {
     console.error("[AccessControl] Seed failed:", err);
