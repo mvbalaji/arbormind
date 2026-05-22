@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTable, leadContactsTable } from "@workspace/db";
+import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTable, leadContactsTable, activitiesTable } from "@workspace/db";
 import { eq, ilike, or, sql, and } from "drizzle-orm";
 import { computeLeadScore } from "../lib/lead-scoring";
 import { requireScreenAccess } from "../lib/access-control";
@@ -182,7 +182,13 @@ router.put("/leads/:id", async (req, res) => {
 router.delete("/leads/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.delete(leadsTable).where(eq(leadsTable.id, id));
+    await db.transaction(async (tx) => {
+      // Detach activities (nullable FK) so history is preserved.
+      await tx.update(activitiesTable).set({ leadId: null }).where(eq(activitiesTable.leadId, id));
+      // Remove junction rows that hard-reference the lead.
+      await tx.delete(leadContactsTable).where(eq(leadContactsTable.leadId, id));
+      await tx.delete(leadsTable).where(eq(leadsTable.id, id));
+    });
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);
