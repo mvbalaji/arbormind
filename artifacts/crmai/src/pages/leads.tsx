@@ -407,16 +407,53 @@ export default function Leads() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            {selectedIds.size > 0 && (
-              <Button
-                size="sm"
-                variant="destructive"
-                className="h-8 text-xs gap-1.5"
-                onClick={() => setBulkDeleteOpen(true)}
-              >
-                <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedIds.size})
-              </Button>
-            )}
+            {(() => {
+              const selectedLeads = leads.filter((l) => selectedIds.has(l.id));
+              const singleConvertible =
+                selectedLeads.length === 1 && !selectedLeads[0]!.isConverted
+                  ? selectedLeads[0]!
+                  : null;
+              return (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs gap-1.5"
+                    disabled={!singleConvertible}
+                    onClick={() => {
+                      if (singleConvertible) {
+                        setConvertingId({
+                          id: singleConvertible.id,
+                          name: `${singleConvertible.firstName} ${singleConvertible.lastName}`,
+                          company: singleConvertible.company,
+                        });
+                      }
+                    }}
+                    title={
+                      selectedLeads.length === 0
+                        ? "Select a lead to convert"
+                        : selectedLeads.length > 1
+                        ? "Select only one lead to convert"
+                        : selectedLeads[0]!.isConverted
+                        ? "Lead is already converted"
+                        : "Convert lead"
+                    }
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5" /> Convert
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 text-xs gap-1.5"
+                    disabled={selectedIds.size === 0}
+                    onClick={() => setBulkDeleteOpen(true)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                    {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+                  </Button>
+                </>
+              );
+            })()}
             <Button
               size="sm"
               variant="outline"
