@@ -407,6 +407,13 @@ export default function Leads() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+            >
+              <UserCheck className="w-3.5 h-3.5" /> Change Owner
+            </Button>
             {(() => {
               const selectedLeads = leads.filter((l) => selectedIds.has(l.id));
               const singleConvertible =
@@ -454,13 +461,6 @@ export default function Leads() {
                 </>
               );
             })()}
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5"
-            >
-              <UserCheck className="w-3.5 h-3.5" /> Change Owner
-            </Button>
             <Button
               size="sm"
               className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
