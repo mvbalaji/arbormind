@@ -67,9 +67,19 @@ export function levelMeets(actual: AccessLevel, required: AccessLevel): boolean 
   return LEVEL_RANK[actual] >= LEVEL_RANK[required];
 }
 
+// Map legacy CRM user role aliases to the canonical access-control role keys.
+function normalizeRole(role: string): string {
+  switch (role) {
+    case "manager": return "sales_manager";
+    case "rep": return "sales_rep";
+    default: return role;
+  }
+}
+
 export async function getScreenAccessForRole(role: string): Promise<Record<string, AccessLevel>> {
+  const normalized = normalizeRole(role);
   // Admin always has full edit access regardless of stored rules.
-  if (role === "admin") {
+  if (normalized === "admin") {
     const out: Record<string, AccessLevel> = {};
     for (const s of SEED_SCREENS) out[s.key] = "edit";
     return out;
@@ -77,7 +87,7 @@ export async function getScreenAccessForRole(role: string): Promise<Record<strin
   const rows = await db.select({
     screenKey: screenAccessTable.screenKey,
     accessLevel: screenAccessTable.accessLevel,
-  }).from(screenAccessTable).where(eq(screenAccessTable.roleKey, role));
+  }).from(screenAccessTable).where(eq(screenAccessTable.roleKey, normalized));
   const out: Record<string, AccessLevel> = {};
   for (const r of rows) {
     if (isValidAccessLevel(r.accessLevel)) out[r.screenKey] = r.accessLevel;
@@ -88,10 +98,11 @@ export async function getScreenAccessForRole(role: string): Promise<Record<strin
 export async function userHasScreenAccess(
   role: string, screenKey: string, required: AccessLevel
 ): Promise<boolean> {
-  if (role === "admin") return true;
+  const normalized = normalizeRole(role);
+  if (normalized === "admin") return true;
   const [row] = await db.select({ accessLevel: screenAccessTable.accessLevel })
     .from(screenAccessTable)
-    .where(and(eq(screenAccessTable.roleKey, role), eq(screenAccessTable.screenKey, screenKey)));
+    .where(and(eq(screenAccessTable.roleKey, normalized), eq(screenAccessTable.screenKey, screenKey)));
   const lvl = (row?.accessLevel ?? "none") as AccessLevel;
   return levelMeets(isValidAccessLevel(lvl) ? lvl : "none", required);
 }
