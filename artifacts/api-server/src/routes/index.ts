@@ -23,6 +23,7 @@ import approvalsRouter from "./approvals";
 import entityNotesRouter from "./entity-notes";
 import accessControlRouter from "./access-control";
 import recordAccessRouter from "./record-access";
+import searchRouter from "./search";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 
@@ -52,6 +53,7 @@ router.use(approvalsRouter);
 router.use(entityNotesRouter);
 router.use(accessControlRouter);
 router.use(recordAccessRouter);
+router.use(searchRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
 // access on startup.

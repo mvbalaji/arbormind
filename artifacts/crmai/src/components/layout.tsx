@@ -243,13 +243,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <span className="text-sm font-bold text-primary">arbormind<span className="text-muted-foreground font-normal">.in</span></span>
 
-              <div className="hidden sm:flex items-center relative max-w-sm w-full ml-2">
-                <Search className="w-3.5 h-3.5 absolute left-3 text-muted-foreground" />
-                <input
-                  placeholder="Search everything..."
-                  className="w-full pl-9 pr-4 h-8 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground"
-                />
-              </div>
+              <GlobalSearch />
             </div>
 
             <div className="flex items-center gap-2">
@@ -486,6 +480,124 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </nav>
       <AIChatbot />
     </TooltipProvider>
+  );
+}
+
+interface SearchHit {
+  type: "lead" | "opportunity" | "account" | "contact" | "campaign";
+  id: number;
+  title: string;
+  subtitle: string | null;
+  meta: string | null;
+  href: string;
+}
+
+const TYPE_LABEL: Record<SearchHit["type"], string> = {
+  lead: "Lead", opportunity: "Opportunity", account: "Account", contact: "Contact", campaign: "Campaign",
+};
+const TYPE_COLOR: Record<SearchHit["type"], string> = {
+  lead: "bg-blue-100 text-blue-700",
+  opportunity: "bg-emerald-100 text-emerald-700",
+  account: "bg-purple-100 text-purple-700",
+  contact: "bg-amber-100 text-amber-700",
+  campaign: "bg-pink-100 text-pink-700",
+};
+
+function GlobalSearch() {
+  const [, navigate] = useLocation();
+  const [q, setQ] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [results, setResults] = useState<SearchHit[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(q.trim()), 200);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
+    if (debounced.length < 2) { setResults([]); return; }
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/search?q=${encodeURIComponent(debounced)}`, { credentials: "include" })
+      .then(r => r.ok ? r.json() : { results: [] })
+      .then((d: { results?: SearchHit[] }) => { if (!cancelled) setResults(d.results ?? []); })
+      .catch(() => { if (!cancelled) setResults([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [debounced]);
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  const go = (hit: SearchHit) => {
+    setOpen(false);
+    setQ("");
+    navigate(hit.href);
+  };
+
+  return (
+    <div ref={wrapRef} className="hidden sm:flex items-center relative max-w-sm w-full ml-2">
+      <Search className="w-3.5 h-3.5 absolute left-3 text-muted-foreground pointer-events-none" />
+      <input
+        placeholder="Search leads, opportunities, accounts…"
+        value={q}
+        onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { setQ(""); setOpen(false); (e.target as HTMLInputElement).blur(); }
+          if (e.key === "Enter" && results[0]) { e.preventDefault(); go(results[0]); }
+        }}
+        className="w-full pl-9 pr-8 h-8 text-sm bg-muted border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all placeholder:text-muted-foreground"
+      />
+      {q && (
+        <button
+          type="button"
+          onClick={() => { setQ(""); setResults([]); }}
+          className="absolute right-2 text-muted-foreground hover:text-foreground"
+          aria-label="Clear search"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {open && q.trim().length >= 2 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-lg max-h-96 overflow-y-auto z-50">
+          {loading && results.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground text-center">Searching…</div>
+          ) : results.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground text-center">No matches for "{q}"</div>
+          ) : (
+            <ul className="py-1">
+              {results.map(hit => (
+                <li key={`${hit.type}-${hit.id}`}>
+                  <button
+                    type="button"
+                    onClick={() => go(hit)}
+                    className="w-full text-left px-3 py-2 hover:bg-muted flex items-start gap-2"
+                  >
+                    <span className={cn("text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded shrink-0 mt-0.5", TYPE_COLOR[hit.type])}>
+                      {TYPE_LABEL[hit.type]}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-medium text-foreground truncate">{hit.title}</span>
+                      {hit.subtitle && <span className="block text-xs text-muted-foreground truncate">{hit.subtitle}</span>}
+                    </span>
+                    {hit.meta && <span className="text-[10px] text-muted-foreground capitalize shrink-0 mt-1">{hit.meta}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
