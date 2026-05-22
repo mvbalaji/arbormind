@@ -214,7 +214,7 @@ export default function Campaigns() {
               <div>
                 <p className="text-xs text-muted-foreground">Expected Revenue</p>
                 <p className="text-2xl font-bold text-foreground">
-                  ${campaigns.reduce((s, c) => s + (c.expectedRevenue ?? 0), 0).toLocaleString()}
+                  £{campaigns.reduce((s, c) => s + (c.expectedRevenue ?? 0), 0).toLocaleString()}
                 </p>
               </div>
             </Card>
@@ -291,9 +291,9 @@ export default function Campaigns() {
                       {colVis.isVisible("budget") && (
                         <td className="px-6 py-4 text-right">
                           <div className="text-xs text-muted-foreground">
-                            {campaign.budget != null && <div>Budget: ${campaign.budget.toLocaleString()}</div>}
+                            {campaign.budget != null && <div>Budget: £{campaign.budget.toLocaleString()}</div>}
                             {campaign.expectedRevenue != null && (
-                              <div className="text-chart-3">Rev: ${campaign.expectedRevenue.toLocaleString()}</div>
+                              <div className="text-chart-3">Rev: £{campaign.expectedRevenue.toLocaleString()}</div>
                             )}
                           </div>
                         </td>

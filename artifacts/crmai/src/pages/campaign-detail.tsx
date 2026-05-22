@@ -76,7 +76,7 @@ const MOCK_METRICS = [
   { label: "Leads Generated", value: "84", trend: "+24%", icon: Users },
   { label: "MQLs", value: "32", trend: "+8%", icon: UserCheck },
   { label: "Conversions", value: "12", trend: "+3%", icon: Target },
-  { label: "CPC", value: "$4.20", trend: "-8%", icon: DollarSign },
+  { label: "CPC", value: "£4.20", trend: "-8%", icon: DollarSign },
   { label: "Engagement Rate", value: "6.8%", trend: "+1.2pp", icon: BarChart2 },
 ];
 
