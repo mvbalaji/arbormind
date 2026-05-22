@@ -218,6 +218,7 @@ export default function Leads() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<{ id: number } & LeadFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [convertingId, setConvertingId] = useState<{ id: number; name: string; company?: string | null } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -406,6 +407,16 @@ export default function Leads() {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete ({selectedIds.size})
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -610,6 +621,16 @@ export default function Leads() {
                             <Pencil className="w-3.5 h-3.5" />
                             Edit
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeletingId(lead.id)}
+                            aria-label={`Delete ${lead.firstName} ${lead.lastName}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -697,7 +718,57 @@ export default function Leads() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} lead{selectedIds.size !== 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the selected leads. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <BulkDeleteLeadsAction
+              ids={Array.from(selectedIds)}
+              onDone={() => { setBulkDeleteOpen(false); setSelectedIds(new Set()); }}
+            />
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
+  );
+}
+
+function BulkDeleteLeadsAction({ ids, onDone }: { ids: number[]; onDone: () => void }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const deleteMutation = useDeleteLead();
+
+  return (
+    <AlertDialogAction
+      onClick={async () => {
+        if (ids.length === 0) return;
+        const results = await Promise.allSettled(
+          ids.map((id) => deleteMutation.mutateAsync({ id }))
+        );
+        const ok = results.filter((r) => r.status === "fulfilled").length;
+        const failed = results.length - ok;
+        queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
+        if (failed === 0) {
+          toast({ title: `Deleted ${ok} lead${ok !== 1 ? "s" : ""}` });
+        } else {
+          toast({
+            title: `Deleted ${ok}, failed ${failed}`,
+            description: "Some leads could not be deleted.",
+            variant: "destructive",
+          });
+        }
+        onDone();
+      }}
+      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+    >
+      Delete {ids.length}
+    </AlertDialogAction>
   );
 }
 
