@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
 import {
   Settings, Shield, UserPlus, Trash2, Loader2, Users as UsersIcon, Upload,
-  Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff, Clock, Play,
+  Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff, Clock, Play, UserCog,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -334,11 +334,51 @@ export default function Users() {
                           {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : "Never"}
                         </td>
                         <td className="px-6 py-4">
-                          {u.email !== currentUser?.email && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" onClick={() => setRemoveId(u.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
+                          <div className="flex items-center justify-end gap-1">
+                            {isAdmin && u.email !== currentUser?.email && u.isActive && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 text-xs text-muted-foreground hover:text-primary"
+                                title={`Login as ${u.name ?? u.email} to test their view`}
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch("/api/auth/impersonate", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      credentials: "include",
+                                      body: JSON.stringify({ userId: u.id }),
+                                    });
+                                    if (!res.ok) {
+                                      const data = await res.json().catch(() => ({}));
+                                      toast({
+                                        title: "Could not switch user",
+                                        description: data.error ?? "Try again.",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+                                    window.location.href = "/#/dashboard";
+                                    setTimeout(() => window.location.reload(), 50);
+                                  } catch {
+                                    toast({
+                                      title: "Network error",
+                                      description: "Could not start impersonation.",
+                                      variant: "destructive",
+                                    });
+                                  }
+                                }}
+                              >
+                                <UserCog className="w-3.5 h-3.5 mr-1" />
+                                Login as
+                              </Button>
+                            )}
+                            {u.email !== currentUser?.email && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" onClick={() => setRemoveId(u.id)}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}

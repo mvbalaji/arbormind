@@ -17,6 +17,13 @@ declare module "express-session" {
       avatarUrl: string | null;
       username?: string;
     };
+    originalUser?: {
+      id: number;
+      email: string;
+      name: string;
+      role: string;
+      avatarUrl: string | null;
+    };
   }
 }
 
@@ -225,13 +232,125 @@ router.get("/auth/me", async (req, res) => {
     return;
   }
 
+  const impersonation = req.session?.originalUser
+    ? {
+        isImpersonating: true,
+        originalUser: {
+          id: req.session.originalUser.id,
+          email: req.session.originalUser.email,
+          name: req.session.originalUser.name,
+          role: req.session.originalUser.role,
+        },
+      }
+    : { isImpersonating: false };
+
   try {
     const { getScreenAccessForRole } = await import("../lib/access-control");
     const screenAccess = await getScreenAccessForRole(userData.role ?? "");
-    res.json({ user: { ...userData, screenAccess } });
+    res.json({ user: { ...userData, screenAccess, ...impersonation } });
   } catch {
-    res.json({ user: userData });
+    res.json({ user: { ...userData, ...impersonation } });
   }
+});
+
+/* ============================================================
+ * IMPERSONATION — admin-only "Login as" any user.
+ * Preserves the original admin in session.originalUser so we
+ * can restore on stop. All access-control middleware sees the
+ * impersonated user, so the entire app behaves as that role.
+ * ============================================================ */
+
+router.post("/auth/impersonate", async (req, res) => {
+  const actor = (req.session?.originalUser ?? req.session?.user ?? req.user) as
+    | { id: number; email: string; name: string; role: string; avatarUrl: string | null }
+    | undefined;
+
+  if (!actor) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (actor.role !== "admin") {
+    res.status(403).json({ error: "Only admins can impersonate users" });
+    return;
+  }
+
+  const { userId } = req.body as { userId?: number };
+  const targetId = Number(userId);
+  if (!targetId || Number.isNaN(targetId)) {
+    res.status(400).json({ error: "userId is required" });
+    return;
+  }
+  if (targetId === actor.id) {
+    res.status(400).json({ error: "You are already this user" });
+    return;
+  }
+
+  try {
+    const [target] = await db
+      .select()
+      .from(allowedUsersTable)
+      .where(eq(allowedUsersTable.id, targetId));
+
+    if (!target || !target.isActive) {
+      res.status(404).json({ error: "User not found or inactive" });
+      return;
+    }
+
+    const originalUser = {
+      id: actor.id,
+      email: actor.email,
+      name: actor.name,
+      role: actor.role,
+      avatarUrl: actor.avatarUrl ?? null,
+    };
+
+    const impersonated = {
+      id: target.id,
+      email: target.email,
+      name: target.name ?? target.email,
+      role: target.role,
+      avatarUrl: target.avatarUrl ?? null,
+    };
+
+    req.session.originalUser = originalUser;
+    req.session.user = impersonated;
+    (req as unknown as { user: typeof impersonated }).user = impersonated;
+
+    console.log(
+      `[Impersonate] ${originalUser.email} (admin) -> ${impersonated.email} (${impersonated.role})`,
+    );
+
+    req.session.save((err) => {
+      if (err) {
+        res.status(500).json({ error: "Failed to start impersonation" });
+        return;
+      }
+      res.json({ user: impersonated, originalUser, isImpersonating: true });
+    });
+  } catch (err) {
+    console.error("[Impersonate] error:", err);
+    res.status(500).json({ error: "Impersonation failed" });
+  }
+});
+
+router.post("/auth/stop-impersonating", (req, res) => {
+  const original = req.session?.originalUser;
+  if (!original) {
+    res.status(400).json({ error: "Not currently impersonating" });
+    return;
+  }
+  const restored = { ...original, username: original.email };
+  req.session.user = restored;
+  (req as unknown as { user: typeof restored }).user = restored;
+  delete req.session.originalUser;
+  console.log(`[Impersonate] Restored to ${restored.email}`);
+  req.session.save((err) => {
+    if (err) {
+      res.status(500).json({ error: "Failed to stop impersonation" });
+      return;
+    }
+    res.json({ user: restored, isImpersonating: false });
+  });
 });
 
 router.post("/auth/login", (req, res) => {

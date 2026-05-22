@@ -25,6 +25,7 @@ import {
   Sun,
   Moon,
   ShieldCheck,
+  UserCog,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AIChatbot } from "@/components/ai-chatbot";
@@ -177,6 +178,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <TooltipProvider delayDuration={200}>
+      <ImpersonationBanner />
       <div className="flex h-screen bg-background text-foreground overflow-hidden">
 
 
@@ -484,5 +486,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </nav>
       <AIChatbot />
     </TooltipProvider>
+  );
+}
+
+function ImpersonationBanner() {
+  const { user, refetch } = useAuth();
+  const [stopping, setStopping] = React.useState(false);
+  if (!user?.isImpersonating || !user.originalUser) return null;
+
+  const stop = async () => {
+    setStopping(true);
+    try {
+      await fetch("/api/auth/stop-impersonating", { method: "POST", credentials: "include" });
+      await refetch();
+      window.location.reload();
+    } finally {
+      setStopping(false);
+    }
+  };
+
+  return (
+    <div className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs sm:text-sm px-4 py-2 flex items-center justify-center gap-3 shadow-sm">
+      <UserCog className="w-4 h-4 shrink-0" />
+      <span className="text-center">
+        Viewing as <strong>{user.name || user.email}</strong>{" "}
+        <span className="opacity-80">({user.role})</span>
+        <span className="opacity-80"> · signed in as {user.originalUser.email}</span>
+      </span>
+      <Button
+        size="sm"
+        variant="secondary"
+        className="h-7 text-xs bg-white/95 text-orange-700 hover:bg-white shrink-0"
+        onClick={stop}
+        disabled={stopping}
+      >
+        {stopping ? "Returning…" : "Return to my account"}
+      </Button>
+    </div>
   );
 }

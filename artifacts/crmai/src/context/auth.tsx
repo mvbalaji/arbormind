@@ -10,6 +10,8 @@ export interface AuthUser {
   avatarUrl?: string | null;
   username?: string;
   screenAccess?: Record<string, ScreenAccessLevel>;
+  isImpersonating?: boolean;
+  originalUser?: { id: number; email: string; name: string; role: string };
 }
 
 const LEVEL_RANK: Record<ScreenAccessLevel, number> = {
