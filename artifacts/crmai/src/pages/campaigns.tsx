@@ -369,14 +369,22 @@ export default function Campaigns() {
 function TeamMembersPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const { data } = useListUsers();
   const users = data?.data ?? [];
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const selected = new Set(value.split(",").map(s => s.trim()).filter(Boolean));
   const toggle = (name: string) => {
     const next = new Set(selected);
     if (next.has(name)) next.delete(name); else next.add(name);
     onChange(Array.from(next).join(", "));
   };
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? users.filter(u => u.name.toLowerCase().includes(q) || (u.email ?? "").toLowerCase().includes(q) || (u.role ?? "").toLowerCase().includes(q))
+    : users;
+  // Always show currently-selected names first (even if they don't match search or aren't in the user list anymore).
+  const orphanSelected = Array.from(selected).filter(n => !users.some(u => u.name === n));
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={(v) => { setOpen(v); if (!v) setSearch(""); }}>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="outline" className="w-full justify-between bg-muted border-border font-normal">
           <span className="truncate text-left">
@@ -385,21 +393,56 @@ function TeamMembersPicker({ value, onChange }: { value: string; onChange: (v: s
           <span className="ml-2 opacity-50">▾</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-64 overflow-y-auto">
-        {users.length === 0 ? (
-          <div className="px-3 py-2 text-xs text-muted-foreground">No team members found</div>
-        ) : users.map(u => (
-          <button
-            key={u.id}
-            type="button"
-            onClick={() => toggle(u.name)}
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm hover:bg-muted cursor-pointer text-left"
-          >
-            <input type="checkbox" readOnly checked={selected.has(u.name)} className="h-3.5 w-3.5" />
-            <span className="flex-1 truncate">{u.name}</span>
-            <span className="text-xs text-muted-foreground capitalize">{u.role}</span>
-          </button>
-        ))}
+      <DropdownMenuContent
+        className="w-[--radix-dropdown-menu-trigger-width] p-0"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="p-2 border-b border-border sticky top-0 bg-popover">
+          <Input
+            autoFocus
+            placeholder="Search by name, email, or role…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Escape") { setSearch(""); setOpen(false); } }}
+            className="h-8 text-sm"
+          />
+          {selected.size > 0 && (
+            <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+              <span>{selected.size} selected</span>
+              <button type="button" onClick={() => onChange("")} className="text-primary hover:underline">Clear all</button>
+            </div>
+          )}
+        </div>
+        <div className="max-h-56 overflow-y-auto">
+          {orphanSelected.map(name => (
+            <button
+              key={`orphan-${name}`}
+              type="button"
+              onClick={() => toggle(name)}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm hover:bg-muted cursor-pointer text-left"
+            >
+              <input type="checkbox" readOnly checked className="h-3.5 w-3.5" />
+              <span className="flex-1 truncate">{name}</span>
+              <span className="text-xs text-muted-foreground italic">not in team</span>
+            </button>
+          ))}
+          {filtered.length === 0 && orphanSelected.length === 0 ? (
+            <div className="px-3 py-3 text-xs text-muted-foreground text-center">
+              {users.length === 0 ? "No team members found" : "No matches"}
+            </div>
+          ) : filtered.map(u => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => toggle(u.name)}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm hover:bg-muted cursor-pointer text-left"
+            >
+              <input type="checkbox" readOnly checked={selected.has(u.name)} className="h-3.5 w-3.5" />
+              <span className="flex-1 truncate">{u.name}</span>
+              <span className="text-xs text-muted-foreground capitalize">{u.role}</span>
+            </button>
+          ))}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
