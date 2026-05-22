@@ -139,17 +139,18 @@ export function AIChatbot() {
                   <Sparkles className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">Hi! I'm your CRM assistant.</p>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
-                    Ask me about your leads, pipeline, deals, or any CRM insights.
+                  <p className="text-sm font-medium text-foreground">Hi! I'm your agentic CRM assistant.</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">
+                    I can search your live data, look up records, and analyse your pipeline. Ask me anything.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5 justify-center mt-2">
                   {[
-                    "Pipeline overview",
-                    "Top opportunities",
-                    "Lead summary",
-                    "Win rate analysis",
+                    "Show my top 5 opportunities",
+                    "What's overdue on my plate?",
+                    "Pipeline by stage",
+                    "Find leads from 'Acme'",
+                    "Revenue this quarter",
                   ].map(suggestion => (
                     <button
                       key={suggestion}
