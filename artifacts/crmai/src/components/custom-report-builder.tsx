@@ -566,9 +566,6 @@ export function CustomReportBuilder() {
               />
             </div>
             <div className="flex items-center gap-2 ml-auto">
-              <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => setLoadOpen(true)}>
-                <FolderOpen className="w-3.5 h-3.5" /> Saved ({saved.length})
-              </Button>
               <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => setReport(newReport(report.dataset))}>
                 <X className="w-3.5 h-3.5" /> Clear
               </Button>
@@ -580,6 +577,64 @@ export function CustomReportBuilder() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* My Reports */}
+      <Card className="border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5">
+              <FolderOpen className="w-4 h-4 text-primary" /> My Reports
+              <Badge variant="outline" className="text-[10px] ml-1">{saved.length}</Badge>
+            </span>
+            {saved.length > 0 && (
+              <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setLoadOpen(true)}>
+                Manage
+              </Button>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {saved.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-3 text-center">
+              No saved reports yet. Configure filters and columns below, then click <span className="font-semibold">Save</span> to add one here.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+              {saved.map((s) => {
+                const isActive = s.id === report.id;
+                return (
+                  <div key={s.id}
+                       className={`group rounded-md border p-2.5 transition-colors cursor-pointer ${
+                         isActive ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40"
+                       }`}
+                       onClick={() => loadReport(s)}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate" title={s.name}>{s.name}</div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          {DATASETS[s.dataset]?.label ?? s.dataset}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="ghost"
+                        className="h-6 w-6 p-0 text-destructive opacity-0 group-hover:opacity-100 shrink-0"
+                        onClick={(e) => { e.stopPropagation(); setPendingDeleteId(s.id); }}
+                        title="Delete report">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      <Badge variant="outline" className="text-[10px]">{s.filters.length} filter{s.filters.length !== 1 ? "s" : ""}</Badge>
+                      <Badge variant="outline" className="text-[10px]">{s.columns.length} cols</Badge>
+                      {s.groupBy && <Badge variant="outline" className="text-[10px]">grouped</Badge>}
+                      {isActive && <Badge className="text-[10px] bg-primary text-primary-foreground">active</Badge>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
