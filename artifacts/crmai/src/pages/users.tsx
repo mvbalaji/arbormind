@@ -404,11 +404,12 @@ export default function Users() {
                     <th className="px-6 py-4 font-medium">Role</th>
                     <th className="px-6 py-4 font-medium">Team</th>
                     <th className="px-6 py-4 font-medium">Status</th>
+                    {isAdmin && <th className="px-6 py-4 font-medium w-28 text-right"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {isLoading ? (
-                    <tr><td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
+                    <tr><td colSpan={isAdmin ? 5 : 4} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                   ) : data?.data?.map(user => (
                     <tr key={user.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4">
@@ -436,6 +437,48 @@ export default function Users() {
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
+                      {isAdmin && (
+                        <td className="px-6 py-4 text-right">
+                          {user.email !== currentUser?.email && user.isActive && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2 text-xs hover:border-primary hover:text-primary"
+                              title={`Login as ${user.name} to test the app as a ${user.role}`}
+                              onClick={async () => {
+                                try {
+                                  const res = await fetch("/api/auth/impersonate", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    credentials: "include",
+                                    body: JSON.stringify({ email: user.email }),
+                                  });
+                                  if (!res.ok) {
+                                    const data = await res.json().catch(() => ({}));
+                                    toast({
+                                      title: "Could not switch user",
+                                      description: data.error ?? "Try again.",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+                                  window.location.href = "/#/dashboard";
+                                  setTimeout(() => window.location.reload(), 50);
+                                } catch {
+                                  toast({
+                                    title: "Network error",
+                                    description: "Could not start impersonation.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              <UserCog className="w-3.5 h-3.5 mr-1" />
+                              Login as
+                            </Button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

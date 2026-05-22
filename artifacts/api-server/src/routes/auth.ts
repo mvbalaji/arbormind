@@ -274,25 +274,38 @@ router.post("/auth/impersonate", async (req, res) => {
     return;
   }
 
-  const { userId } = req.body as { userId?: number };
-  const targetId = Number(userId);
-  if (!targetId || Number.isNaN(targetId)) {
-    res.status(400).json({ error: "userId is required" });
-    return;
-  }
-  if (targetId === actor.id) {
-    res.status(400).json({ error: "You are already this user" });
+  const { userId, email } = req.body as { userId?: number; email?: string };
+  const targetId = userId != null ? Number(userId) : null;
+  const targetEmail = typeof email === "string" ? email.trim().toLowerCase() : null;
+
+  if ((!targetId || Number.isNaN(targetId)) && !targetEmail) {
+    res.status(400).json({ error: "userId or email is required" });
     return;
   }
 
   try {
-    const [target] = await db
-      .select()
-      .from(allowedUsersTable)
-      .where(eq(allowedUsersTable.id, targetId));
+    let target: typeof allowedUsersTable.$inferSelect | undefined;
+    if (targetId && !Number.isNaN(targetId)) {
+      [target] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.id, targetId));
+    }
+    if (!target && targetEmail) {
+      [target] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.email, targetEmail));
+    }
 
-    if (!target || !target.isActive) {
-      res.status(404).json({ error: "User not found or inactive" });
+    if (!target) {
+      res.status(404).json({
+        error: targetEmail
+          ? `${targetEmail} doesn't have app access yet. Grant access from the App Access Control table first.`
+          : "User not found",
+      });
+      return;
+    }
+    if (!target.isActive) {
+      res.status(400).json({ error: "That user's access has been revoked." });
+      return;
+    }
+    if (target.email === actor.email) {
+      res.status(400).json({ error: "You are already this user" });
       return;
     }
 
