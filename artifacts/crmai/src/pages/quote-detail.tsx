@@ -366,18 +366,23 @@ export default function QuoteDetail() {
         </AlertDialog>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-border">
-          {(["details", "approvals"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setActiveTab(t)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px capitalize ${
-                activeTab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t === "details" ? "Quote Details" : "Approvals"}
-            </button>
-          ))}
+        <div className="inline-flex items-center gap-1 rounded-lg bg-muted/70 border border-border p-1">
+          {(["details", "approvals"] as const).map((t) => {
+            const isActive = activeTab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setActiveTab(t)}
+                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-all capitalize ${
+                  isActive
+                    ? "bg-primary text-white font-semibold shadow-md ring-1 ring-primary/40"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background"
+                }`}
+              >
+                {t === "details" ? "Quote Details" : "Approvals"}
+              </button>
+            );
+          })}
         </div>
 
         {activeTab === "approvals" && (
