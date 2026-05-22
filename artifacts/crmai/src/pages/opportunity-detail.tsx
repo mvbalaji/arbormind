@@ -944,7 +944,7 @@ export default function OpportunityDetail() {
         <div className={`grid grid-cols-1 gap-6 ${activeTab === "about" ? "lg:grid-cols-[1fr_320px]" : ""}`}>
           <div className="min-w-0 flex flex-col gap-6">
         {/* Tabs — draggable to reorder */}
-        <div className="flex gap-1 border-b border-border overflow-x-auto">
+        <div className="inline-flex items-center gap-1 rounded-lg bg-muted/70 border border-border p-1 overflow-x-auto">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             const isDropTarget = tabDropTarget === tab.id && draggedTab !== tab.id;
@@ -974,14 +974,16 @@ export default function OpportunityDetail() {
                 onDragEnd={() => { setDraggedTab(null); setTabDropTarget(null); }}
                 onClick={() => setActiveTab(tab.id)}
                 title="Drag to reorder"
-                className={`group px-3 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5 whitespace-nowrap cursor-grab active:cursor-grabbing ${
-                  isActive ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-                } ${isDropTarget ? "bg-primary/10 border-primary/40" : ""} ${draggedTab === tab.id ? "opacity-50" : ""}`}
+                className={`group rounded-md px-4 py-1.5 text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap cursor-grab active:cursor-grabbing ${
+                  isActive
+                    ? "bg-primary text-white font-semibold shadow-md ring-1 ring-primary/40"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background"
+                } ${isDropTarget ? "ring-2 ring-primary/60" : ""} ${draggedTab === tab.id ? "opacity-50" : ""}`}
               >
-                <GripVertical className="w-3 h-3 opacity-40 group-hover:opacity-80" />
+                <GripVertical className={`w-3 h-3 ${isActive ? "opacity-70" : "opacity-40 group-hover:opacity-80"}`} />
                 {tab.label}
                 {tab.count !== undefined && (
-                  <span className="ml-1 text-xs bg-muted rounded-full px-1.5 py-0.5">{tab.count}</span>
+                  <span className={`ml-1 text-xs rounded-full px-1.5 py-0.5 ${isActive ? "bg-white/20 text-white" : "bg-muted text-foreground"}`}>{tab.count}</span>
                 )}
               </button>
             );
@@ -1047,7 +1049,7 @@ export default function OpportunityDetail() {
               {/* Composer Card */}
               <Card className="border-border overflow-hidden">
                 {/* Sub-tabs */}
-                <div className="flex border-b border-border bg-muted/30">
+                <div className="flex items-center gap-1 border-b border-border bg-muted/30 p-1.5">
                   {subTabs.map((t) => {
                     const Icon = t.icon;
                     const isActive = activitySubTab === t.id;
@@ -1055,10 +1057,10 @@ export default function OpportunityDetail() {
                       <button
                         key={t.id}
                         onClick={() => setActivitySubTab(t.id)}
-                        className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                        className={`flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-all ${
                           isActive
-                            ? "border-blue-600 text-blue-700 dark:text-blue-300 bg-card"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
+                            ? "bg-primary text-white font-semibold shadow-md ring-1 ring-primary/40"
+                            : "text-muted-foreground hover:text-foreground hover:bg-background"
                         }`}
                       >
                         <Icon className="w-3.5 h-3.5" />
