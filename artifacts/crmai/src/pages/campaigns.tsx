@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useListUsers } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -365,6 +366,45 @@ export default function Campaigns() {
   );
 }
 
+function TeamMembersPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { data } = useListUsers();
+  const users = data?.data ?? [];
+  const selected = new Set(value.split(",").map(s => s.trim()).filter(Boolean));
+  const toggle = (name: string) => {
+    const next = new Set(selected);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    onChange(Array.from(next).join(", "));
+  };
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="outline" className="w-full justify-between bg-muted border-border font-normal">
+          <span className="truncate text-left">
+            {selected.size === 0 ? "Select team members..." : `${selected.size} selected: ${Array.from(selected).slice(0, 3).join(", ")}${selected.size > 3 ? "…" : ""}`}
+          </span>
+          <span className="ml-2 opacity-50">▾</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-64 overflow-y-auto">
+        {users.length === 0 ? (
+          <div className="px-3 py-2 text-xs text-muted-foreground">No team members found</div>
+        ) : users.map(u => (
+          <button
+            key={u.id}
+            type="button"
+            onClick={() => toggle(u.name)}
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-sm hover:bg-muted cursor-pointer text-left"
+          >
+            <input type="checkbox" readOnly checked={selected.has(u.name)} className="h-3.5 w-3.5" />
+            <span className="flex-1 truncate">{u.name}</span>
+            <span className="text-xs text-muted-foreground capitalize">{u.role}</span>
+          </button>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function CampaignFormDialog({
   open, onOpenChange, mode, initialData, onSubmit, isPending,
 }: {
@@ -496,8 +536,8 @@ function CampaignFormDialog({
             <Input className="bg-muted border-border" value={form.channels} onChange={f("channels")} placeholder="e.g. Email, LinkedIn, Google Ads" />
           </div>
           <div className="space-y-2">
-            <Label>Campaign Team (comma-separated names)</Label>
-            <Input className="bg-muted border-border" value={form.teamMembers} onChange={f("teamMembers")} placeholder="e.g. Sarah Johnson, Mike Chen, Lisa Park" />
+            <Label>Campaign Team</Label>
+            <TeamMembersPicker value={form.teamMembers} onChange={(v) => setForm((prev) => ({ ...prev, teamMembers: v }))} />
           </div>
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>

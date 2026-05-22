@@ -47,13 +47,27 @@ router.get("/campaigns", async (req, res) => {
   }
 });
 
+function coerceCampaignBody(input: Record<string, unknown>): Record<string, unknown> {
+  const body: Record<string, unknown> = { ...input };
+  if (body.budget) body.budget = String(body.budget);
+  if (body.actualCost) body.actualCost = String(body.actualCost);
+  if (body.expectedRevenue) body.expectedRevenue = String(body.expectedRevenue);
+  for (const k of ["startDate", "endDate"] as const) {
+    const v = body[k];
+    if (typeof v === "string" && v.length > 0) {
+      const d = new Date(v);
+      body[k] = Number.isNaN(d.getTime()) ? null : d;
+    } else if (v === "" || v === undefined) {
+      delete body[k];
+    }
+  }
+  return body;
+}
+
 router.post("/campaigns", async (req, res) => {
   try {
-    const body = { ...req.body };
-    if (body.budget) body.budget = String(body.budget);
-    if (body.actualCost) body.actualCost = String(body.actualCost);
-    if (body.expectedRevenue) body.expectedRevenue = String(body.expectedRevenue);
-    const [campaign] = await db.insert(campaignsTable).values(body).returning();
+    const body = coerceCampaignBody(req.body);
+    const [campaign] = await db.insert(campaignsTable).values(body as typeof campaignsTable.$inferInsert).returning();
     res.status(201).json(formatCampaign(campaign));
   } catch (err) {
     req.log.error(err);
@@ -77,10 +91,7 @@ router.get("/campaigns/:id", async (req, res) => {
 
 router.put("/campaigns/:id", async (req, res) => {
   try {
-    const body = { ...req.body, updatedAt: new Date() };
-    if (body.budget) body.budget = String(body.budget);
-    if (body.actualCost) body.actualCost = String(body.actualCost);
-    if (body.expectedRevenue) body.expectedRevenue = String(body.expectedRevenue);
+    const body = { ...coerceCampaignBody(req.body), updatedAt: new Date() };
     const [campaign] = await db.update(campaignsTable)
       .set(body)
       .where(eq(campaignsTable.id, parseInt(req.params.id)))
