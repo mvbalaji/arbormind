@@ -602,7 +602,7 @@ export default function Orders() {
                 ) : ordersPagination.paged.map(order => (
                   <tr key={order.id} className="hover:bg-muted/50 transition-colors group">
                     {colVis.isVisible("orderNumber") && (
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-2">
                         <button
                           className="font-medium text-primary hover:underline cursor-pointer font-mono"
                           onClick={() => setViewingOrder({
@@ -629,17 +629,17 @@ export default function Orders() {
                       </td>
                     )}
                     {colVis.isVisible("account") && (
-                      <td className="px-6 py-4 text-muted-foreground">
+                      <td className="px-3 py-2 text-muted-foreground">
                         {order.accountName ?? "—"}
                       </td>
                     )}
                     {colVis.isVisible("opportunity") && (
-                      <td className="px-6 py-4 text-muted-foreground">
+                      <td className="px-3 py-2 text-muted-foreground">
                         {order.opportunityName ?? "—"}
                       </td>
                     )}
                     {colVis.isVisible("quote") && (
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-2">
                         {order.quoteNumber ? (
                           <span
                             className="text-primary cursor-pointer hover:underline font-mono text-xs"
@@ -651,23 +651,23 @@ export default function Orders() {
                       </td>
                     )}
                     {colVis.isVisible("total") && (
-                      <td className="px-6 py-4 text-right font-semibold text-foreground">
+                      <td className="px-3 py-2 text-right font-semibold text-foreground">
                         ${order.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       </td>
                     )}
                     {colVis.isVisible("status") && (
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-2">
                         <Badge variant="outline" className={`capitalize ${STATUS_COLORS[order.status] ?? ""}`}>
                           {order.status}
                         </Badge>
                       </td>
                     )}
                     {colVis.isVisible("date") && (
-                      <td className="px-6 py-4 text-muted-foreground">
+                      <td className="px-3 py-2 text-muted-foreground">
                         {format(new Date(order.orderDate), "MMM d, yyyy")}
                       </td>
                     )}
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-3 py-2 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">

@@ -108,34 +108,34 @@ export default function Cases() {
                   data?.data?.map((c) => (
                     <tr key={c.id} className="hover:bg-muted/50 transition-colors group">
                       {colVis.isVisible("caseNumber") && (
-                        <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{c.caseNumber}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{c.caseNumber}</td>
                       )}
                       {colVis.isVisible("subject") && (
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-2">
                           <div className="font-medium text-foreground">{c.subject}</div>
                           <div className="text-xs text-muted-foreground mt-1">{c.contactName ?? c.accountName ?? "-"}</div>
                         </td>
                       )}
                       {colVis.isVisible("priority") && (
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-2">
                           <Badge variant="outline" className={`capitalize ${PRIORITY_COLORS[c.priority] ?? ""}`}>
                             {c.priority}
                           </Badge>
                         </td>
                       )}
                       {colVis.isVisible("status") && (
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-2">
                           <Badge variant="outline" className={`capitalize ${STATUS_COLORS[c.status] ?? "bg-muted border-border text-muted-foreground"}`}>
                             {c.status.replace("_", " ")}
                           </Badge>
                         </td>
                       )}
                       {colVis.isVisible("opened") && (
-                        <td className="px-6 py-4 text-muted-foreground">
+                        <td className="px-3 py-2 text-muted-foreground">
                           {format(new Date(c.createdAt), "MMM d, yyyy")}
                         </td>
                       )}
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-3 py-2 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">

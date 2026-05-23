@@ -547,7 +547,7 @@ export default function Leads() {
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  <th className="px-3 py-3 text-center">
+                  <th className="px-2 py-1 text-center">
                     <Checkbox
                       checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
                       onCheckedChange={toggleSelectAll}

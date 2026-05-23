@@ -200,7 +200,7 @@ export default function Activities() {
                     return (
                       <tr key={act.id} className="hover:bg-muted/50 transition-colors group">
                         {colVis.isVisible("icon") && (
-                          <td className="px-6 py-4">
+                          <td className="px-3 py-2">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${TYPE_COLORS[act.type] ?? "text-gray-400 bg-gray-500/10"}`}>
                               <Icon className="w-4 h-4" />
                             </div>
@@ -210,17 +210,17 @@ export default function Activities() {
                           <td className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-foreground">{act.subject}</td>
                         )}
                         {colVis.isVisible("related") && (
-                          <td className="px-6 py-4 text-muted-foreground">
+                          <td className="px-3 py-2 text-muted-foreground">
                             {act.contactName ?? act.accountName ?? "-"}
                           </td>
                         )}
                         {colVis.isVisible("date") && (
-                          <td className="px-6 py-4 text-muted-foreground">
+                          <td className="px-3 py-2 text-muted-foreground">
                             {act.dueDate ? format(new Date(act.dueDate), "MMM d, yyyy") : "-"}
                           </td>
                         )}
                         {colVis.isVisible("status") && (
-                          <td className="px-6 py-4">
+                          <td className="px-3 py-2">
                             <Badge
                               variant="outline"
                               className={act.status === "completed"
@@ -231,7 +231,7 @@ export default function Activities() {
                             </Badge>
                           </td>
                         )}
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-3 py-2 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">

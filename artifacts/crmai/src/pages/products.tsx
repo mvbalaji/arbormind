@@ -232,7 +232,7 @@ export default function Products() {
                 ) : productsPagination.paged.map(prod => (
                   <tr key={prod.id} className="hover:bg-muted/50 transition-colors group">
                     {colVis.isVisible("name") && (
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-2">
                         <div className="font-medium text-foreground flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                             <Package className="w-4 h-4 text-primary" />
@@ -243,21 +243,21 @@ export default function Products() {
                       </td>
                     )}
                     {colVis.isVisible("category") && (
-                      <td className="px-6 py-4 text-muted-foreground">{prod.category || "-"}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{prod.category || "-"}</td>
                     )}
                     {colVis.isVisible("price") && (
-                      <td className="px-6 py-4 text-right font-semibold text-foreground">
+                      <td className="px-3 py-2 text-right font-semibold text-foreground">
                         ${prod.unitPrice.toLocaleString()} <span className="text-xs text-muted-foreground">{prod.currency}</span>
                       </td>
                     )}
                     {colVis.isVisible("status") && (
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-2">
                         <Badge variant="outline" className={prod.isActive ? "border-green-500/30 text-green-600 bg-green-500/5" : "border-border text-muted-foreground"}>
                           {prod.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </td>
                     )}
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-3 py-2 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">

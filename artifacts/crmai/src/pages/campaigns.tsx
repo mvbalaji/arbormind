@@ -259,7 +259,7 @@ export default function Campaigns() {
                   campaignsPagination.paged.map((campaign) => (
                     <tr key={campaign.id} className="hover:bg-muted/50 transition-colors group">
                       {colVis.isVisible("campaign") && (
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-2">
                           <Link href={`/campaigns/${campaign.id}`}>
                             <div className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
                               {campaign.name}
@@ -272,17 +272,17 @@ export default function Campaigns() {
                         </td>
                       )}
                       {colVis.isVisible("type") && (
-                        <td className="px-6 py-4 text-muted-foreground">{TYPE_LABELS[campaign.type] ?? campaign.type}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{TYPE_LABELS[campaign.type] ?? campaign.type}</td>
                       )}
                       {colVis.isVisible("status") && (
-                        <td className="px-6 py-4">
+                        <td className="px-3 py-2">
                           <Badge variant="outline" className={`capitalize ${STATUS_COLORS[campaign.status] ?? ""}`}>
                             {campaign.status}
                           </Badge>
                         </td>
                       )}
                       {colVis.isVisible("dates") && (
-                        <td className="px-6 py-4 text-muted-foreground text-xs">
+                        <td className="px-3 py-2 text-muted-foreground text-xs">
                           {campaign.startDate && (
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
@@ -293,7 +293,7 @@ export default function Campaigns() {
                         </td>
                       )}
                       {colVis.isVisible("budget") && (
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-3 py-2 text-right">
                           <div className="text-xs text-muted-foreground">
                             {campaign.budget != null && <div>Budget: £{campaign.budget.toLocaleString()}</div>}
                             {campaign.expectedRevenue != null && (
@@ -302,7 +302,7 @@ export default function Campaigns() {
                           </div>
                         </td>
                       )}
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-3 py-2 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
