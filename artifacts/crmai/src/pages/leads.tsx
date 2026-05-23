@@ -556,7 +556,7 @@ export default function Leads() {
                   <col key={k} style={{ width: `${colWidths[k]}px` }} />
                 ))}
               </colgroup>
-              <thead className="sticky top-0 z-10">
+              <thead className="sticky top-0 z-30">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
                   <th className="px-2 py-1 text-center">
                     <Checkbox
@@ -574,7 +574,7 @@ export default function Leads() {
                   {isColVisible("score") && <th className="relative px-2 py-1 text-center"><SortHeader field="score" align="center">Score</SortHeader><ColResizeHandle onMouseDown={startColResize("score")} /></th>}
                   {isColVisible("createdAt") && <th className="relative px-2 py-1 text-left"><SortHeader field="createdAt">Created Date</SortHeader><ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>}
                   {isColVisible("owner") && <th className="relative px-2 py-1 text-left"><SortHeader field="owner">Owner</SortHeader><ColResizeHandle onMouseDown={startColResize("owner")} /></th>}
-                  <th className="relative px-2 py-1 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap sticky right-0 z-20 bg-blue-700 dark:bg-blue-800 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.25)]">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
+                  <th className="relative px-2 py-1 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap sticky right-0 z-40 bg-blue-700 dark:bg-blue-800 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.25)]">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
