@@ -583,10 +583,10 @@ function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: C
 }
 
 const QUOTES_COL_KEYS = ["quoteNumber","name","revision","clonedFrom","validUntil","subtotal","total","createdBy","actions"] as const;
-const QUOTES_COL_DEFAULTS: Record<typeof QUOTES_COL_KEYS[number], number> = {quoteNumber:140,name:200,revision:90,clonedFrom:140,validUntil:140,subtotal:120,total:130,createdBy:140,actions:60};
+const QUOTES_COL_DEFAULTS: Record<typeof QUOTES_COL_KEYS[number], number> = {quoteNumber:140,name:320,revision:80,clonedFrom:140,validUntil:130,subtotal:110,total:120,createdBy:130,actions:60};
 
 export default function Quotes() {
-  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:quotes:v1", QUOTES_COL_KEYS, QUOTES_COL_DEFAULTS);
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:quotes:v2", QUOTES_COL_KEYS, QUOTES_COL_DEFAULTS);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<({ id: number } & QuoteFormData) | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
