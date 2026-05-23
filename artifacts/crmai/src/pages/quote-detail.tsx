@@ -313,7 +313,7 @@ export default function QuoteDetail() {
           )}
           {canEdit && (
             <Button variant="outline" size="sm" onClick={handleCreateVersion} disabled={versionMutation.isPending} className="border-border">
-              <Copy className="w-4 h-4 mr-2" /> Create New Version
+              <Copy className="w-4 h-4 mr-2" /> Revise Quote
             </Button>
           )}
           {quote.status === "accepted" && (
