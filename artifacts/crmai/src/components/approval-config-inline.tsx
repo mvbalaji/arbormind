@@ -47,27 +47,65 @@ const OPERATORS: Array<{ value: ApprovalCriterion["operator"]; label: string }> 
   { value: "neq", label: "does not equal (≠)" },
 ];
 
+interface ApproverStep { level: number; roleId: number | null }
+
 interface EditState {
-  id: number | null;
+  /** Original ids being replaced (when editing) — deleted on save. */
+  replacingIds: number[];
   name: string;
   field: string;
   operator: ApprovalCriterion["operator"];
   threshold: string;
-  level: number;
-  roleId: number | null;
   active: boolean;
+  steps: ApproverStep[];
 }
 
-const emptyEdit = (entity: Entity): EditState => ({
-  id: null,
-  name: entity === "opportunity" ? "Discount > 10% needs Sales Manager" : "Discount > 10% needs Sales Manager",
+const emptyEdit = (_entity: Entity): EditState => ({
+  replacingIds: [],
+  name: "Discount > 10% needs Sales Manager",
   field: "discountPercent",
   operator: "gt",
   threshold: "10",
-  level: 1,
-  roleId: null,
   active: true,
+  steps: [{ level: 1, roleId: null }],
 });
+
+/** A logical rule = one or more criteria rows sharing the same name+field+operator+threshold. */
+interface GroupedRule {
+  signature: string;
+  ids: number[];
+  name: string;
+  field: string;
+  operator: ApprovalCriterion["operator"];
+  threshold: number | null;
+  thresholdText: string | null;
+  active: boolean;
+  steps: Array<{ level: number; roleId: number | null }>;
+}
+
+function ruleSignature(c: Pick<ApprovalCriterion, "name" | "field" | "operator" | "threshold" | "thresholdText">) {
+  return [c.name, c.field, c.operator, c.threshold ?? "", c.thresholdText ?? ""].join("|");
+}
+
+function groupCriteria(rows: ApprovalCriterion[]): GroupedRule[] {
+  const map = new Map<string, GroupedRule>();
+  for (const c of rows) {
+    const sig = ruleSignature(c);
+    let g = map.get(sig);
+    if (!g) {
+      g = {
+        signature: sig, ids: [], name: c.name, field: c.field, operator: c.operator,
+        threshold: c.threshold, thresholdText: c.thresholdText, active: c.active, steps: [],
+      };
+      map.set(sig, g);
+    }
+    g.ids.push(c.id);
+    g.steps.push({ level: c.level, roleId: c.roleId });
+    if (!c.active) g.active = false; // rule is "active" only if all steps active
+  }
+  for (const g of map.values()) g.steps.sort((a, b) => a.level - b.level);
+  return [...map.values()].sort((a, b) => (a.steps[0]?.level ?? 0) - (b.steps[0]?.level ?? 0) || a.name.localeCompare(b.name));
+}
 
 export function ApprovalConfigInline() {
   const { toast } = useToast();
@@ -82,8 +120,7 @@ export function ApprovalConfigInline() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const config = configs.find(c => c.entity === entity);
-  const entityCriteria = criteria.filter(c => c.entity === entity)
-    .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+  const entityRules = groupCriteria(criteria.filter(c => c.entity === entity));
 
   const reload = async () => {
     setLoading(true);
@@ -125,16 +162,15 @@ export function ApprovalConfigInline() {
   };
 
   const openCreate = () => { setEditing(emptyEdit(entity)); setEditOpen(true); };
-  const openEdit = (c: ApprovalCriterion) => {
+  const openEdit = (r: GroupedRule) => {
     setEditing({
-      id: c.id,
-      name: c.name,
-      field: c.field,
-      operator: c.operator,
-      threshold: c.threshold != null ? String(c.threshold) : "",
-      level: c.level,
-      roleId: c.roleId,
-      active: c.active,
+      replacingIds: r.ids,
+      name: r.name,
+      field: r.field,
+      operator: r.operator,
+      threshold: r.threshold != null ? String(r.threshold) : (r.thresholdText ?? ""),
+      active: r.active,
+      steps: r.steps.length > 0 ? r.steps.map(s => ({ ...s })) : [{ level: 1, roleId: null }],
     });
     setEditOpen(true);
   };
@@ -144,44 +180,56 @@ export function ApprovalConfigInline() {
     if (editing.threshold === "" || Number.isNaN(Number(editing.threshold))) {
       toast({ title: "Threshold must be a number", variant: "destructive" }); return;
     }
+    if (editing.steps.length === 0) {
+      toast({ title: "Add at least one approver step", variant: "destructive" }); return;
+    }
+    const levels = editing.steps.map(s => s.level);
+    if (new Set(levels).size !== levels.length) {
+      toast({ title: "Each approver step must have a unique level", variant: "destructive" }); return;
+    }
     setSaving(true);
     try {
-      const body = {
-        entity,
-        name: editing.name.trim(),
-        field: editing.field,
-        operator: editing.operator,
-        threshold: Number(editing.threshold),
-        level: editing.level,
-        roleId: editing.roleId,
-        active: editing.active,
-      };
-      const res = await fetch(
-        editing.id == null ? "/api/approvals/criteria" : `/api/approvals/criteria/${editing.id}`,
-        {
-          method: editing.id == null ? "POST" : "PATCH",
-          credentials: "include",
+      // Delete the prior rows (when editing), then insert one row per step.
+      await Promise.all(editing.replacingIds.map(id =>
+        fetch(`/api/approvals/criteria/${id}`, { method: "DELETE", credentials: "include" })
+      ));
+      const sortedSteps = [...editing.steps].sort((a, b) => a.level - b.level);
+      for (const step of sortedSteps) {
+        const body = {
+          entity,
+          name: editing.name.trim(),
+          field: editing.field,
+          operator: editing.operator,
+          threshold: Number(editing.threshold),
+          level: step.level,
+          roleId: step.roleId,
+          active: editing.active,
+        };
+        const res = await fetch("/api/approvals/criteria", {
+          method: "POST", credentials: "include",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
-        }
-      );
-      if (!res.ok) throw new Error(await res.text());
-      toast({ title: editing.id == null ? "Rule added" : "Rule updated" });
+        });
+        if (!res.ok) throw new Error(await res.text());
+      }
+      toast({ title: editing.replacingIds.length === 0 ? "Rule added" : "Rule updated" });
       setEditOpen(false);
       void reload();
     } catch {
       toast({ title: "Save failed", variant: "destructive" });
+      void reload();
     } finally {
       setSaving(false);
     }
   };
 
-  const remove = async (id: number) => {
-    setDeletingId(id);
+  const remove = async (ids: number[]) => {
+    setDeletingId(ids[0] ?? null);
     try {
-      const res = await fetch(`/api/approvals/criteria/${id}`, { method: "DELETE", credentials: "include" });
-      if (!res.ok) throw new Error();
-      setCriteria(cs => cs.filter(c => c.id !== id));
+      await Promise.all(ids.map(id =>
+        fetch(`/api/approvals/criteria/${id}`, { method: "DELETE", credentials: "include" })
+      ));
+      setCriteria(cs => cs.filter(c => !ids.includes(c.id)));
       toast({ title: "Rule deleted" });
     } catch {
       toast({ title: "Delete failed", variant: "destructive" });
@@ -189,6 +237,16 @@ export function ApprovalConfigInline() {
       setDeletingId(null);
     }
   };
+
+  const addStep = () => setEditing(s => {
+    const nextLevel = (s.steps.length === 0 ? 1 : Math.max(...s.steps.map(x => x.level)) + 1);
+    return { ...s, steps: [...s.steps, { level: nextLevel, roleId: null }] };
+  });
+  const removeStep = (idx: number) => setEditing(s => ({ ...s, steps: s.steps.filter((_, i) => i !== idx) }));
+  const setStep = (idx: number, patch: Partial<ApproverStep>) => setEditing(s => ({
+    ...s,
+    steps: s.steps.map((st, i) => i === idx ? { ...st, ...patch } : st),
+  }));
 
   const fieldLabel = (f: string) =>
     FIELD_OPTIONS[entity].find(o => o.value === f)?.label ?? f;
@@ -268,7 +326,7 @@ export function ApprovalConfigInline() {
           <div className="py-8 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" /> Loading…
           </div>
-        ) : entityCriteria.length === 0 ? (
+        ) : entityRules.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground border border-dashed border-border rounded-lg">
             No rules defined yet. Click <strong>Add rule</strong> to set a discount threshold and approver.
           </div>
@@ -279,37 +337,45 @@ export function ApprovalConfigInline() {
                 <tr className="divide-x divide-border">
                   <th className="px-4 py-3 text-left font-medium">Rule</th>
                   <th className="px-4 py-3 text-left font-medium">Condition</th>
-                  <th className="px-4 py-3 text-left font-medium">Level</th>
-                  <th className="px-4 py-3 text-left font-medium">Approver</th>
+                  <th className="px-4 py-3 text-left font-medium">Approver chain</th>
                   <th className="px-4 py-3 text-left font-medium">Status</th>
                   <th className="px-4 py-3 text-right font-medium w-24"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {entityCriteria.map(c => (
-                  <tr key={c.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 font-medium text-foreground">{c.name}</td>
+                {entityRules.map(r => (
+                  <tr key={r.signature} className="hover:bg-muted/30 align-top">
+                    <td className="px-4 py-3 font-medium text-foreground">{r.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      <span className="font-medium text-foreground">{fieldLabel(c.field)}</span>{" "}
-                      {operatorLabel(c.operator)}{" "}
-                      <span className="font-medium text-foreground">{c.threshold ?? c.thresholdText ?? "—"}</span>
+                      <span className="font-medium text-foreground">{fieldLabel(r.field)}</span>{" "}
+                      {operatorLabel(r.operator)}{" "}
+                      <span className="font-medium text-foreground">{r.threshold ?? r.thresholdText ?? "—"}</span>
                     </td>
-                    <td className="px-4 py-3"><Badge variant="outline">L{c.level}</Badge></td>
-                    <td className="px-4 py-3 text-sm">{roleName(c.roleId)}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${c.active ? "text-green-600" : "text-muted-foreground"}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${c.active ? "bg-green-500" : "bg-gray-400"}`} />
-                        {c.active ? "Active" : "Disabled"}
+                      <div className="flex flex-col gap-1">
+                        {r.steps.map((s, i) => (
+                          <div key={i} className="flex items-center gap-2 text-sm">
+                            <Badge variant="outline" className="shrink-0">L{s.level}</Badge>
+                            <span>{roleName(s.roleId)}</span>
+                            {i < r.steps.length - 1 && <span className="text-muted-foreground">→</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${r.active ? "text-green-600" : "text-muted-foreground"}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${r.active ? "bg-green-500" : "bg-gray-400"}`} />
+                        {r.active ? "Active" : "Disabled"}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(c)}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(r)}>
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-700"
-                          disabled={deletingId === c.id} onClick={() => remove(c.id)}>
-                          {deletingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          disabled={deletingId === r.ids[0]} onClick={() => remove(r.ids)}>
+                          {deletingId === r.ids[0] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                         </Button>
                       </div>
                     </td>
@@ -323,9 +389,9 @@ export function ApprovalConfigInline() {
 
       {/* Edit dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing.id == null ? "Add approval rule" : "Edit approval rule"}</DialogTitle>
+            <DialogTitle>{editing.replacingIds.length === 0 ? "Add approval rule" : "Edit approval rule"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -360,35 +426,61 @@ export function ApprovalConfigInline() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Threshold</label>
-                <Input type="number" value={editing.threshold}
-                  onChange={(e) => setEditing(s => ({ ...s, threshold: e.target.value }))}
-                  placeholder="e.g. 10" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Level</label>
-                <Input type="number" min={1} value={editing.level}
-                  onChange={(e) => setEditing(s => ({ ...s, level: Math.max(1, Number(e.target.value) || 1) }))} />
-                <p className="text-[10px] text-muted-foreground mt-1">Lower = earlier approver in the chain.</p>
-              </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Threshold</label>
+              <Input type="number" value={editing.threshold}
+                onChange={(e) => setEditing(s => ({ ...s, threshold: e.target.value }))}
+                placeholder="e.g. 10" />
             </div>
 
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Approver role</label>
-              <Select value={editing.roleId == null ? "any" : String(editing.roleId)}
-                onValueChange={(v) => setEditing(s => ({ ...s, roleId: v === "any" ? null : Number(v) }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any approver (managers + admins)</SelectItem>
-                  {roles.map(r => (
-                    <SelectItem key={r.id} value={String(r.id)}>
-                      {r.name} <span className="text-muted-foreground">· L{r.level}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">Approver chain</div>
+                  <p className="text-xs text-muted-foreground">
+                    Add one or more approvers. When this rule matches, each step must approve in order (lowest level first).
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={addStep}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add step
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                {editing.steps.map((step, idx) => (
+                  <div key={idx} className="flex items-end gap-2 p-2 rounded-md bg-background border border-border">
+                    <div className="w-20 shrink-0">
+                      <label className="text-[10px] font-medium text-muted-foreground">Level</label>
+                      <Input type="number" min={1} value={step.level}
+                        onChange={(e) => setStep(idx, { level: Math.max(1, Number(e.target.value) || 1) })} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <label className="text-[10px] font-medium text-muted-foreground">Approver role</label>
+                      <Select value={step.roleId == null ? "any" : String(step.roleId)}
+                        onValueChange={(v) => setStep(idx, { roleId: v === "any" ? null : Number(v) })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any">Any approver (managers + admins)</SelectItem>
+                          {roles.map(r => (
+                            <SelectItem key={r.id} value={String(r.id)}>
+                              {r.name} <span className="text-muted-foreground">· L{r.level}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-9 w-9 text-red-600 hover:text-red-700 shrink-0"
+                      disabled={editing.steps.length <= 1} onClick={() => removeStep(idx)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              {editing.steps.length > 1 && (
+                <p className="text-[11px] text-muted-foreground">
+                  Tip: lower level numbers approve first. The request escalates step-by-step until all approve.
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
@@ -403,7 +495,7 @@ export function ApprovalConfigInline() {
             <Button variant="ghost" onClick={() => setEditOpen(false)} disabled={saving}>Cancel</Button>
             <Button onClick={save} disabled={saving}>
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editing.id == null ? "Add rule" : "Save changes"}
+              {editing.replacingIds.length === 0 ? "Add rule" : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
