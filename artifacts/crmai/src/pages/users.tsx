@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
 import {
   Settings, Shield, UserPlus, Trash2, Loader2, Users as UsersIcon, Upload,
-  Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff, Clock, Play, UserCog,
+  Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff, Clock, Play, UserCog, ShieldCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -19,6 +19,7 @@ import { useAuth } from "@/context/auth";
 import { DataImport } from "@/components/data-import";
 import { cn } from "@/lib/utils";
 import { AccessControlInline } from "./access-control";
+import { ApprovalConfigInline } from "@/components/approval-config-inline";
 
 interface AppUser {
   id: number;
@@ -82,7 +83,7 @@ export default function Users() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("sales");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"team" | "access" | "import" | "mail">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail">("team");
 
   // Mail settings state
   const [mailSettings, setMailSettings] = useState<MailSettings>(defaultSettings);
@@ -240,6 +241,7 @@ export default function Users() {
           {([
             { id: "team", label: "Team Settings", icon: UsersIcon },
             { id: "access", label: "Access Control", icon: Shield },
+            { id: "approvals", label: "Approval Config", icon: ShieldCheck },
             { id: "import", label: "Data Import", icon: Upload },
             { id: "mail", label: "Mail Settings", icon: Mail },
           ] as const).map((tab) => (
@@ -261,6 +263,9 @@ export default function Users() {
 
         {/* Access Control Tab */}
         {activeTab === "access" && <AccessControlInline />}
+
+        {/* Approval Config Tab */}
+        {activeTab === "approvals" && <ApprovalConfigInline />}
 
         {/* Data Import Tab */}
         {activeTab === "import" && <DataImport />}
