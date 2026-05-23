@@ -100,11 +100,11 @@ export default function Contacts() {
             <table className="w-full text-sm text-left">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("name") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name</th>}
-                  {colVis.isVisible("contactInfo") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Contact Info</th>}
-                  {colVis.isVisible("account") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Account / Title</th>}
-                  {colVis.isVisible("owner") && <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</th>}
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Actions</th>
+                  {colVis.isVisible("name") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Name</th>}
+                  {colVis.isVisible("contactInfo") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Contact Info</th>}
+                  {colVis.isVisible("account") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Account / Title</th>}
+                  {colVis.isVisible("owner") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</th>}
+                  <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
