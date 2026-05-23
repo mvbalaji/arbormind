@@ -684,7 +684,7 @@ export default function Quotes() {
   };
 
   const SortableHeader = ({ field, label, align = "left" }: { field: SortField; label: string; align?: "left" | "right" }) => (
-    <th className={`px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 last:border-r-0 ${align === "right" ? "text-right" : "text-left"}`}>
+    <th className={`px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 last:border-r-0 ${align === "right" ? "text-right" : "text-left"}`}>
       <button
         onClick={() => toggleSort(field)}
         className={`inline-flex items-center gap-1 text-white hover:text-white/80 transition-colors ${align === "right" ? "flex-row-reverse" : ""}`}
@@ -799,7 +799,7 @@ export default function Quotes() {
             <table className="w-full text-sm text-left">
               <thead className="text-xs sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  <th className="w-10 px-3 py-3 border-r border-blue-500/40">
+                  <th className="w-10 px-3 py-1 border-r border-blue-500/40">
                     <input
                       type="checkbox"
                       checked={allSelected}
@@ -808,16 +808,16 @@ export default function Quotes() {
                       className="rounded border-white/40 cursor-pointer"
                     />
                   </th>
-                  <th className="w-10 px-2 py-3 text-white/80 font-semibold uppercase tracking-wide text-center border-r border-blue-500/40">#</th>
+                  <th className="w-10 px-2 py-1 text-white/80 font-semibold uppercase tracking-wide text-center border-r border-blue-500/40">#</th>
                   {colVis.isVisible("quoteNumber") && <SortableHeader field="quoteNumber" label="Quote Number" />}
                   {colVis.isVisible("name") && <SortableHeader field="name" label="Quote Name" />}
-                  {colVis.isVisible("revision") && <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision</th>}
-                  {colVis.isVisible("clonedFrom") && <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From</th>}
+                  {colVis.isVisible("revision") && <th className="px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision</th>}
+                  {colVis.isVisible("clonedFrom") && <th className="px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From</th>}
                   {colVis.isVisible("validUntil") && <SortableHeader field="validUntil" label="Expiration Date" />}
                   {colVis.isVisible("subtotal") && <SortableHeader field="subtotal" label="Subtotal" align="right" />}
                   {colVis.isVisible("total") && <SortableHeader field="total" label="Total Price" align="right" />}
-                  {colVis.isVisible("createdBy") && <th className="px-3 py-3 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Created By</th>}
-                  <th className="w-10 px-2 py-3"></th>
+                  {colVis.isVisible("createdBy") && <th className="px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Created By</th>}
+                  <th className="w-10 px-2 py-1"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -848,7 +848,7 @@ export default function Quotes() {
                           className="rounded border-border cursor-pointer"
                         />
                       </td>
-                      <td className="px-2 py-2 text-center text-muted-foreground border-r border-border">{idx + 1}</td>
+                      <td className="px-2 py-1 text-center text-muted-foreground border-r border-border">{idx + 1}</td>
                       {colVis.isVisible("quoteNumber") && (
                         <td className="px-3 py-1 border-r border-border">
                           <Link href={`/quotes/${q.id}`} className="text-primary hover:underline font-mono text-sm">
@@ -916,7 +916,7 @@ export default function Quotes() {
                           </div>
                         </td>
                       )}
-                      <td className="px-2 py-2 text-right">
+                      <td className="px-2 py-1 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button

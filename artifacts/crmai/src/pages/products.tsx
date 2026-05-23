@@ -206,7 +206,7 @@ export default function Products() {
           </div>
         </div>
 
-        <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800">
+        <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800 overflow-hidden">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
             <TablePagination
               variant="inline"
