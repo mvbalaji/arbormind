@@ -4,6 +4,12 @@ import { opportunitiesTable, usersTable, accountsTable, contactsTable, activitie
 import { eq, ilike, sql, and, isNull, asc } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
+import { evaluateApprovalsForEntity } from "../lib/approvals-engine";
+
+function actorFromReq(req: any) {
+  const u = req.session?.user ?? req.user ?? null;
+  return { id: u?.id ?? null, name: u?.name ?? null, email: u?.email ?? null };
+}
 
 const router: IRouter = Router();
 router.use("/opportunities", requireScreenAccess("opportunities"));
@@ -150,6 +156,21 @@ router.put("/opportunities/:id", async (req, res) => {
       res.status(404).json({ error: "Opportunity not found" });
       return;
     }
+    // Fire-and-forget: evaluate approval rules against the updated opportunity.
+    const items = await db.select().from(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, id));
+    const maxItemDiscount = items.reduce((m, it) => Math.max(m, Number(it.discount) || 0), 0);
+    void evaluateApprovalsForEntity(
+      "opportunity",
+      id,
+      {
+        title: `Opportunity #${id} — ${opportunity.name}`,
+        amount: opportunity.amount ? Number(opportunity.amount) : null,
+        probability: opportunity.probability ?? null,
+        discountPercent: maxItemDiscount,
+      },
+      actorFromReq(req),
+      req.log,
+    );
     res.json({ ...opportunity, amount: opportunity.amount ? Number(opportunity.amount) : null });
   } catch (err) {
     req.log.error(err);

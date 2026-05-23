@@ -9,6 +9,7 @@ import {
   usersTable,
 } from "@workspace/db";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { advanceMultiLevelApproval } from "../lib/approvals-engine";
 
 const router: IRouter = Router();
 
@@ -514,6 +515,16 @@ router.post("/approvals/requests/:id/decision", async (req, res) => {
     });
 
     if (finalId == null) { res.status(409).json({ error: "Request is already closed" }); return; }
+
+    // If the rule has further levels and the entity has multi-level enabled,
+    // auto-create the next request and notify approvers.
+    if (decision === "approved") {
+      void advanceMultiLevelApproval(
+        id,
+        { id: user.id ?? null, name: user.name ?? null, email: user.email ?? null },
+        req.log,
+      );
+    }
 
     const full = await loadRequestWithAudit(id);
     res.json({ data: full });

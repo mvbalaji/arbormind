@@ -2,7 +2,7 @@ import { pgTable, serial, text, integer, timestamp, index } from "drizzle-orm/pg
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
-import { approvalRolesTable } from "./approvals";
+import { approvalRolesTable, approvalCriteriaTable } from "./approvals";
 
 export const approvalRequestsTable = pgTable("approval_requests", {
   id: serial("id").primaryKey(),
@@ -11,6 +11,8 @@ export const approvalRequestsTable = pgTable("approval_requests", {
   status: text("status").notNull().default("open"),
   level: integer("level").notNull().default(1),
   roleId: integer("role_id").references(() => approvalRolesTable.id, { onDelete: "set null" }),
+  criterionId: integer("criterion_id").references(() => approvalCriteriaTable.id, { onDelete: "set null" }),
+  ruleKey: text("rule_key"),
   requestedBy: integer("requested_by").references(() => usersTable.id, { onDelete: "set null" }),
   requestedAt: timestamp("requested_at").notNull().defaultNow(),
   decidedBy: integer("decided_by").references(() => usersTable.id, { onDelete: "set null" }),

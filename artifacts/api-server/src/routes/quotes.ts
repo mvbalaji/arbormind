@@ -7,6 +7,26 @@ import nodemailer from "nodemailer";
 import { Writable } from "stream";
 
 import { requireScreenAccess } from "../lib/access-control";
+import { evaluateApprovalsForEntity } from "../lib/approvals-engine";
+
+function actorFromReq(req: any) {
+  const u = req.session?.user ?? req.user ?? null;
+  return { id: u?.id ?? null, name: u?.name ?? null, email: u?.email ?? null };
+}
+
+function triggerQuoteApprovals(req: any, quote: { id: number; name: string; discount: string | number; total: string | number }) {
+  void evaluateApprovalsForEntity(
+    "quote",
+    quote.id,
+    {
+      title: `Quote #${quote.id} — ${quote.name}`,
+      discountPercent: Number(quote.discount) || 0,
+      total: Number(quote.total) || 0,
+    },
+    actorFromReq(req),
+    req.log,
+  );
+}
 
 const router: IRouter = Router();
 router.use("/quotes", requireScreenAccess("quotes"));
@@ -363,6 +383,7 @@ router.post("/quotes", async (req, res) => {
       })));
     }
 
+    triggerQuoteApprovals(req, quote);
     res.status(201).json(formatQuote(quote, []));
   } catch (err) {
     req.log.error(err);
@@ -503,6 +524,7 @@ router.put("/quotes/:id", async (req, res) => {
       res.status(404).json({ error: "Quote not found" });
     } else {
       const updatedItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      triggerQuoteApprovals(req, quote);
       res.json(formatQuote(quote, updatedItems.map(formatItem)));
     }
   } catch (err) {
