@@ -782,6 +782,17 @@ export default function Quotes() {
         {/* Table */}
         <Card className="border-2 border-blue-700 dark:border-blue-800 overflow-hidden p-0">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
+            <TablePagination
+              variant="inline"
+              page={quotesPagination.page}
+              totalPages={quotesPagination.totalPages}
+              pageSize={quotesPagination.pageSize}
+              total={quotesPagination.total}
+              pageStart={quotesPagination.pageStart}
+              pageEnd={quotesPagination.pageEnd}
+              onPageChange={quotesPagination.setPage}
+              onPageSizeChange={quotesPagination.setPageSize}
+            />
             <ColumnsMenu columns={QUOTE_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -970,18 +981,7 @@ export default function Quotes() {
                 })}
               </tbody>
             </table>
-          </div>
-          <TablePagination
-            page={quotesPagination.page}
-            totalPages={quotesPagination.totalPages}
-            pageSize={quotesPagination.pageSize}
-            total={quotesPagination.total}
-            pageStart={quotesPagination.pageStart}
-            pageEnd={quotesPagination.pageEnd}
-            onPageChange={quotesPagination.setPage}
-            onPageSizeChange={quotesPagination.setPageSize}
-          />
-        </Card>
+          </div>        </Card>
 
         {/* Status badge legend (subtle) */}
         {sortedQuotes.length > 0 && (

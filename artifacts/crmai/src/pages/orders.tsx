@@ -575,6 +575,17 @@ export default function Orders() {
 
         <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
+            <TablePagination
+              variant="inline"
+              page={ordersPagination.page}
+              totalPages={ordersPagination.totalPages}
+              pageSize={ordersPagination.pageSize}
+              total={ordersPagination.total}
+              pageStart={ordersPagination.pageStart}
+              pageEnd={ordersPagination.pageEnd}
+              onPageChange={ordersPagination.setPage}
+              onPageSizeChange={ordersPagination.setPageSize}
+            />
             <ColumnsMenu columns={ORDER_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -739,18 +750,7 @@ export default function Orders() {
                 ))}
               </tbody>
             </table>
-          </div>
-          <TablePagination
-            page={ordersPagination.page}
-            totalPages={ordersPagination.totalPages}
-            pageSize={ordersPagination.pageSize}
-            total={ordersPagination.total}
-            pageStart={ordersPagination.pageStart}
-            pageEnd={ordersPagination.pageEnd}
-            onPageChange={ordersPagination.setPage}
-            onPageSizeChange={ordersPagination.setPageSize}
-          />
-        </Card>
+          </div>        </Card>
       </div>
 
       <CreateOrderDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />

@@ -24,6 +24,8 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 const CASE_TOGGLEABLE_COLS = [
   { key: "caseNumber" as const, label: "Case #" },
@@ -64,6 +66,8 @@ export default function Cases() {
   const [editingCase, setEditingCase] = useState<{ id: number } & CaseFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListCases({ limit: 50 });
+  const allCases = data?.data ?? [];
+  const casesPagination = usePagination("cases", allCases);
   const colVis = useColumnVisibility<"caseNumber" | "subject" | "priority" | "status" | "opened">("col-visibility:cases:v1", CASE_TOGGLEABLE_COLS);
   const caseColSpan = colVis.visible.size + 1;
 
@@ -85,6 +89,17 @@ export default function Cases() {
 
         <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
+            <TablePagination
+              variant="inline"
+              page={casesPagination.page}
+              totalPages={casesPagination.totalPages}
+              pageSize={casesPagination.pageSize}
+              total={casesPagination.total}
+              pageStart={casesPagination.pageStart}
+              pageEnd={casesPagination.pageEnd}
+              onPageChange={casesPagination.setPage}
+              onPageSizeChange={casesPagination.setPageSize}
+            />
             <ColumnsMenu columns={CASE_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -105,7 +120,7 @@ export default function Cases() {
                 ) : data?.data?.length === 0 ? (
                   <tr><td colSpan={caseColSpan} className="px-6 py-8 text-center text-muted-foreground">No cases found.</td></tr>
                 ) : (
-                  data?.data?.map((c) => (
+                  casesPagination.paged.map((c) => (
                     <tr key={c.id} className="hover:bg-muted/50 transition-colors group">
                       {colVis.isVisible("caseNumber") && (
                         <td className="px-3 py-1 font-mono text-xs text-muted-foreground">{c.caseNumber}</td>

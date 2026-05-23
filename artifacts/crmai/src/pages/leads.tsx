@@ -494,6 +494,17 @@ export default function Leads() {
         {/* Table */}
         <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
+            <TablePagination
+              variant="inline"
+              page={leadsPagination.page}
+              totalPages={leadsPagination.totalPages}
+              pageSize={leadsPagination.pageSize}
+              total={leadsPagination.total}
+              pageStart={leadsPagination.pageStart}
+              pageEnd={leadsPagination.pageEnd}
+              onPageChange={leadsPagination.setPage}
+              onPageSizeChange={leadsPagination.setPageSize}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -731,18 +742,6 @@ export default function Leads() {
               </tbody>
             </table>
           </div>
-
-          <TablePagination
-            page={leadsPagination.page}
-            totalPages={leadsPagination.totalPages}
-            pageSize={leadsPagination.pageSize}
-            total={leadsPagination.total}
-            pageStart={leadsPagination.pageStart}
-            pageEnd={leadsPagination.pageEnd}
-            onPageChange={leadsPagination.setPage}
-            onPageSizeChange={leadsPagination.setPageSize}
-          />
-
           {/* Table Footer */}
           {false && leads.length > 0 && (
             <div className="px-3 py-1 border-t border-border bg-muted/20 flex items-center justify-between">

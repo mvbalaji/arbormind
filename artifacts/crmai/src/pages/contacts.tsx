@@ -94,6 +94,17 @@ export default function Contacts() {
 
         <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800 overflow-hidden">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
+            <TablePagination
+              variant="inline"
+              page={contactsPagination.page}
+              totalPages={contactsPagination.totalPages}
+              pageSize={contactsPagination.pageSize}
+              total={contactsPagination.total}
+              pageStart={contactsPagination.pageStart}
+              pageEnd={contactsPagination.pageEnd}
+              onPageChange={contactsPagination.setPage}
+              onPageSizeChange={contactsPagination.setPageSize}
+            />
             <ColumnsMenu columns={CONTACT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -213,18 +224,7 @@ export default function Contacts() {
                 )}
               </tbody>
             </table>
-          </div>
-          <TablePagination
-            page={contactsPagination.page}
-            totalPages={contactsPagination.totalPages}
-            pageSize={contactsPagination.pageSize}
-            total={contactsPagination.total}
-            pageStart={contactsPagination.pageStart}
-            pageEnd={contactsPagination.pageEnd}
-            onPageChange={contactsPagination.setPage}
-            onPageSizeChange={contactsPagination.setPageSize}
-          />
-        </Card>
+          </div>        </Card>
       </div>
 
       <ContactFormDialog

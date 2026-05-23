@@ -25,6 +25,8 @@ import { format, startOfWeek, addDays, isSameDay, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 const ACTIVITY_TOGGLEABLE_COLS = [
   { key: "icon" as const, label: "Icon" },
@@ -124,6 +126,8 @@ export default function Activities() {
   const activityColSpan = colVis.visible.size + 1;
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const { data, isLoading } = useListActivities({ limit: 200 });
+  const allActivities = data?.data ?? [];
+  const activitiesPagination = usePagination("activities", allActivities);
 
   return (
     <Layout>
@@ -175,6 +179,17 @@ export default function Activities() {
         {viewMode === "list" && (
         <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
+            <TablePagination
+              variant="inline"
+              page={activitiesPagination.page}
+              totalPages={activitiesPagination.totalPages}
+              pageSize={activitiesPagination.pageSize}
+              total={activitiesPagination.total}
+              pageStart={activitiesPagination.pageStart}
+              pageEnd={activitiesPagination.pageEnd}
+              onPageChange={activitiesPagination.setPage}
+              onPageSizeChange={activitiesPagination.setPageSize}
+            />
             <ColumnsMenu columns={ACTIVITY_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -195,7 +210,7 @@ export default function Activities() {
                 ) : data?.data?.length === 0 ? (
                   <tr><td colSpan={activityColSpan} className="px-6 py-8 text-center text-muted-foreground">No activities found.</td></tr>
                 ) : (
-                  data?.data?.map((act) => {
+                  activitiesPagination.paged.map((act) => {
                     const Icon = TYPE_ICONS[act.type] ?? FileText;
                     return (
                       <tr key={act.id} className="hover:bg-muted/50 transition-colors group">

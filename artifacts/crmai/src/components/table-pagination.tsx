@@ -15,15 +15,19 @@ interface Props {
   onPageChange: (p: number) => void;
   onPageSizeChange: (n: PageSize) => void;
   className?: string;
+  variant?: "default" | "inline";
 }
 
 export function TablePagination({
   page, totalPages, pageSize, total, pageStart, pageEnd,
-  onPageChange, onPageSizeChange, className,
+  onPageChange, onPageSizeChange, className, variant = "default",
 }: Props) {
   if (total === 0) return null;
+  const wrapperCls = variant === "inline"
+    ? `flex flex-wrap items-center justify-end gap-3 text-xs text-muted-foreground ${className ?? ""}`
+    : `flex flex-wrap items-center justify-between gap-3 px-3 py-2 text-xs text-muted-foreground border-t border-border ${className ?? ""}`;
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-3 px-3 py-2 text-xs text-muted-foreground border-t border-border ${className ?? ""}`}>
+    <div className={wrapperCls}>
       <div className="flex items-center gap-2">
         <span>Rows per page</span>
         <Select value={String(pageSize)} onValueChange={(v) => onPageSizeChange(Number(v) as PageSize)}>

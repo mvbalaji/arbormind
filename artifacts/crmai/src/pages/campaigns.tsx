@@ -227,6 +227,17 @@ export default function Campaigns() {
 
         <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800 overflow-hidden">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
+            <TablePagination
+              variant="inline"
+              page={campaignsPagination.page}
+              totalPages={campaignsPagination.totalPages}
+              pageSize={campaignsPagination.pageSize}
+              total={campaignsPagination.total}
+              pageStart={campaignsPagination.pageStart}
+              pageEnd={campaignsPagination.pageEnd}
+              onPageChange={campaignsPagination.setPage}
+              onPageSizeChange={campaignsPagination.setPageSize}
+            />
             <ColumnsMenu columns={CAMPAIGN_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -330,18 +341,7 @@ export default function Campaigns() {
                 )}
               </tbody>
             </table>
-          </div>
-          <TablePagination
-            page={campaignsPagination.page}
-            totalPages={campaignsPagination.totalPages}
-            pageSize={campaignsPagination.pageSize}
-            total={campaignsPagination.total}
-            pageStart={campaignsPagination.pageStart}
-            pageEnd={campaignsPagination.pageEnd}
-            onPageChange={campaignsPagination.setPage}
-            onPageSizeChange={campaignsPagination.setPageSize}
-          />
-        </Card>
+          </div>        </Card>
       </div>
 
       <CampaignFormDialog

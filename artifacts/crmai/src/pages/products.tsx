@@ -208,6 +208,17 @@ export default function Products() {
 
         <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
+            <TablePagination
+              variant="inline"
+              page={productsPagination.page}
+              totalPages={productsPagination.totalPages}
+              pageSize={productsPagination.pageSize}
+              total={productsPagination.total}
+              pageStart={productsPagination.pageStart}
+              pageEnd={productsPagination.pageEnd}
+              onPageChange={productsPagination.setPage}
+              onPageSizeChange={productsPagination.setPageSize}
+            />
             <ColumnsMenu columns={PRODUCT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -294,18 +305,7 @@ export default function Products() {
                 ))}
               </tbody>
             </table>
-          </div>
-          <TablePagination
-            page={productsPagination.page}
-            totalPages={productsPagination.totalPages}
-            pageSize={productsPagination.pageSize}
-            total={productsPagination.total}
-            pageStart={productsPagination.pageStart}
-            pageEnd={productsPagination.pageEnd}
-            onPageChange={productsPagination.setPage}
-            onPageSizeChange={productsPagination.setPageSize}
-          />
-        </Card>
+          </div>        </Card>
       </div>
 
       <ProductFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} mode="create" />

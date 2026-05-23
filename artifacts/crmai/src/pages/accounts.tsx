@@ -213,6 +213,17 @@ export default function Accounts() {
         {/* Toolbar */}
         <div className="flex items-center gap-2 mb-2">
           <div className="flex-1" />
+          <TablePagination
+            variant="inline"
+            page={accountsPagination.page}
+            totalPages={accountsPagination.totalPages}
+            pageSize={accountsPagination.pageSize}
+            total={accountsPagination.total}
+            pageStart={accountsPagination.pageStart}
+            pageEnd={accountsPagination.pageEnd}
+            onPageChange={accountsPagination.setPage}
+            onPageSizeChange={accountsPagination.setPageSize}
+          />
           <ColumnsMenu columns={ACCOUNT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           <span className="text-xs text-muted-foreground">{total} account{total !== 1 ? "s" : ""}</span>
         </div>
@@ -419,18 +430,6 @@ export default function Accounts() {
               </tbody>
             </table>
           </div>
-
-          <TablePagination
-            page={accountsPagination.page}
-            totalPages={accountsPagination.totalPages}
-            pageSize={accountsPagination.pageSize}
-            total={accountsPagination.total}
-            pageStart={accountsPagination.pageStart}
-            pageEnd={accountsPagination.pageEnd}
-            onPageChange={accountsPagination.setPage}
-            onPageSizeChange={accountsPagination.setPageSize}
-          />
-
           {false && filteredAccounts.length > 0 && (
             <div className="px-3 py-1 border-t border-border bg-muted/20 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{total} record{total !== 1 ? "s" : ""}</span>
