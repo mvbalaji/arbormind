@@ -55,23 +55,19 @@ export function ApprovalWarning({ entity, snapshot, className }: Props) {
 
   if (matches.length === 0) return null;
 
+  const summary = matches
+    .map(m => `${m.name} (${FIELD_LABEL[m.field] ?? m.field} ${OP_LABEL[m.operator] ?? m.operator} ${m.threshold ?? ""}${m.levels > 1 ? `, ${m.levels} levels` : ""})`)
+    .join("; ");
+
   return (
-    <div className={`flex items-start gap-2 rounded-md border border-orange-500/40 bg-orange-500/10 px-3 py-2 text-sm text-orange-700 dark:text-orange-300 ${className ?? ""}`}>
-      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-      <div className="flex-1">
-        <div className="font-semibold">Approval required</div>
-        <ul className="mt-1 space-y-0.5 text-xs">
-          {matches.map((m, i) => (
-            <li key={i}>
-              • <span className="font-medium">{m.name}</span>
-              {" — "}
-              {FIELD_LABEL[m.field] ?? m.field} {OP_LABEL[m.operator] ?? m.operator} {m.threshold ?? ""}
-              {m.levels > 1 && <span className="opacity-70"> ({m.levels} levels)</span>}
-            </li>
-          ))}
-        </ul>
-        <div className="mt-1 text-xs opacity-80">An approval request will be created when you save.</div>
-      </div>
+    <div
+      className={`flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 truncate ${className ?? ""}`}
+      title={summary}
+    >
+      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+      <span className="truncate">
+        Approval required on save: <span className="font-medium">{summary}</span>
+      </span>
     </div>
   );
 }
