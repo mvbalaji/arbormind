@@ -233,12 +233,12 @@ export default function Campaigns() {
             <table className="w-full text-sm text-left">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("campaign") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Campaign</th>}
-                  {colVis.isVisible("type") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Type</th>}
-                  {colVis.isVisible("status") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</th>}
-                  {colVis.isVisible("dates") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Dates</th>}
-                  {colVis.isVisible("budget") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Budget / Rev.</th>}
-                  <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Actions</th>
+                  {colVis.isVisible("campaign") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Campaign</th>}
+                  {colVis.isVisible("type") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Type</th>}
+                  {colVis.isVisible("status") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status</th>}
+                  {colVis.isVisible("dates") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Dates</th>}
+                  {colVis.isVisible("budget") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Budget / Rev.</th>}
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

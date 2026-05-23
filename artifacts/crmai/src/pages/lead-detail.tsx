@@ -136,7 +136,7 @@ function CollapsibleSection({ title, children, defaultOpen = true }: { title: st
     <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors border-b border-border"
+        className="w-full flex items-center justify-between px-2 py-1 bg-muted/30 hover:bg-muted/50 transition-colors border-b border-border"
       >
         <span className="text-xs font-semibold text-foreground uppercase tracking-wide">{title}</span>
         {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
@@ -709,7 +709,7 @@ export default function LeadDetail() {
           {/* Activities tab */}
           {relatedTab === "activities" && (
             <div>
-              <div className="px-4 py-3 border-b border-border bg-muted/10">
+              <div className="px-2 py-1 border-b border-border bg-muted/10">
                 <div className="flex gap-2 mb-2">
                   {[
                     { key: "note", label: "Note", icon: MessageSquare },
@@ -759,7 +759,7 @@ export default function LeadDetail() {
                   activities.slice(0, 15).map((act) => {
                     const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
                     return (
-                      <div key={act.id} className="px-4 py-3 flex items-start gap-3 hover:bg-muted/20 transition-colors">
+                      <div key={act.id} className="px-2 py-1 flex items-start gap-3 hover:bg-muted/20 transition-colors">
                         <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <Icon className="w-3.5 h-3.5 text-primary" />
                         </div>

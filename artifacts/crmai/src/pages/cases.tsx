@@ -91,12 +91,12 @@ export default function Cases() {
             <table className="w-full text-sm text-left">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("caseNumber") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Case #</th>}
-                  {colVis.isVisible("subject") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Subject</th>}
-                  {colVis.isVisible("priority") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Priority</th>}
-                  {colVis.isVisible("status") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</th>}
-                  {colVis.isVisible("opened") && <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap">Opened</th>}
-                  <th className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap text-right">Actions</th>
+                  {colVis.isVisible("caseNumber") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Case #</th>}
+                  {colVis.isVisible("subject") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Subject</th>}
+                  {colVis.isVisible("priority") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Priority</th>}
+                  {colVis.isVisible("status") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status</th>}
+                  {colVis.isVisible("opened") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Opened</th>}
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

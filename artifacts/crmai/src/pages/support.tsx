@@ -183,7 +183,7 @@ export default function Support() {
         <div className="flex flex-1 overflow-hidden rounded-2xl border border-border bg-card/30">
           {/* Email list */}
           <div className="w-[340px] shrink-0 flex flex-col border-r border-border overflow-hidden">
-            <div className="px-4 py-3 border-b border-border bg-muted">
+            <div className="px-2 py-1 border-b border-border bg-muted">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {emails.length} ticket{emails.length !== 1 ? "s" : ""}
               </p>

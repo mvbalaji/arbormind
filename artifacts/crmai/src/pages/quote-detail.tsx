@@ -666,11 +666,11 @@ export default function QuoteDetail() {
               <table className="w-full text-sm">
                 <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                   <tr>
-                    <th className="px-4 py-3 text-left font-medium">Product</th>
-                    <th className="px-4 py-3 text-right font-medium">Qty</th>
-                    <th className="px-4 py-3 text-right font-medium">Unit Price</th>
-                    <th className="px-4 py-3 text-right font-medium">Disc %</th>
-                    <th className="px-4 py-3 text-right font-medium">Total</th>
+                    <th className="px-2 py-1 text-left font-medium">Product</th>
+                    <th className="px-2 py-1 text-right font-medium">Qty</th>
+                    <th className="px-2 py-1 text-right font-medium">Unit Price</th>
+                    <th className="px-2 py-1 text-right font-medium">Disc %</th>
+                    <th className="px-2 py-1 text-right font-medium">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -678,11 +678,11 @@ export default function QuoteDetail() {
                     <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No line items</td></tr>
                   ) : quote.items.map((item) => (
                     <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 text-foreground font-medium">{item.productName}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">{item.quantity}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">£{item.unitPrice.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">{item.discount}%</td>
-                      <td className="px-4 py-3 text-right font-semibold text-foreground">£{item.total.toFixed(2)}</td>
+                      <td className="px-2 py-1 text-foreground font-medium">{item.productName}</td>
+                      <td className="px-2 py-1 text-right text-muted-foreground">{item.quantity}</td>
+                      <td className="px-2 py-1 text-right text-muted-foreground">£{item.unitPrice.toFixed(2)}</td>
+                      <td className="px-2 py-1 text-right text-muted-foreground">{item.discount}%</td>
+                      <td className="px-2 py-1 text-right font-semibold text-foreground">£{item.total.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -795,7 +795,7 @@ export default function QuoteDetail() {
               {quote.versions.map((v) => (
                 <div
                   key={v.id}
-                  className={`px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors ${v.id === quote.id ? "bg-primary/5" : ""}`}
+                  className={`px-2 py-1 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors ${v.id === quote.id ? "bg-primary/5" : ""}`}
                   onClick={() => { if (v.id !== quote.id) navigate(`/quotes/${v.id}`); }}
                 >
                   <div className="flex items-center gap-3">

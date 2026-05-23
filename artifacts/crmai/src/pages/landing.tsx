@@ -88,7 +88,7 @@ function EnquiryForm({ isDark }: { isDark: boolean }) {
           value={formData.name}
           onChange={handleChange}
           required
-          className="px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2"
+          className="px-2 py-1 rounded-xl border transition-colors focus:outline-none focus:ring-2"
           style={{
             background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
             borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
@@ -102,7 +102,7 @@ function EnquiryForm({ isDark }: { isDark: boolean }) {
           value={formData.email}
           onChange={handleChange}
           required
-          className="px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2"
+          className="px-2 py-1 rounded-xl border transition-colors focus:outline-none focus:ring-2"
           style={{
             background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
             borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
@@ -118,7 +118,7 @@ function EnquiryForm({ isDark }: { isDark: boolean }) {
           placeholder="Phone (optional)"
           value={formData.phone}
           onChange={handleChange}
-          className="px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2"
+          className="px-2 py-1 rounded-xl border transition-colors focus:outline-none focus:ring-2"
           style={{
             background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
             borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
@@ -131,7 +131,7 @@ function EnquiryForm({ isDark }: { isDark: boolean }) {
           placeholder="Company (optional)"
           value={formData.company}
           onChange={handleChange}
-          className="px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2"
+          className="px-2 py-1 rounded-xl border transition-colors focus:outline-none focus:ring-2"
           style={{
             background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
             borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
@@ -147,7 +147,7 @@ function EnquiryForm({ isDark }: { isDark: boolean }) {
         onChange={handleChange}
         required
         rows={4}
-        className="w-full px-4 py-3 rounded-xl border transition-colors focus:outline-none focus:ring-2 resize-none"
+        className="w-full px-2 py-1 rounded-xl border transition-colors focus:outline-none focus:ring-2 resize-none"
         style={{
           background: isDark ? "rgba(30,41,59,0.5)" : "rgba(248,250,252,0.5)",
           borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
@@ -216,7 +216,7 @@ function DashboardCarousel({ isDark }: { isDark: boolean }) {
       >
         {/* Title bar */}
         <div
-          className="flex items-center gap-2 px-4 py-3"
+          className="flex items-center gap-2 px-2 py-1"
           style={{
             background: isDark ? "#1e2a3a" : "#f1f5f9",
             borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,

@@ -478,7 +478,7 @@ export default function Approvals() {
         </div>
 
         {/* Entity selector + metadata bar */}
-        <Card className="border-border px-4 py-3">
+        <Card className="border-border px-2 py-1">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Entity:</span>
@@ -525,7 +525,7 @@ export default function Approvals() {
           <div className="lg:col-span-2 flex flex-col gap-4">
             {/* Criteria Configuration card */}
             <Card className="border-border overflow-hidden p-0">
-              <div className="px-4 py-3 border-b border-border bg-muted/30">
+              <div className="px-2 py-1 border-b border-border bg-muted/30">
                 <div className="font-display font-semibold text-foreground">Criteria Configuration</div>
               </div>
               <div className="overflow-x-auto">
@@ -588,7 +588,7 @@ export default function Approvals() {
                   </tbody>
                 </table>
               </div>
-              <div className="px-4 py-3 border-t border-border bg-card">
+              <div className="px-2 py-1 border-t border-border bg-card">
                 <Button size="sm" onClick={openCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Plus className="w-4 h-4 mr-1.5" /> Add Criteria
                 </Button>
@@ -597,7 +597,7 @@ export default function Approvals() {
 
             {/* Approval Role Mapping card */}
             <Card className="border-border overflow-hidden p-0">
-              <div className="px-4 py-3 border-b border-border bg-muted/30">
+              <div className="px-2 py-1 border-b border-border bg-muted/30">
                 <div className="font-display font-semibold text-foreground">Approval Role Mapping</div>
               </div>
               <div className="overflow-x-auto">

@@ -251,7 +251,7 @@ export function AccessControlInline() {
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Screen</th>
+                          <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Screen</th>
                           {data.roles.map((r) => (
                             <th key={r.key} className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">
                               {r.label}
@@ -331,8 +331,8 @@ export function AccessControlInline() {
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-800 border-b border-indigo-800 divide-x divide-indigo-500/40">
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap" rowSpan={2}>Record Type</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap" rowSpan={2}>Role</th>
+                          <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap" rowSpan={2}>Record Type</th>
+                          <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap" rowSpan={2}>Role</th>
                           {PERM_COLS.map((c) => (
                             <th key={c.key} className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">{c.label}</th>
                           ))}

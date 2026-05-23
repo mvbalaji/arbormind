@@ -60,7 +60,7 @@ export default function Login() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Email / Username"
-              className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+              className="w-full px-2 py-1 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
               autoComplete="username"
             />
             <input
@@ -68,7 +68,7 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
               type="password"
-              className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
+              className="w-full px-2 py-1 rounded-xl border border-white/10 bg-white/5 text-white placeholder-white/30 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all"
               autoComplete="current-password"
             />
           </div>
@@ -82,7 +82,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-4 py-3 rounded-xl font-semibold text-white text-sm transition-all disabled:opacity-60"
+            className="w-full px-2 py-1 rounded-xl font-semibold text-white text-sm transition-all disabled:opacity-60"
             style={{ background: "linear-gradient(135deg, #6366f1, #4f46e5)" }}
           >
             {loading ? "Signing in…" : "Sign in"}

@@ -555,15 +555,15 @@ export default function Leads() {
                       className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
                     />
                   </th>
-                  {isColVisible("name") && <th className="relative px-4 py-3 text-left"><SortHeader field="name">Name</SortHeader><ColResizeHandle onMouseDown={startColResize("name")} /></th>}
-                  {isColVisible("company") && <th className="relative px-4 py-3 text-left"><SortHeader field="company">Company</SortHeader><ColResizeHandle onMouseDown={startColResize("company")} /></th>}
-                  {isColVisible("phone") && <th className="relative px-4 py-3 text-left"><SortHeader field="phone">Phone</SortHeader><ColResizeHandle onMouseDown={startColResize("phone")} /></th>}
-                  {isColVisible("email") && <th className="relative px-4 py-3 text-left"><SortHeader field="email">Email</SortHeader><ColResizeHandle onMouseDown={startColResize("email")} /></th>}
-                  {isColVisible("status") && <th className="relative px-4 py-3 text-left"><SortHeader field="status">Lead Status</SortHeader><ColResizeHandle onMouseDown={startColResize("status")} /></th>}
-                  {isColVisible("score") && <th className="relative px-4 py-3 text-center"><SortHeader field="score" align="center">Score</SortHeader><ColResizeHandle onMouseDown={startColResize("score")} /></th>}
-                  {isColVisible("createdAt") && <th className="relative px-4 py-3 text-left"><SortHeader field="createdAt">Created Date</SortHeader><ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>}
-                  {isColVisible("owner") && <th className="relative px-4 py-3 text-left"><SortHeader field="owner">Owner</SortHeader><ColResizeHandle onMouseDown={startColResize("owner")} /></th>}
-                  <th className="relative px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap sticky right-0 z-20 bg-blue-700 dark:bg-blue-800 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.25)]">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
+                  {isColVisible("name") && <th className="relative px-2 py-1 text-left"><SortHeader field="name">Name</SortHeader><ColResizeHandle onMouseDown={startColResize("name")} /></th>}
+                  {isColVisible("company") && <th className="relative px-2 py-1 text-left"><SortHeader field="company">Company</SortHeader><ColResizeHandle onMouseDown={startColResize("company")} /></th>}
+                  {isColVisible("phone") && <th className="relative px-2 py-1 text-left"><SortHeader field="phone">Phone</SortHeader><ColResizeHandle onMouseDown={startColResize("phone")} /></th>}
+                  {isColVisible("email") && <th className="relative px-2 py-1 text-left"><SortHeader field="email">Email</SortHeader><ColResizeHandle onMouseDown={startColResize("email")} /></th>}
+                  {isColVisible("status") && <th className="relative px-2 py-1 text-left"><SortHeader field="status">Lead Status</SortHeader><ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                  {isColVisible("score") && <th className="relative px-2 py-1 text-center"><SortHeader field="score" align="center">Score</SortHeader><ColResizeHandle onMouseDown={startColResize("score")} /></th>}
+                  {isColVisible("createdAt") && <th className="relative px-2 py-1 text-left"><SortHeader field="createdAt">Created Date</SortHeader><ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>}
+                  {isColVisible("owner") && <th className="relative px-2 py-1 text-left"><SortHeader field="owner">Owner</SortHeader><ColResizeHandle onMouseDown={startColResize("owner")} /></th>}
+                  <th className="relative px-2 py-1 text-right text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap sticky right-0 z-20 bg-blue-700 dark:bg-blue-800 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.25)]">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

@@ -326,7 +326,7 @@ export default function Dashboard() {
               <div className="divide-y divide-border">
                 {leadsLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="px-4 py-3 flex gap-3">
+                    <div key={i} className="px-2 py-1 flex gap-3">
                       <Skeleton className="w-8 h-8 rounded-full" />
                       <div className="flex-1 space-y-1.5">
                         <Skeleton className="h-3 w-28" />
@@ -341,7 +341,7 @@ export default function Dashboard() {
                     const initials = `${lead.firstName[0] ?? ""}${lead.lastName[0] ?? ""}`.toUpperCase();
                     return (
                       <Link key={lead.id} href={`/leads/${lead.id}`}>
-                        <div className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer flex items-center gap-3">
+                        <div className="px-2 py-1 hover:bg-muted/50 transition-colors cursor-pointer flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/70 to-accent/70 flex items-center justify-center text-primary-foreground text-xs font-bold shrink-0">
                             {initials}
                           </div>
@@ -386,7 +386,7 @@ export default function Dashboard() {
               <div className="divide-y divide-border">
                 {topDealsLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="px-4 py-3 space-y-1.5">
+                    <div key={i} className="px-2 py-1 space-y-1.5">
                       <Skeleton className="h-3 w-32" />
                       <Skeleton className="h-3 w-20" />
                     </div>
@@ -396,7 +396,7 @@ export default function Dashboard() {
                 ) : (
                   topDeals.map((deal) => (
                     <Link key={deal.id} href={`/opportunities/${deal.id}`}>
-                      <div className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                      <div className="px-2 py-1 hover:bg-muted/50 transition-colors cursor-pointer">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">{deal.name}</p>
@@ -434,7 +434,7 @@ export default function Dashboard() {
               <div className="divide-y divide-border">
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="px-4 py-3 flex gap-3">
+                    <div key={i} className="px-2 py-1 flex gap-3">
                       <Skeleton className="w-7 h-7 rounded-lg" />
                       <div className="flex-1 space-y-1.5">
                         <Skeleton className="h-3 w-32" />
@@ -446,7 +446,7 @@ export default function Dashboard() {
                   <div className="px-4 py-8 text-center text-sm text-muted-foreground">No upcoming activities.</div>
                 ) : (
                   stats.upcomingActivities.map((activity) => (
-                    <div key={activity.id} className="px-4 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors">
+                    <div key={activity.id} className="px-2 py-1 flex items-start gap-3 hover:bg-muted/50 transition-colors">
                       <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
                         <Clock className="w-3.5 h-3.5 text-primary" />
                       </div>
