@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AISummary } from "@/components/ai-summary";
+import { AINextActions } from "@/components/ai-next-actions";
 import { EmailCompose } from "@/components/email-compose";
 import {
   ArrowLeft, Mail, Phone, Building2, User, Calendar, Activity,
@@ -670,6 +671,7 @@ export default function LeadDetail() {
           {/* Right column — AI Summary */}
           <div className="lg:col-span-2 flex flex-col gap-3">
             <AISummary entityType="lead" entityData={lead as unknown as Record<string, unknown>} />
+            <AINextActions entityType="lead" entityId={lead.id} />
           </div>
         </div>
 

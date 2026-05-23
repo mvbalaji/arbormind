@@ -12,6 +12,7 @@ interface ChatCompletionsAPI {
     model: string;
     messages: Array<{ role: string; content: string }>;
     max_completion_tokens?: number;
+    response_format?: { type: "json_object" | "text" };
   }): Promise<{
     choices: Array<{ message?: { content?: string | null } }>;
   }>;
@@ -183,6 +184,129 @@ const TOOL_DEFS = [
     description:
       "High-level counts across the entire workspace (leads, contacts, accounts, opps, activities, cases, quotes, orders) plus pipeline value and won revenue.",
     input_schema: { type: "object", properties: {} },
+  },
+
+  /* ---------- WRITE TOOLS (Phase 2 — agentic actions) ---------- */
+  {
+    name: "create_lead",
+    description: "Create a new lead. Requires firstName and lastName. Other fields optional. Returns the created lead.",
+    input_schema: {
+      type: "object",
+      properties: {
+        firstName: { type: "string" },
+        lastName: { type: "string" },
+        email: { type: "string" },
+        phone: { type: "string" },
+        company: { type: "string" },
+        title: { type: "string" },
+        source: { type: "string" },
+        status: { type: "string", enum: ["new","contacted","qualified","unqualified","lost"] },
+        score: { type: "integer", minimum: 0, maximum: 100 },
+        description: { type: "string" },
+      },
+      required: ["firstName","lastName"],
+    },
+  },
+  {
+    name: "update_lead",
+    description: "Update an existing lead. Provide id and any subset of fields to change.",
+    input_schema: {
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        status: { type: "string", enum: ["new","contacted","qualified","unqualified","lost"] },
+        score: { type: "integer", minimum: 0, maximum: 100 },
+        assignedTo: { type: "integer", description: "user id to assign to" },
+        phone: { type: "string" },
+        email: { type: "string" },
+        company: { type: "string" },
+        title: { type: "string" },
+        description: { type: "string" },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "create_contact",
+    description: "Create a new contact. Requires firstName, lastName.",
+    input_schema: {
+      type: "object",
+      properties: {
+        firstName: { type: "string" },
+        lastName: { type: "string" },
+        email: { type: "string" },
+        phone: { type: "string" },
+        title: { type: "string" },
+        accountId: { type: "integer" },
+        leadSource: { type: "string" },
+        description: { type: "string" },
+      },
+      required: ["firstName","lastName"],
+    },
+  },
+  {
+    name: "create_opportunity",
+    description: "Create a new opportunity. Requires name. Amount in GBP.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        accountId: { type: "integer" },
+        contactId: { type: "integer" },
+        amount: { type: "number" },
+        stage: { type: "string", enum: ["prospecting","qualification","proposal","negotiation","closed_won","closed_lost"] },
+        probability: { type: "integer", minimum: 0, maximum: 100 },
+        closeDate: { type: "string", description: "ISO date (YYYY-MM-DD)" },
+        nextStep: { type: "string" },
+        description: { type: "string" },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "update_opportunity",
+    description: "Update an opportunity — stage, amount, nextStep, closeDate, probability.",
+    input_schema: {
+      type: "object",
+      properties: {
+        id: { type: "integer" },
+        stage: { type: "string", enum: ["prospecting","qualification","proposal","negotiation","closed_won","closed_lost"] },
+        amount: { type: "number" },
+        probability: { type: "integer", minimum: 0, maximum: 100 },
+        closeDate: { type: "string", description: "ISO date (YYYY-MM-DD)" },
+        nextStep: { type: "string" },
+      },
+      required: ["id"],
+    },
+  },
+  {
+    name: "create_activity",
+    description: "Create / log an activity (call, email, meeting, task, note). Link to a lead/contact/opportunity/account. dueDate is ISO.",
+    input_schema: {
+      type: "object",
+      properties: {
+        type: { type: "string", enum: ["call","email","meeting","task","note"] },
+        subject: { type: "string" },
+        description: { type: "string" },
+        status: { type: "string", enum: ["planned","in_progress","completed","cancelled"] },
+        dueDate: { type: "string", description: "ISO datetime" },
+        leadId: { type: "integer" },
+        contactId: { type: "integer" },
+        opportunityId: { type: "integer" },
+        accountId: { type: "integer" },
+        assignToMe: { type: "boolean", description: "If true, assign to the current user" },
+      },
+      required: ["type","subject"],
+    },
+  },
+  {
+    name: "complete_activity",
+    description: "Mark an activity as completed.",
+    input_schema: {
+      type: "object",
+      properties: { id: { type: "integer" } },
+      required: ["id"],
+    },
   },
 ] as const;
 
@@ -474,6 +598,113 @@ async function runTool(
       };
     }
 
+    /* ---------- WRITE TOOLS ---------- */
+    case "create_lead": {
+      const [row] = await db.insert(leadsTable).values({
+        firstName: String(input.firstName),
+        lastName: String(input.lastName),
+        email: input.email ? String(input.email) : null,
+        phone: input.phone ? String(input.phone) : null,
+        company: input.company ? String(input.company) : null,
+        title: input.title ? String(input.title) : null,
+        source: input.source ? String(input.source) : null,
+        status: typeof input.status === "string" ? input.status : "new",
+        score: typeof input.score === "number" ? input.score : null,
+        description: input.description ? String(input.description) : null,
+        assignedTo: user.id,
+      }).returning();
+      return { ok: true, created: "lead", lead: row };
+    }
+
+    case "update_lead": {
+      const id = Number(input.id);
+      if (!id) return { error: "id required" };
+      const patch: Record<string, unknown> = { updatedAt: new Date() };
+      if (typeof input.status === "string") patch.status = input.status;
+      if (typeof input.score === "number") patch.score = input.score;
+      if (typeof input.assignedTo === "number") patch.assignedTo = input.assignedTo;
+      if (typeof input.phone === "string") patch.phone = input.phone;
+      if (typeof input.email === "string") patch.email = input.email;
+      if (typeof input.company === "string") patch.company = input.company;
+      if (typeof input.title === "string") patch.title = input.title;
+      if (typeof input.description === "string") patch.description = input.description;
+      const [row] = await db.update(leadsTable).set(patch).where(eq(leadsTable.id, id)).returning();
+      if (!row) return { error: "Lead not found" };
+      return { ok: true, updated: "lead", lead: row };
+    }
+
+    case "create_contact": {
+      const [row] = await db.insert(contactsTable).values({
+        firstName: String(input.firstName),
+        lastName: String(input.lastName),
+        email: input.email ? String(input.email) : null,
+        phone: input.phone ? String(input.phone) : null,
+        title: input.title ? String(input.title) : null,
+        accountId: typeof input.accountId === "number" ? input.accountId : null,
+        leadSource: input.leadSource ? String(input.leadSource) : null,
+        description: input.description ? String(input.description) : null,
+        ownerId: user.id,
+      }).returning();
+      return { ok: true, created: "contact", contact: row };
+    }
+
+    case "create_opportunity": {
+      const [row] = await db.insert(opportunitiesTable).values({
+        name: String(input.name),
+        accountId: typeof input.accountId === "number" ? input.accountId : null,
+        contactId: typeof input.contactId === "number" ? input.contactId : null,
+        amount: typeof input.amount === "number" ? String(input.amount) : null,
+        stage: typeof input.stage === "string" ? input.stage : "prospecting",
+        probability: typeof input.probability === "number" ? input.probability : null,
+        closeDate: typeof input.closeDate === "string" ? new Date(input.closeDate) : null,
+        nextStep: input.nextStep ? String(input.nextStep) : null,
+        description: input.description ? String(input.description) : null,
+        assignedTo: user.id,
+      }).returning();
+      return { ok: true, created: "opportunity", opportunity: row };
+    }
+
+    case "update_opportunity": {
+      const id = Number(input.id);
+      if (!id) return { error: "id required" };
+      const patch: Record<string, unknown> = { updatedAt: new Date() };
+      if (typeof input.stage === "string") patch.stage = input.stage;
+      if (typeof input.amount === "number") patch.amount = String(input.amount);
+      if (typeof input.probability === "number") patch.probability = input.probability;
+      if (typeof input.closeDate === "string") patch.closeDate = new Date(input.closeDate);
+      if (typeof input.nextStep === "string") patch.nextStep = input.nextStep;
+      const [row] = await db.update(opportunitiesTable).set(patch).where(eq(opportunitiesTable.id, id)).returning();
+      if (!row) return { error: "Opportunity not found" };
+      return { ok: true, updated: "opportunity", opportunity: row };
+    }
+
+    case "create_activity": {
+      const [row] = await db.insert(activitiesTable).values({
+        type: String(input.type),
+        subject: String(input.subject),
+        description: input.description ? String(input.description) : null,
+        status: typeof input.status === "string" ? input.status : "planned",
+        dueDate: typeof input.dueDate === "string" ? new Date(input.dueDate) : null,
+        leadId: typeof input.leadId === "number" ? input.leadId : null,
+        contactId: typeof input.contactId === "number" ? input.contactId : null,
+        opportunityId: typeof input.opportunityId === "number" ? input.opportunityId : null,
+        accountId: typeof input.accountId === "number" ? input.accountId : null,
+        assignedTo: input.assignToMe === false ? null : user.id,
+      }).returning();
+      return { ok: true, created: "activity", activity: row };
+    }
+
+    case "complete_activity": {
+      const id = Number(input.id);
+      if (!id) return { error: "id required" };
+      const [row] = await db.update(activitiesTable)
+        .set({ status: "completed", completedAt: new Date(), updatedAt: new Date() })
+        .where(eq(activitiesTable.id, id))
+        .returning();
+      if (!row) return { error: "Activity not found" };
+      return { ok: true, updated: "activity", activity: row };
+    }
+
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -534,7 +765,9 @@ Guidelines:
 - Reference record names and ids so the user can act on them.
 - Suggest a clear next step at the end when relevant (e.g. "Want me to find the contacts for these accounts?").
 - If a tool returns 0 results, say so plainly and suggest broadening the query.
-- You currently have READ-ONLY tools. If asked to create/update/delete or send emails, reply: "I can't take write actions yet — that's coming in the next phase. For now I can find the records and draft what you'd send."`;
+- You now have WRITE tools (Phase 2): create_lead, update_lead, create_contact, create_opportunity, update_opportunity, create_activity, complete_activity. Use them when the user asks to add, log, update, assign, advance, or schedule something.
+- IMPORTANT before any write: (1) confirm intent if the user's request is ambiguous; (2) for updates, look up the record first with a search tool to confirm the id; (3) after a successful write, summarise what was done with the new id and offer a follow-up (e.g. "Created lead #42 — want me to log a follow-up call for tomorrow?").
+- Never invent ids. Never bulk-delete. If a destructive action is requested (delete records), refuse politely and suggest the user do it manually.`;
 
     const convo: AnthropicMessage[] = messages.map((m) => ({ role: m.role, content: m.content }));
 
@@ -703,7 +936,110 @@ router.post("/ai/summary", async (req, res) => {
   }
 });
 
-// avoid unused-import warnings for helpers we kept ready for future tools
+/* ========================================================================
+ * NEXT BEST ACTIONS — Phase 2 agentic suggestions per entity
+ * ====================================================================== */
+router.post("/ai/next-actions", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  const user = getSessionUser(req)!;
+  try {
+    const { entityType, id } = req.body as { entityType?: string; id?: number };
+    if (!entityType || !id || !["lead","opportunity","contact","account"].includes(entityType)) {
+      res.status(400).json({ error: "entityType (lead|opportunity|contact|account) and id required" });
+      return;
+    }
+
+    // Gather minimal entity context + recent activities
+    let entity: Record<string, unknown> | null = null;
+    let recentActs: Array<{ type: string; subject: string; status: string; dueDate: Date | null; completedAt: Date | null; createdAt: Date }> = [];
+
+    if (entityType === "lead") {
+      const [row] = await db.select().from(leadsTable).where(eq(leadsTable.id, id)).limit(1);
+      entity = row as unknown as Record<string, unknown>;
+      recentActs = await db.select({
+        type: activitiesTable.type, subject: activitiesTable.subject, status: activitiesTable.status,
+        dueDate: activitiesTable.dueDate, completedAt: activitiesTable.completedAt, createdAt: activitiesTable.createdAt,
+      }).from(activitiesTable).where(eq(activitiesTable.leadId, id)).orderBy(desc(activitiesTable.createdAt)).limit(10);
+    } else if (entityType === "opportunity") {
+      const [row] = await db.select().from(opportunitiesTable).where(eq(opportunitiesTable.id, id)).limit(1);
+      entity = row as unknown as Record<string, unknown>;
+      recentActs = await db.select({
+        type: activitiesTable.type, subject: activitiesTable.subject, status: activitiesTable.status,
+        dueDate: activitiesTable.dueDate, completedAt: activitiesTable.completedAt, createdAt: activitiesTable.createdAt,
+      }).from(activitiesTable).where(eq(activitiesTable.opportunityId, id)).orderBy(desc(activitiesTable.createdAt)).limit(10);
+    } else if (entityType === "contact") {
+      const [row] = await db.select().from(contactsTable).where(eq(contactsTable.id, id)).limit(1);
+      entity = row as unknown as Record<string, unknown>;
+      recentActs = await db.select({
+        type: activitiesTable.type, subject: activitiesTable.subject, status: activitiesTable.status,
+        dueDate: activitiesTable.dueDate, completedAt: activitiesTable.completedAt, createdAt: activitiesTable.createdAt,
+      }).from(activitiesTable).where(eq(activitiesTable.contactId, id)).orderBy(desc(activitiesTable.createdAt)).limit(10);
+    } else if (entityType === "account") {
+      const [row] = await db.select().from(accountsTable).where(eq(accountsTable.id, id)).limit(1);
+      entity = row as unknown as Record<string, unknown>;
+      recentActs = await db.select({
+        type: activitiesTable.type, subject: activitiesTable.subject, status: activitiesTable.status,
+        dueDate: activitiesTable.dueDate, completedAt: activitiesTable.completedAt, createdAt: activitiesTable.createdAt,
+      }).from(activitiesTable).where(eq(activitiesTable.accountId, id)).orderBy(desc(activitiesTable.createdAt)).limit(10);
+    }
+
+    if (!entity) {
+      res.status(404).json({ error: "Entity not found" });
+      return;
+    }
+
+    const openai = await getOpenAI();
+    if (!openai) {
+      res.status(503).json({ error: "AI service unavailable" });
+      return;
+    }
+
+    const lastActDate = recentActs[0]?.createdAt ? new Date(recentActs[0].createdAt) : null;
+    const daysSince = lastActDate ? Math.floor((Date.now() - lastActDate.getTime()) / 86400000) : null;
+
+    // Sanitize entity — only safe fields to send to LLM
+    const SAFE_FIELDS: Record<string, string[]> = {
+      lead: ["firstName","lastName","email","phone","company","title","status","source","score","industry","description","isConverted"],
+      opportunity: ["name","stage","amount","probability","closeDate","nextStep","forecastCategory","leadSource","description"],
+      contact: ["firstName","lastName","email","phone","title","department","leadSource","city","country","description"],
+      account: ["name","industry","website","phone","type","employees","annualRevenue","description","city","country"],
+    };
+    const safe = SAFE_FIELDS[entityType] ?? [];
+    const sanitizedEntity: Record<string, unknown> = {};
+    for (const k of safe) if (entity[k] !== undefined && entity[k] !== null) sanitizedEntity[k] = entity[k];
+
+    const sysPrompt = `You are an expert sales coach for a CRM. Given an entity and its recent activity, return EXACTLY 3 next best actions. Respond with a JSON object: {"actions": [{"title": short imperative (<= 60 chars), "reason": one-sentence why, "type": "call"|"email"|"meeting"|"task"|"note"|"stage_change", "priority": "high"|"medium"|"low"}, ...]}. Be specific. Use British English. All currency is GBP (£).`;
+
+    const userPrompt = `Entity type: ${entityType}
+Entity: ${JSON.stringify(sanitizedEntity)}
+Days since last activity: ${daysSince ?? "no activities yet"}
+Recent activities (newest first): ${JSON.stringify(recentActs.slice(0, 5))}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: sysPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_completion_tokens: 600,
+      response_format: { type: "json_object" },
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    let actions: unknown[] = [];
+    try {
+      const parsed = JSON.parse(raw) as { actions?: unknown };
+      if (Array.isArray(parsed.actions)) actions = parsed.actions;
+    } catch {
+      actions = [];
+    }
+    res.json({ actions, daysSinceLastActivity: daysSince });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "AI service error" });
+  }
+});
+
 void isNull;
 
 export default router;

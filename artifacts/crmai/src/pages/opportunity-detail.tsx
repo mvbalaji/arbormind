@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { AISummary } from "@/components/ai-summary";
+import { AINextActions } from "@/components/ai-next-actions";
 import { EmailCompose } from "@/components/email-compose";
 import { EntityApprovals } from "@/components/entity-approvals";
 import { EntityNotes } from "@/components/entity-notes";
@@ -938,6 +939,7 @@ export default function OpportunityDetail() {
 
           {/* AI Insights — below the stage pipeline */}
           <AISummary entityType="opportunity" entityData={opp as unknown as Record<string, unknown>} />
+          <AINextActions entityType="opportunity" entityId={opp.id} />
         </div>
 
         {/* Two-column layout: tabs + right sidebar (sidebar only on Details tab) */}
