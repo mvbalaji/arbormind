@@ -780,7 +780,7 @@ export default function Quotes() {
         <AISummary entityType="quotes" />
 
         {/* Table */}
-        <Card className="border-2 border-blue-700 dark:border-blue-800 overflow-hidden p-0">
+        <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
             <TablePagination
               variant="inline"
@@ -981,7 +981,7 @@ export default function Quotes() {
                 })}
               </tbody>
             </table>
-          </div>        </Card>
+          </div>        </div>
 
         {/* Status badge legend (subtle) */}
         {sortedQuotes.length > 0 && (

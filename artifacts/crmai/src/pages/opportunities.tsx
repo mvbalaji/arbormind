@@ -15,6 +15,8 @@ import { useAuth } from "@/context/auth";
 import { AISummary } from "@/components/ai-summary";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -325,6 +327,7 @@ export default function Opportunities() {
   };
 
   const visibleIds = useMemo(() => new Set(sortedOpps.map((o) => o.id)), [sortedOpps]);
+  const opportunitiesPagination = usePagination("opportunities", sortedOpps);
   const visibleSelectedCount = useMemo(() => {
     let count = 0;
     for (const id of selectedIds) { if (visibleIds.has(id)) count++; }
@@ -544,15 +547,26 @@ export default function Opportunities() {
             ))}
           </div>
         ) : viewMode === "list" ? (
-          <Card className="border-2 border-blue-700 dark:border-blue-800 overflow-hidden shadow-sm">
-            <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
+          <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
+            <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
+              <TablePagination
+                variant="inline"
+                page={opportunitiesPagination.page}
+                totalPages={opportunitiesPagination.totalPages}
+                pageSize={opportunitiesPagination.pageSize}
+                total={opportunitiesPagination.total}
+                pageStart={opportunitiesPagination.pageStart}
+                pageEnd={opportunitiesPagination.pageEnd}
+                onPageChange={opportunitiesPagination.setPage}
+                onPageSizeChange={opportunitiesPagination.setPageSize}
+              />
               <ColumnsMenu columns={OPPORTUNITY_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
             </div>
             <div className="overflow-auto max-h-[calc(100vh-260px)]">
               <table className="w-full text-sm bg-card">
-                <thead className="sticky top-0 z-10">
+                <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                    <th className="w-10 px-3 py-3">
+                    <th className="w-10 px-3 py-1">
                       <Checkbox
                         checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
                         onCheckedChange={toggleSelectAll}
@@ -560,22 +574,22 @@ export default function Opportunities() {
                         className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
                       />
                     </th>
-                    {colVis.isVisible("name") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="name">Opportunity</SortHeader></th>}
-                    {colVis.isVisible("account") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="account">Account</SortHeader></th>}
-                    {colVis.isVisible("stage") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="stage">Stage</SortHeader></th>}
-                    {colVis.isVisible("amount") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="amount">Value</SortHeader></th>}
-                    {colVis.isVisible("closeDate") && <th className="text-left px-3 py-3 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="closeDate">Close Date</SortHeader></th>}
+                    {colVis.isVisible("name") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="name">Opportunity</SortHeader></th>}
+                    {colVis.isVisible("account") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="account">Account</SortHeader></th>}
+                    {colVis.isVisible("stage") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="stage">Stage</SortHeader></th>}
+                    {colVis.isVisible("amount") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="amount">Value</SortHeader></th>}
+                    {colVis.isVisible("closeDate") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="closeDate">Close Date</SortHeader></th>}
                     {colVis.isVisible("owner") && (
-                      <th className="text-left px-3 py-3">
+                      <th className="text-left px-3 py-1">
                         <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</span>
                       </th>
                     )}
                     {colVis.isVisible("status") && (
-                      <th className="text-left px-3 py-3">
+                      <th className="text-left px-3 py-1">
                         <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</span>
                       </th>
                     )}
-                    <th className="text-center px-3 py-3">
+                    <th className="text-center px-3 py-1">
                       <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</span>
                     </th>
                   </tr>
@@ -588,14 +602,14 @@ export default function Opportunities() {
                       </td>
                     </tr>
                   ) : (
-                    sortedOpps.map((opp) => {
+                    opportunitiesPagination.paged.map((opp) => {
                       const status = (opp as any).forecastCategory
                         ? { label: (opp as any).forecastCategory, cls: "bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600" }
                         : STATUS_FROM_STAGE[opp.stage] ?? { label: "Open", cls: "bg-gray-100 text-gray-600 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600" };
 
                       return (
                         <tr key={opp.id} className="hover:bg-muted/30 transition-colors group">
-                          <td className="w-10 px-3 py-3">
+                          <td className="w-10 px-3 py-1">
                             <Checkbox
                               checked={selectedIds.has(opp.id)}
                               onCheckedChange={() => toggleSelect(opp.id)}
@@ -603,7 +617,7 @@ export default function Opportunities() {
                             />
                           </td>
                           {colVis.isVisible("name") && (
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-1">
                               <Link href={`/opportunities/${opp.id}`}>
                                 <span className="font-medium text-foreground hover:text-primary hover:underline transition-colors cursor-pointer">
                                   {opp.name}
@@ -612,12 +626,12 @@ export default function Opportunities() {
                             </td>
                           )}
                           {colVis.isVisible("account") && (
-                            <td className="px-3 py-3 text-foreground">
+                            <td className="px-3 py-1 text-foreground">
                               {opp.accountName ?? "—"}
                             </td>
                           )}
                           {colVis.isVisible("stage") && (
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-1">
                               <span
                                 className={cn(
                                   "inline-flex items-center justify-center text-xs font-semibold pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
@@ -630,17 +644,17 @@ export default function Opportunities() {
                             </td>
                           )}
                           {colVis.isVisible("amount") && (
-                            <td className="px-3 py-3 font-semibold text-foreground">
+                            <td className="px-3 py-1 font-semibold text-foreground">
                               £{(Number(opp.amount) || 0).toLocaleString()}
                             </td>
                           )}
                           {colVis.isVisible("closeDate") && (
-                            <td className="px-3 py-3 text-foreground">
+                            <td className="px-3 py-1 text-foreground">
                               {opp.closeDate ? format(new Date(opp.closeDate), "dd MMM yyyy") : "—"}
                             </td>
                           )}
                           {colVis.isVisible("owner") && (
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-1">
                               <span className="inline-flex items-center gap-1 text-foreground text-sm">
                                 {opp.assignedToName ?? "Unassigned"}
                                 <ChevronDown className="w-3 h-3 text-muted-foreground" />
@@ -648,7 +662,7 @@ export default function Opportunities() {
                             </td>
                           )}
                           {colVis.isVisible("status") && (
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-1">
                               <Badge
                                 variant="outline"
                                 className={cn("text-xs font-medium rounded-md px-2.5 py-0.5", status.cls)}
@@ -657,7 +671,7 @@ export default function Opportunities() {
                               </Badge>
                             </td>
                           )}
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-1">
                             <div className="flex items-center justify-center gap-1">
                               <Link href={`/opportunities/${opp.id}`}>
                                 <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground">
@@ -697,7 +711,7 @@ export default function Opportunities() {
                 </tbody>
               </table>
             </div>
-          </Card>
+          </div>
         ) : (
           <div className="flex-1 overflow-x-auto pb-4 custom-scrollbar">
             <DragDropContext onDragEnd={onDragEnd}>
