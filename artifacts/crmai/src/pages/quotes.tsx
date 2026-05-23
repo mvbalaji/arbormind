@@ -805,6 +805,8 @@ export default function Quotes() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left" style={{ tableLayout: "fixed" }}>
               <colgroup>
+                  <col style={{ width: "40px" }} />
+                  <col style={{ width: "40px" }} />
                   <col data-col="quoteNumber" style={{ width: `${colWidths.quoteNumber}px` }} />
                   <col data-col="name" style={{ width: `${colWidths.name}px` }} />
                   <col data-col="revision" style={{ width: `${colWidths.revision}px` }} />
