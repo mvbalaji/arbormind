@@ -614,9 +614,6 @@ export default function Leads() {
                               <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                             </div>
                           </Link>
-                          {lead.isConverted && (
-                            <span className="text-xs text-muted-foreground italic">Converted</span>
-                          )}
                         </td>
                       )}
                       {isColVisible("company") && (

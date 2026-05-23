@@ -154,7 +154,6 @@ export default function Contacts() {
                                   <ExternalLink className="w-3 h-3 opacity-0 group-hover/link:opacity-60 transition-opacity" />
                                 </div>
                               </Link>
-                              <div className="text-xs text-muted-foreground">Added {format(new Date(contact.createdAt), "MMM d, yyyy")}</div>
                             </div>
                           </div>
                         </td>

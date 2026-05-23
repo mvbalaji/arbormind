@@ -128,7 +128,6 @@ export default function Cases() {
                       {colVis.isVisible("subject") && (
                         <td className="px-3 py-1">
                           <div className="font-medium text-foreground">{c.subject}</div>
-                          <div className="text-xs text-muted-foreground mt-1">{c.contactName ?? c.accountName ?? "-"}</div>
                         </td>
                       )}
                       {colVis.isVisible("priority") && (

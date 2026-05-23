@@ -250,7 +250,6 @@ export default function Products() {
                           </div>
                           {prod.name}
                         </div>
-                        {prod.code && <div className="text-xs text-muted-foreground mt-1 ml-10 font-mono">{prod.code}</div>}
                       </td>
                     )}
                     {colVis.isVisible("category") && (

@@ -275,12 +275,6 @@ export default function Accounts() {
                               <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
                             </div>
                           </Link>
-                          {acc.website && (
-                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <LinkIcon className="w-2.5 h-2.5" />
-                              <span className="truncate max-w-[140px]">{acc.website.replace(/^https?:\/\//, "")}</span>
-                            </div>
-                          )}
                         </td>
                       )}
                       {colVis.isVisible("location") && (

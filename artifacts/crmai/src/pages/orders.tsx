@@ -634,9 +634,6 @@ export default function Orders() {
                         >
                           {order.orderNumber}
                         </button>
-                        {order.contactName && (
-                          <div className="text-xs text-muted-foreground mt-1">{order.contactName}</div>
-                        )}
                       </td>
                     )}
                     {colVis.isVisible("account") && (
