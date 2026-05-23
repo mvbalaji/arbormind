@@ -111,7 +111,7 @@ export default function Contacts() {
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      <td className="px-3 py-2" colSpan={contactColSpan}>
+                      <td className="px-3 py-1.5" colSpan={contactColSpan}>
                         <div className="h-10 bg-muted/50 rounded animate-pulse w-full" />
                       </td>
                     </tr>
@@ -131,7 +131,7 @@ export default function Contacts() {
                   contactsPagination.paged.map((contact) => (
                     <tr key={contact.id} className="hover:bg-muted/50 transition-colors group">
                       {colVis.isVisible("name") && (
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-1.5">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs border border-primary/30">
                               {contact.firstName[0]}{contact.lastName[0]}
@@ -149,7 +149,7 @@ export default function Contacts() {
                         </td>
                       )}
                       {colVis.isVisible("contactInfo") && (
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-1.5">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2 text-muted-foreground">
                               <Mail className="w-3.5 h-3.5" />
@@ -163,7 +163,7 @@ export default function Contacts() {
                         </td>
                       )}
                       {colVis.isVisible("account") && (
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-1.5">
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2 font-medium text-foreground">
                               <Building2 className="w-3.5 h-3.5 text-primary" />
@@ -174,9 +174,9 @@ export default function Contacts() {
                         </td>
                       )}
                       {colVis.isVisible("owner") && (
-                        <td className="px-3 py-2 text-muted-foreground">{contact.ownerName ?? "-"}</td>
+                        <td className="px-3 py-1.5 text-muted-foreground">{contact.ownerName ?? "-"}</td>
                       )}
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-1.5 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">

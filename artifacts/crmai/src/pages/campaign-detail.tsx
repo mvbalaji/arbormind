@@ -783,12 +783,12 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
 
           {/* Description */}
           <div className="space-y-1.5"><Label className="text-xs">Description</Label>
-            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-foreground text-sm min-h-[70px] resize-none" value={form.description} onChange={f("description")} />
+            <textarea className="w-full px-3 py-1.5 rounded-md bg-muted border border-border text-foreground text-sm min-h-[70px] resize-none" value={form.description} onChange={f("description")} />
           </div>
 
           {/* Audience */}
           <div className="space-y-1.5"><Label className="text-xs">Target Audience</Label>
-            <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-foreground text-sm min-h-[60px] resize-none"
+            <textarea className="w-full px-3 py-1.5 rounded-md bg-muted border border-border text-foreground text-sm min-h-[60px] resize-none"
               placeholder="e.g. B2B decision-makers in SaaS companies, 50-500 employees" value={form.targetAudience} onChange={f("targetAudience")} />
           </div>
 

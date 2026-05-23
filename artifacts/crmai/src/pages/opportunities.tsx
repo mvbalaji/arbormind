@@ -829,7 +829,7 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     });
   };
 
-  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm";
+  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -893,7 +893,7 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
           <div className="space-y-2">
             <Label>Notes</Label>
             <textarea
-              className="w-full bg-muted border border-border rounded-md px-3 py-2 text-foreground text-sm resize-none h-16"
+              className="w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm resize-none h-16"
               value={form.description}
               onChange={f("description")}
               placeholder="Deal context, next steps..."

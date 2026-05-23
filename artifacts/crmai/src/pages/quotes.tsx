@@ -828,7 +828,7 @@ export default function Quotes() {
                       key={q.id}
                       className={`group transition-colors ${checked ? "bg-primary/5" : "hover:bg-muted/40"}`}
                     >
-                      <td className="px-3 py-2 border-r border-border">
+                      <td className="px-3 py-1.5 border-r border-border">
                         <input
                           type="checkbox"
                           checked={checked}
@@ -839,21 +839,21 @@ export default function Quotes() {
                       </td>
                       <td className="px-2 py-2 text-center text-muted-foreground border-r border-border">{idx + 1}</td>
                       {colVis.isVisible("quoteNumber") && (
-                        <td className="px-3 py-2 border-r border-border">
+                        <td className="px-3 py-1.5 border-r border-border">
                           <Link href={`/quotes/${q.id}`} className="text-primary hover:underline font-mono text-sm">
                             {q.quoteNumber}
                           </Link>
                         </td>
                       )}
                       {colVis.isVisible("name") && (
-                        <td className="px-3 py-2 border-r border-border">
+                        <td className="px-3 py-1.5 border-r border-border">
                           <Link href={`/quotes/${q.id}`} className="text-primary hover:underline">
                             {q.name}
                           </Link>
                         </td>
                       )}
                       {colVis.isVisible("revision") && (
-                        <td className="px-3 py-2 text-center border-r border-border">
+                        <td className="px-3 py-1.5 text-center border-r border-border">
                           <Badge
                             variant="secondary"
                             className={`text-[10px] font-mono ${q.version && q.version > 1 ? "bg-primary/10 text-primary border-primary/20" : "bg-muted text-muted-foreground"}`}
@@ -863,7 +863,7 @@ export default function Quotes() {
                         </td>
                       )}
                       {colVis.isVisible("clonedFrom") && (
-                        <td className="px-3 py-2 border-r border-border">
+                        <td className="px-3 py-1.5 border-r border-border">
                           {q.clonedFromQuoteId ? (
                             <Link
                               href={`/quotes/${q.clonedFromQuoteId}`}
@@ -879,22 +879,22 @@ export default function Quotes() {
                         </td>
                       )}
                       {colVis.isVisible("validUntil") && (
-                        <td className="px-3 py-2 text-foreground border-r border-border">
+                        <td className="px-3 py-1.5 text-foreground border-r border-border">
                           {q.validUntil ? format(new Date(q.validUntil), "M/d/yyyy") : "-"}
                         </td>
                       )}
                       {colVis.isVisible("subtotal") && (
-                        <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
+                        <td className="px-3 py-1.5 text-right text-foreground border-r border-border tabular-nums">
                           £{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       )}
                       {colVis.isVisible("total") && (
-                        <td className="px-3 py-2 text-right text-foreground border-r border-border tabular-nums">
+                        <td className="px-3 py-1.5 text-right text-foreground border-r border-border tabular-nums">
                           £{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       )}
                       {colVis.isVisible("createdBy") && (
-                        <td className="px-3 py-2 border-r border-border text-foreground">
+                        <td className="px-3 py-1.5 border-r border-border text-foreground">
                           <div className="flex flex-col leading-tight">
                             <span>{q.createdByName || "—"}</span>
                             {q.createdAt && (

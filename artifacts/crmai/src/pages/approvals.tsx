@@ -532,12 +532,12 @@ export default function Approvals() {
                 <table className="w-full text-sm">
                   <thead className="bg-card border-b border-border">
                     <tr className="text-xs uppercase tracking-wide text-muted-foreground">
-                      <th className="text-left px-3 py-2 font-semibold">Criteria Name</th>
-                      <th className="text-left px-3 py-2 font-semibold">Field / Attribute</th>
-                      <th className="text-left px-3 py-2 font-semibold">Operator</th>
-                      <th className="text-left px-3 py-2 font-semibold">Threshold</th>
-                      <th className="text-left px-3 py-2 font-semibold">Approval Type</th>
-                      <th className="text-right px-3 py-2 font-semibold w-20">Actions</th>
+                      <th className="text-left px-3 py-1.5 font-semibold">Criteria Name</th>
+                      <th className="text-left px-3 py-1.5 font-semibold">Field / Attribute</th>
+                      <th className="text-left px-3 py-1.5 font-semibold">Operator</th>
+                      <th className="text-left px-3 py-1.5 font-semibold">Threshold</th>
+                      <th className="text-left px-3 py-1.5 font-semibold">Approval Type</th>
+                      <th className="text-right px-3 py-1.5 font-semibold w-20">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border bg-card">
@@ -557,11 +557,11 @@ export default function Approvals() {
                       const isMulti = levels.length > 1;
                       return (
                         <tr key={c.id} className="hover:bg-muted/40 transition-colors">
-                          <td className="px-3 py-2 font-medium text-foreground">{c.name}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{fieldMeta?.label ?? c.field}</td>
-                          <td className="px-3 py-2 font-mono text-xs text-foreground">{OPERATOR_LABEL[c.operator as Operator] ?? c.operator}</td>
-                          <td className="px-3 py-2 font-mono text-xs text-foreground">{valueLabel}</td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-1.5 font-medium text-foreground">{c.name}</td>
+                          <td className="px-3 py-1.5 text-muted-foreground">{fieldMeta?.label ?? c.field}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs text-foreground">{OPERATOR_LABEL[c.operator as Operator] ?? c.operator}</td>
+                          <td className="px-3 py-1.5 font-mono text-xs text-foreground">{valueLabel}</td>
+                          <td className="px-3 py-1.5">
                             {isMulti ? (
                               <Badge variant="outline" className="border-indigo-500/40 text-indigo-700 bg-indigo-500/10 text-xs">
                                 Multi-Level
@@ -572,7 +572,7 @@ export default function Approvals() {
                               </Badge>
                             )}
                           </td>
-                          <td className="px-3 py-2">
+                          <td className="px-3 py-1.5">
                             <div className="flex items-center justify-end gap-1">
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)} aria-label={`Edit ${c.name}`}>
                                 <Pencil className="w-3.5 h-3.5" />
@@ -604,10 +604,10 @@ export default function Approvals() {
                 <table className="w-full text-sm">
                   <thead className="bg-card border-b border-border">
                     <tr className="text-xs uppercase tracking-wide text-muted-foreground">
-                      <th className="text-left px-3 py-2 font-semibold">Criteria Name</th>
-                      <th className="text-left px-3 py-2 font-semibold">Level 1 Role</th>
-                      <th className="text-left px-3 py-2 font-semibold">Level 2 Role</th>
-                      <th className="text-left px-3 py-2 font-semibold">Level 3 Role</th>
+                      <th className="text-left px-3 py-1.5 font-semibold">Criteria Name</th>
+                      <th className="text-left px-3 py-1.5 font-semibold">Level 1 Role</th>
+                      <th className="text-left px-3 py-1.5 font-semibold">Level 2 Role</th>
+                      <th className="text-left px-3 py-1.5 font-semibold">Level 3 Role</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border bg-card">
@@ -643,7 +643,7 @@ export default function Approvals() {
                       };
                       return (
                         <tr key={c.id} className="hover:bg-muted/40 transition-colors">
-                          <td className="px-3 py-2 font-medium text-foreground">{c.name}</td>
+                          <td className="px-3 py-1.5 font-medium text-foreground">{c.name}</td>
                           <td className="px-2 py-1.5 w-44">{renderRoleCell(1)}</td>
                           <td className="px-2 py-1.5 w-44">{renderRoleCell(2)}</td>
                           <td className="px-2 py-1.5 w-44">{renderRoleCell(3)}</td>
@@ -844,7 +844,7 @@ export default function Approvals() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="sm:col-span-2 flex items-center justify-between rounded-md border border-border px-3 py-2 bg-muted/30">
+              <div className="sm:col-span-2 flex items-center justify-between rounded-md border border-border px-3 py-1.5 bg-muted/30">
                 <Label htmlFor="cActive">Active</Label>
                 <Switch id="cActive" checked={criterionForm.active} onCheckedChange={(v) => setCriterionForm({ ...criterionForm, active: v })} />
               </div>
@@ -940,7 +940,7 @@ export default function Approvals() {
                 const Icon = step.icon;
                 return (
                   <React.Fragment key={step.label}>
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${step.color}`}>
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${step.color}`}>
                       <Icon className="w-4 h-4" />
                       <span className="text-sm font-medium">{step.label}</span>
                     </div>
@@ -1058,7 +1058,7 @@ function RolesDialog({ open, onOpenChange, roles, onCreate, onDelete }: RolesDia
             {roles.length === 0 ? (
               <div className="px-3 py-4 text-sm text-muted-foreground text-center">No roles yet.</div>
             ) : roles.map((r) => (
-              <div key={r.id} className="flex items-center justify-between px-3 py-2">
+              <div key={r.id} className="flex items-center justify-between px-3 py-1.5">
                 <div>
                   <div className="text-sm font-medium text-foreground">{r.name}</div>
                   <div className="text-xs text-muted-foreground">Level {r.level}{r.description ? ` • ${r.description}` : ""}</div>
