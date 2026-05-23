@@ -443,7 +443,7 @@ export default function Landing() {
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          <Link href="/login" className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border" style={{ borderColor: "rgba(255,255,255,0.25)", color: "#ffffff" }}>
+          <Link href="/login" className="flex items-center gap-2 px-3 py-1 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border" style={{ borderColor: "rgba(255,255,255,0.25)", color: "#ffffff" }}>
             Log in
           </Link>
         </div>
@@ -454,7 +454,7 @@ export default function Landing() {
         <section className="px-6 md:px-12 pt-20 pb-24 text-center max-w-5xl mx-auto">
           {authError && (
             <div
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-8"
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium mb-8"
               style={{
                 background: "rgba(239,68,68,0.1)",
                 color: "#f87171",

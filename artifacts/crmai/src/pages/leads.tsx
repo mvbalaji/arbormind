@@ -596,7 +596,7 @@ export default function Leads() {
                         />
                       </td>
                       {isColVisible("name") && (
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 py-1">
                           <Link href={`/leads/${lead.id}`}>
                             <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
                               {lead.firstName} {lead.lastName}
@@ -609,16 +609,16 @@ export default function Leads() {
                         </td>
                       )}
                       {isColVisible("company") && (
-                        <td className="px-4 py-2.5 text-sm text-foreground">{lead.company ?? <span className="text-muted-foreground">—</span>}</td>
+                        <td className="px-3 py-1 text-sm text-foreground">{lead.company ?? <span className="text-muted-foreground">—</span>}</td>
                       )}
                       {isColVisible("phone") && (
-                        <td className="px-4 py-2.5 text-sm text-foreground whitespace-nowrap">{lead.phone ?? <span className="text-muted-foreground">—</span>}</td>
+                        <td className="px-3 py-1 text-sm text-foreground whitespace-nowrap">{lead.phone ?? <span className="text-muted-foreground">—</span>}</td>
                       )}
                       {isColVisible("email") && (
-                        <td className="px-4 py-2.5 text-sm text-foreground">{lead.email ?? <span className="text-muted-foreground">—</span>}</td>
+                        <td className="px-3 py-1 text-sm text-foreground">{lead.email ?? <span className="text-muted-foreground">—</span>}</td>
                       )}
                       {isColVisible("status") && (
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 py-1">
                           <span
                             className={cn(
                               "inline-flex items-center justify-center text-xs font-semibold capitalize pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
@@ -631,21 +631,21 @@ export default function Leads() {
                         </td>
                       )}
                       {isColVisible("score") && (
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="px-3 py-1 text-center">
                           {lead.score != null ? (
-                            <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-xs font-bold ${SCORE_COLORS(lead.score)}`}>
+                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full border text-xs font-bold ${SCORE_COLORS(lead.score)}`}>
                               {lead.score}
                             </span>
                           ) : <span className="text-muted-foreground">—</span>}
                         </td>
                       )}
                       {isColVisible("createdAt") && (
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                        <td className="px-3 py-1 text-xs text-muted-foreground">
                           {lead.createdAt ? format(new Date(lead.createdAt), "MMM d, yyyy") : "—"}
                         </td>
                       )}
                       {isColVisible("owner") && (
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                        <td className="px-3 py-1 text-xs text-muted-foreground">
                           {lead.assignedToName ?? <span className="italic">Unassigned</span>}
                         </td>
                       )}
@@ -745,7 +745,7 @@ export default function Leads() {
 
           {/* Table Footer */}
           {false && leads.length > 0 && (
-            <div className="px-4 py-2 border-t border-border bg-muted/20 flex items-center justify-between">
+            <div className="px-3 py-1 border-t border-border bg-muted/20 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{total} record{total !== 1 ? "s" : ""}</span>
               <span className="text-xs text-muted-foreground">Showing all {total} leads</span>
             </div>

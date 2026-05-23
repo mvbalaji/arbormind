@@ -223,15 +223,15 @@ export default function Accounts() {
             <table className="w-full text-sm min-w-[900px]">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide divide-x divide-blue-500/40">
-                  {colVis.isVisible("name") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Name</th>}
-                  {colVis.isVisible("location") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Location</th>}
-                  {colVis.isVisible("phone") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Phone</th>}
-                  {colVis.isVisible("industry") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Industry</th>}
-                  {colVis.isVisible("email") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Email</th>}
-                  {colVis.isVisible("owner") && <th className="px-4 py-2.5 text-left text-xs font-semibold">Account Owner</th>}
-                  {colVis.isVisible("contacts") && <th className="px-4 py-2.5 text-center text-xs font-semibold">Contacts</th>}
-                  {colVis.isVisible("deals") && <th className="px-4 py-2.5 text-center text-xs font-semibold">Deals</th>}
-                  <th className="px-4 py-2.5 text-center text-xs font-semibold">Actions</th>
+                  {colVis.isVisible("name") && <th className="px-3 py-1 text-left text-xs font-semibold">Account Name</th>}
+                  {colVis.isVisible("location") && <th className="px-3 py-1 text-left text-xs font-semibold">Location</th>}
+                  {colVis.isVisible("phone") && <th className="px-3 py-1 text-left text-xs font-semibold">Phone</th>}
+                  {colVis.isVisible("industry") && <th className="px-3 py-1 text-left text-xs font-semibold">Industry</th>}
+                  {colVis.isVisible("email") && <th className="px-3 py-1 text-left text-xs font-semibold">Email</th>}
+                  {colVis.isVisible("owner") && <th className="px-3 py-1 text-left text-xs font-semibold">Account Owner</th>}
+                  {colVis.isVisible("contacts") && <th className="px-3 py-1 text-center text-xs font-semibold">Contacts</th>}
+                  {colVis.isVisible("deals") && <th className="px-3 py-1 text-center text-xs font-semibold">Deals</th>}
+                  <th className="px-3 py-1 text-center text-xs font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -257,7 +257,7 @@ export default function Accounts() {
                   accountsPagination.paged.map((acc) => (
                     <tr key={acc.id} className="hover:bg-muted/30 transition-colors group">
                       {colVis.isVisible("name") && (
-                        <td className="px-4 py-2.5">
+                        <td className="px-3 py-1">
                           <Link href={`/accounts/${acc.id}`}>
                             <div className="font-medium text-primary hover:text-primary/80 cursor-pointer flex items-center gap-1">
                               {acc.name}
@@ -273,7 +273,7 @@ export default function Accounts() {
                         </td>
                       )}
                       {colVis.isVisible("location") && (
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                        <td className="px-3 py-1 text-xs text-muted-foreground">
                           {acc.city ? (
                             <div className="flex items-center gap-1">
                               <MapPin className="w-3 h-3 flex-shrink-0" />
@@ -283,7 +283,7 @@ export default function Accounts() {
                         </td>
                       )}
                       {colVis.isVisible("phone") && (
-                        <td className="px-4 py-2.5 text-xs text-foreground">
+                        <td className="px-3 py-1 text-xs text-foreground">
                           {acc.phone ? (
                             <div className="flex items-center gap-1">
                               <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
@@ -293,12 +293,12 @@ export default function Accounts() {
                         </td>
                       )}
                       {colVis.isVisible("industry") && (
-                        <td className="px-4 py-2.5 text-xs text-foreground">
+                        <td className="px-3 py-1 text-xs text-foreground">
                           {acc.industry ?? <span className="text-muted-foreground">—</span>}
                         </td>
                       )}
                       {colVis.isVisible("email") && (
-                        <td className="px-4 py-2.5 text-xs text-foreground">
+                        <td className="px-3 py-1 text-xs text-foreground">
                           {acc.email ? (
                             <div className="flex items-center gap-1">
                               <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
@@ -308,7 +308,7 @@ export default function Accounts() {
                         </td>
                       )}
                       {colVis.isVisible("owner") && (
-                        <td className="px-4 py-2.5 text-xs text-foreground">
+                        <td className="px-3 py-1 text-xs text-foreground">
                           {acc.ownerName ? (
                             <div className="flex items-center gap-1">
                               <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
@@ -318,20 +318,20 @@ export default function Accounts() {
                         </td>
                       )}
                       {colVis.isVisible("contacts") && (
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="px-3 py-1 text-center">
                           <span className="inline-flex items-center gap-1 bg-muted/50 px-2 py-0.5 rounded text-xs font-medium text-foreground">
                             <Users className="w-3 h-3 text-muted-foreground" /> {acc.contactCount ?? 0}
                           </span>
                         </td>
                       )}
                       {colVis.isVisible("deals") && (
-                        <td className="px-4 py-2.5 text-center">
+                        <td className="px-3 py-1 text-center">
                           <span className="inline-flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded text-xs font-medium text-primary border border-primary/20">
                             <Briefcase className="w-3 h-3" /> {acc.dealCount ?? 0}
                           </span>
                         </td>
                       )}
-                      <td className="px-4 py-2.5">
+                      <td className="px-3 py-1">
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             variant="ghost"
@@ -432,7 +432,7 @@ export default function Accounts() {
           />
 
           {false && filteredAccounts.length > 0 && (
-            <div className="px-4 py-2 border-t border-border bg-muted/20 flex items-center justify-between">
+            <div className="px-3 py-1 border-t border-border bg-muted/20 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{total} record{total !== 1 ? "s" : ""}</span>
               <span className="text-xs text-muted-foreground">Showing all {total} accounts</span>
             </div>

@@ -133,7 +133,7 @@ export default function Contacts() {
                       {colVis.isVisible("name") && (
                         <td className="px-3 py-1">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs border border-primary/30">
+                            <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs border border-primary/30">
                               {contact.firstName[0]}{contact.lastName[0]}
                             </div>
                             <div>

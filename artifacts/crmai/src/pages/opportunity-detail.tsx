@@ -1507,7 +1507,7 @@ export default function OpportunityDetail() {
           <aside className="flex flex-col gap-4">
             {/* Account Details */}
             <Card className="border-border overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 dark:bg-blue-950/40 border-b border-border">
+              <div className="flex items-center justify-between px-3 py-1 bg-blue-50 dark:bg-blue-950/40 border-b border-border">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center">
                     <Building2 className="w-3.5 h-3.5 text-white" />
@@ -1574,7 +1574,7 @@ export default function OpportunityDetail() {
 
             {/* Products */}
             <Card className="border-border overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-border">
+              <div className="flex items-center justify-between px-3 py-1 bg-amber-50 dark:bg-amber-950/30 border-b border-border">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded bg-amber-500 flex items-center justify-center">
                     <Package className="w-3.5 h-3.5 text-white" />
@@ -1620,7 +1620,7 @@ export default function OpportunityDetail() {
 
             {/* Contact Roles */}
             <Card className="border-border overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-orange-50 dark:bg-orange-950/30 border-b border-border">
+              <div className="flex items-center justify-between px-3 py-1 bg-orange-50 dark:bg-orange-950/30 border-b border-border">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded bg-orange-500 flex items-center justify-center">
                     <Users className="w-3.5 h-3.5 text-white" />

@@ -249,7 +249,7 @@ export default function Users() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                "flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all",
                 activeTab === tab.id
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                   : "text-muted-foreground hover:text-foreground"
@@ -614,7 +614,7 @@ export default function Users() {
                     </Button>
                     {testResult && (
                       <div className={cn(
-                        "mt-3 flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl border",
+                        "mt-3 flex items-center gap-2 text-sm px-3 py-1 rounded-xl border",
                         testResult.ok
                           ? "border-green-500/30 bg-green-500/10 text-green-600"
                           : "border-red-500/30 bg-red-500/10 text-red-500"

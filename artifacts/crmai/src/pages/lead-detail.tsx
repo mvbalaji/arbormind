@@ -141,7 +141,7 @@ function CollapsibleSection({ title, children, defaultOpen = true }: { title: st
         <span className="text-xs font-semibold text-foreground uppercase tracking-wide">{title}</span>
         {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
       </button>
-      {open && <div className="px-4 py-2">{children}</div>}
+      {open && <div className="px-3 py-1">{children}</div>}
     </div>
   );
 }
@@ -686,7 +686,7 @@ export default function LeadDetail() {
                 key={tab.key}
                 onClick={() => setRelatedTab(tab.key as "activities" | "contacts" | "accounts")}
                 className={cn(
-                  "px-4 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors flex items-center gap-1.5",
+                  "px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors flex items-center gap-1.5",
                   relatedTab === tab.key
                     ? "text-primary border-b-2 border-primary bg-card"
                     : "text-muted-foreground hover:text-foreground"

@@ -269,7 +269,7 @@ export function AccessControlInline() {
                             </tr>
                             {screens.map((s) => (
                               <tr key={s.key} className="hover:bg-muted/20">
-                                <td className="px-4 py-2 font-medium text-foreground whitespace-nowrap">{s.name}</td>
+                                <td className="px-3 py-1 font-medium text-foreground whitespace-nowrap">{s.name}</td>
                                 {data.roles.map((r) => {
                                   const lvl = data.matrix[s.key]?.[r.key] ?? "none";
                                   const isLocked = r.key === "admin";
@@ -347,11 +347,11 @@ export function AccessControlInline() {
                               return (
                                 <tr key={`${rt.key}:${role.key}`} className="hover:bg-muted/20">
                                   {idx === 0 ? (
-                                    <td className="px-4 py-2 font-medium text-foreground whitespace-nowrap align-top" rowSpan={recordData.roles.length}>
+                                    <td className="px-3 py-1 font-medium text-foreground whitespace-nowrap align-top" rowSpan={recordData.roles.length}>
                                       {rt.name}
                                     </td>
                                   ) : null}
-                                  <td className="px-4 py-2 text-foreground whitespace-nowrap">{role.label}</td>
+                                  <td className="px-3 py-1 text-foreground whitespace-nowrap">{role.label}</td>
                                   {PERM_COLS.map((c) => {
                                     const checked = perms?.[c.key] ?? false;
                                     const pendKey = `r:${rt.key}:${role.key}:${c.key}`;
