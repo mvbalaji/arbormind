@@ -550,7 +550,7 @@ export function CustomReportBuilder() {
               <select
                 value={report.dataset}
                 onChange={(e) => onDatasetChange(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
               >
                 {Object.values(DATASETS).map((d) => (
                   <option key={d.id} value={d.id}>{d.label}</option>
@@ -562,17 +562,17 @@ export function CustomReportBuilder() {
               <Input
                 value={report.name}
                 onChange={(e) => update("name", e.target.value)}
-                className="h-9 text-sm"
+                className="h-8 text-sm"
               />
             </div>
             <div className="flex items-center gap-2 ml-auto">
-              <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={() => setReport(newReport(report.dataset))}>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setReport(newReport(report.dataset))}>
                 <X className="w-3.5 h-3.5" /> Clear
               </Button>
-              <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={saveReport}>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={saveReport}>
                 <Save className="w-3.5 h-3.5" /> Save
               </Button>
-              <Button size="sm" variant="outline" className="h-9 gap-1.5" onClick={exportCSV}>
+              <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={exportCSV}>
                 <Download className="w-3.5 h-3.5" /> Export CSV
               </Button>
             </div>

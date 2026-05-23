@@ -80,7 +80,7 @@ function KpiCard({
             <div className="text-2xl font-display font-bold mt-1 truncate">{value}</div>
             {sub && <div className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</div>}
           </div>
-          <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${accentBg}`}>
+          <div className={`shrink-0 w-10 h-8 rounded-lg flex items-center justify-center ${accentBg}`}>
             <Icon className="w-5 h-5" />
           </div>
         </div>

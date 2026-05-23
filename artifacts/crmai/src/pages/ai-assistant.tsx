@@ -126,7 +126,7 @@ export default function AIAssistant() {
                     <div key={i} className={`rounded-xl p-4 bg-muted relative overflow-hidden border ${i === 0 ? "border-primary/30" : "border-border"}`}>
                       {i === 0 && <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary to-accent" />}
                       <div className="flex gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? "bg-accent/20 text-primary" : "bg-blue-500/20 text-blue-600"}`}>
+                        <div className={`w-10 h-8 rounded-full flex items-center justify-center shrink-0 ${i === 0 ? "bg-accent/20 text-primary" : "bg-blue-500/20 text-blue-600"}`}>
                           <User className="w-5 h-5" />
                         </div>
                         <div className="flex-1">
@@ -150,7 +150,7 @@ export default function AIAssistant() {
 
                 <div className="border border-border rounded-xl p-4 bg-muted mt-2">
                   <div className="flex gap-4">
-                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center shrink-0 text-green-600">
+                    <div className="w-10 h-8 rounded-full bg-green-500/20 flex items-center justify-center shrink-0 text-green-600">
                       <TrendingUp className="w-5 h-5" />
                     </div>
                     <div>

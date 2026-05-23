@@ -214,7 +214,7 @@ export default function ContactDetail() {
           <div className="flex flex-col gap-3">
             {!activitiesData?.data.length ? (
               <div className="text-center py-12 text-muted-foreground">
-                <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <Activity className="w-10 h-8 mx-auto mb-3 opacity-30" />
                 No activities logged for this contact yet.
               </div>
             ) : (
@@ -261,7 +261,7 @@ export default function ContactDetail() {
           <div className="flex flex-col gap-3">
             {!opportunitiesData?.data.length ? (
               <div className="text-center py-12 text-muted-foreground">
-                <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <Briefcase className="w-10 h-8 mx-auto mb-3 opacity-30" />
                 No deals linked to this contact yet.
               </div>
             ) : (

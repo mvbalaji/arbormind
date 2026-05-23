@@ -117,7 +117,7 @@ export default function Support() {
       <Layout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
+            <AlertCircle className="w-10 h-8 text-red-500 mx-auto mb-3" />
             <p className="text-red-600 font-medium">Admin access required</p>
             <p className="text-muted-foreground text-sm mt-1">Contact your administrator to access the support inbox.</p>
           </div>
@@ -194,7 +194,7 @@ export default function Support() {
                 <div className="p-6 text-center text-muted-foreground text-sm">Loading inbox…</div>
               ) : emails.length === 0 ? (
                 <div className="p-8 text-center">
-                  <Inbox className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+                  <Inbox className="w-10 h-8 mx-auto mb-3 text-muted-foreground/40" />
                   <p className="text-muted-foreground text-sm">No emails yet</p>
                 </div>
               ) : (

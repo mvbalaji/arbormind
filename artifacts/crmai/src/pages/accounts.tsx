@@ -527,7 +527,7 @@ function AccountFormDialog({
         <form onSubmit={handleSubmit} className="space-y-4 py-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Account Name *</Label>
-            <Input required className="h-9 text-sm" value={formData.name} onChange={f("name")} />
+            <Input required className="h-8 text-sm" value={formData.name} onChange={f("name")} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Industry</Label>
@@ -539,40 +539,40 @@ function AccountFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Email</Label>
-              <Input type="email" className="h-9 text-sm" placeholder="account@company.com" value={formData.email} onChange={f("email")} />
+              <Input type="email" className="h-8 text-sm" placeholder="account@company.com" value={formData.email} onChange={f("email")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Phone</Label>
-              <Input className="h-9 text-sm" value={formData.phone} onChange={f("phone")} />
+              <Input className="h-8 text-sm" value={formData.phone} onChange={f("phone")} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Website</Label>
-              <Input className="h-9 text-sm" placeholder="https://" value={formData.website} onChange={f("website")} />
+              <Input className="h-8 text-sm" placeholder="https://" value={formData.website} onChange={f("website")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">City</Label>
-              <Input className="h-9 text-sm" value={formData.city} onChange={f("city")} />
+              <Input className="h-8 text-sm" value={formData.city} onChange={f("city")} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Country</Label>
-              <Input className="h-9 text-sm" value={formData.country} onChange={f("country")} />
+              <Input className="h-8 text-sm" value={formData.country} onChange={f("country")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Employees</Label>
-              <Input type="number" className="h-9 text-sm" value={formData.employees} onChange={f("employees")} />
+              <Input type="number" className="h-8 text-sm" value={formData.employees} onChange={f("employees")} />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Annual Revenue (£)</Label>
-            <Input type="number" className="h-9 text-sm" value={formData.annualRevenue} onChange={f("annualRevenue")} />
+            <Input type="number" className="h-8 text-sm" value={formData.annualRevenue} onChange={f("annualRevenue")} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Description</Label>
-            <Input className="h-9 text-sm" value={formData.description} onChange={f("description")} placeholder="Account description..." />
+            <Input className="h-8 text-sm" value={formData.description} onChange={f("description")} placeholder="Account description..." />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -585,23 +585,23 @@ function AccountFormDialog({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Stage</Label>
-              <Input className="h-9 text-sm" value={formData.stage} onChange={f("stage")} placeholder="e.g., Growth" />
+              <Input className="h-8 text-sm" value={formData.stage} onChange={f("stage")} placeholder="e.g., Growth" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Amount (£)</Label>
-              <Input type="number" className="h-9 text-sm" value={formData.amount} onChange={f("amount")} />
+              <Input type="number" className="h-8 text-sm" value={formData.amount} onChange={f("amount")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Close Date</Label>
-              <Input type="date" className="h-9 text-sm" value={formData.closeDate} onChange={f("closeDate")} />
+              <Input type="date" className="h-8 text-sm" value={formData.closeDate} onChange={f("closeDate")} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Probability (%)</Label>
-              <Input type="number" min="0" max="100" className="h-9 text-sm" value={formData.probability} onChange={f("probability")} />
+              <Input type="number" min="0" max="100" className="h-8 text-sm" value={formData.probability} onChange={f("probability")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Forecast Category</Label>
@@ -617,16 +617,16 @@ function AccountFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Next Step</Label>
-            <Input className="h-9 text-sm" value={formData.nextStep} onChange={f("nextStep")} placeholder="e.g., Schedule demo" />
+            <Input className="h-8 text-sm" value={formData.nextStep} onChange={f("nextStep")} placeholder="e.g., Schedule demo" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Opty Owner</Label>
-              <Input className="h-9 text-sm" value={formData.optyOwner} onChange={f("optyOwner")} />
+              <Input className="h-8 text-sm" value={formData.optyOwner} onChange={f("optyOwner")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Opty Team</Label>
-              <Input className="h-9 text-sm" value={formData.optyTeam} onChange={f("optyTeam")} />
+              <Input className="h-8 text-sm" value={formData.optyTeam} onChange={f("optyTeam")} />
             </div>
           </div>
           <DialogFooter className="pt-2 border-t border-border gap-2">

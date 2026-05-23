@@ -561,7 +561,7 @@ export default function Landing() {
                 }}
               >
                 <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110"
+                  className="w-11 h-9 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110"
                   style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(6,182,212,0.2))" }}
                 >
                   <f.icon className="w-5 h-5" style={{ color: "#818cf8" }} />
@@ -631,7 +631,7 @@ export default function Landing() {
                 </p>
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+                    className="w-10 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
                     style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)" }}
                   >
                     {t.avatar}

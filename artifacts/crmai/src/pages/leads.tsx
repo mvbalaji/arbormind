@@ -812,7 +812,7 @@ export default function Leads() {
             <select
               value={newOwnerId}
               onChange={(e) => setNewOwnerId(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
               disabled={changeOwnerBusy}
             >
               <option value="">— Unassigned —</option>
@@ -1016,21 +1016,21 @@ function LeadFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label className="text-xs font-medium">First Name *</Label>
-              <Input required value={formData.firstName} onChange={f("firstName")} className="h-9 text-sm" />
+              <Input required value={formData.firstName} onChange={f("firstName")} className="h-8 text-sm" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-medium">Last Name *</Label>
-              <Input required value={formData.lastName} onChange={f("lastName")} className="h-9 text-sm" />
+              <Input required value={formData.lastName} onChange={f("lastName")} className="h-8 text-sm" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label className="text-xs font-medium">Company</Label>
-              <Input value={formData.company} onChange={f("company")} className="h-9 text-sm" />
+              <Input value={formData.company} onChange={f("company")} className="h-8 text-sm" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-medium">Title</Label>
-              <Input value={formData.title} onChange={f("title")} placeholder="e.g. VP of Sales" className="h-9 text-sm" />
+              <Input value={formData.title} onChange={f("title")} placeholder="e.g. VP of Sales" className="h-8 text-sm" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -1051,12 +1051,12 @@ function LeadFormDialog({
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-medium">Employees</Label>
-              <Input type="number" min="0" value={formData.employees} onChange={f("employees")} placeholder="e.g. 50" className="h-9 text-sm" />
+              <Input type="number" min="0" value={formData.employees} onChange={f("employees")} placeholder="e.g. 50" className="h-8 text-sm" />
             </div>
           </div>
           <div className="space-y-2">
             <Label className="text-xs font-medium">Annual Revenue</Label>
-            <Input value={formData.annualRevenue} onChange={f("annualRevenue")} placeholder="e.g. $1M" className="h-9 text-sm" />
+            <Input value={formData.annualRevenue} onChange={f("annualRevenue")} placeholder="e.g. $1M" className="h-8 text-sm" />
           </div>
 
           {/* Contact section */}
@@ -1066,11 +1066,11 @@ function LeadFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label className="text-xs font-medium">Email</Label>
-              <Input type="email" value={formData.email} onChange={f("email")} className="h-9 text-sm" />
+              <Input type="email" value={formData.email} onChange={f("email")} className="h-8 text-sm" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-medium">Phone</Label>
-              <Input value={formData.phone} onChange={f("phone")} className="h-9 text-sm" />
+              <Input value={formData.phone} onChange={f("phone")} className="h-8 text-sm" />
             </div>
           </div>
 
@@ -1099,7 +1099,7 @@ function LeadFormDialog({
                 value={formData.score}
                 onChange={f("score")}
                 placeholder="Auto-calculated"
-                className="h-9 text-sm"
+                className="h-8 text-sm"
               />
             </div>
           </div>
@@ -1235,7 +1235,7 @@ function ConvertLeadDialog({
               <div className="space-y-1">
                 <Input
                   placeholder="Search accounts..."
-                  className="h-9 text-sm"
+                  className="h-8 text-sm"
                   value={accountSearch}
                   onChange={(e) => { setAccountSearch(e.target.value); setExistingAccountId(""); }}
                 />
@@ -1269,7 +1269,7 @@ function ConvertLeadDialog({
               <div className="space-y-1">
                 <Input
                   placeholder="Search contacts..."
-                  className="h-9 text-sm"
+                  className="h-8 text-sm"
                   value={contactSearch}
                   onChange={(e) => setContactSearch(e.target.value)}
                 />
@@ -1303,7 +1303,7 @@ function ConvertLeadDialog({
               <Label htmlFor="createOppList" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">Create Opportunity</Label>
             </div>
             {createOpp && (
-              <Input placeholder="Opportunity name" className="h-9 text-sm" value={oppName} onChange={(e) => setOppName(e.target.value)} />
+              <Input placeholder="Opportunity name" className="h-8 text-sm" value={oppName} onChange={(e) => setOppName(e.target.value)} />
             )}
           </div>
 

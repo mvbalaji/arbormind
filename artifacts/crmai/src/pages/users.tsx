@@ -495,7 +495,7 @@ export default function Users() {
         {/* Mail Settings Tab */}
         {activeTab === "mail" && !isAdmin && (
           <Card className="glass-panel border-border p-12 text-center text-muted-foreground">
-            <Shield className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <Shield className="w-10 h-8 mx-auto mb-3 opacity-30" />
             <p>Mail settings are restricted to administrators.</p>
           </Card>
         )}
@@ -507,7 +507,7 @@ export default function Users() {
               <div className="p-5 flex flex-wrap items-center gap-4 justify-between">
                 <div className="flex items-center gap-3">
                   <div className={cn(
-                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    "w-10 h-8 rounded-xl flex items-center justify-center",
                     mailSettings.lastSyncStatus === "ok" ? "bg-green-500/10" :
                     mailSettings.lastSyncStatus === "error" ? "bg-red-500/10" : "bg-muted"
                   )}>

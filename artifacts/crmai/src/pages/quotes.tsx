@@ -181,7 +181,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
               <Label htmlFor="q-status">Status</Label>
               <select
                 id="q-status"
-                className="w-full h-10 px-3 rounded-md bg-muted border border-border text-foreground text-sm"
+                className="w-full h-8 px-3 rounded-md bg-muted border border-border text-foreground text-sm"
                 value={formData.status}
                 onChange={e => setFormData({ ...formData, status: e.target.value })}
               >
@@ -712,7 +712,7 @@ export default function Quotes() {
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-11 h-11 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+            <div className="w-11 h-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
               <FileText className="w-5 h-5 text-emerald-600" />
             </div>
             <div>

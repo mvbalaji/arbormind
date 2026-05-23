@@ -464,7 +464,7 @@ export default function Approvals() {
         {/* Blue gradient header */}
         <div className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-4 flex items-center justify-between text-white shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-white/15 flex items-center justify-center backdrop-blur-sm">
+            <div className="w-10 h-8 rounded-lg bg-white/15 flex items-center justify-center backdrop-blur-sm">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>

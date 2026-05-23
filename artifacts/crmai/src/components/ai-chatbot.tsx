@@ -206,7 +206,7 @@ export function AIChatbot() {
               />
               <Button
                 size="icon"
-                className="h-9 w-9 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
+                className="h-8 w-8 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
                 onClick={sendMessage}
                 disabled={!input.trim() || isLoading}
               >

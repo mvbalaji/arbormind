@@ -373,7 +373,7 @@ function QuickQuoteDialog({
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <select className="w-full h-10 px-3 rounded-md bg-muted border border-border text-sm"
+              <select className="w-full h-8 px-3 rounded-md bg-muted border border-border text-sm"
                 value={status} onChange={e => setStatus(e.target.value)}>
                 {Object.keys(CreateQuoteInputStatus).map(s => (
                   <option key={s} value={s} className="bg-card capitalize">{s}</option>
@@ -762,7 +762,7 @@ export default function OpportunityDetail() {
             {/* Title row */}
             <div className="flex items-start justify-between gap-4 px-6 pt-4 pb-3 border-b border-border bg-gradient-to-r from-blue-50/60 to-transparent dark:from-blue-950/20">
               <div className="flex items-start gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-md bg-blue-600 flex items-center justify-center text-white shrink-0 mt-0.5">
+                <div className="w-10 h-8 rounded-md bg-blue-600 flex items-center justify-center text-white shrink-0 mt-0.5">
                   <Briefcase className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
@@ -1205,7 +1205,7 @@ export default function OpportunityDetail() {
 
               {!filteredActivities.length && (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <Activity className="w-10 h-8 mx-auto mb-3 opacity-30" />
                   No {current.type} activities logged yet. Use the form above to add one.
                 </div>
               )}
@@ -1233,7 +1233,7 @@ export default function OpportunityDetail() {
             </div>
             {oppQuotes.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <FileText className="w-10 h-8 mx-auto mb-3 opacity-30" />
                 No quotes for this opportunity yet.
                 <div className="mt-2">
                   <Button

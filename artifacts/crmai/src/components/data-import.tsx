@@ -249,7 +249,7 @@ export function DataImport() {
           </div>
         ) : (
           <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/50 border border-border">
-            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+            <div className="w-10 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
               {fileName?.endsWith(".csv") ? <FileText className="w-5 h-5 text-primary" /> : <FileSpreadsheet className="w-5 h-5 text-primary" />}
             </div>
             <div className="flex-1 min-w-0">

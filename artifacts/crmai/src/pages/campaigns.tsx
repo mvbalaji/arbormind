@@ -192,7 +192,7 @@ export default function Campaigns() {
         {!isLoading && campaigns.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card className="glass-panel border-border p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+              <div className="w-10 h-8 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
                 <Megaphone className="w-5 h-5 text-primary" />
               </div>
               <div>
@@ -201,7 +201,7 @@ export default function Campaigns() {
               </div>
             </Card>
             <Card className="glass-panel border-border p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
+              <div className="w-10 h-8 rounded-xl bg-green-500/20 flex items-center justify-center shrink-0">
                 <TrendingUp className="w-5 h-5 text-green-600" />
               </div>
               <div>
@@ -212,7 +212,7 @@ export default function Campaigns() {
               </div>
             </Card>
             <Card className="glass-panel border-border p-5 flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center shrink-0">
+              <div className="w-10 h-8 rounded-xl bg-accent/20 flex items-center justify-center shrink-0">
                 <DollarSign className="w-5 h-5 text-primary" />
               </div>
               <div>
@@ -256,7 +256,7 @@ export default function Campaigns() {
                 {isLoading ? (
                   <tr><td colSpan={campaignColSpan} className="px-6 py-8 text-center text-muted-foreground">
                     <div className="space-y-3">
-                      {[0,1,2].map(i => <Skeleton key={i} className="h-10 w-full" />)}
+                      {[0,1,2].map(i => <Skeleton key={i} className="h-8 w-full" />)}
                     </div>
                   </td></tr>
                 ) : campaigns.length === 0 ? (

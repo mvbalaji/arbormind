@@ -358,7 +358,7 @@ export default function AccountDetail() {
           <div className="space-y-2">
             {!contacts.length ? (
               <div className="text-center py-12 text-muted-foreground">
-                <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <Users className="w-10 h-8 mx-auto mb-3 opacity-30" />
                 No contacts linked to this account.
               </div>
             ) : (
@@ -395,7 +395,7 @@ export default function AccountDetail() {
           <div className="space-y-2">
             {!opportunities.length ? (
               <div className="text-center py-12 text-muted-foreground">
-                <Briefcase className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <Briefcase className="w-10 h-8 mx-auto mb-3 opacity-30" />
                 No opportunities for this account yet.
               </div>
             ) : (
@@ -438,7 +438,7 @@ export default function AccountDetail() {
           <div className="space-y-2">
             {!activities.length ? (
               <div className="text-center py-12 text-muted-foreground">
-                <Activity className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <Activity className="w-10 h-8 mx-auto mb-3 opacity-30" />
                 No activities logged for this account.
               </div>
             ) : (
@@ -485,7 +485,7 @@ export default function AccountDetail() {
           <div className="space-y-2">
             {!quotes.length ? (
               <div className="text-center py-12 text-muted-foreground">
-                <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <FileText className="w-10 h-8 mx-auto mb-3 opacity-30" />
                 No quotes for this account yet.
               </div>
             ) : (
@@ -527,7 +527,7 @@ export default function AccountDetail() {
           <div className="space-y-2">
             {!cases.length ? (
               <div className="text-center py-12 text-muted-foreground">
-                <ShieldCheck className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <ShieldCheck className="w-10 h-8 mx-auto mb-3 opacity-30" />
                 No cases for this account yet.
               </div>
             ) : (

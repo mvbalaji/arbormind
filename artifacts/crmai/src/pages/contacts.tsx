@@ -123,7 +123,7 @@ export default function Contacts() {
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
                       <td className="px-3 py-1" colSpan={contactColSpan}>
-                        <div className="h-10 bg-muted/50 rounded animate-pulse w-full" />
+                        <div className="h-8 bg-muted/50 rounded animate-pulse w-full" />
                       </td>
                     </tr>
                   ))
@@ -362,7 +362,7 @@ export function ContactFormDialog({
               <select
                 id="accountId"
                 disabled={lockedAccountId != null}
-                className="w-full h-10 px-3 rounded-md bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full h-8 px-3 rounded-md bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-60 disabled:cursor-not-allowed"
                 value={lockedAccountId != null ? String(lockedAccountId) : formData.accountId}
                 onChange={e => setFormData({ ...formData, accountId: e.target.value })}
               >

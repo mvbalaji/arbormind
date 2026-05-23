@@ -469,7 +469,7 @@ export function ApprovalConfigInline() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button size="icon" variant="ghost" className="h-9 w-9 text-red-600 hover:text-red-700 shrink-0"
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-700 shrink-0"
                       disabled={editing.steps.length <= 1} onClick={() => removeStep(idx)}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>

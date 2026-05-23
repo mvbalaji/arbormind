@@ -734,12 +734,12 @@ export default function LeadDetail() {
                 <div className="flex gap-2">
                   <Textarea
                     placeholder={activityType === "note" ? "Add a note or comment..." : `Log a ${activityType}...`}
-                    className="h-10 text-sm resize-none flex-1 min-h-[36px]"
+                    className="h-8 text-sm resize-none flex-1 min-h-[36px]"
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleAddActivity(); } }}
                   />
-                  <Button size="sm" className="h-10 text-xs bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => void handleAddActivity()} disabled={isAddingNote || !newNote.trim()}>
+                  <Button size="sm" className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => void handleAddActivity()} disabled={isAddingNote || !newNote.trim()}>
                     <Plus className="w-3.5 h-3.5" />
                   </Button>
                 </div>
@@ -803,7 +803,7 @@ export default function LeadDetail() {
                   {linkedContacts.map((contact) => (
                     <Link key={contact.id} href={`/contacts/${contact.id}`}>
                       <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
-                        <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold flex-shrink-0">
+                        <div className="w-10 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold flex-shrink-0">
                           {contact.firstName?.[0] ?? ""}{contact.lastName?.[0] ?? ""}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -825,7 +825,7 @@ export default function LeadDetail() {
               ) : lead.convertedContactId && convertedContactData ? (
                 <Link href={`/contacts/${lead.convertedContactId}`}>
                   <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
-                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold flex-shrink-0">
+                    <div className="w-10 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold flex-shrink-0">
                       {convertedContactData.firstName?.[0] ?? ""}{convertedContactData.lastName?.[0] ?? ""}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -858,7 +858,7 @@ export default function LeadDetail() {
               {lead.convertedAccountId && convertedAccountData ? (
                 <Link href={`/accounts/${lead.convertedAccountId}`}>
                   <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
-                    <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-8 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
                       <Building2 className="w-5 h-5 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1024,7 +1024,7 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
               <div className="space-y-1">
                 <Input
                   placeholder="Search accounts..."
-                  className="h-9 text-sm"
+                  className="h-8 text-sm"
                   value={accountSearch}
                   onChange={(e) => { setAccountSearch(e.target.value); setExistingAccountId(""); }}
                 />
@@ -1075,7 +1075,7 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
               <div className="space-y-1">
                 <Input
                   placeholder="Search contacts..."
-                  className="h-9 text-sm"
+                  className="h-8 text-sm"
                   value={contactSearch}
                   onChange={(e) => setContactSearch(e.target.value)}
                 />
@@ -1124,7 +1124,7 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
             {createOpp && (
               <Input
                 placeholder="Opportunity name"
-                className="h-9 text-sm"
+                className="h-8 text-sm"
                 value={oppName}
                 onChange={(e) => setOppName(e.target.value)}
               />
@@ -1245,11 +1245,11 @@ function LeadEditDialog({ open, onOpenChange, lead, onSaved }: {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">First Name *</Label>
-              <Input required className="h-9 text-sm" value={form.firstName} onChange={f("firstName")} />
+              <Input required className="h-8 text-sm" value={form.firstName} onChange={f("firstName")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Last Name *</Label>
-              <Input required className="h-9 text-sm" value={form.lastName} onChange={f("lastName")} />
+              <Input required className="h-8 text-sm" value={form.lastName} onChange={f("lastName")} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -1278,11 +1278,11 @@ function LeadEditDialog({ open, onOpenChange, lead, onSaved }: {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Company</Label>
-              <Input className="h-9 text-sm" value={form.company ?? ""} onChange={f("company")} />
+              <Input className="h-8 text-sm" value={form.company ?? ""} onChange={f("company")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Title</Label>
-              <Input className="h-9 text-sm" value={form.title ?? ""} onChange={f("title")} />
+              <Input className="h-8 text-sm" value={form.title ?? ""} onChange={f("title")} />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -1307,7 +1307,7 @@ function LeadEditDialog({ open, onOpenChange, lead, onSaved }: {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Score (0–100)</Label>
-              <Input type="number" min="0" max="100" className="h-9 text-sm" value={form.score} onChange={f("score")} />
+              <Input type="number" min="0" max="100" className="h-8 text-sm" value={form.score} onChange={f("score")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Assigned To</Label>
@@ -1322,11 +1322,11 @@ function LeadEditDialog({ open, onOpenChange, lead, onSaved }: {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Industry</Label>
-              <Input className="h-9 text-sm" value={form.industry ?? ""} onChange={f("industry")} />
+              <Input className="h-8 text-sm" value={form.industry ?? ""} onChange={f("industry")} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">Employees</Label>
-              <Input type="number" className="h-9 text-sm" value={form.employees} onChange={f("employees")} />
+              <Input type="number" className="h-8 text-sm" value={form.employees} onChange={f("employees")} />
             </div>
           </div>
           <div className="space-y-1.5">

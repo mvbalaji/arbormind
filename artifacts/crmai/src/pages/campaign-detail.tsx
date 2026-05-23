@@ -550,7 +550,7 @@ export default function CampaignDetail() {
                   const AIcon = CREATIVE_ICONS[asset.type] ?? FileText;
                   return (
                     <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50 border border-border hover:bg-white/8 transition-colors group">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                      <div className="w-10 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                         <AIcon className="w-5 h-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -603,7 +603,7 @@ export default function CampaignDetail() {
             <CardContent>
               {teamList.length === 0 ? (
                 <div className="py-8 text-center">
-                  <Users className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
+                  <Users className="w-10 h-8 mx-auto text-muted-foreground/30 mb-3" />
                   <p className="text-muted-foreground text-sm">No team members assigned yet.</p>
                   <p className="text-xs text-muted-foreground mt-1">Edit the campaign to add team members.</p>
                 </div>
