@@ -632,7 +632,7 @@ export default function Leads() {
                         <td className="px-3 py-1">
                           <span
                             className={cn(
-                              "inline-flex items-center justify-center text-xs font-semibold capitalize pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
+                              "inline-flex items-center justify-center text-xs font-semibold capitalize pl-2.5 pr-4 py-0 whitespace-nowrap w-[130px]",
                               STATUS_BADGE_COLORS[lead.status] ?? "bg-gray-500 text-white border-gray-500"
                             )}
                             style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" }}
@@ -665,7 +665,7 @@ export default function Leads() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                            className="h-6 px-1.5 text-xs gap-1 text-muted-foreground hover:text-foreground"
                             onClick={() => setEditingLead({
                               id: lead.id,
                               firstName: lead.firstName,
@@ -690,7 +690,7 @@ export default function Leads() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            className="h-6 px-1.5 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
                             onClick={() => setDeletingId(lead.id)}
                             aria-label={`Delete ${lead.firstName} ${lead.lastName}`}
                           >
@@ -702,7 +702,7 @@ export default function Leads() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                 aria-label={`More actions for ${lead.firstName} ${lead.lastName}`}
                               >
                                 <MoreHorizontal className="w-4 h-4" />

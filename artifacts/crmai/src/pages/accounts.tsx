@@ -347,7 +347,7 @@ export default function Accounts() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                            className="h-6 px-1.5 text-xs gap-1 text-muted-foreground hover:text-foreground"
                             onClick={() => setEditingAccount({
                               id: acc.id,
                               name: acc.name,
@@ -376,7 +376,7 @@ export default function Accounts() {
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" aria-label={`More actions for ${acc.name}`}>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground" aria-label={`More actions for ${acc.name}`}>
                                 <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>

@@ -272,7 +272,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                       ${lineTotal(item).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </div>
                     <div className="col-span-1 flex justify-end">
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-600"
                         onClick={() => removeItem(idx)}>
                         <X className="w-3 h-3" />
                       </Button>
@@ -739,22 +739,22 @@ export default function Quotes() {
               />
             </div>
             <div className="flex items-center gap-1 border border-border rounded-md p-0.5 bg-card">
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="List settings">
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="List settings">
                 <Settings className="w-3.5 h-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                className="h-6 w-6 text-muted-foreground hover:text-foreground"
                 title="Refresh"
                 onClick={() => { refetch(); }}
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Sort">
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="Sort">
                 <ArrowUpDown className="w-3.5 h-3.5" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" title="Filters">
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="Filters">
                 <Filter className="w-3.5 h-3.5" />
               </Button>
             </div>
@@ -922,7 +922,7 @@ export default function Quotes() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-foreground opacity-60 group-hover:opacity-100 transition-opacity"
+                              className="h-6 w-6 text-muted-foreground hover:text-foreground opacity-60 group-hover:opacity-100 transition-opacity"
                               aria-label="Row actions"
                             >
                               <ChevronDown className="w-3.5 h-3.5" />

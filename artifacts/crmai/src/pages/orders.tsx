@@ -303,7 +303,7 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                     </div>
                     <div className="col-span-1 text-right text-sm font-medium text-foreground">£{lineTotal(item).toFixed(2)}</div>
                     <div className="col-span-1 flex justify-end">
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600"
+                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-600"
                         onClick={() => removeItem(idx)}><X className="w-3 h-3" /></Button>
                     </div>
                   </div>
