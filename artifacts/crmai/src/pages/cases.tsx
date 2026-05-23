@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
 import {
   useListCases, useCreateCase, useUpdateCase, useDeleteCase,
   getListCasesQueryKey,
@@ -61,7 +63,11 @@ const defaultFormData: CaseFormData = {
   subject: "", description: "", priority: "medium", status: "open", type: "question",
 };
 
+const CASES_COL_KEYS = ["caseNumber","subject","priority","status","opened","actions"] as const;
+const CASES_COL_DEFAULTS: Record<typeof CASES_COL_KEYS[number], number> = {"caseNumber":110,"subject":280,"priority":110,"status":110,"opened":130,"actions":120};
+
 export default function Cases() {
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:cases:v1", CASES_COL_KEYS, CASES_COL_DEFAULTS);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCase, setEditingCase] = useState<{ id: number } & CaseFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -104,14 +110,22 @@ export default function Cases() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
+              <colgroup>
+                <col data-col="caseNumber" style={{ width: `${colWidths.caseNumber}px` }} />
+                <col data-col="subject" style={{ width: `${colWidths.subject}px` }} />
+                <col data-col="priority" style={{ width: `${colWidths.priority}px` }} />
+                <col data-col="status" style={{ width: `${colWidths.status}px` }} />
+                <col data-col="opened" style={{ width: `${colWidths.opened}px` }} />
+                <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+              </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("caseNumber") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Case #</th>}
-                  {colVis.isVisible("subject") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Subject</th>}
-                  {colVis.isVisible("priority") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Priority</th>}
-                  {colVis.isVisible("status") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status</th>}
-                  {colVis.isVisible("opened") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Opened</th>}
-                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
+                  {colVis.isVisible("caseNumber") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Case #<ColResizeHandle onMouseDown={startColResize("caseNumber")} /></th>}
+                  {colVis.isVisible("subject") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Subject<ColResizeHandle onMouseDown={startColResize("subject")} /></th>}
+                  {colVis.isVisible("priority") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Priority<ColResizeHandle onMouseDown={startColResize("priority")} /></th>}
+                  {colVis.isVisible("status") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                  {colVis.isVisible("opened") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Opened<ColResizeHandle onMouseDown={startColResize("opened")} /></th>}
+                  <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

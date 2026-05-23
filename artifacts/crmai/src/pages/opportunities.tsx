@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
 import {
   useListOpportunities,
   useUpdateOpportunity,
@@ -228,7 +230,11 @@ const OPPORTUNITY_TOGGLEABLE_COLS = [
   { key: "status" as const, label: "Status" },
 ];
 
+const OPPORTUNITIES_COL_KEYS = ["name","account","stage","amount","closeDate","owner","status","actions"] as const;
+const OPPORTUNITIES_COL_DEFAULTS: Record<typeof OPPORTUNITIES_COL_KEYS[number], number> = {"name":200,"account":160,"stage":140,"amount":120,"closeDate":130,"owner":140,"status":120,"actions":100};
+
 export default function Opportunities() {
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:opportunities:v1", OPPORTUNITIES_COL_KEYS, OPPORTUNITIES_COL_DEFAULTS);
   const { data, isLoading } = useListOpportunities({ limit: 200 });
   const updateMutation = useUpdateOpportunity();
   const deleteMutation = useDeleteOpportunity();
@@ -564,6 +570,16 @@ export default function Opportunities() {
             </div>
             <div className="overflow-auto max-h-[calc(100vh-260px)]">
               <table className="w-full text-sm bg-card">
+                <colgroup>
+                  <col data-col="name" style={{ width: `${colWidths.name}px` }} />
+                  <col data-col="account" style={{ width: `${colWidths.account}px` }} />
+                  <col data-col="stage" style={{ width: `${colWidths.stage}px` }} />
+                  <col data-col="amount" style={{ width: `${colWidths.amount}px` }} />
+                  <col data-col="closeDate" style={{ width: `${colWidths.closeDate}px` }} />
+                  <col data-col="owner" style={{ width: `${colWidths.owner}px` }} />
+                  <col data-col="status" style={{ width: `${colWidths.status}px` }} />
+                  <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+                </colgroup>
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
                     <th className="w-10 px-3 py-1">
@@ -574,24 +590,14 @@ export default function Opportunities() {
                         className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
                       />
                     </th>
-                    {colVis.isVisible("name") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="name">Opportunity</SortHeader></th>}
-                    {colVis.isVisible("account") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="account">Account</SortHeader></th>}
-                    {colVis.isVisible("stage") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="stage">Stage</SortHeader></th>}
-                    {colVis.isVisible("amount") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="amount">Value</SortHeader></th>}
-                    {colVis.isVisible("closeDate") && <th className="text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="closeDate">Close Date</SortHeader></th>}
-                    {colVis.isVisible("owner") && (
-                      <th className="text-left px-3 py-1">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</span>
-                      </th>
-                    )}
-                    {colVis.isVisible("status") && (
-                      <th className="text-left px-3 py-1">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</span>
-                      </th>
-                    )}
-                    <th className="text-center px-3 py-1">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</span>
-                    </th>
+                    {colVis.isVisible("name") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="name">Opportunity</SortHeader><ColResizeHandle onMouseDown={startColResize("name")} /></th>}
+                    {colVis.isVisible("account") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="account">Account</SortHeader><ColResizeHandle onMouseDown={startColResize("account")} /></th>}
+                    {colVis.isVisible("stage") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="stage">Stage</SortHeader><ColResizeHandle onMouseDown={startColResize("stage")} /></th>}
+                    {colVis.isVisible("amount") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="amount">Value</SortHeader><ColResizeHandle onMouseDown={startColResize("amount")} /></th>}
+                    {colVis.isVisible("closeDate") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="closeDate">Close Date</SortHeader><ColResizeHandle onMouseDown={startColResize("closeDate")} /></th>}
+                    {colVis.isVisible("owner") && <th className="relative text-left px-3 py-1"><span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</span><ColResizeHandle onMouseDown={startColResize("owner")} /></th>}
+                    {colVis.isVisible("status") && <th className="relative text-left px-3 py-1"><span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</span><ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                    <th className="relative text-center px-3 py-1"><span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</span><ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border bg-card">

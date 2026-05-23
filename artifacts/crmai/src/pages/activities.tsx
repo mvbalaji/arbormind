@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
 import {
   useListActivities, useCreateActivity, useUpdateActivity, useDeleteActivity,
   getListActivitiesQueryKey,
@@ -118,7 +120,11 @@ function WeekCalendar({ activities }: { activities: Array<{ id: number; type: st
   );
 }
 
+const ACTIVITIES_COL_KEYS = ["icon","subject","related","date","status","actions"] as const;
+const ACTIVITIES_COL_DEFAULTS: Record<typeof ACTIVITIES_COL_KEYS[number], number> = {"icon":48,"subject":280,"related":200,"date":130,"status":120,"actions":120};
+
 export default function Activities() {
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:activities:v1", ACTIVITIES_COL_KEYS, ACTIVITIES_COL_DEFAULTS);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<{ id: number } & ActivityFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -194,14 +200,22 @@ export default function Activities() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
+              <colgroup>
+                <col data-col="icon" style={{ width: `${colWidths.icon}px` }} />
+                <col data-col="subject" style={{ width: `${colWidths.subject}px` }} />
+                <col data-col="related" style={{ width: `${colWidths.related}px` }} />
+                <col data-col="date" style={{ width: `${colWidths.date}px` }} />
+                <col data-col="status" style={{ width: `${colWidths.status}px` }} />
+                <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+              </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("icon") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap w-12"></th>}
-                  {colVis.isVisible("subject") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Subject</th>}
-                  {colVis.isVisible("related") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Related To</th>}
-                  {colVis.isVisible("date") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Date</th>}
-                  {colVis.isVisible("status") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status</th>}
-                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
+                  {colVis.isVisible("icon") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap w-12"><ColResizeHandle onMouseDown={startColResize("icon")} /></th>}
+                  {colVis.isVisible("subject") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Subject<ColResizeHandle onMouseDown={startColResize("subject")} /></th>}
+                  {colVis.isVisible("related") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Related To<ColResizeHandle onMouseDown={startColResize("related")} /></th>}
+                  {colVis.isVisible("date") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Date<ColResizeHandle onMouseDown={startColResize("date")} /></th>}
+                  {colVis.isVisible("status") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                  <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

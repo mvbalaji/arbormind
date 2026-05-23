@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
 import {
   useListAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount,
   getListAccountsQueryKey,
@@ -83,7 +85,11 @@ const VIEW_OPTIONS = [
   { label: "Recently Created", value: "recent" },
 ];
 
+const ACCOUNTS_COL_KEYS = ["name","location","phone","industry","email","owner","contacts","deals","actions"] as const;
+const ACCOUNTS_COL_DEFAULTS: Record<typeof ACCOUNTS_COL_KEYS[number], number> = {"name":200,"location":160,"phone":130,"industry":140,"email":200,"owner":140,"contacts":90,"deals":90,"actions":120};
+
 export default function Accounts() {
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:accounts:v1", ACCOUNTS_COL_KEYS, ACCOUNTS_COL_DEFAULTS);
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState("");
@@ -232,17 +238,28 @@ export default function Accounts() {
         <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
           <div className="overflow-auto max-h-[calc(100vh-260px)]">
             <table className="w-full text-sm min-w-[900px]">
+              <colgroup>
+                <col data-col="name" style={{ width: `${colWidths.name}px` }} />
+                <col data-col="location" style={{ width: `${colWidths.location}px` }} />
+                <col data-col="phone" style={{ width: `${colWidths.phone}px` }} />
+                <col data-col="industry" style={{ width: `${colWidths.industry}px` }} />
+                <col data-col="email" style={{ width: `${colWidths.email}px` }} />
+                <col data-col="owner" style={{ width: `${colWidths.owner}px` }} />
+                <col data-col="contacts" style={{ width: `${colWidths.contacts}px` }} />
+                <col data-col="deals" style={{ width: `${colWidths.deals}px` }} />
+                <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+              </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide divide-x divide-blue-500/40">
-                  {colVis.isVisible("name") && <th className="px-3 py-1 text-left text-xs font-semibold">Account Name</th>}
-                  {colVis.isVisible("location") && <th className="px-3 py-1 text-left text-xs font-semibold">Location</th>}
-                  {colVis.isVisible("phone") && <th className="px-3 py-1 text-left text-xs font-semibold">Phone</th>}
-                  {colVis.isVisible("industry") && <th className="px-3 py-1 text-left text-xs font-semibold">Industry</th>}
-                  {colVis.isVisible("email") && <th className="px-3 py-1 text-left text-xs font-semibold">Email</th>}
-                  {colVis.isVisible("owner") && <th className="px-3 py-1 text-left text-xs font-semibold">Account Owner</th>}
-                  {colVis.isVisible("contacts") && <th className="px-3 py-1 text-center text-xs font-semibold">Contacts</th>}
-                  {colVis.isVisible("deals") && <th className="px-3 py-1 text-center text-xs font-semibold">Deals</th>}
-                  <th className="px-3 py-1 text-center text-xs font-semibold">Actions</th>
+                  {colVis.isVisible("name") && <th className="relative px-3 py-1 text-left text-xs font-semibold">Account Name<ColResizeHandle onMouseDown={startColResize("name")} /></th>}
+                  {colVis.isVisible("location") && <th className="relative px-3 py-1 text-left text-xs font-semibold">Location<ColResizeHandle onMouseDown={startColResize("location")} /></th>}
+                  {colVis.isVisible("phone") && <th className="relative px-3 py-1 text-left text-xs font-semibold">Phone<ColResizeHandle onMouseDown={startColResize("phone")} /></th>}
+                  {colVis.isVisible("industry") && <th className="relative px-3 py-1 text-left text-xs font-semibold">Industry<ColResizeHandle onMouseDown={startColResize("industry")} /></th>}
+                  {colVis.isVisible("email") && <th className="relative px-3 py-1 text-left text-xs font-semibold">Email<ColResizeHandle onMouseDown={startColResize("email")} /></th>}
+                  {colVis.isVisible("owner") && <th className="relative px-3 py-1 text-left text-xs font-semibold">Account Owner<ColResizeHandle onMouseDown={startColResize("owner")} /></th>}
+                  {colVis.isVisible("contacts") && <th className="relative px-3 py-1 text-center text-xs font-semibold">Contacts<ColResizeHandle onMouseDown={startColResize("contacts")} /></th>}
+                  {colVis.isVisible("deals") && <th className="relative px-3 py-1 text-center text-xs font-semibold">Deals<ColResizeHandle onMouseDown={startColResize("deals")} /></th>}
+                  <th className="relative px-3 py-1 text-center text-xs font-semibold">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

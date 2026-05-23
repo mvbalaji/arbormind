@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
 import { useLocation } from "wouter";
 import {
   useListOrders, useCreateOrder, useCreateOrderFromQuote, useUpdateOrder, useDeleteOrder,
@@ -500,7 +502,11 @@ function EditOrderDialog({ open, onOpenChange, order }: { open: boolean; onOpenC
   );
 }
 
+const ORDERS_COL_KEYS = ["orderNumber","account","opportunity","quote","total","status","date","actions"] as const;
+const ORDERS_COL_DEFAULTS: Record<typeof ORDERS_COL_KEYS[number], number> = {orderNumber:140,account:200,opportunity:160,quote:140,total:120,status:120,date:120,actions:120};
+
 export default function Orders() {
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:orders:v1", ORDERS_COL_KEYS, ORDERS_COL_DEFAULTS);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<OrderViewDialogProps["order"] | null>(null);
@@ -590,16 +596,26 @@ export default function Orders() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="sticky top-0 z-10">
+                <colgroup>
+                  <col data-col="orderNumber" style={{ width: `${colWidths.orderNumber}px` }} />
+                  <col data-col="account" style={{ width: `${colWidths.account}px` }} />
+                  <col data-col="opportunity" style={{ width: `${colWidths.opportunity}px` }} />
+                  <col data-col="quote" style={{ width: `${colWidths.quote}px` }} />
+                  <col data-col="total" style={{ width: `${colWidths.total}px` }} />
+                  <col data-col="status" style={{ width: `${colWidths.status}px` }} />
+                  <col data-col="date" style={{ width: `${colWidths.date}px` }} />
+                  <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+                </colgroup>
+                <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("orderNumber") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Order #</th>}
-                  {colVis.isVisible("account") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Account</th>}
-                  {colVis.isVisible("opportunity") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Opportunity</th>}
-                  {colVis.isVisible("quote") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Quote</th>}
-                  {colVis.isVisible("total") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Total</th>}
-                  {colVis.isVisible("status") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status</th>}
-                  {colVis.isVisible("date") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Date</th>}
-                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
+                  {colVis.isVisible("orderNumber") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Order #<ColResizeHandle onMouseDown={startColResize("orderNumber")} /></th>}
+                  {colVis.isVisible("account") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Account<ColResizeHandle onMouseDown={startColResize("account")} /></th>}
+                  {colVis.isVisible("opportunity") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Opportunity<ColResizeHandle onMouseDown={startColResize("opportunity")} /></th>}
+                  {colVis.isVisible("quote") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Quote<ColResizeHandle onMouseDown={startColResize("quote")} /></th>}
+                  {colVis.isVisible("total") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Total<ColResizeHandle onMouseDown={startColResize("total")} /></th>}
+                  {colVis.isVisible("status") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                  {colVis.isVisible("date") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Date<ColResizeHandle onMouseDown={startColResize("date")} /></th>}
+                  <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

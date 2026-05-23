@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useListUsers } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
@@ -114,7 +116,11 @@ async function deleteCampaign(id: number) {
   return res.json();
 }
 
+const CAMPAIGNS_COL_KEYS = ["campaign","type","status","dates","budget","actions"] as const;
+const CAMPAIGNS_COL_DEFAULTS: Record<typeof CAMPAIGNS_COL_KEYS[number], number> = {campaign:220,type:130,status:130,dates:180,budget:160,actions:120};
+
 export default function Campaigns() {
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:campaigns:v1", CAMPAIGNS_COL_KEYS, CAMPAIGNS_COL_DEFAULTS);
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
@@ -242,14 +248,22 @@ export default function Campaigns() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
+              <colgroup>
+                  <col data-col="campaign" style={{ width: `${colWidths.campaign}px` }} />
+                  <col data-col="type" style={{ width: `${colWidths.type}px` }} />
+                  <col data-col="status" style={{ width: `${colWidths.status}px` }} />
+                  <col data-col="dates" style={{ width: `${colWidths.dates}px` }} />
+                  <col data-col="budget" style={{ width: `${colWidths.budget}px` }} />
+                  <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+                </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("campaign") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Campaign</th>}
-                  {colVis.isVisible("type") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Type</th>}
-                  {colVis.isVisible("status") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status</th>}
-                  {colVis.isVisible("dates") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Dates</th>}
-                  {colVis.isVisible("budget") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Budget / Rev.</th>}
-                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
+                  {colVis.isVisible("campaign") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Campaign<ColResizeHandle onMouseDown={startColResize("campaign")} /></th>}
+                  {colVis.isVisible("type") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Type<ColResizeHandle onMouseDown={startColResize("type")} /></th>}
+                  {colVis.isVisible("status") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                  {colVis.isVisible("dates") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Dates<ColResizeHandle onMouseDown={startColResize("dates")} /></th>}
+                  {colVis.isVisible("budget") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Budget / Rev.<ColResizeHandle onMouseDown={startColResize("budget")} /></th>}
+                  <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

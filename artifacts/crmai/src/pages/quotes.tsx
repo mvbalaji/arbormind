@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
 import {
   useListQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, useListProducts,
   getListQuotesQueryKey,
@@ -580,7 +582,11 @@ function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: C
   );
 }
 
+const QUOTES_COL_KEYS = ["quoteNumber","name","revision","clonedFrom","validUntil","subtotal","total","createdBy","actions"] as const;
+const QUOTES_COL_DEFAULTS: Record<typeof QUOTES_COL_KEYS[number], number> = {quoteNumber:140,name:200,revision:90,clonedFrom:140,validUntil:140,subtotal:120,total:130,createdBy:140,actions:60};
+
 export default function Quotes() {
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:quotes:v1", QUOTES_COL_KEYS, QUOTES_COL_DEFAULTS);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<({ id: number } & QuoteFormData) | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -683,17 +689,18 @@ export default function Quotes() {
     return sortDir === "asc" ? <ChevronUp className="w-3.5 h-3.5 text-primary" /> : <ChevronDown className="w-3.5 h-3.5 text-primary" />;
   };
 
-  const SortableHeader = ({ field, label, align = "left" }: { field: SortField; label: string; align?: "left" | "right" }) => (
-    <th className={`px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 last:border-r-0 ${align === "right" ? "text-right" : "text-left"}`}>
-      <button
-        onClick={() => toggleSort(field)}
-        className={`inline-flex items-center gap-1 text-white hover:text-white/80 transition-colors ${align === "right" ? "flex-row-reverse" : ""}`}
-      >
-        <span>{label}</span>
-        <SortIcon field={field} />
-      </button>
-    </th>
-  );
+  const SortableHeader = ({ field, label, align = "left", resizeKey }: { field: SortField; label: string; align?: "left" | "right"; resizeKey?: typeof QUOTES_COL_KEYS[number] }) => (
+      <th className={`relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 last:border-r-0 ${align === "right" ? "text-right" : "text-left"}`}>
+        <button
+          onClick={() => toggleSort(field)}
+          className={`inline-flex items-center gap-1 text-white hover:text-white/80 transition-colors ${align === "right" ? "flex-row-reverse" : ""}`}
+        >
+          <span>{label}</span>
+          <SortIcon field={field} />
+        </button>
+        {resizeKey && <ColResizeHandle onMouseDown={startColResize(resizeKey)} />}
+      </th>
+    );
 
   const itemCount = sortedQuotes.length;
   const updatedAgo = formatDistanceToNow(updatedAt, { addSuffix: true });
@@ -797,6 +804,17 @@ export default function Quotes() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
+              <colgroup>
+                  <col data-col="quoteNumber" style={{ width: `${colWidths.quoteNumber}px` }} />
+                  <col data-col="name" style={{ width: `${colWidths.name}px` }} />
+                  <col data-col="revision" style={{ width: `${colWidths.revision}px` }} />
+                  <col data-col="clonedFrom" style={{ width: `${colWidths.clonedFrom}px` }} />
+                  <col data-col="validUntil" style={{ width: `${colWidths.validUntil}px` }} />
+                  <col data-col="subtotal" style={{ width: `${colWidths.subtotal}px` }} />
+                  <col data-col="total" style={{ width: `${colWidths.total}px` }} />
+                  <col data-col="createdBy" style={{ width: `${colWidths.createdBy}px` }} />
+                  <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+                </colgroup>
               <thead className="text-xs sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
                   <th className="w-10 px-3 py-1 border-r border-blue-500/40">
@@ -809,14 +827,14 @@ export default function Quotes() {
                     />
                   </th>
                   <th className="w-10 px-2 py-1 text-white/80 font-semibold uppercase tracking-wide text-center border-r border-blue-500/40">#</th>
-                  {colVis.isVisible("quoteNumber") && <SortableHeader field="quoteNumber" label="Quote Number" />}
-                  {colVis.isVisible("name") && <SortableHeader field="name" label="Quote Name" />}
-                  {colVis.isVisible("revision") && <th className="px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision</th>}
-                  {colVis.isVisible("clonedFrom") && <th className="px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From</th>}
-                  {colVis.isVisible("validUntil") && <SortableHeader field="validUntil" label="Expiration Date" />}
-                  {colVis.isVisible("subtotal") && <SortableHeader field="subtotal" label="Subtotal" align="right" />}
-                  {colVis.isVisible("total") && <SortableHeader field="total" label="Total Price" align="right" />}
-                  {colVis.isVisible("createdBy") && <th className="px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Created By</th>}
+                  {colVis.isVisible("quoteNumber") && <SortableHeader field="quoteNumber" label="Quote Number" resizeKey="quoteNumber" />}
+                  {colVis.isVisible("name") && <SortableHeader field="name" label="Quote Name" resizeKey="name" />}
+                  {colVis.isVisible("revision") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision<ColResizeHandle onMouseDown={startColResize("revision")} /></th>}
+                  {colVis.isVisible("clonedFrom") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From<ColResizeHandle onMouseDown={startColResize("clonedFrom")} /></th>}
+                  {colVis.isVisible("validUntil") && <SortableHeader field="validUntil" label="Expiration Date" resizeKey="validUntil" />}
+                  {colVis.isVisible("subtotal") && <SortableHeader field="subtotal" label="Subtotal" align="right" resizeKey="subtotal" />}
+                  {colVis.isVisible("total") && <SortableHeader field="total" label="Total Price" align="right" resizeKey="total" />}
+                  {colVis.isVisible("createdBy") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Created By<ColResizeHandle onMouseDown={startColResize("createdBy")} /></th>}
                   <th className="w-10 px-2 py-1"></th>
                 </tr>
               </thead>

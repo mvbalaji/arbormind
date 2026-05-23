@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
 import {
   useListContacts,
   useCreateContact,
@@ -51,7 +53,11 @@ const defaultFormData: ContactFormData = {
   firstName: "", lastName: "", email: "", phone: "", title: "", accountId: "",
 };
 
+const CONTACTS_COL_KEYS = ["name","contactInfo","account","owner","actions"] as const;
+const CONTACTS_COL_DEFAULTS: Record<typeof CONTACTS_COL_KEYS[number], number> = {"name":180,"contactInfo":240,"account":200,"owner":140,"actions":120};
+
 export default function Contacts() {
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:contacts:v1", CONTACTS_COL_KEYS, CONTACTS_COL_DEFAULTS);
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<{ id: number } & ContactFormData | null>(null);
@@ -109,13 +115,20 @@ export default function Contacts() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
+              <colgroup>
+                <col data-col="name" style={{ width: `${colWidths.name}px` }} />
+                <col data-col="contactInfo" style={{ width: `${colWidths.contactInfo}px` }} />
+                <col data-col="account" style={{ width: `${colWidths.account}px` }} />
+                <col data-col="owner" style={{ width: `${colWidths.owner}px` }} />
+                <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+              </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("name") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Name</th>}
-                  {colVis.isVisible("contactInfo") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Contact Info</th>}
-                  {colVis.isVisible("account") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Account / Title</th>}
-                  {colVis.isVisible("owner") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Owner</th>}
-                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
+                  {colVis.isVisible("name") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Name<ColResizeHandle onMouseDown={startColResize("name")} /></th>}
+                  {colVis.isVisible("contactInfo") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Contact Info<ColResizeHandle onMouseDown={startColResize("contactInfo")} /></th>}
+                  {colVis.isVisible("account") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Account / Title<ColResizeHandle onMouseDown={startColResize("account")} /></th>}
+                  {colVis.isVisible("owner") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Owner<ColResizeHandle onMouseDown={startColResize("owner")} /></th>}
+                  <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

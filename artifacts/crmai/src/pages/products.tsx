@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
 import {
   useListProducts, useCreateProduct, useUpdateProduct, useDeleteProduct,
   getListProductsQueryKey,
@@ -155,7 +157,11 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
   );
 }
 
+const PRODUCTS_COL_KEYS = ["name","category","price","stock","status","actions"] as const;
+const PRODUCTS_COL_DEFAULTS: Record<typeof PRODUCTS_COL_KEYS[number], number> = {"name":240,"category":140,"price":120,"stock":100,"status":120,"actions":120};
+
 export default function Products() {
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:products:v1", PRODUCTS_COL_KEYS, PRODUCTS_COL_DEFAULTS);
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<({ id: number } & ProductFormData) | null>(null);
@@ -223,13 +229,21 @@ export default function Products() {
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
+              <colgroup>
+                <col data-col="name" style={{ width: `${colWidths.name}px` }} />
+                <col data-col="category" style={{ width: `${colWidths.category}px` }} />
+                <col data-col="price" style={{ width: `${colWidths.price}px` }} />
+                <col data-col="stock" style={{ width: `${colWidths.stock}px` }} />
+                <col data-col="status" style={{ width: `${colWidths.status}px` }} />
+                <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+              </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("name") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Name / Code</th>}
-                  {colVis.isVisible("category") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Category</th>}
-                  {colVis.isVisible("price") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Unit Price</th>}
-                  {colVis.isVisible("status") && <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status</th>}
-                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
+                  {colVis.isVisible("name") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Name / Code<ColResizeHandle onMouseDown={startColResize("name")} /></th>}
+                  {colVis.isVisible("category") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Category<ColResizeHandle onMouseDown={startColResize("category")} /></th>}
+                  {colVis.isVisible("price") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Unit Price<ColResizeHandle onMouseDown={startColResize("price")} /></th>}
+                  {colVis.isVisible("status") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                  <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
