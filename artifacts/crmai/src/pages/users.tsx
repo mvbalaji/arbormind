@@ -295,11 +295,11 @@ export default function Users() {
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                     <tr className="divide-x divide-border">
-                      <th className="px-3 py-1.5 font-medium">User</th>
-                      <th className="px-3 py-1.5 font-medium">Role</th>
-                      <th className="px-3 py-1.5 font-medium">Status</th>
-                      <th className="px-3 py-1.5 font-medium">Last Login</th>
-                      <th className="px-3 py-1.5 font-medium w-16"></th>
+                      <th className="px-3 py-1 font-medium">User</th>
+                      <th className="px-3 py-1 font-medium">Role</th>
+                      <th className="px-3 py-1 font-medium">Status</th>
+                      <th className="px-3 py-1 font-medium">Last Login</th>
+                      <th className="px-3 py-1 font-medium w-16"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -309,7 +309,7 @@ export default function Users() {
                       <tr><td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">No users yet</td></tr>
                     ) : appUsers.map((u) => (
                       <tr key={u.id} className="hover:bg-muted/50 transition-colors">
-                        <td className="px-3 py-1.5">
+                        <td className="px-3 py-1">
                           <div className="flex items-center gap-3">
                             <Avatar className="w-8 h-8 border border-border">
                               {u.avatarUrl && <img src={u.avatarUrl} alt={u.name ?? u.email} />}
@@ -323,22 +323,22 @@ export default function Users() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-1.5">
+                        <td className="px-3 py-1">
                           <Badge variant="outline" className={`capitalize ${u.role === "admin" ? "border-accent/50 text-primary bg-accent/10" : "border-border text-muted-foreground"}`}>
                             {u.role === "admin" && <Shield className="w-3 h-3 mr-1" />}
                             {u.role}
                           </Badge>
                         </td>
-                        <td className="px-3 py-1.5">
+                        <td className="px-3 py-1">
                           <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${u.isActive ? "text-green-600" : "text-muted-foreground"}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" : "bg-gray-500"}`} />
                             {u.isActive ? "Active" : "Revoked"}
                           </span>
                         </td>
-                        <td className="px-3 py-1.5 text-muted-foreground text-xs">
+                        <td className="px-3 py-1 text-muted-foreground text-xs">
                           {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : "Never"}
                         </td>
-                        <td className="px-3 py-1.5">
+                        <td className="px-3 py-1">
                           <div className="flex items-center justify-end gap-1">
                             {isAdmin && u.email !== currentUser?.email && u.isActive && (
                               <Button
@@ -405,11 +405,11 @@ export default function Users() {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                   <tr className="divide-x divide-border">
-                    <th className="px-3 py-1.5 font-medium">User</th>
-                    <th className="px-3 py-1.5 font-medium">Role</th>
-                    <th className="px-3 py-1.5 font-medium">Team</th>
-                    <th className="px-3 py-1.5 font-medium">Status</th>
-                    {isAdmin && <th className="px-3 py-1.5 font-medium w-28 text-right"></th>}
+                    <th className="px-3 py-1 font-medium">User</th>
+                    <th className="px-3 py-1 font-medium">Role</th>
+                    <th className="px-3 py-1 font-medium">Team</th>
+                    <th className="px-3 py-1 font-medium">Status</th>
+                    {isAdmin && <th className="px-3 py-1 font-medium w-28 text-right"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -417,7 +417,7 @@ export default function Users() {
                     <tr><td colSpan={isAdmin ? 5 : 4} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                   ) : data?.data?.map(user => (
                     <tr key={user.id} className="hover:bg-muted/50 transition-colors">
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 py-1">
                         <div className="flex items-center gap-3">
                           <Avatar className="w-8 h-8 border border-border">
                             <AvatarImage src={user.avatarUrl || ''} />
@@ -429,21 +429,21 @@ export default function Users() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 py-1">
                         <Badge variant="outline" className={`capitalize ${user.role === 'admin' ? 'border-accent/50 text-primary bg-accent/10' : 'border-border text-muted-foreground bg-muted'}`}>
                           {user.role === 'admin' && <Shield className="w-3 h-3 mr-1" />}
                           {user.role}
                         </Badge>
                       </td>
-                      <td className="px-3 py-1.5 text-muted-foreground">{user.team || '-'}</td>
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 py-1 text-muted-foreground">{user.team || '-'}</td>
+                      <td className="px-3 py-1">
                         <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-muted-foreground'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-gray-500'}`} />
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       {isAdmin && (
-                        <td className="px-3 py-1.5 text-right">
+                        <td className="px-3 py-1 text-right">
                           {user.email !== currentUser?.email && user.isActive && (
                             <Button
                               variant="outline"
@@ -528,7 +528,7 @@ export default function Users() {
                 </div>
                 <div className="flex items-center gap-3">
                   {mailSettings.emailsProcessed !== undefined && mailSettings.emailsProcessed > 0 && (
-                    <span className="text-xs text-muted-foreground bg-muted px-3 py-1.5 rounded-lg">
+                    <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-lg">
                       {mailSettings.emailsProcessed} email{mailSettings.emailsProcessed !== 1 ? "s" : ""} processed total
                     </span>
                   )}

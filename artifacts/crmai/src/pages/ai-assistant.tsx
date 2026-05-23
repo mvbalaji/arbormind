@@ -216,7 +216,7 @@ export default function AIAssistant() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Contact Name</label>
                     <input
-                      className="w-full bg-muted border border-border rounded px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground"
+                      className="w-full bg-muted border border-border rounded px-3 py-1 text-sm text-foreground placeholder:text-muted-foreground"
                       placeholder="e.g. Sarah Jenkins"
                       value={customName}
                       onChange={e => { setCustomName(e.target.value); setDraftGenerated(false); }}
@@ -225,7 +225,7 @@ export default function AIAssistant() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Product / Tier</label>
                     <input
-                      className="w-full bg-muted border border-border rounded px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground"
+                      className="w-full bg-muted border border-border rounded px-3 py-1 text-sm text-foreground placeholder:text-muted-foreground"
                       placeholder="e.g. Enterprise Tier"
                       value={customProduct}
                       onChange={e => { setCustomProduct(e.target.value); setDraftGenerated(false); }}

@@ -493,7 +493,7 @@ export default function Leads() {
 
         {/* Table */}
         <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
-          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
+          <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -588,7 +588,7 @@ export default function Leads() {
                 ) : (
                   leadsPagination.paged.map((lead) => (
                     <tr key={lead.id} className="hover:bg-muted/30 transition-colors group">
-                      <td className="px-3 py-1.5.5 text-center">
+                      <td className="px-3 py-1 text-center">
                         <Checkbox
                           checked={selectedIds.has(lead.id)}
                           onCheckedChange={() => toggleSelect(lead.id)}
@@ -649,7 +649,7 @@ export default function Leads() {
                           {lead.assignedToName ?? <span className="italic">Unassigned</span>}
                         </td>
                       )}
-                      <td className="px-3 py-1.5.5 sticky right-0 z-10 bg-card group-hover:bg-muted/30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]">
+                      <td className="px-3 py-1 sticky right-0 z-10 bg-card group-hover:bg-muted/30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]">
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             variant="ghost"
@@ -990,7 +990,7 @@ function LeadFormDialog({
   const f = (field: keyof LeadFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setFormData({ ...formData, [field]: e.target.value });
 
-  const selectClass = "w-full bg-card border border-border rounded-md px-3 py-1.5 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50";
+  const selectClass = "w-full bg-card border border-border rounded-md px-3 py-1 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1119,7 +1119,7 @@ function LeadFormDialog({
           </div>
           <div className="space-y-2">
             <textarea
-              className="w-full bg-card border border-border rounded-md px-3 py-1.5 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 min-h-[80px] resize-y"
+              className="w-full bg-card border border-border rounded-md px-3 py-1 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 min-h-[80px] resize-y"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Additional notes about this lead..."
@@ -1242,12 +1242,12 @@ function ConvertLeadDialog({
                 />
                 <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
                   {filteredAccounts.length === 0 ? (
-                    <div className="px-3 py-1.5 text-xs text-muted-foreground">No accounts found</div>
+                    <div className="px-3 py-1 text-xs text-muted-foreground">No accounts found</div>
                   ) : filteredAccounts.map((a) => (
                     <button
                       key={a.id}
                       type="button"
-                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors ${
+                      className={`w-full text-left px-3 py-1 text-sm hover:bg-primary/10 transition-colors ${
                         existingAccountId === String(a.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
                       }`}
                       onClick={() => { setExistingAccountId(String(a.id)); setAccountSearch(a.name); }}
@@ -1279,12 +1279,12 @@ function ConvertLeadDialog({
                 )}
                 <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
                   {filteredContacts.length === 0 ? (
-                    <div className="px-3 py-1.5 text-xs text-muted-foreground">No contacts found</div>
+                    <div className="px-3 py-1 text-xs text-muted-foreground">No contacts found</div>
                   ) : filteredContacts.map((c) => (
                     <button
                       key={c.id}
                       type="button"
-                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors flex items-center gap-2 ${
+                      className={`w-full text-left px-3 py-1 text-sm hover:bg-primary/10 transition-colors flex items-center gap-2 ${
                         selectedContactIds.includes(c.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
                       }`}
                       onClick={() => toggleContactId(c.id)}

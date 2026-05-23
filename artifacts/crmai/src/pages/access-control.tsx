@@ -275,7 +275,7 @@ export function AccessControlInline() {
                                   const isLocked = r.key === "admin";
                                   const key = `${s.key}:${r.key}`;
                                   return (
-                                    <td key={r.key} className="px-3 py-1.5">
+                                    <td key={r.key} className="px-3 py-1">
                                       <select
                                         disabled={isLocked || pending[key]}
                                         value={lvl}
@@ -356,7 +356,7 @@ export function AccessControlInline() {
                                     const checked = perms?.[c.key] ?? false;
                                     const pendKey = `r:${rt.key}:${role.key}:${c.key}`;
                                     return (
-                                      <td key={c.key} className="px-3 py-1.5 text-center">
+                                      <td key={c.key} className="px-3 py-1 text-center">
                                         <input
                                           type="checkbox"
                                           checked={checked}
@@ -397,11 +397,11 @@ export function AccessControlInline() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-muted/40 border-b border-border">
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">When</th>
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Record Type</th>
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Changes</th>
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Changed By</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">When</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Record Type</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Changes</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Changed By</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -414,11 +414,11 @@ export function AccessControlInline() {
                           }
                           return (
                             <tr key={row.id}>
-                              <td className="px-3 py-1.5 text-xs text-muted-foreground whitespace-nowrap">{format(new Date(row.createdAt), "dd MMM yyyy HH:mm")}</td>
-                              <td className="px-3 py-1.5 text-foreground">{row.recordTypeKey}</td>
-                              <td className="px-3 py-1.5 text-foreground">{row.roleKey}</td>
-                              <td className="px-3 py-1.5 text-foreground text-xs">{diffs.join(", ") || "—"}</td>
-                              <td className="px-3 py-1.5 text-foreground">{row.changedByName ?? "—"}</td>
+                              <td className="px-3 py-1 text-xs text-muted-foreground whitespace-nowrap">{format(new Date(row.createdAt), "dd MMM yyyy HH:mm")}</td>
+                              <td className="px-3 py-1 text-foreground">{row.recordTypeKey}</td>
+                              <td className="px-3 py-1 text-foreground">{row.roleKey}</td>
+                              <td className="px-3 py-1 text-foreground text-xs">{diffs.join(", ") || "—"}</td>
+                              <td className="px-3 py-1 text-foreground">{row.changedByName ?? "—"}</td>
                             </tr>
                           );
                         })}
@@ -443,11 +443,11 @@ export function AccessControlInline() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="bg-muted/40 border-b border-border">
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">When</th>
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Screen</th>
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">From → To</th>
-                          <th className="px-3 py-1.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Changed By</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">When</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Screen</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">From → To</th>
+                          <th className="px-3 py-1 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Changed By</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
@@ -456,19 +456,19 @@ export function AccessControlInline() {
                           const next = row.newLevel as AccessLevel;
                           return (
                             <tr key={row.id}>
-                              <td className="px-3 py-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                              <td className="px-3 py-1 text-xs text-muted-foreground whitespace-nowrap">
                                 {format(new Date(row.createdAt), "dd MMM yyyy HH:mm")}
                               </td>
-                              <td className="px-3 py-1.5 text-foreground">{row.screenKey}</td>
-                              <td className="px-3 py-1.5 text-foreground">{row.roleKey}</td>
-                              <td className="px-3 py-1.5">
+                              <td className="px-3 py-1 text-foreground">{row.screenKey}</td>
+                              <td className="px-3 py-1 text-foreground">{row.roleKey}</td>
+                              <td className="px-3 py-1">
                                 <span className="inline-flex items-center gap-1.5">
                                   <Badge variant="outline" className={`text-xs ${LEVEL_BADGE[prev] ?? ""}`}>{LEVEL_LABEL[prev] ?? prev}</Badge>
                                   <span className="text-muted-foreground">→</span>
                                   <Badge variant="outline" className={`text-xs ${LEVEL_BADGE[next] ?? ""}`}>{LEVEL_LABEL[next] ?? next}</Badge>
                                 </span>
                               </td>
-                              <td className="px-3 py-1.5 text-foreground">{row.changedByName ?? "—"}</td>
+                              <td className="px-3 py-1 text-foreground">{row.changedByName ?? "—"}</td>
                             </tr>
                           );
                         })}

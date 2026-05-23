@@ -441,7 +441,7 @@ export default function Opportunities() {
                                   aria-selected={activeViewId === view.id}
                                   onClick={() => { setActiveViewId(view.id); setViewPickerOpen(false); setViewPickerSearch(""); setSelectedIds(new Set()); }}
                                   className={cn(
-                                    "w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors",
+                                    "w-full flex items-center gap-2 px-3 py-1 text-sm text-left hover:bg-muted transition-colors",
                                     activeViewId === view.id && "text-primary font-medium"
                                   )}
                                 >
@@ -468,7 +468,7 @@ export default function Opportunities() {
                                   aria-selected={activeViewId === view.id}
                                   onClick={() => { setActiveViewId(view.id); setViewPickerOpen(false); setViewPickerSearch(""); setSelectedIds(new Set()); }}
                                   className={cn(
-                                    "w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-muted transition-colors",
+                                    "w-full flex items-center gap-2 px-3 py-1 text-sm text-left hover:bg-muted transition-colors",
                                     activeViewId === view.id && "text-primary font-medium"
                                   )}
                                 >
@@ -545,7 +545,7 @@ export default function Opportunities() {
           </div>
         ) : viewMode === "list" ? (
           <Card className="border-2 border-blue-700 dark:border-blue-800 overflow-hidden shadow-sm">
-            <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+            <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
               <ColumnsMenu columns={OPPORTUNITY_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
             </div>
             <div className="overflow-auto max-h-[calc(100vh-260px)]">
@@ -829,7 +829,7 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
     });
   };
 
-  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm";
+  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-1 text-foreground text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -893,7 +893,7 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
           <div className="space-y-2">
             <Label>Notes</Label>
             <textarea
-              className="w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm resize-none h-16"
+              className="w-full bg-muted border border-border rounded-md px-3 py-1 text-foreground text-sm resize-none h-16"
               value={form.description}
               onChange={f("description")}
               placeholder="Deal context, next steps..."

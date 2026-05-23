@@ -226,7 +226,7 @@ export default function Campaigns() {
         )}
 
         <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800 overflow-hidden">
-          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+          <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
             <ColumnsMenu columns={CAMPAIGN_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -259,7 +259,7 @@ export default function Campaigns() {
                   campaignsPagination.paged.map((campaign) => (
                     <tr key={campaign.id} className="hover:bg-muted/50 transition-colors group">
                       {colVis.isVisible("campaign") && (
-                        <td className="px-3 py-1.5">
+                        <td className="px-3 py-1">
                           <Link href={`/campaigns/${campaign.id}`}>
                             <div className="font-medium text-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5">
                               {campaign.name}
@@ -277,17 +277,17 @@ export default function Campaigns() {
                         </td>
                       )}
                       {colVis.isVisible("type") && (
-                        <td className="px-3 py-1.5 text-muted-foreground">{TYPE_LABELS[campaign.type] ?? campaign.type}</td>
+                        <td className="px-3 py-1 text-muted-foreground">{TYPE_LABELS[campaign.type] ?? campaign.type}</td>
                       )}
                       {colVis.isVisible("status") && (
-                        <td className="px-3 py-1.5">
+                        <td className="px-3 py-1">
                           <Badge variant="outline" className={`capitalize ${STATUS_COLORS[campaign.status] ?? ""}`}>
                             {campaign.status}
                           </Badge>
                         </td>
                       )}
                       {colVis.isVisible("dates") && (
-                        <td className="px-3 py-1.5 text-muted-foreground text-xs">
+                        <td className="px-3 py-1 text-muted-foreground text-xs">
                           {campaign.startDate && (
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
@@ -298,7 +298,7 @@ export default function Campaigns() {
                         </td>
                       )}
                       {colVis.isVisible("budget") && (
-                        <td className="px-3 py-1.5 text-right">
+                        <td className="px-3 py-1 text-right">
                           <div className="text-xs text-muted-foreground">
                             {campaign.budget != null && <div>Budget: £{campaign.budget.toLocaleString()}</div>}
                             {campaign.expectedRevenue != null && (
@@ -307,7 +307,7 @@ export default function Campaigns() {
                           </div>
                         </td>
                       )}
-                      <td className="px-3 py-1.5 text-right">
+                      <td className="px-3 py-1 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
@@ -437,7 +437,7 @@ function TeamMembersPicker({ value, onChange }: { value: string; onChange: (v: s
               key={`orphan-${name}`}
               type="button"
               onClick={() => toggle(name)}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm hover:bg-muted cursor-pointer text-left"
+              className="flex items-center gap-2 w-full px-3 py-1 text-sm hover:bg-muted cursor-pointer text-left"
             >
               <input type="checkbox" readOnly checked className="h-3.5 w-3.5" />
               <span className="flex-1 truncate">{name}</span>
@@ -453,7 +453,7 @@ function TeamMembersPicker({ value, onChange }: { value: string; onChange: (v: s
               key={u.id}
               type="button"
               onClick={() => toggle(u.name)}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm hover:bg-muted cursor-pointer text-left"
+              className="flex items-center gap-2 w-full px-3 py-1 text-sm hover:bg-muted cursor-pointer text-left"
             >
               <input type="checkbox" readOnly checked={selected.has(u.name)} className="h-3.5 w-3.5" />
               <span className="flex-1 truncate">{u.name}</span>
@@ -511,7 +511,7 @@ function CampaignFormDialog({
     onSubmit(payload);
   };
 
-  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm";
+  const selectClass = "w-full bg-muted border border-border rounded-md px-3 py-1 text-foreground text-sm";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -577,7 +577,7 @@ function CampaignFormDialog({
           <div className="space-y-2">
             <Label>Description</Label>
             <textarea
-              className="w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm resize-none h-20"
+              className="w-full bg-muted border border-border rounded-md px-3 py-1 text-foreground text-sm resize-none h-20"
               value={form.description}
               onChange={f("description")}
               placeholder="Campaign objective and notes..."
@@ -586,7 +586,7 @@ function CampaignFormDialog({
           <div className="space-y-2">
             <Label>Target Audience</Label>
             <textarea
-              className="w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm resize-none h-16"
+              className="w-full bg-muted border border-border rounded-md px-3 py-1 text-foreground text-sm resize-none h-16"
               value={form.targetAudience}
               onChange={f("targetAudience")}
               placeholder="e.g. B2B decision-makers, VP Sales, 50-500 employee companies"

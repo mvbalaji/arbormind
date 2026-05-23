@@ -1030,12 +1030,12 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
                 />
                 <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
                   {filteredAccounts.length === 0 ? (
-                    <div className="px-3 py-1.5 text-xs text-muted-foreground">No accounts found</div>
+                    <div className="px-3 py-1 text-xs text-muted-foreground">No accounts found</div>
                   ) : filteredAccounts.map((a) => (
                     <button
                       key={a.id}
                       type="button"
-                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors ${
+                      className={`w-full text-left px-3 py-1 text-sm hover:bg-primary/10 transition-colors ${
                         existingAccountId === String(a.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
                       }`}
                       onClick={() => { setExistingAccountId(String(a.id)); setAccountSearch(a.name); }}
@@ -1084,12 +1084,12 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
                 )}
                 <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
                   {filteredContacts.length === 0 ? (
-                    <div className="px-3 py-1.5 text-xs text-muted-foreground">No contacts found</div>
+                    <div className="px-3 py-1 text-xs text-muted-foreground">No contacts found</div>
                   ) : filteredContacts.map((c) => (
                     <button
                       key={c.id}
                       type="button"
-                      className={`w-full text-left px-3 py-1.5 text-sm hover:bg-primary/10 transition-colors flex items-center gap-2 ${
+                      className={`w-full text-left px-3 py-1 text-sm hover:bg-primary/10 transition-colors flex items-center gap-2 ${
                         selectedContactIds.includes(c.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
                       }`}
                       onClick={() => toggleContactId(c.id)}

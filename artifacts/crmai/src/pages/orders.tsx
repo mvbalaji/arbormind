@@ -144,10 +144,10 @@ function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-3 py-1.5 text-left text-xs text-muted-foreground font-medium">Product</th>
-                  <th className="px-3 py-1.5 text-right text-xs text-muted-foreground font-medium">Qty</th>
-                  <th className="px-3 py-1.5 text-right text-xs text-muted-foreground font-medium">Price</th>
-                  <th className="px-3 py-1.5 text-right text-xs text-muted-foreground font-medium">Total</th>
+                  <th className="px-3 py-1 text-left text-xs text-muted-foreground font-medium">Product</th>
+                  <th className="px-3 py-1 text-right text-xs text-muted-foreground font-medium">Qty</th>
+                  <th className="px-3 py-1 text-right text-xs text-muted-foreground font-medium">Price</th>
+                  <th className="px-3 py-1 text-right text-xs text-muted-foreground font-medium">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -155,10 +155,10 @@ function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
                   <tr><td colSpan={4} className="px-3 py-4 text-center text-muted-foreground">No items</td></tr>
                 ) : order.items.map((item, idx) => (
                   <tr key={idx}>
-                    <td className="px-3 py-1.5 text-foreground">{item.productName}</td>
-                    <td className="px-3 py-1.5 text-right text-muted-foreground">{item.quantity}</td>
-                    <td className="px-3 py-1.5 text-right text-muted-foreground">£{item.unitPrice.toFixed(2)}</td>
-                    <td className="px-3 py-1.5 text-right font-medium">£{item.total.toFixed(2)}</td>
+                    <td className="px-3 py-1 text-foreground">{item.productName}</td>
+                    <td className="px-3 py-1 text-right text-muted-foreground">{item.quantity}</td>
+                    <td className="px-3 py-1 text-right text-muted-foreground">£{item.unitPrice.toFixed(2)}</td>
+                    <td className="px-3 py-1 text-right font-medium">£{item.total.toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -574,7 +574,7 @@ export default function Orders() {
         </div>
 
         <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800">
-          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+          <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
             <ColumnsMenu columns={ORDER_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -602,7 +602,7 @@ export default function Orders() {
                 ) : ordersPagination.paged.map(order => (
                   <tr key={order.id} className="hover:bg-muted/50 transition-colors group">
                     {colVis.isVisible("orderNumber") && (
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 py-1">
                         <button
                           className="font-medium text-primary hover:underline cursor-pointer font-mono"
                           onClick={() => setViewingOrder({
@@ -629,17 +629,17 @@ export default function Orders() {
                       </td>
                     )}
                     {colVis.isVisible("account") && (
-                      <td className="px-3 py-1.5 text-muted-foreground">
+                      <td className="px-3 py-1 text-muted-foreground">
                         {order.accountName ?? "—"}
                       </td>
                     )}
                     {colVis.isVisible("opportunity") && (
-                      <td className="px-3 py-1.5 text-muted-foreground">
+                      <td className="px-3 py-1 text-muted-foreground">
                         {order.opportunityName ?? "—"}
                       </td>
                     )}
                     {colVis.isVisible("quote") && (
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 py-1">
                         {order.quoteNumber ? (
                           <span
                             className="text-primary cursor-pointer hover:underline font-mono text-xs"
@@ -651,23 +651,23 @@ export default function Orders() {
                       </td>
                     )}
                     {colVis.isVisible("total") && (
-                      <td className="px-3 py-1.5 text-right font-semibold text-foreground">
+                      <td className="px-3 py-1 text-right font-semibold text-foreground">
                         ${order.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       </td>
                     )}
                     {colVis.isVisible("status") && (
-                      <td className="px-3 py-1.5">
+                      <td className="px-3 py-1">
                         <Badge variant="outline" className={`capitalize ${STATUS_COLORS[order.status] ?? ""}`}>
                           {order.status}
                         </Badge>
                       </td>
                     )}
                     {colVis.isVisible("date") && (
-                      <td className="px-3 py-1.5 text-muted-foreground">
+                      <td className="px-3 py-1 text-muted-foreground">
                         {format(new Date(order.orderDate), "MMM d, yyyy")}
                       </td>
                     )}
-                    <td className="px-3 py-1.5 text-right">
+                    <td className="px-3 py-1 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">

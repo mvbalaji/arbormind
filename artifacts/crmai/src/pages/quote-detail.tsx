@@ -405,7 +405,7 @@ export default function QuoteDetail() {
               return (
                 <React.Fragment key={s}>
                   {idx > 0 && <div className={`flex-1 h-0.5 ${isPast ? "bg-green-500" : "bg-border"}`} />}
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                     isActive ? "bg-primary/10 text-primary"
                     : isPast ? "bg-green-500/10 text-green-600"
                     : "bg-muted text-muted-foreground"
@@ -419,7 +419,7 @@ export default function QuoteDetail() {
             {quote.status === "rejected" && (
               <>
                 <div className="flex-1 h-0.5 bg-red-500/30" />
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-600">
                   <XCircle className="w-3 h-3" /> Rejected
                 </div>
               </>
@@ -427,7 +427,7 @@ export default function QuoteDetail() {
             {quote.status === "expired" && (
               <>
                 <div className="flex-1 h-0.5 bg-orange-500/30" />
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-600">
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-600">
                   <Clock className="w-3 h-3" /> Expired
                 </div>
               </>

@@ -67,7 +67,7 @@ function WeekCalendar({ activities }: { activities: Array<{ id: number; type: st
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={() => setWeekStart((d) => addDays(d, -7))}
-          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-primary/20 transition-colors"
+          className="px-3 py-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-primary/20 transition-colors"
         >
           ← Prev
         </button>
@@ -76,7 +76,7 @@ function WeekCalendar({ activities }: { activities: Array<{ id: number; type: st
         </span>
         <button
           onClick={() => setWeekStart((d) => addDays(d, 7))}
-          className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-primary/20 transition-colors"
+          className="px-3 py-1 text-sm text-muted-foreground hover:text-foreground border border-border rounded-lg hover:border-primary/20 transition-colors"
         >
           Next →
         </button>
@@ -137,13 +137,13 @@ export default function Activities() {
             <div className="flex items-center border border-border rounded-lg overflow-hidden">
               <button
                 onClick={() => setViewMode("list")}
-                className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                className={`px-3 py-1 text-sm flex items-center gap-1.5 transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
               >
                 <List className="w-4 h-4" /> List
               </button>
               <button
                 onClick={() => setViewMode("calendar")}
-                className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors border-l border-border ${viewMode === "calendar" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                className={`px-3 py-1 text-sm flex items-center gap-1.5 transition-colors border-l border-border ${viewMode === "calendar" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
               >
                 <Calendar className="w-4 h-4" /> Calendar
               </button>
@@ -174,7 +174,7 @@ export default function Activities() {
 
         {viewMode === "list" && (
         <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800">
-          <div className="px-3 py-1.5 border-b border-border bg-muted/20 flex items-center justify-end">
+          <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
             <ColumnsMenu columns={ACTIVITY_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
@@ -200,7 +200,7 @@ export default function Activities() {
                     return (
                       <tr key={act.id} className="hover:bg-muted/50 transition-colors group">
                         {colVis.isVisible("icon") && (
-                          <td className="px-3 py-1.5">
+                          <td className="px-3 py-1">
                             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${TYPE_COLORS[act.type] ?? "text-gray-400 bg-gray-500/10"}`}>
                               <Icon className="w-4 h-4" />
                             </div>
@@ -210,17 +210,17 @@ export default function Activities() {
                           <td className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-foreground">{act.subject}</td>
                         )}
                         {colVis.isVisible("related") && (
-                          <td className="px-3 py-1.5 text-muted-foreground">
+                          <td className="px-3 py-1 text-muted-foreground">
                             {act.contactName ?? act.accountName ?? "-"}
                           </td>
                         )}
                         {colVis.isVisible("date") && (
-                          <td className="px-3 py-1.5 text-muted-foreground">
+                          <td className="px-3 py-1 text-muted-foreground">
                             {act.dueDate ? format(new Date(act.dueDate), "MMM d, yyyy") : "-"}
                           </td>
                         )}
                         {colVis.isVisible("status") && (
-                          <td className="px-3 py-1.5">
+                          <td className="px-3 py-1">
                             <Badge
                               variant="outline"
                               className={act.status === "completed"
@@ -231,7 +231,7 @@ export default function Activities() {
                             </Badge>
                           </td>
                         )}
-                        <td className="px-3 py-1.5 text-right">
+                        <td className="px-3 py-1 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
@@ -380,7 +380,7 @@ function ActivityFormDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Type</Label>
-              <select className="w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm" value={formData.type} onChange={f("type")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-1 text-foreground text-sm" value={formData.type} onChange={f("type")}>
                 <option value="call">Call</option>
                 <option value="email">Email</option>
                 <option value="meeting">Meeting</option>
@@ -390,7 +390,7 @@ function ActivityFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <select className="w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm" value={formData.status} onChange={f("status")}>
+              <select className="w-full bg-muted border border-border rounded-md px-3 py-1 text-foreground text-sm" value={formData.status} onChange={f("status")}>
                 <option value="planned">Planned</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
@@ -408,7 +408,7 @@ function ActivityFormDialog({
           <div className="space-y-2">
             <Label>Description</Label>
             <textarea
-              className="w-full bg-muted border border-border rounded-md px-3 py-1.5 text-foreground text-sm resize-none"
+              className="w-full bg-muted border border-border rounded-md px-3 py-1 text-foreground text-sm resize-none"
               rows={3}
               value={formData.description}
               onChange={f("description")}

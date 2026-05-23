@@ -877,7 +877,7 @@ export default function OpportunityDetail() {
                             tabIndex={0}
                             aria-current={current ? "step" : undefined}
                             aria-label={`${label} — ${stateLabel}${daysLabel ? `, ${daysLabel}` : ""}`}
-                            className={`relative flex-1 flex items-center justify-center px-3 py-1.5 text-xs font-medium min-w-0 cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-inset ${
+                            className={`relative flex-1 flex items-center justify-center px-3 py-1 text-xs font-medium min-w-0 cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-inset ${
                               done ? "bg-emerald-500 text-white" :
                               current ? (isProposal ? "bg-blue-700 text-white" : "bg-blue-600 text-white") :
                               "bg-muted/50 text-muted-foreground"
@@ -1904,7 +1904,7 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
             <Input className="bg-muted border-border h-9" placeholder="e.g. Sarah Johnson, Mike Chen" value={form.teamMembers} onChange={f("teamMembers")} />
           </div>
           <div className="space-y-1.5"><Label className="text-xs">Description</Label>
-            <textarea className="w-full px-3 py-1.5 rounded-md bg-muted border border-border text-sm min-h-[80px] resize-none" value={form.description} onChange={f("description")} />
+            <textarea className="w-full px-3 py-1 rounded-md bg-muted border border-border text-sm min-h-[80px] resize-none" value={form.description} onChange={f("description")} />
           </div>
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
