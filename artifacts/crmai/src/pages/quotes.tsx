@@ -32,6 +32,8 @@ import { formatDistanceToNow } from "date-fns";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
 import { ApprovalWarning } from "@/components/approval-warning";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 type QuoteColKey = "quoteNumber" | "name" | "revision" | "clonedFrom" | "validUntil" | "subtotal" | "total" | "createdBy";
 const QUOTE_TOGGLEABLE_COLS = [
@@ -658,6 +660,7 @@ export default function Quotes() {
     });
   }, [filteredQuotes, sortField, sortDir]);
 
+  const quotesPagination = usePagination("quotes", sortedQuotes);
   const allSelected = sortedQuotes.length > 0 && sortedQuotes.every((q) => selectedIds.has(q.id));
   const toggleSelectAll = () => {
     if (allSelected) {
@@ -816,7 +819,7 @@ export default function Quotes() {
                       {searchQuery ? "No quotes match your search." : "No quotes yet. Create your first quote."}
                     </td>
                   </tr>
-                ) : sortedQuotes.map((q, idx) => {
+                ) : quotesPagination.paged.map((q, idx) => {
                   const checked = selectedIds.has(q.id);
                   const subtotal = Number(q.subtotal) || 0;
                   const total = Number(q.total) || 0;
@@ -968,6 +971,16 @@ export default function Quotes() {
               </tbody>
             </table>
           </div>
+          <TablePagination
+            page={quotesPagination.page}
+            totalPages={quotesPagination.totalPages}
+            pageSize={quotesPagination.pageSize}
+            total={quotesPagination.total}
+            pageStart={quotesPagination.pageStart}
+            pageEnd={quotesPagination.pageEnd}
+            onPageChange={quotesPagination.setPage}
+            onPageSizeChange={quotesPagination.setPageSize}
+          />
         </Card>
 
         {/* Status badge legend (subtle) */}

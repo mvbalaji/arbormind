@@ -23,6 +23,8 @@ import { Package, Plus, MoreHorizontal, Pencil, Trash2, Search } from "lucide-re
 import { useToast } from "@/hooks/use-toast";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 type ProductColKey = "name" | "category" | "price" | "status";
 const PRODUCT_TOGGLEABLE_COLS = [
@@ -159,6 +161,8 @@ export default function Products() {
   const [editingProduct, setEditingProduct] = useState<({ id: number } & ProductFormData) | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListProducts({ search: search || undefined });
+  const allProducts = data?.data ?? [];
+  const productsPagination = usePagination("products", allProducts);
   const colVis = useColumnVisibility<ProductColKey>("col-visibility:products:v1", PRODUCT_TOGGLEABLE_COLS);
   const productColSpan = colVis.visible.size + 1;
   const deleteMutation = useDeleteProduct();
@@ -225,7 +229,7 @@ export default function Products() {
                     <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No products found. Add your first product to start quoting.
                   </td></tr>
-                ) : data?.data?.map(prod => (
+                ) : productsPagination.paged.map(prod => (
                   <tr key={prod.id} className="hover:bg-muted/50 transition-colors group">
                     {colVis.isVisible("name") && (
                       <td className="px-6 py-4">
@@ -291,6 +295,16 @@ export default function Products() {
               </tbody>
             </table>
           </div>
+          <TablePagination
+            page={productsPagination.page}
+            totalPages={productsPagination.totalPages}
+            pageSize={productsPagination.pageSize}
+            total={productsPagination.total}
+            pageStart={productsPagination.pageStart}
+            pageEnd={productsPagination.pageEnd}
+            onPageChange={productsPagination.setPage}
+            onPageSizeChange={productsPagination.setPageSize}
+          />
         </Card>
       </div>
 

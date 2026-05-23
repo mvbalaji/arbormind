@@ -28,6 +28,8 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 const CONTACT_TOGGLEABLE_COLS = [
   { key: "name" as const, label: "Name" },
@@ -55,6 +57,8 @@ export default function Contacts() {
   const [editingContact, setEditingContact] = useState<{ id: number } & ContactFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListContacts({ search, limit: 50 });
+  const allContacts = data?.data ?? [];
+  const contactsPagination = usePagination("contacts", allContacts);
   const colVis = useColumnVisibility<"name" | "contactInfo" | "account" | "owner">("col-visibility:contacts:v1", CONTACT_TOGGLEABLE_COLS);
   const contactColSpan = colVis.visible.size + 1;
 
@@ -124,7 +128,7 @@ export default function Contacts() {
                     </td>
                   </tr>
                 ) : (
-                  data?.data?.map((contact) => (
+                  contactsPagination.paged.map((contact) => (
                     <tr key={contact.id} className="hover:bg-muted/50 transition-colors group">
                       {colVis.isVisible("name") && (
                         <td className="px-6 py-4">
@@ -210,6 +214,16 @@ export default function Contacts() {
               </tbody>
             </table>
           </div>
+          <TablePagination
+            page={contactsPagination.page}
+            totalPages={contactsPagination.totalPages}
+            pageSize={contactsPagination.pageSize}
+            total={contactsPagination.total}
+            pageStart={contactsPagination.pageStart}
+            pageEnd={contactsPagination.pageEnd}
+            onPageChange={contactsPagination.setPage}
+            onPageSizeChange={contactsPagination.setPageSize}
+          />
         </Card>
       </div>
 

@@ -31,6 +31,8 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { EmailCompose } from "@/components/email-compose";
 import { cn } from "@/lib/utils";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-50 text-blue-700 border-blue-200",
@@ -347,6 +349,8 @@ export default function Leads() {
     });
   };
 
+  const leadsPagination = usePagination("leads", sortedLeads);
+
   return (
     <Layout>
       <div className="flex flex-col gap-0">
@@ -582,7 +586,7 @@ export default function Leads() {
                     </td>
                   </tr>
                 ) : (
-                  sortedLeads.map((lead) => (
+                  leadsPagination.paged.map((lead) => (
                     <tr key={lead.id} className="hover:bg-muted/30 transition-colors group">
                       <td className="px-3 py-2.5 text-center">
                         <Checkbox
@@ -728,8 +732,19 @@ export default function Leads() {
             </table>
           </div>
 
+          <TablePagination
+            page={leadsPagination.page}
+            totalPages={leadsPagination.totalPages}
+            pageSize={leadsPagination.pageSize}
+            total={leadsPagination.total}
+            pageStart={leadsPagination.pageStart}
+            pageEnd={leadsPagination.pageEnd}
+            onPageChange={leadsPagination.setPage}
+            onPageSizeChange={leadsPagination.setPageSize}
+          />
+
           {/* Table Footer */}
-          {leads.length > 0 && (
+          {false && leads.length > 0 && (
             <div className="px-4 py-2 border-t border-border bg-muted/20 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{total} record{total !== 1 ? "s" : ""}</span>
               <span className="text-xs text-muted-foreground">Showing all {total} leads</span>

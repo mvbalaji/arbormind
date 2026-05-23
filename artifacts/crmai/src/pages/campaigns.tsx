@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 const CAMPAIGN_TOGGLEABLE_COLS = [
   { key: "campaign" as const, label: "Campaign" },
@@ -158,6 +160,7 @@ export default function Campaigns() {
   });
 
   const campaigns: Campaign[] = data?.data ?? [];
+  const campaignsPagination = usePagination("campaigns", campaigns);
 
   return (
     <Layout>
@@ -253,7 +256,7 @@ export default function Campaigns() {
                     </div>
                   </td></tr>
                 ) : (
-                  campaigns.map((campaign) => (
+                  campaignsPagination.paged.map((campaign) => (
                     <tr key={campaign.id} className="hover:bg-muted/50 transition-colors group">
                       {colVis.isVisible("campaign") && (
                         <td className="px-6 py-4">
@@ -323,6 +326,16 @@ export default function Campaigns() {
               </tbody>
             </table>
           </div>
+          <TablePagination
+            page={campaignsPagination.page}
+            totalPages={campaignsPagination.totalPages}
+            pageSize={campaignsPagination.pageSize}
+            total={campaignsPagination.total}
+            pageStart={campaignsPagination.pageStart}
+            pageEnd={campaignsPagination.pageEnd}
+            onPageChange={campaignsPagination.setPage}
+            onPageSizeChange={campaignsPagination.setPageSize}
+          />
         </Card>
       </div>
 

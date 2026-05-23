@@ -31,6 +31,8 @@ import { EntityApprovals } from "@/components/entity-approvals";
 import { useAuth } from "@/context/auth";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 type OrderColKey = "orderNumber" | "account" | "opportunity" | "quote" | "total" | "status" | "date";
 const ORDER_TOGGLEABLE_COLS = [
@@ -504,6 +506,8 @@ export default function Orders() {
   const [viewingOrder, setViewingOrder] = useState<OrderViewDialogProps["order"] | null>(null);
   const [editingOrder, setEditingOrder] = useState<EditOrderData | null>(null);
   const { data, isLoading } = useListOrders();
+  const allOrders = data?.data ?? [];
+  const ordersPagination = usePagination("orders", allOrders);
   const colVis = useColumnVisibility<OrderColKey>("col-visibility:orders:v1", ORDER_TOGGLEABLE_COLS);
   const orderColSpan = colVis.visible.size + 1;
   const createFromQuoteMutation = useCreateOrderFromQuote();
@@ -595,7 +599,7 @@ export default function Orders() {
                     <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No orders yet. Create an order or convert an accepted quote.
                   </td></tr>
-                ) : data?.data?.map(order => (
+                ) : ordersPagination.paged.map(order => (
                   <tr key={order.id} className="hover:bg-muted/50 transition-colors group">
                     {colVis.isVisible("orderNumber") && (
                       <td className="px-6 py-4">
@@ -736,6 +740,16 @@ export default function Orders() {
               </tbody>
             </table>
           </div>
+          <TablePagination
+            page={ordersPagination.page}
+            totalPages={ordersPagination.totalPages}
+            pageSize={ordersPagination.pageSize}
+            total={ordersPagination.total}
+            pageStart={ordersPagination.pageStart}
+            pageEnd={ordersPagination.pageEnd}
+            onPageChange={ordersPagination.setPage}
+            onPageSizeChange={ordersPagination.setPageSize}
+          />
         </Card>
       </div>
 

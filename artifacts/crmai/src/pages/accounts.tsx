@@ -27,6 +27,8 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 type AccountColKey = "name" | "location" | "phone" | "industry" | "email" | "owner" | "contacts" | "deals";
 const ACCOUNT_TOGGLEABLE_COLS = [
@@ -102,6 +104,7 @@ export default function Accounts() {
   });
 
   const total = filteredAccounts.length;
+  const accountsPagination = usePagination("accounts", filteredAccounts);
 
   const handleExport = () => {
     const headers = ["Account Name", "Industry", "Location", "Phone", "Email", "Owner", "Contacts", "Deals"];
@@ -251,7 +254,7 @@ export default function Accounts() {
                     </td>
                   </tr>
                 ) : (
-                  filteredAccounts.map((acc) => (
+                  accountsPagination.paged.map((acc) => (
                     <tr key={acc.id} className="hover:bg-muted/30 transition-colors group">
                       {colVis.isVisible("name") && (
                         <td className="px-4 py-2.5">
@@ -417,7 +420,18 @@ export default function Accounts() {
             </table>
           </div>
 
-          {filteredAccounts.length > 0 && (
+          <TablePagination
+            page={accountsPagination.page}
+            totalPages={accountsPagination.totalPages}
+            pageSize={accountsPagination.pageSize}
+            total={accountsPagination.total}
+            pageStart={accountsPagination.pageStart}
+            pageEnd={accountsPagination.pageEnd}
+            onPageChange={accountsPagination.setPage}
+            onPageSizeChange={accountsPagination.setPageSize}
+          />
+
+          {false && filteredAccounts.length > 0 && (
             <div className="px-4 py-2 border-t border-border bg-muted/20 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">{total} record{total !== 1 ? "s" : ""}</span>
               <span className="text-xs text-muted-foreground">Showing all {total} accounts</span>
