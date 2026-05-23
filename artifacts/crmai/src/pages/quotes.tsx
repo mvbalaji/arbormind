@@ -803,7 +803,7 @@ export default function Quotes() {
             <ColumnsMenu columns={QUOTE_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left" style={{ tableLayout: "fixed" }}>
               <colgroup>
                   <col data-col="quoteNumber" style={{ width: `${colWidths.quoteNumber}px` }} />
                   <col data-col="name" style={{ width: `${colWidths.name}px` }} />
@@ -876,7 +876,7 @@ export default function Quotes() {
                       )}
                       {colVis.isVisible("name") && (
                         <td className="px-3 py-1 border-r border-border">
-                          <Link href={`/quotes/${q.id}`} className="text-primary hover:underline">
+                          <Link href={`/quotes/${q.id}`} className="text-primary hover:underline block truncate" title={q.name}>
                             {q.name}
                           </Link>
                         </td>
