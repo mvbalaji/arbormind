@@ -37,11 +37,40 @@ function compare(value: unknown, op: Operator, threshold: unknown): boolean {
   }
 }
 
+// Map legacy / shorthand field names to the canonical snapshot keys.
+const FIELD_ALIASES: Record<string, string> = {
+  discountpct: "discountPercent",
+  discountpercent: "discountPercent",
+  discount: "discountPercent",
+  marginpct: "marginPercent",
+  marginpercent: "marginPercent",
+  margin: "marginPercent",
+  amount: "amount",
+  total: "total",
+  probability: "probability",
+  creditscore: "creditScore",
+};
+
+function canonField(field: string): string {
+  return FIELD_ALIASES[field.toLowerCase()] ?? field;
+}
+
 function ruleKey(c: { field: string; operator: string; threshold: string | null; thresholdText: string | null }) {
   // Identify a rule by its trigger condition (not by step name) so that
   // multi-level steps that share the same condition group together even
   // if administrators give each level a different display name.
-  return [c.field, c.operator, c.threshold ?? "", c.thresholdText ?? ""].join("|");
+  return [canonField(c.field), c.operator, c.threshold ?? "", c.thresholdText ?? ""].join("|");
+}
+
+/** Evaluate a criterion's trigger against a snapshot — used by both the
+ *  request creator and the preview endpoint. Exposed so the frontend
+ *  warning banner uses the exact same logic via the preview route. */
+export function evaluateCriterion(
+  c: { field: string; operator: string; threshold: string | null; thresholdText: string | null },
+  snapshot: Record<string, number | string | null | undefined>,
+): boolean {
+  const value = snapshot[canonField(c.field)];
+  return compare(value, c.operator as Operator, c.threshold ?? c.thresholdText);
 }
 
 async function getSmtpTransporter() {
@@ -189,7 +218,7 @@ export async function evaluateApprovalsForEntity(
     for (const [key, steps] of groups) {
       if (openByRule.has(key)) continue;
       const first = steps[0];
-      const matched = compare(snapshot[first.field], first.operator as Operator, first.threshold ?? first.thresholdText);
+      const matched = evaluateCriterion(first, snapshot);
       if (!matched) continue;
       // Find the lowest level
       const sorted = [...steps].sort((a, b) => a.level - b.level);

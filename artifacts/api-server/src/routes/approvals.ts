@@ -9,7 +9,7 @@ import {
   usersTable,
 } from "@workspace/db";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
-import { advanceMultiLevelApproval } from "../lib/approvals-engine";
+import { advanceMultiLevelApproval, evaluateCriterion } from "../lib/approvals-engine";
 
 const router: IRouter = Router();
 
@@ -195,6 +195,37 @@ router.get("/approvals/criteria", async (req, res) => {
       ? await q.where(eq(approvalCriteriaTable.entity, entity)).orderBy(approvalCriteriaTable.level, approvalCriteriaTable.name)
       : await q.orderBy(approvalCriteriaTable.entity, approvalCriteriaTable.level, approvalCriteriaTable.name);
     res.json({ data: data.map(serializeCriterion) });
+  } catch (err) { handleDbError(req, res, err); }
+});
+
+// Preview: given an entity + draft snapshot, return the rules that would
+// require approval. Used by the frontend to show a live warning banner
+// while the user edits a discount/amount.
+router.post("/approvals/preview", async (req, res) => {
+  if (!requireAuth(req, res)) return;
+  try {
+    const { entity, snapshot } = req.body ?? {};
+    if (!isEntity(entity)) { res.status(400).json({ error: "Invalid entity" }); return; }
+    if (!snapshot || typeof snapshot !== "object") { res.status(400).json({ error: "snapshot required" }); return; }
+    const [config] = await db.select().from(approvalConfigsTable).where(eq(approvalConfigsTable.entity, entity));
+    if (config && config.enabled === false) { res.json({ data: [] }); return; }
+    const rows = await db.select().from(approvalCriteriaTable)
+      .where(and(eq(approvalCriteriaTable.entity, entity), eq(approvalCriteriaTable.active, true)));
+    const seen = new Set<string>();
+    const matches: Array<{ name: string; field: string; operator: string; threshold: string | null; levels: number }> = [];
+    for (const c of rows) {
+      const sig = `${c.field}|${c.operator}|${c.threshold ?? ""}|${c.thresholdText ?? ""}`;
+      if (seen.has(sig)) continue;
+      if (!evaluateCriterion(c, snapshot as Record<string, number | string | null | undefined>)) continue;
+      seen.add(sig);
+      const levels = rows.filter(r =>
+        r.field === c.field && r.operator === c.operator &&
+        (r.threshold ?? "") === (c.threshold ?? "") &&
+        (r.thresholdText ?? "") === (c.thresholdText ?? "")
+      ).length;
+      matches.push({ name: c.name, field: c.field, operator: c.operator, threshold: c.threshold, levels });
+    }
+    res.json({ data: matches });
   } catch (err) { handleDbError(req, res, err); }
 });
 

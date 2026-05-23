@@ -31,6 +31,7 @@ import { AISummary } from "@/components/ai-summary";
 import { formatDistanceToNow } from "date-fns";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
+import { ApprovalWarning } from "@/components/approval-warning";
 
 type QuoteColKey = "quoteNumber" | "name" | "revision" | "clonedFrom" | "validUntil" | "subtotal" | "total" | "createdBy";
 const QUOTE_TOGGLEABLE_COLS = [
@@ -295,6 +296,10 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                     value={formData.tax} onChange={e => setFormData({ ...formData, tax: e.target.value })} />
                 </div>
               </div>
+              <ApprovalWarning
+                entity="quote"
+                snapshot={{ discountPercent: parseFloat(formData.discount) || 0, total }}
+              />
               <div className="border-t border-border pt-2 mt-2 space-y-1 text-sm">
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal</span><span>£{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>

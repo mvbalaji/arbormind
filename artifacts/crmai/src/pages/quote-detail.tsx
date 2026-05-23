@@ -26,6 +26,7 @@ import {
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { EntityApprovals } from "@/components/entity-approvals";
+import { ApprovalWarning } from "@/components/approval-warning";
 import { useAuth } from "@/context/auth";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -698,6 +699,11 @@ export default function QuoteDetail() {
                     <Label className="text-xs text-muted-foreground">Discount %</Label>
                     <Input type="number" min="0" max="100" className="h-8 bg-muted border-border text-sm"
                       value={editDiscount} onChange={e => setEditDiscount(e.target.value)} />
+                    <ApprovalWarning
+                      entity="quote"
+                      className="mt-2"
+                      snapshot={{ discountPercent: parseFloat(editDiscount) || 0, total: editTotal }}
+                    />
                   </div>
                   <div>
                     <Label className="text-xs text-muted-foreground">Tax %</Label>
