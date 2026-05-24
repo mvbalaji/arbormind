@@ -4,8 +4,8 @@ export default function Closing() {
       <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, #1B3B2F 1px, transparent 0)", backgroundSize: "28px 28px" }} />
 
       <div className="absolute top-[5vh] left-[6vw] right-[6vw] flex items-center justify-between">
-        <span className="font-body text-[1.1vw] uppercase tracking-[0.3em] text-accent font-semibold">09 / Closing</span>
-        <span className="font-display font-bold text-[1.3vw] text-primary tabular-nums">09 / 09</span>
+        <span className="font-body text-[1.1vw] uppercase tracking-[0.3em] text-accent font-semibold">11 / Closing</span>
+        <span className="font-display font-bold text-[1.3vw] text-primary tabular-nums">11 / 11</span>
       </div>
 
       <div className="absolute left-[6vw] top-[26vh] right-[6vw]">

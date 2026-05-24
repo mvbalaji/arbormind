@@ -2,8 +2,8 @@ export default function Architecture() {
   return (
     <div className="w-screen h-screen overflow-hidden relative bg-bg font-body text-text">
       <div className="absolute top-[5vh] left-[6vw] right-[6vw] flex items-center justify-between">
-        <span className="font-body text-[1.1vw] uppercase tracking-[0.3em] text-accent font-semibold">06 / Architecture</span>
-        <span className="font-display font-bold text-[1.3vw] text-primary tabular-nums">06 / 09</span>
+        <span className="font-body text-[1.1vw] uppercase tracking-[0.3em] text-accent font-semibold">08 / Architecture</span>
+        <span className="font-display font-bold text-[1.3vw] text-primary tabular-nums">08 / 11</span>
       </div>
 
       <div className="absolute left-[6vw] top-[14vh] right-[6vw]">

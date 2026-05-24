@@ -28,7 +28,7 @@ export default function Title() {
         <span className="font-body text-[1.1vw] text-muted max-w-[40vw]">
           A unified workspace for leads, opportunities, quotes, and customer communication.
         </span>
-        <span className="font-display font-bold text-[1.3vw] text-primary tabular-nums">01 / 09</span>
+        <span className="font-display font-bold text-[1.3vw] text-primary tabular-nums">01 / 11</span>
       </div>
     </div>
   );
