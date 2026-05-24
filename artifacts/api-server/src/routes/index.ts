@@ -24,6 +24,7 @@ import entityNotesRouter from "./entity-notes";
 import accessControlRouter from "./access-control";
 import recordAccessRouter from "./record-access";
 import searchRouter from "./search";
+import emailSendRouter from "./email-send";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 
@@ -54,6 +55,7 @@ router.use(entityNotesRouter);
 router.use(accessControlRouter);
 router.use(recordAccessRouter);
 router.use(searchRouter);
+router.use(emailSendRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
 // access on startup.

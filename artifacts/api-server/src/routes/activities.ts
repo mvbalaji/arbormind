@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitiesTable } from "@workspace/db";
+import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitiesTable, emailTrackingTable } from "@workspace/db";
 import { eq, sql, and } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
@@ -28,6 +28,10 @@ const activityFields = {
   assignedToName: usersTable.name,
   createdAt: activitiesTable.createdAt,
   updatedAt: activitiesTable.updatedAt,
+  emailOpenCount: emailTrackingTable.openCount,
+  emailOpenedAt: emailTrackingTable.openedAt,
+  emailLastOpenedAt: emailTrackingTable.lastOpenedAt,
+  emailToAddress: emailTrackingTable.toEmail,
 };
 
 function formatActivity(a: { contactFirstName: string | null; contactLastName: string | null; [key: string]: unknown }) {
@@ -58,7 +62,8 @@ router.get("/activities", async (req, res) => {
       .leftJoin(usersTable, eq(activitiesTable.assignedTo, usersTable.id))
       .leftJoin(contactsTable, eq(activitiesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(activitiesTable.accountId, accountsTable.id))
-      .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id));
+      .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id))
+      .leftJoin(emailTrackingTable, eq(emailTrackingTable.activityId, activitiesTable.id));
 
     const data = await (conditions.length > 0
       ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))

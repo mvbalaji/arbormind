@@ -86,31 +86,32 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
     }
     setIsSending(true);
     try {
-      const ccLine = cc ? `Cc: ${cc}\n` : "";
-      const res = await fetch("/api/activities", {
+      const res = await fetch("/api/email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          type: "email",
+          to,
+          cc: cc || undefined,
           subject,
-          status: "completed",
-          completedAt: new Date().toISOString(),
-          description: `To: ${to}\n${ccLine}\n${body}`,
+          body,
           leadId: leadId ?? undefined,
           contactId: contactId ?? undefined,
           opportunityId: opportunityId ?? undefined,
           accountId: accountId ?? undefined,
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      toast({ title: "Email sent", description: `Logged as activity on this record.` });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error || `HTTP ${res.status}`);
+      }
+      toast({ title: "Email sent", description: `Delivered to ${to} — opens will be tracked.` });
       onSent?.();
       onOpenChange(false);
     } catch (e) {
       toast({
-        title: "Failed to log email",
-        description: e instanceof Error ? e.message : "Activity was not saved.",
+        title: "Failed to send email",
+        description: e instanceof Error ? e.message : "Could not deliver.",
         variant: "destructive",
       });
     } finally {

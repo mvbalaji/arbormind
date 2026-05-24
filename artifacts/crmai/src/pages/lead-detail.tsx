@@ -712,16 +712,20 @@ export default function LeadDetail() {
           {relatedTab === "activities" && (
             <div>
               <div className="px-2 py-1 border-b border-border bg-muted/10">
-                <div className="flex gap-2 mb-2">
+                <div className="flex gap-2 mb-2 flex-wrap">
                   {[
                     { key: "note", label: "Note", icon: MessageSquare },
                     { key: "call", label: "Call", icon: Phone },
                     { key: "meeting", label: "Meeting", icon: Users },
                     { key: "task", label: "Task", icon: CheckSquare },
+                    { key: "email", label: "Email", icon: Mail },
                   ].map(({ key, label, icon: BtnIcon }) => (
                     <button
                       key={key}
-                      onClick={() => setActivityType(key)}
+                      onClick={() => {
+                        if (key === "email") { setIsEmailOpen(true); return; }
+                        setActivityType(key);
+                      }}
                       className={cn(
                         "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
                         activityType === key
@@ -760,6 +764,10 @@ export default function LeadDetail() {
                 ) : (
                   activities.slice(0, 15).map((act) => {
                     const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
+                    const isEmail = act.type === "email";
+                    const a = act as typeof act & { emailOpenCount?: number | null; emailLastOpenedAt?: string | null };
+                    const opens = a.emailOpenCount ?? 0;
+                    const badgeLabel = isEmail && (act.status === "completed" || act.status === "sent") ? "Sent" : act.status;
                     return (
                       <div key={act.id} className="px-2 py-1 flex items-start gap-3 hover:bg-muted/20 transition-colors">
                         <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -768,23 +776,46 @@ export default function LeadDetail() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <span className="text-sm font-medium text-foreground">{act.subject}</span>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-xs capitalize flex-shrink-0",
-                                act.status === "completed"
-                                  ? "bg-green-50 text-green-700 border-green-200"
-                                  : "bg-blue-50 text-blue-700 border-blue-200"
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {isEmail && opens > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                                  title={a.emailLastOpenedAt ? `Last opened ${format(new Date(a.emailLastOpenedAt), "MMM d, HH:mm")}` : ""}
+                                >
+                                  Opened {opens}×
+                                </Badge>
                               )}
-                            >
-                              {act.status}
-                            </Badge>
+                              {isEmail && opens === 0 && (act.status === "completed" || act.status === "sent") && (
+                                <Badge variant="outline" className="text-xs bg-slate-50 text-slate-600 border-slate-200">
+                                  Not yet opened
+                                </Badge>
+                              )}
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs capitalize",
+                                  isEmail
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : act.status === "completed"
+                                    ? "bg-green-50 text-green-700 border-green-200"
+                                    : "bg-blue-50 text-blue-700 border-blue-200"
+                                )}
+                              >
+                                {badgeLabel}
+                              </Badge>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-xs text-muted-foreground capitalize">{act.type}</span>
                             {act.dueDate && (
                               <span className="text-xs text-muted-foreground">
                                 · {format(new Date(act.dueDate), "MMM d")}
+                              </span>
+                            )}
+                            {isEmail && act.completedAt && (
+                              <span className="text-xs text-muted-foreground">
+                                · sent {format(new Date(act.completedAt), "MMM d, HH:mm")}
                               </span>
                             )}
                           </div>
