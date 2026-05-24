@@ -76,7 +76,12 @@ router.get("/activities", async (req, res) => {
 
 router.post("/activities", async (req, res) => {
   try {
-    const [activity] = await db.insert(activitiesTable).values(req.body).returning();
+    const body = { ...req.body } as Record<string, unknown>;
+    // Coerce ISO strings to Date for timestamp columns
+    for (const k of ["dueDate", "completedAt"] as const) {
+      if (typeof body[k] === "string") body[k] = new Date(body[k] as string);
+    }
+    const [activity] = await db.insert(activitiesTable).values(body as typeof activitiesTable.$inferInsert).returning();
     res.status(201).json({ ...activity, contactName: null, opportunityName: null, accountName: null, assignedToName: null });
   } catch (err) {
     req.log.error(err);
