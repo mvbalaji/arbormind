@@ -765,8 +765,22 @@ export default function LeadDetail() {
                   activities.slice(0, 15).map((act) => {
                     const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
                     const isEmail = act.type === "email";
-                    const a = act as typeof act & { emailOpenCount?: number | null; emailLastOpenedAt?: string | null };
+                    const a = act as typeof act & {
+                      emailOpenCount?: number | null;
+                      emailLastOpenedAt?: string | null;
+                      emailLastUserAgent?: string | null;
+                    };
                     const opens = a.emailOpenCount ?? 0;
+                    const ua = a.emailLastUserAgent ?? "";
+                    // Gmail prefetches the tracking pixel ONCE and caches it forever, so the
+                    // counter cannot grow past 1 for Gmail recipients regardless of how many
+                    // times the message is reopened. Surface this honestly in the tooltip.
+                    const isGmailProxy = /GoogleImageProxy|ggpht\.com/i.test(ua);
+                    const opensTitle = isGmailProxy
+                      ? `Recipient uses Gmail, which prefetches the open-tracking pixel once and caches it. Real open count is at least ${opens} — Gmail does not report subsequent opens.${a.emailLastOpenedAt ? ` First opened ${format(new Date(a.emailLastOpenedAt), "MMM d, HH:mm")}.` : ""}`
+                      : a.emailLastOpenedAt
+                        ? `Last opened ${format(new Date(a.emailLastOpenedAt), "MMM d, HH:mm")}`
+                        : "";
                     const badgeLabel = isEmail && (act.status === "completed" || act.status === "sent") ? "Sent" : act.status;
                     return (
                       <div key={act.id} className="px-2 py-1 flex items-start gap-3 hover:bg-muted/20 transition-colors">
@@ -781,9 +795,9 @@ export default function LeadDetail() {
                                 <Badge
                                   variant="outline"
                                   className="text-xs bg-blue-50 text-blue-700 border-blue-200"
-                                  title={a.emailLastOpenedAt ? `Last opened ${format(new Date(a.emailLastOpenedAt), "MMM d, HH:mm")}` : ""}
+                                  title={opensTitle}
                                 >
-                                  Opened {opens}×
+                                  Opened {opens}{isGmailProxy ? "+" : ""}×
                                 </Badge>
                               )}
                               {isEmail && opens === 0 && (act.status === "completed" || act.status === "sent") && (

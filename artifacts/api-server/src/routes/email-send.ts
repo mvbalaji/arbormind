@@ -149,7 +149,7 @@ router.post("/email/send", async (req, res) => {
       host, port, secure,
       auth: { user: smtpUser, pass: smtpPass },
     });
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"${fromName}" <${smtpUser}>`,
       to,
       cc: cc || undefined,
@@ -158,6 +158,23 @@ router.post("/email/send", async (req, res) => {
       html: htmlBody,
       attachments: decodedAttachments.length > 0 ? decodedAttachments : undefined,
     });
+
+    // Persist the RFC 5322 Message-ID so inbound replies (whose In-Reply-To header points
+    // back to this value) can be threaded to the same activity instead of spawning a new
+    // lead/opportunity. Strip angle brackets and lowercase the domain so the stored form
+    // matches the canonical form produced by normalizeMessageId() on inbound, regardless
+    // of whether the remote MTA wraps the ID in <> or not.
+    const rawId = (info as { messageId?: string }).messageId ?? null;
+    if (rawId) {
+      const stripped = rawId.trim().replace(/^<+|>+$/g, "").trim();
+      const at = stripped.lastIndexOf("@");
+      const canonical = at === -1 ? stripped : stripped.slice(0, at + 1) + stripped.slice(at + 1).toLowerCase();
+      if (canonical) {
+        await db.update(emailTrackingTable)
+          .set({ messageId: canonical })
+          .where(eq(emailTrackingTable.token, token));
+      }
+    }
 
     await db.update(activitiesTable)
       .set({ status: "completed", completedAt: new Date() })

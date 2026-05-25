@@ -31,6 +31,7 @@ const activityFields = {
   emailOpenCount: emailTrackingTable.openCount,
   emailOpenedAt: emailTrackingTable.openedAt,
   emailLastOpenedAt: emailTrackingTable.lastOpenedAt,
+  emailLastUserAgent: emailTrackingTable.lastUserAgent,
   emailToAddress: emailTrackingTable.toEmail,
 };
 

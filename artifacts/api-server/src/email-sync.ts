@@ -1,7 +1,112 @@
-import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable } from "@workspace/db";
-import { eq, ilike } from "drizzle-orm";
+import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable, emailTrackingTable } from "@workspace/db";
+import { eq, ilike, desc } from "drizzle-orm";
 import { simpleParser } from "mailparser";
 import { maybeAutoReply } from "./auto-reply";
+
+// Normalises a Message-ID for header comparison: trims whitespace, removes angle brackets,
+// and lowercases the domain. Returns null for empty input. Equivalent values from different
+// MTAs all collapse to a single canonical form, so In-Reply-To / Message-ID can match.
+function normalizeMessageId(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const stripped = raw.trim().replace(/^<+|>+$/g, "").trim();
+  if (!stripped) return null;
+  const at = stripped.lastIndexOf("@");
+  if (at === -1) return stripped;
+  return stripped.slice(0, at + 1) + stripped.slice(at + 1).toLowerCase();
+}
+
+// Strip leading reply/forward prefixes ("Re:", "RE:", "Fwd:", "FW:") repeatedly and
+// collapse whitespace, so subject-based threading fallback survives mailer variations.
+function normalizeSubject(s: string | null | undefined): string {
+  if (!s) return "";
+  let out = s.trim();
+  while (true) {
+    const next = out.replace(/^(re|fwd?|aw|sv|tr)\s*:\s*/i, "").trim();
+    if (next === out) break;
+    out = next;
+  }
+  return out.replace(/\s+/g, " ").toLowerCase();
+}
+
+interface ThreadParent {
+  activityId: number;
+  leadId: number | null;
+  contactId: number | null;
+  opportunityId: number | null;
+  accountId: number | null;
+}
+
+// Look up the outbound activity that an inbound reply belongs to. Tries each
+// In-Reply-To / References Message-ID against email_tracking.message_id first
+// (the strict RFC-5322 path). Falls back to a fuzzy match on normalised subject +
+// recipient when no header match is found (handles clients that drop In-Reply-To
+// on quoted-text-only replies).
+async function findThreadParent(opts: {
+  inReplyTo: string | null;
+  references: string[];
+  fromEmail: string;
+  subject: string;
+}): Promise<ThreadParent | null> {
+  const candidates = new Set<string>();
+  if (opts.inReplyTo) {
+    const n = normalizeMessageId(opts.inReplyTo);
+    if (n) candidates.add(n);
+  }
+  for (const r of opts.references) {
+    const n = normalizeMessageId(r);
+    if (n) candidates.add(n);
+  }
+
+  // Both sides are stored/normalised to the bracket-stripped canonical form (see
+  // email-send.ts), so a single equality lookup is sufficient.
+  for (const mid of candidates) {
+    const [hit] = await db
+      .select({
+        activityId: emailTrackingTable.activityId,
+        leadId: activitiesTable.leadId,
+        contactId: activitiesTable.contactId,
+        opportunityId: activitiesTable.opportunityId,
+        accountId: activitiesTable.accountId,
+      })
+      .from(emailTrackingTable)
+      .innerJoin(activitiesTable, eq(activitiesTable.id, emailTrackingTable.activityId))
+      .where(eq(emailTrackingTable.messageId, mid))
+      .limit(1);
+    if (hit) return hit;
+  }
+
+  // Fallback: scan the most recent outbound emails to this sender and pick the newest
+  // one whose normalised subject matches. Handles older outbound rows that pre-date the
+  // message_id capture (legacy data) and clients that strip In-Reply-To on quoted replies.
+  const norm = normalizeSubject(opts.subject);
+  if (!norm) return null;
+  const recent = await db
+    .select({
+      activityId: emailTrackingTable.activityId,
+      leadId: activitiesTable.leadId,
+      contactId: activitiesTable.contactId,
+      opportunityId: activitiesTable.opportunityId,
+      accountId: activitiesTable.accountId,
+      subject: emailTrackingTable.subject,
+    })
+    .from(emailTrackingTable)
+    .innerJoin(activitiesTable, eq(activitiesTable.id, emailTrackingTable.activityId))
+    .where(ilike(emailTrackingTable.toEmail, opts.fromEmail))
+    .orderBy(desc(emailTrackingTable.sentAt))
+    .limit(50);
+  for (const row of recent) {
+    if (normalizeSubject(row.subject) === norm) {
+      return {
+        activityId: row.activityId,
+        leadId: row.leadId,
+        contactId: row.contactId,
+        opportunityId: row.opportunityId,
+        accountId: row.accountId,
+      };
+    }
+  }
+  return null;
+}
 
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let isSyncing = false;
@@ -60,8 +165,17 @@ async function processEmail(
   subject: string,
   body: string,
   bodyHtml: string | null,
+  messageId: string | null,
+  inReplyTo: string | null,
+  references: string[],
 ) {
-  const contact = await checkIfKnownCustomer(fromEmail);
+  // 1. Thread detection — if this is a reply to an outbound message we sent,
+  // attach it to the same activity context (lead/contact/opportunity/account)
+  // instead of creating a brand new lead or opportunity. Sales reps then see
+  // the full back-and-forth on a single record.
+  const parent = await findThreadParent({ inReplyTo, references, fromEmail, subject });
+
+  const contact = parent ? null : await checkIfKnownCustomer(fromEmail);
 
   let relatedLeadId: number | undefined;
   let relatedOpportunityId: number | undefined;
@@ -69,7 +183,13 @@ async function processEmail(
   let relatedAccountId: number | undefined;
   let notes: string;
 
-  if (contact) {
+  if (parent) {
+    relatedLeadId = parent.leadId ?? undefined;
+    relatedContactId = parent.contactId ?? undefined;
+    relatedOpportunityId = parent.opportunityId ?? undefined;
+    relatedAccountId = parent.accountId ?? undefined;
+    notes = `Reply received on existing thread (activity #${parent.activityId})`;
+  } else if (contact) {
     relatedContactId = contact.id;
     relatedAccountId = contact.accountId ?? undefined;
     const closeDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
@@ -107,13 +227,15 @@ async function processEmail(
     .insert(emailsTable)
     .values({
       messageUid,
+      messageId,
+      inReplyTo,
       fromEmail,
       fromName: fromName || fromEmail,
       subject,
       message: body.slice(0, 8000),
       bodyHtml: bodyHtml ? bodyHtml.slice(0, 100000) : null,
       status: "new",
-      isKnownCustomer: contact ? "true" : "false",
+      isKnownCustomer: parent ? "true" : contact ? "true" : "false",
       relatedContactId,
       relatedLeadId,
       relatedOpportunityId,
@@ -124,7 +246,7 @@ async function processEmail(
 
   await db.insert(activitiesTable).values({
     type: "email",
-    subject: `Email: ${subject}`,
+    subject: parent ? `Reply: ${subject}` : `Email: ${subject}`,
     description: body.slice(0, 2000),
     status: "completed",
     leadId: relatedLeadId ?? null,
@@ -192,6 +314,9 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
 
         let bodyText = "";
         let bodyHtml: string | null = null;
+        let parsedMessageId: string | null = null;
+        let parsedInReplyTo: string | null = null;
+        let parsedReferences: string[] = [];
 
         if (msg.source) {
           try {
@@ -201,6 +326,10 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
             if (!bodyText && bodyHtml) {
               bodyText = bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
             }
+            parsedMessageId = parsed.messageId ?? null;
+            parsedInReplyTo = parsed.inReplyTo ?? null;
+            const refs = parsed.references;
+            parsedReferences = Array.isArray(refs) ? refs : refs ? [refs] : [];
           } catch (parseErr) {
             console.error("[EmailPoller] Failed to parse message", uidKey, parseErr);
             const raw = msg.source.toString("utf8");
@@ -209,8 +338,25 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
           }
         }
 
+        // The IMAP ENVELOPE also exposes In-Reply-To and Message-Id — use as a safety net
+        // in case simpleParser failed but the envelope decoded cleanly.
+        const envMsgId = (envelope as { messageId?: string } | undefined)?.messageId ?? null;
+        const envInReplyTo = (envelope as { inReplyTo?: string } | undefined)?.inReplyTo ?? null;
+        if (!parsedMessageId && envMsgId) parsedMessageId = envMsgId;
+        if (!parsedInReplyTo && envInReplyTo) parsedInReplyTo = envInReplyTo;
+
         const emailBody = bodyText || "(no body)";
-        const emailId = await processEmail(uidKey, fromEmail, fromName, subject, emailBody, bodyHtml);
+        const emailId = await processEmail(
+          uidKey,
+          fromEmail,
+          fromName,
+          subject,
+          emailBody,
+          bodyHtml,
+          parsedMessageId,
+          parsedInReplyTo,
+          parsedReferences,
+        );
         importedUids.add(uidKey);
         processed++;
 

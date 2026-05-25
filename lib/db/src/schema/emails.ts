@@ -7,6 +7,10 @@ export const emailsTable = pgTable(
   {
     id: serial("id").primaryKey(),
     messageUid: text("message_uid"),
+    // RFC 5322 Message-ID of this inbound message and the parent it replies to.
+    // Used to thread replies back to the outbound activity that started the conversation.
+    messageId: text("message_id"),
+    inReplyTo: text("in_reply_to"),
     fromEmail: text("from_email").notNull(),
     fromName: text("from_name").notNull(),
     subject: text("subject").notNull(),
