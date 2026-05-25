@@ -256,6 +256,60 @@ async function processEmail(
     completedAt: new Date(),
   });
 
+  // Auto-create a follow-up task for the sales rep who owns the record this
+  // email is attached to. Inbound emails always require a response, so this
+  // surfaces in the rep's open-task list and tomorrow's due-date queue —
+  // they never have to remember to check the shared inbox.
+  // Owner resolution priority: opportunity → lead → contact → null. The
+  // first matching record's owner wins; opportunity is highest priority
+  // because it represents the most concrete sales context.
+  let ownerId: number | null = null;
+  try {
+    if (relatedOpportunityId) {
+      const [opp] = await db
+        .select({ assignedTo: opportunitiesTable.assignedTo })
+        .from(opportunitiesTable)
+        .where(eq(opportunitiesTable.id, relatedOpportunityId));
+      ownerId = opp?.assignedTo ?? null;
+    }
+    if (ownerId == null && relatedLeadId) {
+      const [lead] = await db
+        .select({ assignedTo: leadsTable.assignedTo })
+        .from(leadsTable)
+        .where(eq(leadsTable.id, relatedLeadId));
+      ownerId = lead?.assignedTo ?? null;
+    }
+    if (ownerId == null && relatedContactId) {
+      const [c] = await db
+        .select({ ownerId: contactsTable.ownerId })
+        .from(contactsTable)
+        .where(eq(contactsTable.id, relatedContactId));
+      ownerId = c?.ownerId ?? null;
+    }
+  } catch (ownerErr) {
+    console.warn("[email-sync] owner lookup failed:", ownerErr);
+  }
+
+  try {
+    const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await db.insert(activitiesTable).values({
+      type: "task",
+      subject: `Reply to: ${subject}`,
+      description: `New email from ${fromName || fromEmail} <${fromEmail}> — reply needed.`,
+      status: "pending",
+      dueDate,
+      leadId: relatedLeadId ?? null,
+      contactId: relatedContactId ?? null,
+      opportunityId: relatedOpportunityId ?? null,
+      accountId: relatedAccountId ?? null,
+      assignedTo: ownerId,
+    });
+  } catch (taskErr) {
+    // Task creation is non-critical — log and continue so the inbound email
+    // is still recorded even if the bookkeeping insert fails.
+    console.warn("[email-sync] follow-up task insert failed:", taskErr);
+  }
+
   return insertedEmail?.id;
 }
 

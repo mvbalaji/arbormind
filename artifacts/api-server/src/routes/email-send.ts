@@ -180,9 +180,36 @@ router.post("/email/send", async (req, res) => {
       .set({ status: "completed", completedAt: new Date() })
       .where(eq(activitiesTable.id, activity.id));
 
+    // Auto-create a paired task so the sales rep's task list mirrors their
+    // outbound email activity. Marked completed because the action (sending)
+    // is already done — this leaves an audit trail without adding to the
+    // rep's open-task count. Assigned to the sender on the same record
+    // (lead / contact / opportunity / account) as the email.
+    let taskId: number | null = null;
+    try {
+      const [task] = await db.insert(activitiesTable).values({
+        type: "task",
+        subject: `Sent email: ${subject}`,
+        description: `Email sent to ${to}${cc ? ` (cc: ${cc})` : ""}`,
+        status: "completed",
+        completedAt: new Date(),
+        leadId: leadId ?? null,
+        contactId: contactId ?? null,
+        opportunityId: opportunityId ?? null,
+        accountId: accountId ?? null,
+        assignedTo: user.id,
+      }).returning({ id: activitiesTable.id });
+      taskId = task?.id ?? null;
+    } catch (taskErr) {
+      // Task creation is non-critical — log and continue so the user still
+      // sees the email succeed even if the bookkeeping insert hiccups.
+      console.warn("[email-send] paired-task insert failed:", taskErr);
+    }
+
     res.status(201).json({
       ok: true,
       activityId: activity.id,
+      taskId,
       token,
       attachmentCount: decodedAttachments.length,
     });
