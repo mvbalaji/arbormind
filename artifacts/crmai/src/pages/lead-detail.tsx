@@ -18,7 +18,7 @@ import { EmailViewer } from "@/components/email-viewer";
 import {
   ArrowLeft, Mail, Phone, Building2, User, Calendar, Activity,
   CheckCircle2, Clock, ArrowRightLeft, Pencil, MapPin, DollarSign,
-  Globe, Users, Briefcase, Star, Target, Send, ChevronDown, ChevronUp,
+  Globe, Users, Briefcase, Star, Target, Send, ChevronDown, ChevronUp, ChevronRight,
   TrendingUp, ThumbsUp, ThumbsDown, MessageSquare, Plus, XCircle, CheckSquare,
 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
@@ -158,6 +158,7 @@ export default function LeadDetail() {
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerActivityId, setViewerActivityId] = useState<number | null>(null);
+  const [collapsedThreads, setCollapsedThreads] = useState<Set<number>>(new Set());
   const [relatedTab, setRelatedTab] = useState<"activities" | "contacts" | "accounts">("activities");
   const [showAcceptReject, setShowAcceptReject] = useState(false);
   const [acceptRejectMode, setAcceptRejectMode] = useState<"accept" | "reject" | null>(null);
@@ -811,27 +812,42 @@ export default function LeadDetail() {
                     });
 
                     // Render top-15 in chronological order, but for each parent
-                    // also render its children immediately after.
+                    // also render its children immediately after (unless the
+                    // user has collapsed that thread).
                     const visible = activities.slice(0, 15);
                     const visibleIds = new Set(visible.map((v) => v.id));
-                    const flat: { act: typeof visible[number]; depth: number }[] = [];
+                    const flat: { act: typeof visible[number]; depth: number; childCount: number }[] = [];
                     for (const act of visible) {
-                      // Skip if this is a reply whose parent is also visible — it
-                      // will be rendered nested under the parent below.
                       const parentId = parentOf.get(act.id);
                       if (parentId != null && visibleIds.has(parentId)) continue;
-                      flat.push({ act, depth: 0 });
                       const kids = childrenOf.get(act.id) ?? [];
-                      for (const k of kids) flat.push({ act: k, depth: 1 });
+                      flat.push({ act, depth: 0, childCount: kids.length });
+                      if (!collapsedThreads.has(act.id)) {
+                        for (const k of kids) flat.push({ act: k, depth: 1, childCount: 0 });
+                      }
                     }
 
-                    return flat.map(({ act, depth }) => {
+                    return flat.map(({ act, depth, childCount }) => {
                     const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
                     const isEmail = act.type === "email";
                     const isReply = depth > 0;
+                    // Inbound emails are stamped with "Reply:" or "Email:" subject
+                    // prefixes by the inbound processor (see api-server email-sync).
+                    const isInbound = isEmail && /^(Reply|Email):/i.test(act.subject);
+                    const hasThread = isEmail && childCount > 0;
+                    const isCollapsed = collapsedThreads.has(act.id);
                     const onActivityClick = isEmail
                       ? () => { setViewerActivityId(act.id); setViewerOpen(true); }
                       : undefined;
+                    const toggleThread = (e: React.MouseEvent | React.KeyboardEvent) => {
+                      e.stopPropagation();
+                      setCollapsedThreads((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(act.id)) next.delete(act.id);
+                        else next.add(act.id);
+                        return next;
+                      });
+                    };
                     const a = act as typeof act & {
                       emailOpenCount?: number | null;
                       emailLastOpenedAt?: string | null;
@@ -848,7 +864,9 @@ export default function LeadDetail() {
                       : a.emailLastOpenedAt
                         ? `Last opened ${format(new Date(a.emailLastOpenedAt), "MMM d, HH:mm")}`
                         : "";
-                    const badgeLabel = isEmail && (act.status === "completed" || act.status === "sent") ? "Sent" : act.status;
+                    const badgeLabel = isEmail && (act.status === "completed" || act.status === "sent")
+                      ? (isInbound ? "Received" : "Sent")
+                      : act.status;
                     return (
                       <div
                         key={act.id}
@@ -863,6 +881,22 @@ export default function LeadDetail() {
                         onKeyDown={isEmail ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivityClick?.(); } } : undefined}
                         title={isEmail ? "Click to read full email" : undefined}
                       >
+                        {hasThread ? (
+                          <button
+                            type="button"
+                            onClick={toggleThread}
+                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleThread(e); } }}
+                            className="w-4 h-7 flex items-center justify-center flex-shrink-0 mt-0.5 text-muted-foreground hover:text-foreground"
+                            aria-label={isCollapsed ? `Show ${childCount} repl${childCount === 1 ? "y" : "ies"}` : "Hide replies"}
+                            title={isCollapsed ? `Show ${childCount} repl${childCount === 1 ? "y" : "ies"}` : "Hide replies"}
+                          >
+                            {isCollapsed
+                              ? <ChevronRight className="w-3.5 h-3.5" />
+                              : <ChevronDown className="w-3.5 h-3.5" />}
+                          </button>
+                        ) : (
+                          <div className="w-4 flex-shrink-0" aria-hidden />
+                        )}
                         <div className={cn(
                           "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
                           isReply ? "bg-blue-100 text-blue-700" : "bg-primary/10 text-primary",
