@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitiesTable, emailTrackingTable } from "@workspace/db";
-import { eq, sql, and } from "drizzle-orm";
+import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitiesTable, emailTrackingTable, emailsTable } from "@workspace/db";
+import { eq, sql, and, desc, gte, lte } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
 
@@ -128,6 +128,122 @@ router.put("/activities/:id", async (req, res) => {
     } else {
       res.json({ ...activity, contactName: null, opportunityName: null, accountName: null, assignedToName: null });
     }
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /api/activities/:id/email-body
+// Returns the full body of an email activity so users can actually read the message
+// (vs. only seeing the truncated snippet in the timeline). Resolves direction
+// from email_tracking (outbound) or emails (inbound) and returns HTML where available.
+router.get("/activities/:id/email-body", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (Number.isNaN(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+
+    const [activity] = await db
+      .select()
+      .from(activitiesTable)
+      .where(eq(activitiesTable.id, id));
+    if (!activity) {
+      res.status(404).json({ error: "Activity not found" });
+      return;
+    }
+    if (activity.type !== "email") {
+      res.status(400).json({ error: "Activity is not an email" });
+      return;
+    }
+
+    // Outbound: tracking row keyed by activityId.
+    const [tracking] = await db
+      .select()
+      .from(emailTrackingTable)
+      .where(eq(emailTrackingTable.activityId, id))
+      .limit(1);
+    if (tracking) {
+      res.json({
+        direction: "outbound",
+        subject: tracking.subject ?? activity.subject,
+        fromEmail: null,
+        fromName: null,
+        toEmail: tracking.toEmail,
+        sentAt: tracking.sentAt,
+        textBody: activity.description ?? "",
+        htmlBody: null,
+        openCount: tracking.openCount ?? 0,
+        lastOpenedAt: tracking.lastOpenedAt,
+        lastUserAgent: tracking.lastUserAgent,
+      });
+      return;
+    }
+
+    // Inbound: find the matching emails row. processEmail() inserts the email row
+    // and the activity row back-to-back (well under 5 seconds apart) and they share
+    // every related FK that's set on the activity. Match strictly on ALL of those
+    // (AND, not OR) so we never pull a sibling lead's email in a busy system, and
+    // require the normalised subject to match (no nearest-in-time fallback).
+    const createdAt = activity.createdAt ?? new Date();
+    const windowMs = 60 * 1000; // 60s is generous given the inserts are back-to-back
+    const lo = new Date(createdAt.getTime() - windowMs);
+    const hi = new Date(createdAt.getTime() + windowMs);
+    const linkConditions = [
+      gte(emailsTable.createdAt, lo),
+      lte(emailsTable.createdAt, hi),
+    ];
+    if (activity.leadId != null) linkConditions.push(eq(emailsTable.relatedLeadId, activity.leadId));
+    if (activity.contactId != null) linkConditions.push(eq(emailsTable.relatedContactId, activity.contactId));
+    if (activity.opportunityId != null) linkConditions.push(eq(emailsTable.relatedOpportunityId, activity.opportunityId));
+
+    const candidates = await db
+      .select()
+      .from(emailsTable)
+      .where(and(...linkConditions))
+      .orderBy(desc(emailsTable.createdAt))
+      .limit(10);
+
+    // Activity subject is prefixed with "Reply: " or "Email: " by processEmail;
+    // strip those before comparing against the raw inbound subject on emails.
+    const normSubject = (s: string | null | undefined) =>
+      (s ?? "").replace(/^(Reply|Email):\s*/i, "").trim().toLowerCase();
+    const target = normSubject(activity.subject);
+    const match = candidates.find((c) => normSubject(c.subject) === target);
+
+    if (match) {
+      res.json({
+        direction: "inbound",
+        subject: match.subject,
+        fromEmail: match.fromEmail,
+        fromName: match.fromName,
+        toEmail: null,
+        sentAt: match.createdAt,
+        textBody: match.message ?? activity.description ?? "",
+        htmlBody: match.bodyHtml ?? null,
+        openCount: 0,
+        lastOpenedAt: null,
+        lastUserAgent: null,
+      });
+      return;
+    }
+
+    // Last-resort fallback: no linked email row, just return the activity description.
+    res.json({
+      direction: "unknown",
+      subject: activity.subject,
+      fromEmail: null,
+      fromName: null,
+      toEmail: null,
+      sentAt: activity.createdAt,
+      textBody: activity.description ?? "",
+      htmlBody: null,
+      openCount: 0,
+      lastOpenedAt: null,
+      lastUserAgent: null,
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

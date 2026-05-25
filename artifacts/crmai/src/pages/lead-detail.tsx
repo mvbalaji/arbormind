@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AISummary } from "@/components/ai-summary";
 import { AINextActions } from "@/components/ai-next-actions";
 import { EmailCompose } from "@/components/email-compose";
+import { EmailViewer } from "@/components/email-viewer";
 import {
   ArrowLeft, Mail, Phone, Building2, User, Calendar, Activity,
   CheckCircle2, Clock, ArrowRightLeft, Pencil, MapPin, DollarSign,
@@ -56,6 +57,7 @@ interface LeadActivity {
   status: string;
   dueDate: string | null;
   createdAt: string;
+  completedAt?: string | null;
 }
 
 interface ConvertedContact {
@@ -154,6 +156,8 @@ export default function LeadDetail() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerActivityId, setViewerActivityId] = useState<number | null>(null);
   const [relatedTab, setRelatedTab] = useState<"activities" | "contacts" | "accounts">("activities");
   const [showAcceptReject, setShowAcceptReject] = useState(false);
   const [acceptRejectMode, setAcceptRejectMode] = useState<"accept" | "reject" | null>(null);
@@ -765,6 +769,9 @@ export default function LeadDetail() {
                   activities.slice(0, 15).map((act) => {
                     const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
                     const isEmail = act.type === "email";
+                    const onActivityClick = isEmail
+                      ? () => { setViewerActivityId(act.id); setViewerOpen(true); }
+                      : undefined;
                     const a = act as typeof act & {
                       emailOpenCount?: number | null;
                       emailLastOpenedAt?: string | null;
@@ -783,7 +790,18 @@ export default function LeadDetail() {
                         : "";
                     const badgeLabel = isEmail && (act.status === "completed" || act.status === "sent") ? "Sent" : act.status;
                     return (
-                      <div key={act.id} className="px-2 py-1 flex items-start gap-3 hover:bg-muted/20 transition-colors">
+                      <div
+                        key={act.id}
+                        className={cn(
+                          "px-2 py-1 flex items-start gap-3 hover:bg-muted/20 transition-colors",
+                          isEmail && "cursor-pointer hover:bg-primary/5",
+                        )}
+                        onClick={onActivityClick}
+                        role={isEmail ? "button" : undefined}
+                        tabIndex={isEmail ? 0 : undefined}
+                        onKeyDown={isEmail ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivityClick?.(); } } : undefined}
+                        title={isEmail ? "Click to read full email" : undefined}
+                      >
                         <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                           <Icon className="w-3.5 h-3.5 text-primary" />
                         </div>
@@ -944,6 +962,13 @@ export default function LeadDetail() {
         leadId={lead.id}
         contactId={lead.convertedContactId ?? undefined}
         onSent={() => void refetchActivities()}
+      />
+
+      {/* Email Viewer */}
+      <EmailViewer
+        activityId={viewerActivityId}
+        open={viewerOpen}
+        onOpenChange={(o) => { setViewerOpen(o); if (!o) setViewerActivityId(null); }}
       />
 
       {/* Convert Dialog */}
