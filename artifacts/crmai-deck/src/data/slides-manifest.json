@@ -70,8 +70,15 @@
     "description": "Ten-step horizontal flow from lead capture through quote, approval, send, accept, order, and close."
   },
   {
-    "id": "closing",
+    "id": "process-flow-detail",
     "position": 11,
+    "filepath": "src/pages/slides/ProcessFlowDetail.tsx",
+    "title": "Process flow — in detail",
+    "description": "Three-phase breakdown (Pre-sales, Active deal, Fulfilment) with 14 numbered substeps covering actor, action, and system result."
+  },
+  {
+    "id": "closing",
+    "position": 12,
     "filepath": "src/pages/slides/Closing.tsx",
     "title": "Built for arbormind.in",
     "description": "Closing slide with live-today scope, what's next, and stack summary."
