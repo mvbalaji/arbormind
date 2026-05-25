@@ -30,8 +30,11 @@ interface SendBody {
   attachments?: AttachmentInput[];
 }
 
-const MAX_ATTACH_TOTAL_BYTES = 20 * 1024 * 1024; // 20 MB total payload cap
+// Decoded-size cap. Base64 in JSON expands by ~33%, so 18MB decoded ≈ 24MB on the wire,
+// staying safely under the express.json({ limit: "25mb" }) cap in app.ts.
+const MAX_ATTACH_TOTAL_BYTES = 18 * 1024 * 1024;
 const MAX_ATTACHMENTS = 10;
+const BASE64_RE = /^[A-Za-z0-9+/]+=*$/;
 
 interface SessionUser { id: number; email?: string; name?: string }
 
@@ -73,11 +76,15 @@ router.post("/email/send", async (req, res) => {
         res.status(400).json({ error: "Each attachment requires filename and content." });
         return;
       }
-      let buf: Buffer;
-      try {
-        buf = Buffer.from(b64, "base64");
-      } catch {
-        res.status(400).json({ error: `Invalid base64 for ${filename}.` });
+      // Strict base64 validation (Buffer.from(..,"base64") silently accepts garbage).
+      const stripped = b64.replace(/\s+/g, "");
+      if (!BASE64_RE.test(stripped) || stripped.length % 4 !== 0) {
+        res.status(400).json({ error: `Invalid base64 content for ${filename}.` });
+        return;
+      }
+      const buf = Buffer.from(stripped, "base64");
+      if (buf.length === 0) {
+        res.status(400).json({ error: `Empty attachment: ${filename}.` });
         return;
       }
       total += buf.length;
@@ -105,31 +112,29 @@ router.post("/email/send", async (req, res) => {
     return;
   }
 
+  // Insert activity as "pending" first (so tracking can link to it), then only mark
+  // "completed" after SMTP succeeds. On failure, mark "failed" so audit history is honest.
+  const [activity] = await db.insert(activitiesTable).values({
+    type: "email",
+    subject,
+    status: "pending",
+    description: `To: ${to}${cc ? `\nCc: ${cc}` : ""}\n\n${body}`,
+    leadId: leadId ?? null,
+    contactId: contactId ?? null,
+    opportunityId: opportunityId ?? null,
+    accountId: accountId ?? null,
+    assignedTo: user.id,
+  }).returning();
+
+  const token = crypto.randomBytes(16).toString("hex");
+  await db.insert(emailTrackingTable).values({
+    activityId: activity.id,
+    token,
+    toEmail: to,
+    subject,
+  });
+
   try {
-    // 1. Create activity row first so we can link tracking to it
-    const [activity] = await db.insert(activitiesTable).values({
-      type: "email",
-      subject,
-      status: "completed",
-      completedAt: new Date(),
-      description: `To: ${to}${cc ? `\nCc: ${cc}` : ""}\n\n${body}`,
-      leadId: leadId ?? null,
-      contactId: contactId ?? null,
-      opportunityId: opportunityId ?? null,
-      accountId: accountId ?? null,
-      assignedTo: user.id,
-    }).returning();
-
-    // 2. Generate unique tracking token + row
-    const token = crypto.randomBytes(16).toString("hex");
-    await db.insert(emailTrackingTable).values({
-      activityId: activity.id,
-      token,
-      toEmail: to,
-      subject,
-    });
-
-    // 3. Build HTML body with tracking pixel
     const proto = (req.headers["x-forwarded-proto"] as string) || (req.secure ? "https" : "http");
     const host_hdr = (req.headers["x-forwarded-host"] as string) || (req.headers.host as string);
     const trackingUrl = `${proto}://${host_hdr}/api/track/open/${token}.png`;
@@ -139,7 +144,6 @@ router.post("/email/send", async (req, res) => {
       `</div>` +
       `<img src="${trackingUrl}" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;" />`;
 
-    // 4. Send via SMTP
     const nodemailer = await import("nodemailer");
     const transporter = nodemailer.createTransport({
       host, port, secure,
@@ -155,6 +159,10 @@ router.post("/email/send", async (req, res) => {
       attachments: decodedAttachments.length > 0 ? decodedAttachments : undefined,
     });
 
+    await db.update(activitiesTable)
+      .set({ status: "completed", completedAt: new Date() })
+      .where(eq(activitiesTable.id, activity.id));
+
     res.status(201).json({
       ok: true,
       activityId: activity.id,
@@ -164,6 +172,13 @@ router.post("/email/send", async (req, res) => {
   } catch (err) {
     req.log.error(err);
     const message = err instanceof Error ? err.message : "Failed to send email";
+    try {
+      await db.update(activitiesTable)
+        .set({ status: "failed", description: `[SEND FAILED: ${message}]\n\nTo: ${to}${cc ? `\nCc: ${cc}` : ""}\n\n${body}` })
+        .where(eq(activitiesTable.id, activity.id));
+    } catch (updErr) {
+      req.log.error(updErr, "failed to mark activity as failed");
+    }
     res.status(500).json({ error: message });
   }
 });

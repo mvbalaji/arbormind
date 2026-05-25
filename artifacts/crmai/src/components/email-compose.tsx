@@ -30,7 +30,8 @@ interface PreparedAttachment {
 }
 
 const MAX_ATTACHMENTS = 10;
-const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
+// Decoded cap kept in sync with server (18MB decoded ≈ 24MB base64, under 25MB JSON limit).
+const MAX_TOTAL_BYTES = 18 * 1024 * 1024;
 
 const EMAIL_TEMPLATES: { label: string; subject: string; body: string }[] = [
   {
@@ -126,7 +127,7 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
     const currentTotal = attachments.reduce((s, a) => s + a.size, 0);
     const addedTotal = files.reduce((s, f) => s + f.size, 0);
     if (currentTotal + addedTotal > MAX_TOTAL_BYTES) {
-      toast({ title: "Attachments too large", description: `Total size cannot exceed ${MAX_TOTAL_BYTES / 1024 / 1024}MB.`, variant: "destructive" });
+      toast({ title: "Attachments too large", description: `Total size cannot exceed ${Math.round(MAX_TOTAL_BYTES / 1024 / 1024)}MB.`, variant: "destructive" });
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
