@@ -766,9 +766,69 @@ export default function LeadDetail() {
                     </Button>
                   </div>
                 ) : (
-                  activities.slice(0, 15).map((act) => {
+                  (() => {
+                    // Build a thread tree so replies render nested under their parent
+                    // outbound email instead of as flat sibling rows. Match by
+                    // normalised subject — strip "Reply:"/"Email:" prefixes added by
+                    // the inbound processor and any "Re:"/"Fwd:" etc. from the wire,
+                    // then pick the most recent prior email activity that matches.
+                    const normSubject = (s: string) =>
+                      s
+                        .replace(/^(Reply|Email):\s*/i, "")
+                        .replace(/^((re|fwd?|aw|sv|tr)\s*:\s*)+/i, "")
+                        .trim()
+                        .toLowerCase();
+                    const emailActs = activities
+                      .filter((x) => x.type === "email")
+                      .slice()
+                      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                    const parentOf = new Map<number, number>();
+                    // Match each reply to the most recent prior NON-reply email
+                    // with the same normalised subject. Constraining the parent
+                    // to a non-reply guarantees every reply in a chain
+                    // (O1 → R1 → R2 …) anchors on the same outbound root, so
+                    // siblings render together and none get dropped.
+                    for (let i = 0; i < emailActs.length; i++) {
+                      const cur = emailActs[i];
+                      if (!/^Reply:/i.test(cur.subject)) continue;
+                      const target = normSubject(cur.subject);
+                      for (let j = i - 1; j >= 0; j--) {
+                        const cand = emailActs[j];
+                        if (/^Reply:/i.test(cand.subject)) continue;
+                        if (normSubject(cand.subject) === target) {
+                          parentOf.set(cur.id, cand.id);
+                          break;
+                        }
+                      }
+                    }
+                    const childrenOf = new Map<number, typeof emailActs>();
+                    parentOf.forEach((parentId, childId) => {
+                      const child = emailActs.find((x) => x.id === childId);
+                      if (!child) return;
+                      const arr = childrenOf.get(parentId) ?? [];
+                      arr.push(child);
+                      childrenOf.set(parentId, arr);
+                    });
+
+                    // Render top-15 in chronological order, but for each parent
+                    // also render its children immediately after.
+                    const visible = activities.slice(0, 15);
+                    const visibleIds = new Set(visible.map((v) => v.id));
+                    const flat: { act: typeof visible[number]; depth: number }[] = [];
+                    for (const act of visible) {
+                      // Skip if this is a reply whose parent is also visible — it
+                      // will be rendered nested under the parent below.
+                      const parentId = parentOf.get(act.id);
+                      if (parentId != null && visibleIds.has(parentId)) continue;
+                      flat.push({ act, depth: 0 });
+                      const kids = childrenOf.get(act.id) ?? [];
+                      for (const k of kids) flat.push({ act: k, depth: 1 });
+                    }
+
+                    return flat.map(({ act, depth }) => {
                     const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
                     const isEmail = act.type === "email";
+                    const isReply = depth > 0;
                     const onActivityClick = isEmail
                       ? () => { setViewerActivityId(act.id); setViewerOpen(true); }
                       : undefined;
@@ -795,6 +855,7 @@ export default function LeadDetail() {
                         className={cn(
                           "px-2 py-1 flex items-start gap-3 hover:bg-muted/20 transition-colors",
                           isEmail && "cursor-pointer hover:bg-primary/5",
+                          isReply && "ml-7 border-l-2 border-primary/30 pl-3 bg-muted/10",
                         )}
                         onClick={onActivityClick}
                         role={isEmail ? "button" : undefined}
@@ -802,12 +863,22 @@ export default function LeadDetail() {
                         onKeyDown={isEmail ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivityClick?.(); } } : undefined}
                         title={isEmail ? "Click to read full email" : undefined}
                       >
-                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Icon className="w-3.5 h-3.5 text-primary" />
+                        <div className={cn(
+                          "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
+                          isReply ? "bg-blue-100 text-blue-700" : "bg-primary/10 text-primary",
+                        )}>
+                          <Icon className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <span className="text-sm font-medium text-foreground">{act.subject}</span>
+                            <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                              {isReply && (
+                                <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 px-1.5 py-0">
+                                  Reply
+                                </Badge>
+                              )}
+                              <span className="truncate">{act.subject}</span>
+                            </span>
                             <div className="flex items-center gap-1 flex-shrink-0">
                               {isEmail && opens > 0 && (
                                 <Badge
@@ -854,7 +925,8 @@ export default function LeadDetail() {
                         </div>
                       </div>
                     );
-                  })
+                    });
+                  })()
                 )}
               </div>
             </div>
