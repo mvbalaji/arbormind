@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Paperclip, X, ChevronDown } from "lucide-react";
+import { Send, Paperclip, X, ChevronDown, FileText } from "lucide-react";
 
 interface EmailComposeProps {
   open: boolean;
@@ -20,6 +20,17 @@ interface EmailComposeProps {
   accountId?: number;
   onSent?: () => void;
 }
+
+interface PreparedAttachment {
+  id: string;
+  filename: string;
+  contentType: string;
+  size: number;
+  content: string; // base64 (no data: prefix)
+}
+
+const MAX_ATTACHMENTS = 10;
+const MAX_TOTAL_BYTES = 20 * 1024 * 1024;
 
 const EMAIL_TEMPLATES: { label: string; subject: string; body: string }[] = [
   {
@@ -49,6 +60,26 @@ const EMAIL_TEMPLATES: { label: string; subject: string; body: string }[] = [
   },
 ];
 
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+async function fileToBase64(file: File): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Strip "data:<mime>;base64," prefix
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("File read failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubject = "", defaultBody = "", recipientName = "", leadId, contactId, opportunityId, accountId, onSent }: EmailComposeProps) {
   const { toast } = useToast();
   const [to, setTo] = useState(defaultTo);
@@ -58,6 +89,8 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
   const [showCc, setShowCc] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [attachments, setAttachments] = useState<PreparedAttachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   React.useEffect(() => {
     if (open) {
@@ -67,6 +100,7 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
       setCc("");
       setShowCc(false);
       setShowTemplates(false);
+      setAttachments([]);
     }
   }, [open, defaultTo, defaultSubject, defaultBody]);
 
@@ -77,6 +111,50 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
     setSubject(replacer(t.subject));
     setBody(replacer(t.body));
     setShowTemplates(false);
+  };
+
+  const handleFilesPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+
+    if (attachments.length + files.length > MAX_ATTACHMENTS) {
+      toast({ title: "Too many files", description: `Maximum ${MAX_ATTACHMENTS} attachments per email.`, variant: "destructive" });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const currentTotal = attachments.reduce((s, a) => s + a.size, 0);
+    const addedTotal = files.reduce((s, f) => s + f.size, 0);
+    if (currentTotal + addedTotal > MAX_TOTAL_BYTES) {
+      toast({ title: "Attachments too large", description: `Total size cannot exceed ${MAX_TOTAL_BYTES / 1024 / 1024}MB.`, variant: "destructive" });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    try {
+      const prepared: PreparedAttachment[] = await Promise.all(
+        files.map(async (f) => ({
+          id: `${f.name}-${f.size}-${f.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
+          filename: f.name,
+          contentType: f.type || "application/octet-stream",
+          size: f.size,
+          content: await fileToBase64(f),
+        })),
+      );
+      setAttachments((prev) => [...prev, ...prepared]);
+    } catch (err) {
+      toast({
+        title: "Could not read file",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
   const handleSend = async () => {
@@ -99,13 +177,17 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
           contactId: contactId ?? undefined,
           opportunityId: opportunityId ?? undefined,
           accountId: accountId ?? undefined,
+          attachments: attachments.length > 0
+            ? attachments.map(({ filename, contentType, content }) => ({ filename, contentType, content }))
+            : undefined,
         }),
       });
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(j.error || `HTTP ${res.status}`);
       }
-      toast({ title: "Email sent", description: `Delivered to ${to} — opens will be tracked.` });
+      const attachNote = attachments.length > 0 ? ` with ${attachments.length} attachment${attachments.length === 1 ? "" : "s"}` : "";
+      toast({ title: "Email sent", description: `Delivered to ${to}${attachNote} — opens will be tracked.` });
       onSent?.();
       onOpenChange(false);
     } catch (e) {
@@ -118,6 +200,8 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
       setIsSending(false);
     }
   };
+
+  const totalSize = attachments.reduce((s, a) => s + a.size, 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -209,27 +293,83 @@ export function EmailCompose({ open, onOpenChange, defaultTo = "", defaultSubjec
             />
           </div>
 
+          {/* Attachments */}
+          {attachments.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground uppercase">
+                  Attachments ({attachments.length})
+                </Label>
+                <span className="text-xs text-muted-foreground">{formatBytes(totalSize)} total</span>
+              </div>
+              <div className="space-y-1.5">
+                {attachments.map((a) => (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-2 bg-muted border border-border rounded-md px-2.5 py-2"
+                    data-testid={`attachment-chip-${a.filename}`}
+                  >
+                    <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm truncate">{a.filename}</div>
+                      <div className="text-xs text-muted-foreground">{formatBytes(a.size)}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(a.id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                      aria-label={`Remove ${a.filename}`}
+                      data-testid={`remove-attachment-${a.filename}`}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Footer hint */}
           <p className="text-xs text-muted-foreground/60">
             Email will be sent from support@arbormind.in and logged as an activity.
           </p>
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5" disabled>
-            <Paperclip className="w-4 h-4" /> Attach
-          </Button>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">
-            <X className="w-4 h-4 mr-1" /> Discard
-          </Button>
-          <Button
-            onClick={handleSend}
-            disabled={isSending}
-            className="bg-primary hover:bg-primary/90 text-white gap-1.5"
-          >
-            <Send className="w-4 h-4" />
-            {isSending ? "Sending..." : "Send Email"}
-          </Button>
+        <DialogFooter className="gap-2 sm:justify-between">
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={handleFilesPicked}
+              data-testid="email-attach-input"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-muted-foreground hover:text-foreground gap-1.5"
+              data-testid="email-attach-button"
+            >
+              <Paperclip className="w-4 h-4" /> Attach
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">
+              <X className="w-4 h-4 mr-1" /> Discard
+            </Button>
+            <Button
+              onClick={handleSend}
+              disabled={isSending}
+              className="bg-primary hover:bg-primary/90 text-white gap-1.5"
+              data-testid="email-send-button"
+            >
+              <Send className="w-4 h-4" />
+              {isSending ? "Sending..." : "Send Email"}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -12,6 +12,12 @@ const PIXEL_PNG = Buffer.from(
   "base64",
 );
 
+interface AttachmentInput {
+  filename?: string;
+  contentType?: string;
+  content?: string; // base64
+}
+
 interface SendBody {
   to?: string;
   cc?: string;
@@ -21,7 +27,11 @@ interface SendBody {
   contactId?: number;
   opportunityId?: number;
   accountId?: number;
+  attachments?: AttachmentInput[];
 }
+
+const MAX_ATTACH_TOTAL_BYTES = 20 * 1024 * 1024; // 20 MB total payload cap
+const MAX_ATTACHMENTS = 10;
 
 interface SessionUser { id: number; email?: string; name?: string }
 
@@ -42,10 +52,45 @@ router.post("/email/send", async (req, res) => {
   const user = getSessionUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
-  const { to, cc, subject, body, leadId, contactId, opportunityId, accountId } = req.body as SendBody;
+  const { to, cc, subject, body, leadId, contactId, opportunityId, accountId, attachments } = req.body as SendBody;
   if (!to || !subject || !body) {
     res.status(400).json({ error: "to, subject, and body are required" });
     return;
+  }
+
+  // Validate + decode attachments (base64). Reject early on size/count to keep SMTP happy.
+  const decodedAttachments: { filename: string; content: Buffer; contentType?: string }[] = [];
+  if (Array.isArray(attachments) && attachments.length > 0) {
+    if (attachments.length > MAX_ATTACHMENTS) {
+      res.status(400).json({ error: `Too many attachments (max ${MAX_ATTACHMENTS}).` });
+      return;
+    }
+    let total = 0;
+    for (const a of attachments) {
+      const filename = (a.filename || "").trim();
+      const b64 = (a.content || "").trim();
+      if (!filename || !b64) {
+        res.status(400).json({ error: "Each attachment requires filename and content." });
+        return;
+      }
+      let buf: Buffer;
+      try {
+        buf = Buffer.from(b64, "base64");
+      } catch {
+        res.status(400).json({ error: `Invalid base64 for ${filename}.` });
+        return;
+      }
+      total += buf.length;
+      if (total > MAX_ATTACH_TOTAL_BYTES) {
+        res.status(413).json({ error: `Attachments exceed ${Math.round(MAX_ATTACH_TOTAL_BYTES / 1024 / 1024)}MB total.` });
+        return;
+      }
+      decodedAttachments.push({
+        filename,
+        content: buf,
+        contentType: typeof a.contentType === "string" && a.contentType ? a.contentType : undefined,
+      });
+    }
   }
 
   const host = process.env.SMTP_HOST || process.env.IMAP_HOST || "mail.spacemail.com";
@@ -107,9 +152,15 @@ router.post("/email/send", async (req, res) => {
       subject,
       text: body,
       html: htmlBody,
+      attachments: decodedAttachments.length > 0 ? decodedAttachments : undefined,
     });
 
-    res.status(201).json({ ok: true, activityId: activity.id, token });
+    res.status(201).json({
+      ok: true,
+      activityId: activity.id,
+      token,
+      attachmentCount: decodedAttachments.length,
+    });
   } catch (err) {
     req.log.error(err);
     const message = err instanceof Error ? err.message : "Failed to send email";

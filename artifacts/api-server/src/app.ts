@@ -83,8 +83,8 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 // Serve frontend static files
 const frontendPath = path.resolve(__dirname, "../../crmai/dist/public");
