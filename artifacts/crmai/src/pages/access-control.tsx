@@ -240,6 +240,9 @@ export function AccessControlInline() {
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Screen × Role Permissions</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Choose one access level per role per screen — View Only, Read-Only, or Edit. Leave all unchecked for No Access. Administrator always has full edit access.
+                </p>
               </CardHeader>
               <CardContent>
                 {isLoading ? (
@@ -252,9 +255,10 @@ export function AccessControlInline() {
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
                           <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Screen</th>
-                          {data.roles.map((r) => (
-                            <th key={r.key} className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">
-                              {r.label}
+                          <th className="px-2 py-1 text-left text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Role</th>
+                          {(["view", "read_only", "edit"] as AccessLevel[]).map((l) => (
+                            <th key={l} className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">
+                              {LEVEL_LABEL[l]}
                             </th>
                           ))}
                         </tr>
@@ -263,40 +267,52 @@ export function AccessControlInline() {
                         {Object.entries(grouped).map(([category, screens]) => (
                           <React.Fragment key={category}>
                             <tr className="bg-muted/40">
-                              <td colSpan={data.roles.length + 1} className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              <td colSpan={5} className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                 {category}
                               </td>
                             </tr>
                             {screens.map((s) => (
-                              <tr key={s.key} className="hover:bg-muted/20">
-                                <td className="px-3 py-1 font-medium text-foreground whitespace-nowrap">{s.name}</td>
-                                {data.roles.map((r) => {
+                              <React.Fragment key={s.key}>
+                                {data.roles.map((r, idx) => {
                                   const lvl = data.matrix[s.key]?.[r.key] ?? "none";
                                   const isLocked = r.key === "admin";
-                                  const key = `${s.key}:${r.key}`;
+                                  const pendKey = `${s.key}:${r.key}`;
                                   return (
-                                    <td key={r.key} className="px-3 py-1">
-                                      <select
-                                        disabled={isLocked || pending[key]}
-                                        value={lvl}
-                                        onChange={(e) =>
-                                          mutate.mutate({
-                                            screenKey: s.key,
-                                            roleKey: r.key,
-                                            accessLevel: e.target.value as AccessLevel,
-                                          })
-                                        }
-                                        className="text-xs h-8 rounded-md border border-border bg-background text-foreground px-2 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                      >
-                                        <option value="none">No Access</option>
-                                        <option value="view">View Only</option>
-                                        <option value="read_only">Read-Only</option>
-                                        <option value="edit">Edit</option>
-                                      </select>
-                                    </td>
+                                    <tr key={`${s.key}:${r.key}`} className="hover:bg-muted/20">
+                                      {idx === 0 ? (
+                                        <td
+                                          className="px-3 py-1 font-medium text-foreground whitespace-nowrap align-top"
+                                          rowSpan={data.roles.length}
+                                        >
+                                          {s.name}
+                                        </td>
+                                      ) : null}
+                                      <td className="px-3 py-1 text-foreground whitespace-nowrap">{r.label}</td>
+                                      {(["view", "read_only", "edit"] as AccessLevel[]).map((colLvl) => {
+                                        const checked = lvl === colLvl;
+                                        return (
+                                          <td key={colLvl} className="px-3 py-1 text-center">
+                                            <input
+                                              type="checkbox"
+                                              checked={checked}
+                                              disabled={isLocked || pending[pendKey]}
+                                              onChange={(e) =>
+                                                mutate.mutate({
+                                                  screenKey: s.key,
+                                                  roleKey: r.key,
+                                                  accessLevel: e.target.checked ? colLvl : "none",
+                                                })
+                                              }
+                                              className="w-4 h-4 rounded border-border accent-blue-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                              aria-label={`${LEVEL_LABEL[colLvl]} ${s.name} for ${r.label}`}
+                                            />
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
                                   );
                                 })}
-                              </tr>
+                              </React.Fragment>
                             ))}
                           </React.Fragment>
                         ))}
