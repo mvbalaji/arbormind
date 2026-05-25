@@ -193,6 +193,13 @@ export default function LeadDetail() {
       return res.json() as Promise<{ data: LeadActivity[] }>;
     },
     enabled: !!id,
+    // Poll every 20s so open-tracking pixel hits (recipient opening the email)
+    // and inbound sync writes surface in the timeline without the user having to
+    // manually reload. Also refetch when the tab regains focus so coming back to
+    // the page after checking email shows the latest opens immediately.
+    refetchInterval: 20_000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const { data: linkedContactsData } = useQuery<{ data: ConvertedContact[] }>({
