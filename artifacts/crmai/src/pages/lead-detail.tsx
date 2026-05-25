@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { useUpdateLead, useConvertLead, getListLeadsQueryKey, useListUsers, useListAccounts, useListContacts, type ConvertLeadInput } from "@workspace/api-client-react";
+import { useUpdateLead, useConvertLead, getListLeadsQueryKey, useListUsers, useListAccounts, useListContacts, useCreateActivity, useUpdateActivity, type ConvertLeadInput } from "@workspace/api-client-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -159,7 +160,11 @@ export default function LeadDetail() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerActivityId, setViewerActivityId] = useState<number | null>(null);
   const [collapsedThreads, setCollapsedThreads] = useState<Set<number>>(new Set());
-  const [relatedTab, setRelatedTab] = useState<"activities" | "contacts" | "accounts">("activities");
+  const [relatedTab, setRelatedTab] = useState<"activities" | "actions" | "contacts" | "accounts">("activities");
+  const [newActionTitle, setNewActionTitle] = useState("");
+  const [newActionDue, setNewActionDue] = useState("");
+  const createActivity = useCreateActivity();
+  const updateActivity = useUpdateActivity();
   const [showAcceptReject, setShowAcceptReject] = useState(false);
   const [acceptRejectMode, setAcceptRejectMode] = useState<"accept" | "reject" | null>(null);
   const [rejectReason, setRejectReason] = useState(REJECT_REASONS[0]);
@@ -686,12 +691,13 @@ export default function LeadDetail() {
           <div className="flex border-b border-border bg-muted/30">
             {[
               { key: "activities", label: "Activities", count: activities.length },
+              { key: "actions", label: "Actions", count: activities.filter((a) => a.type === "task").length },
               { key: "contacts", label: "Contacts", count: linkedContacts.length || (lead.convertedContactId ? 1 : 0) },
               { key: "accounts", label: "Accounts", count: lead.convertedAccountId ? 1 : 0 },
             ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setRelatedTab(tab.key as "activities" | "contacts" | "accounts")}
+                onClick={() => setRelatedTab(tab.key as "activities" | "actions" | "contacts" | "accounts")}
                 className={cn(
                   "px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors flex items-center gap-1.5",
                   relatedTab === tab.key
@@ -963,6 +969,184 @@ export default function LeadDetail() {
                   })()
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Actions tab — task-type activities only. Auto-populated by the
+              backend (paired tasks from outbound/inbound emails) plus manual
+              entries added inline below. */}
+          {relatedTab === "actions" && (
+            <div>
+              {/* Quick-add row. Title required; due date optional (defaults to
+                  +1 day so the task lands in tomorrow's queue, matching the
+                  inbound-email behaviour). Assigned to the lead owner. */}
+              <div className="px-3 py-2 border-b border-border bg-muted/10 flex items-center gap-2">
+                <Input
+                  value={newActionTitle}
+                  onChange={(e) => setNewActionTitle(e.target.value)}
+                  placeholder="Add a new action item…"
+                  className="h-8 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newActionTitle.trim() && !createActivity.isPending) {
+                      e.preventDefault();
+                      const due = newActionDue
+                        ? new Date(newActionDue)
+                        : new Date(Date.now() + 24 * 60 * 60 * 1000);
+                      createActivity.mutate(
+                        {
+                          data: {
+                            type: "task",
+                            subject: newActionTitle.trim(),
+                            status: "pending",
+                            dueDate: due.toISOString() as unknown as Date,
+                            leadId: lead.id,
+                            assignedTo: lead.assignedTo ?? undefined,
+                          } as unknown as Parameters<typeof createActivity.mutate>[0]["data"],
+                        },
+                        {
+                          onSuccess: () => {
+                            setNewActionTitle("");
+                            setNewActionDue("");
+                            queryClient.invalidateQueries({ queryKey: ["lead-activities", id] });
+                          },
+                        },
+                      );
+                    }
+                  }}
+                />
+                <Input
+                  type="date"
+                  value={newActionDue}
+                  onChange={(e) => setNewActionDue(e.target.value)}
+                  className="h-8 text-sm w-36"
+                  title="Due date (optional)"
+                />
+                <Button
+                  size="sm"
+                  disabled={!newActionTitle.trim() || createActivity.isPending}
+                  onClick={() => {
+                    const due = newActionDue
+                      ? new Date(newActionDue)
+                      : new Date(Date.now() + 24 * 60 * 60 * 1000);
+                    createActivity.mutate(
+                      {
+                        data: {
+                          type: "task",
+                          subject: newActionTitle.trim(),
+                          status: "pending",
+                          dueDate: due.toISOString() as unknown as Date,
+                          leadId: lead.id,
+                          assignedTo: lead.assignedTo ?? undefined,
+                        } as unknown as Parameters<typeof createActivity.mutate>[0]["data"],
+                      },
+                      {
+                        onSuccess: () => {
+                          setNewActionTitle("");
+                          setNewActionDue("");
+                          queryClient.invalidateQueries({ queryKey: ["lead-activities", id] });
+                        },
+                      },
+                    );
+                  }}
+                  className="h-8 text-xs"
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                </Button>
+              </div>
+
+              {/* Task list */}
+              {(() => {
+                const tasks = activities.filter((a) => a.type === "task");
+                if (tasks.length === 0) {
+                  return (
+                    <div className="text-center py-8 px-4">
+                      <CheckSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">
+                        No action items yet. Add one above, or send/receive an email — a task will be created automatically.
+                      </p>
+                    </div>
+                  );
+                }
+                // Open tasks first (by due date asc), completed tasks at the bottom (most recent first).
+                const open = tasks.filter((t) => t.status !== "completed").sort((a, b) => {
+                  const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+                  const dbt = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+                  return da - dbt;
+                });
+                const done = tasks.filter((t) => t.status === "completed").sort((a, b) => {
+                  const ca = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+                  const cb = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+                  return cb - ca;
+                });
+                const ordered = [...open, ...done];
+                const now = Date.now();
+                return (
+                  <div className="divide-y divide-border">
+                    {ordered.map((t) => {
+                      const isDone = t.status === "completed";
+                      const overdue = !isDone && t.dueDate && new Date(t.dueDate).getTime() < now;
+                      const toggle = () => {
+                        updateActivity.mutate(
+                          {
+                            id: t.id,
+                            data: isDone
+                              ? ({ status: "pending", completedAt: null } as unknown as Parameters<typeof updateActivity.mutate>[0]["data"])
+                              : ({ status: "completed", completedAt: new Date().toISOString() } as unknown as Parameters<typeof updateActivity.mutate>[0]["data"]),
+                          },
+                          { onSuccess: () => queryClient.invalidateQueries({ queryKey: ["lead-activities", id] }) },
+                        );
+                      };
+                      return (
+                        <div key={t.id} className="flex items-start gap-3 px-3 py-2 hover:bg-muted/10">
+                          <Checkbox checked={isDone} onCheckedChange={toggle} className="mt-1" aria-label={isDone ? "Mark as pending" : "Mark as completed"} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className={cn("text-sm font-medium", isDone ? "line-through text-muted-foreground" : "text-foreground")}>
+                                {t.subject}
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px] capitalize flex-shrink-0",
+                                  isDone
+                                    ? "bg-green-50 text-green-700 border-green-200"
+                                    : overdue
+                                      ? "bg-red-50 text-red-700 border-red-200"
+                                      : "bg-blue-50 text-blue-700 border-blue-200",
+                                )}
+                              >
+                                {isDone ? "Done" : overdue ? "Overdue" : "Open"}
+                              </Badge>
+                            </div>
+                            {(t as { description?: string | null }).description && (
+                              <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                {(t as { description?: string | null }).description}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
+                              {t.dueDate && (
+                                <span className="inline-flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  Due {format(new Date(t.dueDate), "MMM d")}
+                                </span>
+                              )}
+                              {(t as { assignedToName?: string | null }).assignedToName && (
+                                <span className="inline-flex items-center gap-1">
+                                  <User className="w-3 h-3" />
+                                  {(t as { assignedToName?: string | null }).assignedToName}
+                                </span>
+                              )}
+                              {isDone && t.completedAt && (
+                                <span>Completed {format(new Date(t.completedAt), "MMM d, HH:mm")}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
 
