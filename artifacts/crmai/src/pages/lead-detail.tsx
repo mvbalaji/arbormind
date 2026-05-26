@@ -826,10 +826,14 @@ export default function LeadDetail() {
                       childrenOf.set(parentId, arr);
                     });
 
-                    // Render top-15 in chronological order, but for each parent
-                    // also render its children immediately after (unless the
-                    // user has collapsed that thread).
-                    const visible = activities.slice(0, 15);
+                    // Render newest-first so a freshly sent email shows at the
+                    // TOP of the timeline (not buried below older threads).
+                    // For each parent we still render its children right after
+                    // it so threads stay grouped — children inherit the parent
+                    // thread's position regardless of their own timestamps.
+                    const visible = [...activities]
+                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .slice(0, 15);
                     const visibleIds = new Set(visible.map((v) => v.id));
                     const flat: { act: typeof visible[number]; depth: number; childCount: number }[] = [];
                     for (const act of visible) {
@@ -838,7 +842,13 @@ export default function LeadDetail() {
                       const kids = childrenOf.get(act.id) ?? [];
                       flat.push({ act, depth: 0, childCount: kids.length });
                       if (!collapsedThreads.has(act.id)) {
-                        for (const k of kids) flat.push({ act: k, depth: 1, childCount: 0 });
+                        // Render children newest-first under each parent too,
+                        // so the most recent reply sits closest to the parent
+                        // row and older replies trail below it.
+                        const orderedKids = [...kids].sort(
+                          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+                        );
+                        for (const k of orderedKids) flat.push({ act: k, depth: 1, childCount: 0 });
                       }
                     }
 
