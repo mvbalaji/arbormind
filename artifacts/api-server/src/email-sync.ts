@@ -292,10 +292,17 @@ async function processEmail(
 
   try {
     const dueDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const aiTitle = await generateEmailTaskTitle({
+      direction: "inbound",
+      subject,
+      body,
+      counterpartName: fromName,
+      counterpartEmail: fromEmail,
+    });
     await db.insert(activitiesTable).values({
       type: "task",
-      subject: `Reply to: ${subject}`,
-      description: `New email from ${fromName || fromEmail} <${fromEmail}> — reply needed.`,
+      subject: aiTitle,
+      description: `New email from ${fromName || fromEmail} <${fromEmail}> — reply needed.\n\nSubject: ${subject}`,
       status: "pending",
       dueDate,
       leadId: relatedLeadId ?? null,

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { db } from "@workspace/db";
 import { activitiesTable, emailTrackingTable } from "@workspace/db";
 import { eq, sql, and, ilike } from "drizzle-orm";
+import { generateEmailTaskTitle } from "../lib/ai-task-title";
 
 const router: IRouter = Router();
 
@@ -180,11 +181,12 @@ router.post("/email/send", async (req, res) => {
       .set({ status: "completed", completedAt: new Date() })
       .where(eq(activitiesTable.id, activity.id));
 
-    // Close out any open "Reply to: …" follow-up tasks on the same record
-    // whose subject matches this outbound — the rep has now actually replied,
-    // so the SLA task should flip to completed automatically. Match is on the
-    // normalised subject (strip Re:/Reply:/Email:/Fwd: prefixes) so an outbound
-    // "Re: Quick intro" closes the task created for inbound "Reply: Quick intro".
+    // Close out any open follow-up tasks on the same record whose source email
+    // subject matches this outbound — the rep has now actually replied, so the
+    // SLA task should flip to completed automatically. Inbound tasks now have
+    // AI-generated subjects, so we match on the original subject we stash in
+    // the description (`Subject: <subject>`) using the normalised core subject
+    // (Re:/Reply:/Email:/Fwd: prefixes stripped) for thread-aware matching.
     try {
       const coreSubject = subject.replace(/^\s*(re|reply|email|fwd|fw)\s*:\s*/i, "").trim();
       if (coreSubject) {
@@ -204,7 +206,7 @@ router.post("/email/send", async (req, res) => {
               eq(activitiesTable.type, "task"),
               eq(activitiesTable.status, "pending"),
               recordCond,
-              ilike(activitiesTable.subject, `Reply to:%${coreSubject}%`),
+              ilike(activitiesTable.description, `%Subject: %${coreSubject}%`),
             ));
         }
       }
@@ -219,10 +221,16 @@ router.post("/email/send", async (req, res) => {
     // (lead / contact / opportunity / account) as the email.
     let taskId: number | null = null;
     try {
+      const aiTitle = await generateEmailTaskTitle({
+        direction: "outbound",
+        subject,
+        body,
+        counterpartEmail: to,
+      });
       const [task] = await db.insert(activitiesTable).values({
         type: "task",
-        subject: `Sent email: ${subject}`,
-        description: `Email sent to ${to}${cc ? ` (cc: ${cc})` : ""}`,
+        subject: aiTitle,
+        description: `Email sent to ${to}${cc ? ` (cc: ${cc})` : ""}\n\nSubject: ${subject}`,
         status: "completed",
         completedAt: new Date(),
         leadId: leadId ?? null,
