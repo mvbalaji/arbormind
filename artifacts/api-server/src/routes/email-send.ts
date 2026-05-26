@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import crypto from "node:crypto";
 import { db } from "@workspace/db";
 import { activitiesTable, emailTrackingTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, ilike } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -179,6 +179,38 @@ router.post("/email/send", async (req, res) => {
     await db.update(activitiesTable)
       .set({ status: "completed", completedAt: new Date() })
       .where(eq(activitiesTable.id, activity.id));
+
+    // Close out any open "Reply to: …" follow-up tasks on the same record
+    // whose subject matches this outbound — the rep has now actually replied,
+    // so the SLA task should flip to completed automatically. Match is on the
+    // normalised subject (strip Re:/Reply:/Email:/Fwd: prefixes) so an outbound
+    // "Re: Quick intro" closes the task created for inbound "Reply: Quick intro".
+    try {
+      const coreSubject = subject.replace(/^\s*(re|reply|email|fwd|fw)\s*:\s*/i, "").trim();
+      if (coreSubject) {
+        const recordCond = leadId
+          ? eq(activitiesTable.leadId, leadId)
+          : opportunityId
+            ? eq(activitiesTable.opportunityId, opportunityId)
+            : contactId
+              ? eq(activitiesTable.contactId, contactId)
+              : accountId
+                ? eq(activitiesTable.accountId, accountId)
+                : null;
+        if (recordCond) {
+          await db.update(activitiesTable)
+            .set({ status: "completed", completedAt: new Date() })
+            .where(and(
+              eq(activitiesTable.type, "task"),
+              eq(activitiesTable.status, "pending"),
+              recordCond,
+              ilike(activitiesTable.subject, `Reply to:%${coreSubject}%`),
+            ));
+        }
+      }
+    } catch (closeErr) {
+      console.warn("[email-send] failed to auto-close reply task:", closeErr);
+    }
 
     // Auto-create a paired task so the sales rep's task list mirrors their
     // outbound email activity. Marked completed because the action (sending)
