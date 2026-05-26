@@ -22,3 +22,4 @@ export * from "./entity-notes";
 export * from "./access-control";
 export * from "./record-access";
 export * from "./email-tracking";
+export * from "./email-attachments";

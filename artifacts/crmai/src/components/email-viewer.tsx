@@ -1,10 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ArrowDownLeft, ArrowUpRight, Eye, Loader2, Mail } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Eye, Loader2, Mail, Paperclip } from "lucide-react";
 import DOMPurify from "dompurify";
 
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+interface EmailAttachmentInfo {
+  filename: string;
+  contentType: string | null;
+  sizeBytes: number;
+  openCount: number;
+  lastOpenedAt: string | null;
+}
 
 interface EmailBody {
   direction: "inbound" | "outbound" | "unknown";
@@ -18,6 +26,13 @@ interface EmailBody {
   openCount: number;
   lastOpenedAt: string | null;
   lastUserAgent: string | null;
+  attachments?: EmailAttachmentInfo[];
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
 interface EmailViewerProps {
@@ -114,6 +129,58 @@ export function EmailViewer({ activityId, open, onOpenChange }: EmailViewerProps
                   </div>
                 )}
               </div>
+
+              {data.attachments && data.attachments.length > 0 && (
+                <div className="border-t border-border pt-3 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+                    <Paperclip className="w-3.5 h-3.5" />
+                    Attachments ({data.attachments.length})
+                  </div>
+                  <ul className="space-y-1">
+                    {data.attachments.map((a, i) => {
+                      const opened = a.openCount > 0;
+                      return (
+                        <li
+                          key={i}
+                          className="flex items-center justify-between gap-3 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Paperclip className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                            <span className="truncate font-medium text-foreground" title={a.filename}>
+                              {a.filename}
+                            </span>
+                            <span className="text-muted-foreground flex-shrink-0">
+                              · {formatBytes(a.sizeBytes)}
+                            </span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={
+                              opened
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-muted text-muted-foreground border-border"
+                            }
+                          >
+                            {opened ? (
+                              <>
+                                <Eye className="w-3 h-3 mr-1" />
+                                Opened {a.openCount}×
+                                {a.lastOpenedAt && ` · ${format(new Date(a.lastOpenedAt), "MMM d, HH:mm")}`}
+                              </>
+                            ) : (
+                              "Not yet opened"
+                            )}
+                          </Badge>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p className="text-[10px] text-muted-foreground leading-relaxed pt-0.5">
+                    Tracks the &ldquo;View online&rdquo; link added to the email. Customers who open the attached
+                    file directly from their email client are not counted.
+                  </p>
+                </div>
+              )}
 
               <div className="border-t border-border pt-4">
                 {data.htmlBody ? (

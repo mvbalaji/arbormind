@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import crypto from "node:crypto";
 import { db } from "@workspace/db";
-import { activitiesTable, emailTrackingTable } from "@workspace/db";
+import { activitiesTable, emailTrackingTable, emailAttachmentsTable } from "@workspace/db";
 import { eq, sql, and, ilike } from "drizzle-orm";
 import { generateEmailTaskTitle } from "../lib/ai-task-title";
 
@@ -128,21 +128,53 @@ router.post("/email/send", async (req, res) => {
   }).returning();
 
   const token = crypto.randomBytes(16).toString("hex");
-  await db.insert(emailTrackingTable).values({
+  const [tracking] = await db.insert(emailTrackingTable).values({
     activityId: activity.id,
     token,
     toEmail: to,
     subject,
-  });
+  }).returning({ id: emailTrackingTable.id });
+
+  // Persist each attachment with its own tracking token, so the "View online"
+  // link we inject below can record per-file opens. The real file is still
+  // sent as a normal MIME attachment (familiar UX) — the tracked link is a
+  // best-effort signal that under-reports any customer who opens the local
+  // copy instead of clicking through.
+  const trackedAttachments: { filename: string; token: string }[] = [];
+  if (decodedAttachments.length > 0 && tracking) {
+    for (const a of decodedAttachments) {
+      const aToken = crypto.randomBytes(16).toString("hex");
+      await db.insert(emailAttachmentsTable).values({
+        trackingId: tracking.id,
+        token: aToken,
+        filename: a.filename,
+        contentType: a.contentType ?? null,
+        sizeBytes: a.content.length,
+        content: a.content,
+      });
+      trackedAttachments.push({ filename: a.filename, token: aToken });
+    }
+  }
 
   try {
     const proto = (req.headers["x-forwarded-proto"] as string) || (req.secure ? "https" : "http");
     const host_hdr = (req.headers["x-forwarded-host"] as string) || (req.headers.host as string);
     const trackingUrl = `${proto}://${host_hdr}/api/track/open/${token}.png`;
+    const attachmentLinksHtml = trackedAttachments.length > 0
+      ? `<div style="margin-top:20px;padding-top:14px;border-top:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;">` +
+          `<div style="font-weight:600;margin-bottom:6px;color:#111827;">Attachments</div>` +
+          trackedAttachments.map((a) =>
+            `<div style="margin:4px 0;">📎 ${escapeHtml(a.filename)} &middot; ` +
+              `<a href="${proto}://${host_hdr}/api/track/attachment/${a.token}" ` +
+              `style="color:#2563eb;text-decoration:underline;">View online</a></div>`,
+          ).join("") +
+        `</div>`
+      : "";
     const htmlBody =
       `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#1a1a1a;">` +
       escapeHtml(body).replace(/\n/g, "<br>") +
       `</div>` +
+      attachmentLinksHtml +
       `<img src="${trackingUrl}" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;" />`;
 
     const nodemailer = await import("nodemailer");
@@ -299,6 +331,64 @@ router.get("/track/open/:filename", async (req: Request, res: Response) => {
     req.log.error(err, "tracking pixel update failed");
   }
   res.end(PIXEL_PNG);
+});
+
+/* ============================================================
+ * GET /api/track/attachment/:token
+ * Records an attachment open and streams the file inline. NO AUTH
+ * (called directly from the recipient's email client).
+ *
+ * We use `Content-Disposition: inline` with a sensible filename so the
+ * browser preview the file (PDFs, images) instead of forcing a download.
+ * Customer can still hit save from the preview to get a local copy.
+ * ========================================================== */
+router.get("/track/attachment/:token", async (req: Request, res: Response) => {
+  const token = req.params.token;
+  if (!token || !/^[a-f0-9]{16,64}$/i.test(token)) {
+    res.status(404).send("Not found");
+    return;
+  }
+
+  try {
+    const [att] = await db
+      .select()
+      .from(emailAttachmentsTable)
+      .where(eq(emailAttachmentsTable.token, token))
+      .limit(1);
+    if (!att) {
+      res.status(404).send("Not found");
+      return;
+    }
+
+    // Record the open (best-effort; do not block the file delivery on a write failure).
+    try {
+      const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || null;
+      const ua = (req.headers["user-agent"] as string | undefined) || null;
+      await db.update(emailAttachmentsTable)
+        .set({
+          openCount: sql`${emailAttachmentsTable.openCount} + 1`,
+          openedAt: sql`coalesce(${emailAttachmentsTable.openedAt}, now())`,
+          lastOpenedAt: new Date(),
+          lastIp: ip,
+          lastUserAgent: ua,
+        })
+        .where(eq(emailAttachmentsTable.token, token));
+    } catch (updErr) {
+      req.log.error(updErr, "attachment open tracking update failed");
+    }
+
+    // Safe ASCII fallback + RFC 5987 UTF-8 form so unicode filenames preview correctly.
+    const safeAscii = att.filename.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "");
+    const utf8 = encodeURIComponent(att.filename);
+    res.setHeader("Content-Type", att.contentType || "application/octet-stream");
+    res.setHeader("Content-Disposition", `inline; filename="${safeAscii}"; filename*=UTF-8''${utf8}`);
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    res.setHeader("Content-Length", String(att.content.length));
+    res.end(att.content);
+  } catch (err) {
+    req.log.error(err, "attachment fetch failed");
+    res.status(500).send("Internal error");
+  }
 });
 
 export default router;

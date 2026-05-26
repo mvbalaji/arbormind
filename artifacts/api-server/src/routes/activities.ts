@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitiesTable, emailTrackingTable, emailsTable } from "@workspace/db";
+import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitiesTable, emailTrackingTable, emailAttachmentsTable, emailsTable } from "@workspace/db";
 import { eq, sql, and, desc, gte, lte } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
@@ -166,6 +166,18 @@ router.get("/activities/:id/email-body", async (req, res) => {
       .where(eq(emailTrackingTable.activityId, id))
       .limit(1);
     if (tracking) {
+      // Attachment open-tracking metadata (no file bytes — these are kept
+      // server-side and only streamed via /api/track/attachment/:token).
+      const attachments = await db
+        .select({
+          filename: emailAttachmentsTable.filename,
+          contentType: emailAttachmentsTable.contentType,
+          sizeBytes: emailAttachmentsTable.sizeBytes,
+          openCount: emailAttachmentsTable.openCount,
+          lastOpenedAt: emailAttachmentsTable.lastOpenedAt,
+        })
+        .from(emailAttachmentsTable)
+        .where(eq(emailAttachmentsTable.trackingId, tracking.id));
       res.json({
         direction: "outbound",
         subject: tracking.subject ?? activity.subject,
@@ -178,6 +190,7 @@ router.get("/activities/:id/email-body", async (req, res) => {
         openCount: tracking.openCount ?? 0,
         lastOpenedAt: tracking.lastOpenedAt,
         lastUserAgent: tracking.lastUserAgent,
+        attachments,
       });
       return;
     }
