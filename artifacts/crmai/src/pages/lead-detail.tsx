@@ -3,6 +3,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useUpdateLead, useConvertLead, getListLeadsQueryKey, useListUsers, useListAccounts, useListContacts, useCreateActivity, useUpdateActivity, type ConvertLeadInput } from "@workspace/api-client-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useAuth } from "@/context/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -165,6 +166,7 @@ export default function LeadDetail() {
   const [newActionDue, setNewActionDue] = useState("");
   const createActivity = useCreateActivity();
   const updateActivity = useUpdateActivity();
+  const { user: currentUser } = useAuth();
   const [showAcceptReject, setShowAcceptReject] = useState(false);
   const [acceptRejectMode, setAcceptRejectMode] = useState<"accept" | "reject" | null>(null);
   const [rejectReason, setRejectReason] = useState(REJECT_REASONS[0]);
@@ -1007,7 +1009,7 @@ export default function LeadDetail() {
                             status: "pending",
                             dueDate: due.toISOString() as unknown as Date,
                             leadId: lead.id,
-                            assignedTo: lead.assignedTo ?? undefined,
+                            assignedTo: lead.assignedTo ?? currentUser?.id ?? undefined,
                           } as unknown as Parameters<typeof createActivity.mutate>[0]["data"],
                         },
                         {
@@ -1043,7 +1045,7 @@ export default function LeadDetail() {
                           status: "pending",
                           dueDate: due.toISOString() as unknown as Date,
                           leadId: lead.id,
-                          assignedTo: lead.assignedTo ?? undefined,
+                          assignedTo: lead.assignedTo ?? currentUser?.id ?? undefined,
                         } as unknown as Parameters<typeof createActivity.mutate>[0]["data"],
                       },
                       {
