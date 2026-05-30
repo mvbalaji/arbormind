@@ -239,7 +239,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* ── Main Content Area ── */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Header */}
-          <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 lg:px-6 z-20 flex-shrink-0 shadow-sm">
+          <header className="h-14 border-b border-sidebar-border bg-card flex items-center justify-between px-4 lg:px-6 z-20 flex-shrink-0 shadow-sm">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <span className="text-sm font-bold text-primary">arbormind<span className="text-muted-foreground font-normal">.in</span></span>
 
