@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import { ListPageHeader } from "@/components/list-page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,26 +73,28 @@ export default function Cases() {
   const [editingCase, setEditingCase] = useState<{ id: number } & CaseFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListCases({ limit: 50 });
+  const [search, setSearch] = useState("");
   const allCases = data?.data ?? [];
-  const casesPagination = usePagination("cases", allCases);
+  const caseQuery = search.trim().toLowerCase();
+  const filteredCases = caseQuery
+    ? allCases.filter((c) => Object.values(c).some((v) => typeof v === "string" && v.toLowerCase().includes(caseQuery)))
+    : allCases;
+  const casesPagination = usePagination("cases", filteredCases);
   const colVis = useColumnVisibility<"caseNumber" | "subject" | "priority" | "status" | "opened">("col-visibility:cases:v1", CASE_TOGGLEABLE_COLS);
   const caseColSpan = colVis.visible.size + 1;
 
   return (
     <Layout>
       <div className="flex flex-col gap-3">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Support Cases</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Manage customer issues and requests.</p>
-          </div>
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-          >
-            <Plus className="w-4 h-4 mr-2" /> New Case
-          </Button>
-        </div>
+        <ListPageHeader
+          icon={LifeBuoy}
+          title="Support Cases"
+          viewLabel="All Cases"
+          search={{ value: search, onChange: setSearch, placeholder: "Search cases..." }}
+          aiEntityType="cases"
+          onNew={() => setIsCreateOpen(true)}
+          newLabel="New Case"
+        />
 
         <Card className="glass-panel border-0 overflow-hidden">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">

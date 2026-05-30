@@ -4,6 +4,7 @@ import { ColResizeHandle } from "@/components/col-resize-handle";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useListUsers } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
+import { ListPageHeader } from "@/components/list-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -171,29 +172,15 @@ export default function Campaigns() {
   return (
     <Layout>
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Campaigns</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Manage marketing campaigns and track ROI.</p>
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-              <Input
-                placeholder="Search campaigns..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-card border-border"
-              />
-            </div>
-            <Button
-              onClick={() => setIsCreateOpen(true)}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
-            >
-              <Plus className="w-4 h-4 mr-2" /> New Campaign
-            </Button>
-          </div>
-        </div>
+        <ListPageHeader
+          icon={Megaphone}
+          title="Campaigns"
+          viewLabel="All Campaigns"
+          search={{ value: search, onChange: setSearch, placeholder: "Search campaigns..." }}
+          aiEntityType="campaigns"
+          onNew={() => setIsCreateOpen(true)}
+          newLabel="New Campaign"
+        />
 
         {!isLoading && campaigns.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

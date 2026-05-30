@@ -34,6 +34,7 @@ import { useAuth } from "@/context/auth";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
 import { usePagination } from "@/hooks/use-pagination";
+import { ListPageHeader } from "@/components/list-page-header";
 import { TablePagination } from "@/components/table-pagination";
 
 type OrderColKey = "orderNumber" | "account" | "opportunity" | "quote" | "total" | "status" | "date";
@@ -518,8 +519,13 @@ export default function Orders() {
   const [viewingOrder, setViewingOrder] = useState<OrderViewDialogProps["order"] | null>(null);
   const [editingOrder, setEditingOrder] = useState<EditOrderData | null>(null);
   const { data, isLoading } = useListOrders();
+  const [search, setSearch] = useState("");
   const allOrders = data?.data ?? [];
-  const ordersPagination = usePagination("orders", allOrders);
+  const orderQuery = search.trim().toLowerCase();
+  const filteredOrders = orderQuery
+    ? allOrders.filter((o) => Object.values(o).some((v) => typeof v === "string" && v.toLowerCase().includes(orderQuery)))
+    : allOrders;
+  const ordersPagination = usePagination("orders", filteredOrders);
   const colVis = useColumnVisibility<OrderColKey>("col-visibility:orders:v1", ORDER_TOGGLEABLE_COLS);
   const orderColSpan = colVis.visible.size + 1;
   const createFromQuoteMutation = useCreateOrderFromQuote();
@@ -575,15 +581,15 @@ export default function Orders() {
   return (
     <Layout>
       <div className="flex flex-col gap-2">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Orders</h1>
-            <p className="text-muted-foreground text-xs">Manage customer orders and fulfillment.</p>
-          </div>
-          <Button size="sm" onClick={() => setIsCreateOpen(true)} className="h-8 text-xs gap-1.5 bg-primary text-foreground hover:bg-primary/90 shadow-sm">
-            <Plus className="w-3.5 h-3.5" /> Create Order
-          </Button>
-        </div>
+        <ListPageHeader
+          icon={ShoppingCart}
+          title="Orders"
+          viewLabel="All Orders"
+          search={{ value: search, onChange: setSearch, placeholder: "Search orders..." }}
+          aiEntityType="orders"
+          onNew={() => setIsCreateOpen(true)}
+          newLabel="Create Order"
+        />
 
         <div className="bg-card rounded-md overflow-hidden shadow-sm">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">

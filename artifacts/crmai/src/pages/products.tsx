@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
+import { ListPageHeader } from "@/components/list-page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -191,26 +192,15 @@ export default function Products() {
   return (
     <Layout>
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Products</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Product catalog and pricing.</p>
-          </div>
-          <div className="flex gap-2">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search products..."
-                className="pl-9 bg-muted border-border w-56"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-            </div>
-            <Button onClick={() => setIsCreateOpen(true)} className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
-              <Plus className="w-4 h-4 mr-2" /> Add Product
-            </Button>
-          </div>
-        </div>
+        <ListPageHeader
+          icon={Package}
+          title="Products"
+          viewLabel="All Products"
+          search={{ value: search, onChange: setSearch, placeholder: "Search products..." }}
+          aiEntityType="products"
+          onNew={() => setIsCreateOpen(true)}
+          newLabel="Add Product"
+        />
 
         <Card className="glass-panel border-0 overflow-hidden">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">

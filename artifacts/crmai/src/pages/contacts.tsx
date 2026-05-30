@@ -11,7 +11,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
-import { AISummary } from "@/components/ai-summary";
+import { ListPageHeader } from "@/components/list-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -24,7 +24,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Mail, Phone, Building2, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react";
+import { Search, Plus, Mail, Phone, Building2, Users, MoreHorizontal, Pencil, Trash2, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -71,32 +71,15 @@ export default function Contacts() {
   return (
     <Layout>
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Contacts</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Manage your customer relationships and personnel.</p>
-          </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-              <Input
-                placeholder="Search contacts..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-card border-border"
-              />
-            </div>
-            <Button
-              onClick={() => setIsCreateOpen(true)}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-primary/40 hover:-translate-y-0.5 transition-all"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Contact
-            </Button>
-          </div>
-        </div>
-
-        <AISummary entityType="contacts" />
+        <ListPageHeader
+          icon={Users}
+          title="Contacts"
+          viewLabel="All Contacts"
+          search={{ value: search, onChange: setSearch, placeholder: "Search contacts..." }}
+          aiEntityType="contacts"
+          onNew={() => setIsCreateOpen(true)}
+          newLabel="Add Contact"
+        />
 
         <Card className="glass-panel border-0 overflow-hidden">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">

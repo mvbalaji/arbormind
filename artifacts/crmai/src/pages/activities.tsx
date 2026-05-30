@@ -9,7 +9,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
-import { AISummary } from "@/components/ai-summary";
+import { ListPageHeader } from "@/components/list-page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Phone, Mail, Calendar, CheckSquare, FileText, Plus, MoreHorizontal, Pencil, Trash2, List } from "lucide-react";
+import { Phone, Mail, Calendar, CheckSquare, FileText, Plus, MoreHorizontal, Pencil, Trash2, List, Activity, Search } from "lucide-react";
 import { format, startOfWeek, addDays, isSameDay, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
@@ -134,42 +134,41 @@ export default function Activities() {
   const activityColSpan = colVis.visible.size + 1;
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const { data, isLoading } = useListActivities({ limit: 200 });
+  const [search, setSearch] = useState("");
   const allActivities = data?.data ?? [];
-  const activitiesPagination = usePagination("activities", allActivities);
+  const activityQuery = search.trim().toLowerCase();
+  const filteredActivities = activityQuery
+    ? allActivities.filter((a) => Object.values(a).some((v) => typeof v === "string" && v.toLowerCase().includes(activityQuery)))
+    : allActivities;
+  const activitiesPagination = usePagination("activities", filteredActivities);
 
   return (
     <Layout>
       <div className="flex flex-col gap-3">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Activities</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Calls, emails, meetings, and tasks.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center border border-border rounded-lg overflow-hidden">
-              <button
-                onClick={() => setViewMode("list")}
-                className={`px-3 py-1 text-sm flex items-center gap-1.5 transition-colors ${viewMode === "list" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <List className="w-4 h-4" /> List
-              </button>
-              <button
-                onClick={() => setViewMode("calendar")}
-                className={`px-3 py-1 text-sm flex items-center gap-1.5 transition-colors border-l border-border ${viewMode === "calendar" ? "bg-primary/20 text-primary" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <Calendar className="w-4 h-4" /> Calendar
-              </button>
-            </div>
-            <Button
-              onClick={() => setIsCreateOpen(true)}
-              className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+        <ListPageHeader
+          icon={Activity}
+          title="Activities"
+          viewLabel="All Activities"
+          search={{ value: search, onChange: setSearch, placeholder: "Search activities..." }}
+          aiEntityType="activities"
+          onNew={() => setIsCreateOpen(true)}
+          newLabel="Log Activity"
+        >
+          <div className="flex items-center border border-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-2.5 py-1.5 text-xs flex items-center gap-1.5 transition-colors ${viewMode === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
-              <Plus className="w-4 h-4 mr-2" /> Log Activity
-            </Button>
+              <List className="w-3.5 h-3.5" /> List
+            </button>
+            <button
+              onClick={() => setViewMode("calendar")}
+              className={`px-2.5 py-1.5 text-xs flex items-center gap-1.5 transition-colors border-l border-border ${viewMode === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Calendar className="w-3.5 h-3.5" /> Calendar
+            </button>
           </div>
-        </div>
-
-        <AISummary entityType="activities" />
+        </ListPageHeader>
 
         {viewMode === "calendar" && !isLoading && (
           <Card className="glass-panel border-border p-6">
