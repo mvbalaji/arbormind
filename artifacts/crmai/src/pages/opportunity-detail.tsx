@@ -284,11 +284,17 @@ const QUOTE_STATUS_COLORS: Record<string, string> = {
 
 function QuickQuoteDialog({
   open, onOpenChange, opportunityId, opportunityName,
+  accountId, accountName, contactId, contactName, initialItems,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   opportunityId: number;
   opportunityName: string;
+  accountId: number | null;
+  accountName: string | null;
+  contactId: number | null;
+  contactName: string | null;
+  initialItems: OpportunityItem[];
 }) {
   const [name, setName] = useState(opportunityName + " Quote");
   const [status, setStatus] = useState<string>("draft");
@@ -309,9 +315,19 @@ function QuickQuoteDialog({
       setValidUntil("");
       setDiscount("0");
       setTax("0");
-      setItems([]);
+      // Pre-populate line items from the opportunity's products so the rep
+      // starts with the agreed scope instead of an empty quote.
+      setItems(
+        initialItems.map((it) => ({
+          productId: it.productId ?? null,
+          productName: it.productName,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          discount: it.discount ?? 0,
+        })),
+      );
     }
-  }, [open, opportunityName]);
+  }, [open, opportunityName, initialItems]);
 
   const lineTotal = (item: QuickQuoteItem) => item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100);
   const subtotal = items.reduce((sum, it) => sum + lineTotal(it), 0);
@@ -342,6 +358,8 @@ function QuickQuoteDialog({
     const payload: CreateQuoteInput = {
       name,
       opportunityId,
+      accountId: accountId ?? null,
+      contactId: contactId ?? null,
       status: status as CreateQuoteInputStatus,
       validUntil: validUntil || null,
       discount: parseFloat(discount) || 0,
@@ -372,6 +390,28 @@ function QuickQuoteDialog({
               <Input required className="bg-muted border-border"
                 value={name} onChange={e => setName(e.target.value)} />
             </div>
+            {(accountName || contactName) && (
+              <div className="col-span-2 grid grid-cols-2 gap-3">
+                {accountName && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Account</Label>
+                    <div className="flex items-center gap-1.5 h-8 px-3 rounded-md bg-muted/50 border border-border text-sm text-foreground">
+                      <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="truncate">{accountName}</span>
+                    </div>
+                  </div>
+                )}
+                {contactName && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Contact</Label>
+                    <div className="flex items-center gap-1.5 h-8 px-3 rounded-md bg-muted/50 border border-border text-sm text-foreground">
+                      <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="truncate">{contactName}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Status</Label>
               <select className="w-full h-8 px-3 rounded-md bg-muted border border-border text-sm"
@@ -1708,6 +1748,15 @@ export default function OpportunityDetail() {
             onOpenChange={setIsQuoteOpen}
             opportunityId={numericId}
             opportunityName={opp.name}
+            accountId={opp.accountId}
+            accountName={opp.accountName}
+            contactId={opp.contactId}
+            contactName={
+              opp.contactFirstName || opp.contactLastName
+                ? `${opp.contactFirstName ?? ""} ${opp.contactLastName ?? ""}`.trim()
+                : null
+            }
+            initialItems={oppItems}
           />
         </>
       )}
