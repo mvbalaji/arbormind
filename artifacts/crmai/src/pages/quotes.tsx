@@ -579,6 +579,121 @@ function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: C
   );
 }
 
+type ReviseSource = { id: number; name: string; quoteNumber: string; version: number; status: string };
+
+interface ReviseQuoteDialogProps {
+  open: boolean;
+  sourceQuotes: ReviseSource[];
+  onOpenChange: (open: boolean) => void;
+}
+
+function ReviseQuoteDialog({ open, sourceQuotes, onOpenChange }: ReviseQuoteDialogProps) {
+  const [source, setSource] = useState<ReviseSource | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const versionMutation = useCreateQuoteVersion();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [, navigate] = useLocation();
+
+  React.useEffect(() => {
+    if (open) {
+      setSource(null);
+      setPickerOpen(false);
+    }
+  }, [open]);
+
+  const handleRevise = async () => {
+    if (!source) return;
+    try {
+      const newQuote = await versionMutation.mutateAsync({ id: source.id });
+      await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+      toast({ title: "New version created", description: `Version ${newQuote.version} created as a draft. The previous version is now read-only.` });
+      onOpenChange(false);
+      navigate(`/quotes/${newQuote.id}`);
+    } catch {
+      toast({ title: "Error", description: "Could not create a new version.", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 text-primary" />
+            Revise Quote{source ? ` ${source.quoteNumber}` : ""}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="text-sm text-muted-foreground">
+            Pick a quote to revise. A new draft version is created with the same line items, and the previous version becomes read-only.
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Quote to Revise *</Label>
+            <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={pickerOpen}
+                  className="w-full h-9 justify-between bg-muted border-border text-sm font-normal"
+                >
+                  {source ? (
+                    <span className="truncate">
+                      <span className="font-mono text-xs text-muted-foreground mr-1">{source.quoteNumber}</span>
+                      {source.name}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Search className="w-3.5 h-3.5" />
+                      Search for a quote to revise…
+                    </span>
+                  )}
+                  <ChevronsUpDown className="w-3.5 h-3.5 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[var(--radix-popover-trigger-width)]" align="start">
+                <Command>
+                  <CommandInput placeholder="Search by quote number or name…" />
+                  <CommandList>
+                    <CommandEmpty>No revisable quote found.</CommandEmpty>
+                    <CommandGroup>
+                      {sourceQuotes.map((q) => (
+                        <CommandItem
+                          key={q.id}
+                          value={`${q.quoteNumber} ${q.name}`}
+                          onSelect={() => { setSource(q); setPickerOpen(false); }}
+                          className="flex items-center gap-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{q.name}</div>
+                            <div className="text-xs text-muted-foreground font-mono truncate">{q.quoteNumber} · v{q.version} · {q.status}</div>
+                          </div>
+                          <Check className={`w-3.5 h-3.5 ${source?.id === q.id ? "opacity-100" : "opacity-0"}`} />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {sourceQuotes.length === 0 && (
+              <p className="text-xs text-muted-foreground">Only the latest version of a draft or sent quote can be revised — none are currently eligible.</p>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
+          <Button onClick={handleRevise} disabled={!source || versionMutation.isPending} className="gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" />
+            {versionMutation.isPending ? "Revising…" : "Revise Quote"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const QUOTES_COL_KEYS = ["quoteNumber","name","revision","clonedFrom","validUntil","subtotal","total","createdBy","actions"] as const;
 const QUOTES_COL_DEFAULTS: Record<typeof QUOTES_COL_KEYS[number], number> = {quoteNumber:72,name:320,revision:80,clonedFrom:140,validUntil:130,subtotal:110,total:120,createdBy:130,actions:60};
 
@@ -589,6 +704,7 @@ export default function Quotes() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [cloneOpen, setCloneOpen] = useState(false);
   const [cloneInitialSource, setCloneInitialSource] = useState<CloneSource | null>(null);
+  const [reviseOpen, setReviseOpen] = useState(false);
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [searchQuery, setSearchQuery] = useState("");
@@ -638,6 +754,14 @@ export default function Quotes() {
   const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
 
   const allQuotes = data?.data ?? [];
+
+  const reviseEligible = React.useMemo(
+    () =>
+      allQuotes
+        .filter((q) => q.isLatestVersion !== false && (q.status === "draft" || q.status === "sent"))
+        .map((q) => ({ id: q.id, name: q.name, quoteNumber: q.quoteNumber, version: q.version ?? 1, status: q.status })),
+    [allQuotes],
+  );
 
   const filteredQuotes = React.useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -748,6 +872,16 @@ export default function Quotes() {
               <Filter className="w-3.5 h-3.5" />
             </Button>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => setReviseOpen(true)}
+            disabled={reviseEligible.length === 0}
+            className="border-border text-foreground hover:bg-muted h-8 gap-1.5"
+            title={reviseEligible.length === 0 ? "No draft or sent quotes are eligible to revise" : "Create a new draft version of an existing quote"}
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Revise Quote
+          </Button>
           <Button
             variant="outline"
             onClick={() => { setCloneInitialSource(null); setCloneOpen(true); }}
@@ -997,6 +1131,11 @@ export default function Quotes() {
         initialSource={cloneInitialSource}
         sourceQuotes={allQuotes.map((q) => ({ id: q.id, name: q.name, quoteNumber: q.quoteNumber }))}
         onOpenChange={(o) => { setCloneOpen(o); if (!o) setCloneInitialSource(null); }}
+      />
+      <ReviseQuoteDialog
+        open={reviseOpen}
+        sourceQuotes={reviseEligible}
+        onOpenChange={setReviseOpen}
       />
       <AlertDialog open={deletingId !== null} onOpenChange={(o) => { if (!o) setDeletingId(null); }}>
         <AlertDialogContent className="bg-card border-border text-foreground">
