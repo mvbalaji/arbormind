@@ -440,7 +440,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
 
           {/* Page Content — adds bottom padding on mobile to clear the nav bar */}
-          <main className="flex-1 overflow-auto bg-background p-3 sm:p-4 lg:p-6 pb-20 md:pb-4 lg:pb-6">
+          <main className="flex-1 overflow-auto bg-background p-1.5 sm:p-2 lg:p-2.5 pb-20 md:pb-2 lg:pb-2.5">
             <div className="border-2 border-blue-700 dark:border-blue-800 rounded-md bg-card p-3 sm:p-4 lg:p-6 shadow-sm animate-in fade-in duration-300 min-h-full">
               {children}
             </div>
