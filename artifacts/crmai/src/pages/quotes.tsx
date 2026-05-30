@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useColResize } from "@/hooks/use-col-resize";
 import { ColResizeHandle } from "@/components/col-resize-handle";
 import {
-  useListQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, useListProducts,
+  useListQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, useCreateQuoteVersion, useListProducts,
   getListQuotesQueryKey,
   CreateQuoteInputStatus,
   type CreateQuoteInput, type CreateQuoteItemInput,
@@ -28,7 +28,7 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 import { useListAccounts } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { ListPageHeader } from "@/components/list-page-header";
 import { isRecentlyCreated } from "@/lib/utils";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
@@ -597,8 +597,21 @@ export default function Quotes() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const { data, isLoading, refetch, isFetching } = useListQuotes();
   const deleteMutation = useDeleteQuote();
+  const versionMutation = useCreateQuoteVersion();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, navigate] = useLocation();
+
+  const handleRevise = async (id: number) => {
+    try {
+      const newQuote = await versionMutation.mutateAsync({ id });
+      await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+      toast({ title: "New version created", description: `Version ${newQuote.version} created as a draft. The previous version is now read-only.` });
+      navigate(`/quotes/${newQuote.id}`);
+    } catch {
+      toast({ title: "Error", description: "Could not create a new version.", variant: "destructive" });
+    }
+  };
 
   const handleDelete = async () => {
     if (deletingId === null) return;
@@ -916,27 +929,38 @@ export default function Quotes() {
                               <Download className="w-4 h-4 mr-2" /> Download PDF
                             </DropdownMenuItem>
                             <DropdownMenuSeparator className="bg-muted" />
-                            <DropdownMenuItem
-                              onClick={() => setEditingQuote({
-                                id: q.id,
-                                name: q.name,
-                                status: q.status,
-                                validUntil: q.validUntil ?? "",
-                                discount: String(q.discount ?? 0),
-                                tax: String(q.tax ?? 0),
-                                notes: q.notes ?? "",
-                                items: (q.items ?? []).map((it: { productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }) => ({
-                                  productId: it.productId ?? null,
-                                  productName: it.productName,
-                                  quantity: it.quantity,
-                                  unitPrice: it.unitPrice,
-                                  discount: it.discount ?? 0,
-                                })),
-                              })}
-                              className="cursor-pointer hover:bg-muted"
-                            >
-                              <Pencil className="w-4 h-4 mr-2" /> Edit
-                            </DropdownMenuItem>
+                            {q.isLatestVersion !== false && (q.status === "draft" || q.status === "sent") && (
+                              <DropdownMenuItem
+                                onClick={() => setEditingQuote({
+                                  id: q.id,
+                                  name: q.name,
+                                  status: q.status,
+                                  validUntil: q.validUntil ?? "",
+                                  discount: String(q.discount ?? 0),
+                                  tax: String(q.tax ?? 0),
+                                  notes: q.notes ?? "",
+                                  items: (q.items ?? []).map((it: { productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }) => ({
+                                    productId: it.productId ?? null,
+                                    productName: it.productName,
+                                    quantity: it.quantity,
+                                    unitPrice: it.unitPrice,
+                                    discount: it.discount ?? 0,
+                                  })),
+                                })}
+                                className="cursor-pointer hover:bg-muted"
+                              >
+                                <Pencil className="w-4 h-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                            )}
+                            {q.isLatestVersion !== false && (q.status === "draft" || q.status === "sent") && (
+                              <DropdownMenuItem
+                                onClick={() => handleRevise(q.id)}
+                                disabled={versionMutation.isPending}
+                                className="cursor-pointer hover:bg-muted"
+                              >
+                                <RefreshCw className="w-4 h-4 mr-2" /> Revise
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem
                               onClick={() => { setCloneInitialSource({ id: q.id, name: q.name, quoteNumber: q.quoteNumber }); setCloneOpen(true); }}
                               className="cursor-pointer hover:bg-muted"

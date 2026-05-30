@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable, opportunityItemsTable } from "@workspace/db";
-import { eq, sql, inArray, desc, and } from "drizzle-orm";
+import { eq, sql, inArray, desc, and, or } from "drizzle-orm";
 import PDFDocument from "pdfkit";
 import nodemailer from "nodemailer";
 import { Writable } from "stream";
@@ -296,15 +296,32 @@ router.get("/quotes", async (req, res) => {
       : [];
     const sourceById = new Map(sourceRows.map(r => [r.id, r]));
 
+    // Determine the latest version per quote family (root = parentQuoteId ?? id)
+    const rootIds = Array.from(new Set(rawData.map(q => q.parentQuoteId ?? q.id)));
+    const familyRows = rootIds.length > 0
+      ? await db
+          .select({ id: quotesTable.id, parentQuoteId: quotesTable.parentQuoteId, version: quotesTable.version })
+          .from(quotesTable)
+          .where(or(inArray(quotesTable.parentQuoteId, rootIds), inArray(quotesTable.id, rootIds)))
+      : [];
+    const maxVersionByRoot = new Map<number, number>();
+    for (const row of familyRows) {
+      const root = row.parentQuoteId ?? row.id;
+      const current = maxVersionByRoot.get(root) ?? 0;
+      if (row.version > current) maxVersionByRoot.set(root, row.version);
+    }
+
     const quoteWhere = opportunityId ? eq(quotesTable.opportunityId, parseInt(opportunityId)) : undefined;
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(quotesTable).where(quoteWhere);
     res.json({
       data: rawData.map(q => {
         const src = q.clonedFromQuoteId ? sourceById.get(q.clonedFromQuoteId) : null;
+        const root = q.parentQuoteId ?? q.id;
         return {
           ...formatQuote(q, itemsByQuote.get(q.id) ?? []),
           clonedFromQuoteNumber: src?.quoteNumber ?? null,
           clonedFromQuoteName: src?.name ?? null,
+          isLatestVersion: q.version === (maxVersionByRoot.get(root) ?? q.version),
         };
       }),
       total: Number(countResult.count),
