@@ -49,14 +49,6 @@ const QUOTE_TOGGLEABLE_COLS = [
   { key: "createdBy" as const, label: "Created By" },
 ];
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: "border-border text-muted-foreground",
-  sent: "border-blue-500/30 text-blue-600 bg-blue-500/5",
-  accepted: "border-green-500/30 text-green-600 bg-green-500/5",
-  rejected: "border-red-500/30 text-red-600 bg-red-500/5",
-  expired: "border-orange-500/30 text-orange-600 bg-orange-500/5",
-};
-
 interface QuoteItem {
   productId: number | null;
   productName: string;
@@ -998,16 +990,6 @@ export default function Quotes() {
               </tbody>
             </table>
           </div>        </div>
-
-        {/* Status badge legend (subtle) */}
-        {sortedQuotes.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground px-1">
-            <span>Status legend:</span>
-            {Object.entries(STATUS_COLORS).map(([s, cls]) => (
-              <Badge key={s} variant="outline" className={`capitalize text-[10px] py-0 ${cls}`}>{s}</Badge>
-            ))}
-          </div>
-        )}
       </div>
 
       <QuoteFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} mode="create" />
