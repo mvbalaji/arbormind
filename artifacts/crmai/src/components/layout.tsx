@@ -179,7 +179,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <TooltipProvider delayDuration={200}>
       <ImpersonationBanner />
-      <div className="flex h-screen bg-background text-foreground overflow-hidden border-[6px] border-sidebar">
+      <div className="flex h-screen bg-background text-foreground overflow-hidden border-[6px] border-solid [border-image:linear-gradient(to_right,#2563eb,#1d4ed8)_1]">
 
 
         {/* ── Mobile: Full slide-over drawer ── */}
