@@ -827,7 +827,7 @@ export default function Quotes() {
                       className="rounded border-white/40 cursor-pointer"
                     />
                   </th>
-                  {colVis.isVisible("quoteNumber") && <SortableHeader field="quoteNumber" label="Quote Number" resizeKey="quoteNumber" />}
+                  {colVis.isVisible("quoteNumber") && <SortableHeader field="quoteNumber" label="#" resizeKey="quoteNumber" />}
                   {colVis.isVisible("name") && <SortableHeader field="name" label="Quote Name" resizeKey="name" />}
                   {colVis.isVisible("revision") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision<ColResizeHandle onMouseDown={startColResize("revision")} /></th>}
                   {colVis.isVisible("clonedFrom") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From<ColResizeHandle onMouseDown={startColResize("clonedFrom")} /></th>}
