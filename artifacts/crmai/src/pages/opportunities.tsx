@@ -582,7 +582,7 @@ export default function Opportunities() {
                 </colgroup>
                 <thead className="sticky top-0 z-30">
                   <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                    <th className="w-10 px-3 py-1">
+                    <th className="w-8 px-2 py-1">
                       <Checkbox
                         checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
                         onCheckedChange={toggleSelectAll}
@@ -615,7 +615,7 @@ export default function Opportunities() {
 
                       return (
                         <tr key={opp.id} className="hover:bg-muted/30 transition-colors group">
-                          <td className="w-10 px-3 py-1">
+                          <td className="w-8 px-2 py-1">
                             <Checkbox
                               checked={selectedIds.has(opp.id)}
                               onCheckedChange={() => toggleSelect(opp.id)}
