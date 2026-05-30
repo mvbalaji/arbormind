@@ -231,10 +231,10 @@ const OPPORTUNITY_TOGGLEABLE_COLS = [
 ];
 
 const OPPORTUNITIES_COL_KEYS = ["name","account","stage","amount","closeDate","owner","status","actions"] as const;
-const OPPORTUNITIES_COL_DEFAULTS: Record<typeof OPPORTUNITIES_COL_KEYS[number], number> = {"name":150,"account":160,"stage":140,"amount":120,"closeDate":130,"owner":140,"status":120,"actions":100};
+const OPPORTUNITIES_COL_DEFAULTS: Record<typeof OPPORTUNITIES_COL_KEYS[number], number> = {"name":360,"account":160,"stage":140,"amount":120,"closeDate":130,"owner":140,"status":120,"actions":100};
 
 export default function Opportunities() {
-  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:opportunities:v2", OPPORTUNITIES_COL_KEYS, OPPORTUNITIES_COL_DEFAULTS);
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:opportunities:v3", OPPORTUNITIES_COL_KEYS, OPPORTUNITIES_COL_DEFAULTS);
   const { data, isLoading } = useListOpportunities({ limit: 200 });
   const updateMutation = useUpdateOpportunity();
   const deleteMutation = useDeleteOpportunity();
@@ -626,7 +626,11 @@ export default function Opportunities() {
                           {colVis.isVisible("name") && (
                             <td className="px-3 py-1">
                               <Link href={`/opportunities/${opp.id}`}>
-                                <span className="font-medium text-foreground hover:text-primary hover:underline transition-colors cursor-pointer">
+                                <span
+                                  className="font-medium text-foreground hover:text-primary hover:underline transition-colors cursor-pointer block truncate"
+                                  style={{ maxWidth: `${colWidths.name}px` }}
+                                  title={opp.name}
+                                >
                                   {opp.name}
                                 </span>
                               </Link>
