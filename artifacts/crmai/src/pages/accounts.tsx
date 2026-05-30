@@ -204,6 +204,7 @@ export default function Accounts() {
             <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5">
               <Upload className="w-3.5 h-3.5" /> Import
             </Button>
+            <AISummary entityType="accounts" compact />
             <Button
               size="sm"
               className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
@@ -213,8 +214,6 @@ export default function Accounts() {
             </Button>
           </div>
         </div>
-
-        <AISummary entityType="accounts" />
 
         {/* Toolbar */}
         <div className="flex items-center gap-2 mb-2">

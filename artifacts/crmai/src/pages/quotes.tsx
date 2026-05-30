@@ -781,10 +781,9 @@ export default function Quotes() {
               <Copy className="w-3.5 h-3.5" />
               Clone Quote
             </Button>
+            <AISummary entityType="quotes" compact />
           </div>
         </div>
-
-        <AISummary entityType="quotes" />
 
         {/* Table */}
         <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">

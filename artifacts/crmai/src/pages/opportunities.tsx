@@ -534,6 +534,8 @@ export default function Opportunities() {
               </button>
             </div>
 
+            <AISummary entityType="opportunities" compact />
+
             <Button
               size="sm"
               onClick={() => setIsCreateOpen(true)}
@@ -543,8 +545,6 @@ export default function Opportunities() {
             </Button>
           </div>
         </div>
-
-        <AISummary entityType="opportunities" />
 
         {isLoading ? (
           <div className="flex gap-4 h-64">

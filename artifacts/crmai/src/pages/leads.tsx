@@ -479,6 +479,7 @@ export default function Leads() {
                 </>
               );
             })()}
+            <AISummary entityType="leads" compact />
             <Button
               size="sm"
               className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
@@ -488,8 +489,6 @@ export default function Leads() {
             </Button>
           </div>
         </div>
-
-        <AISummary entityType="leads" />
 
         {/* Table */}
         <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
