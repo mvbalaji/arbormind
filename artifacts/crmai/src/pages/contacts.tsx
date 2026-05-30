@@ -116,10 +116,10 @@ export default function Contacts() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <colgroup>
-                <col data-col="name" style={{ width: `${colWidths.name}px` }} />
-                <col data-col="contactInfo" style={{ width: `${colWidths.contactInfo}px` }} />
-                <col data-col="account" style={{ width: `${colWidths.account}px` }} />
-                <col data-col="owner" style={{ width: `${colWidths.owner}px` }} />
+                {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}
+                {colVis.isVisible("contactInfo") && <col data-col="contactInfo" style={{ width: `${colWidths.contactInfo}px` }} />}
+                {colVis.isVisible("account") && <col data-col="account" style={{ width: `${colWidths.account}px` }} />}
+                {colVis.isVisible("owner") && <col data-col="owner" style={{ width: `${colWidths.owner}px` }} />}
                 <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
               </colgroup>
               <thead className="sticky top-0 z-10">

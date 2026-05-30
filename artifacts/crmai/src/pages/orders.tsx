@@ -603,13 +603,13 @@ export default function Orders() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
                 <colgroup>
-                  <col data-col="orderNumber" style={{ width: `${colWidths.orderNumber}px` }} />
-                  <col data-col="account" style={{ width: `${colWidths.account}px` }} />
-                  <col data-col="opportunity" style={{ width: `${colWidths.opportunity}px` }} />
-                  <col data-col="quote" style={{ width: `${colWidths.quote}px` }} />
-                  <col data-col="total" style={{ width: `${colWidths.total}px` }} />
-                  <col data-col="status" style={{ width: `${colWidths.status}px` }} />
-                  <col data-col="date" style={{ width: `${colWidths.date}px` }} />
+                  {colVis.isVisible("orderNumber") && <col data-col="orderNumber" style={{ width: `${colWidths.orderNumber}px` }} />}
+                  {colVis.isVisible("account") && <col data-col="account" style={{ width: `${colWidths.account}px` }} />}
+                  {colVis.isVisible("opportunity") && <col data-col="opportunity" style={{ width: `${colWidths.opportunity}px` }} />}
+                  {colVis.isVisible("quote") && <col data-col="quote" style={{ width: `${colWidths.quote}px` }} />}
+                  {colVis.isVisible("total") && <col data-col="total" style={{ width: `${colWidths.total}px` }} />}
+                  {colVis.isVisible("status") && <col data-col="status" style={{ width: `${colWidths.status}px` }} />}
+                  {colVis.isVisible("date") && <col data-col="date" style={{ width: `${colWidths.date}px` }} />}
                   <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
                 </colgroup>
                 <thead className="sticky top-0 z-10">

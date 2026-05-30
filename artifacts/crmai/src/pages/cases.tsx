@@ -111,11 +111,11 @@ export default function Cases() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <colgroup>
-                <col data-col="caseNumber" style={{ width: `${colWidths.caseNumber}px` }} />
-                <col data-col="subject" style={{ width: `${colWidths.subject}px` }} />
-                <col data-col="priority" style={{ width: `${colWidths.priority}px` }} />
-                <col data-col="status" style={{ width: `${colWidths.status}px` }} />
-                <col data-col="opened" style={{ width: `${colWidths.opened}px` }} />
+                {colVis.isVisible("caseNumber") && <col data-col="caseNumber" style={{ width: `${colWidths.caseNumber}px` }} />}
+                {colVis.isVisible("subject") && <col data-col="subject" style={{ width: `${colWidths.subject}px` }} />}
+                {colVis.isVisible("priority") && <col data-col="priority" style={{ width: `${colWidths.priority}px` }} />}
+                {colVis.isVisible("status") && <col data-col="status" style={{ width: `${colWidths.status}px` }} />}
+                {colVis.isVisible("opened") && <col data-col="opened" style={{ width: `${colWidths.opened}px` }} />}
                 <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
               </colgroup>
               <thead className="sticky top-0 z-10">

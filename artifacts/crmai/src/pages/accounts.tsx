@@ -239,14 +239,14 @@ export default function Accounts() {
           <div className="overflow-auto max-h-[calc(100vh-260px)]">
             <table className="w-full text-sm min-w-[900px]">
               <colgroup>
-                <col data-col="name" style={{ width: `${colWidths.name}px` }} />
-                <col data-col="location" style={{ width: `${colWidths.location}px` }} />
-                <col data-col="phone" style={{ width: `${colWidths.phone}px` }} />
-                <col data-col="industry" style={{ width: `${colWidths.industry}px` }} />
-                <col data-col="email" style={{ width: `${colWidths.email}px` }} />
-                <col data-col="owner" style={{ width: `${colWidths.owner}px` }} />
-                <col data-col="contacts" style={{ width: `${colWidths.contacts}px` }} />
-                <col data-col="deals" style={{ width: `${colWidths.deals}px` }} />
+                {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}
+                {colVis.isVisible("location") && <col data-col="location" style={{ width: `${colWidths.location}px` }} />}
+                {colVis.isVisible("phone") && <col data-col="phone" style={{ width: `${colWidths.phone}px` }} />}
+                {colVis.isVisible("industry") && <col data-col="industry" style={{ width: `${colWidths.industry}px` }} />}
+                {colVis.isVisible("email") && <col data-col="email" style={{ width: `${colWidths.email}px` }} />}
+                {colVis.isVisible("owner") && <col data-col="owner" style={{ width: `${colWidths.owner}px` }} />}
+                {colVis.isVisible("contacts") && <col data-col="contacts" style={{ width: `${colWidths.contacts}px` }} />}
+                {colVis.isVisible("deals") && <col data-col="deals" style={{ width: `${colWidths.deals}px` }} />}
                 <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
               </colgroup>
               <thead className="sticky top-0 z-10">

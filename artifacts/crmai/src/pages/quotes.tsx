@@ -806,15 +806,14 @@ export default function Quotes() {
             <table className="w-full text-sm text-left" style={{ tableLayout: "fixed" }}>
               <colgroup>
                   <col style={{ width: "40px" }} />
-                  <col style={{ width: "40px" }} />
-                  <col data-col="quoteNumber" style={{ width: `${colWidths.quoteNumber}px` }} />
-                  <col data-col="name" style={{ width: `${colWidths.name}px` }} />
-                  <col data-col="revision" style={{ width: `${colWidths.revision}px` }} />
-                  <col data-col="clonedFrom" style={{ width: `${colWidths.clonedFrom}px` }} />
-                  <col data-col="validUntil" style={{ width: `${colWidths.validUntil}px` }} />
-                  <col data-col="subtotal" style={{ width: `${colWidths.subtotal}px` }} />
-                  <col data-col="total" style={{ width: `${colWidths.total}px` }} />
-                  <col data-col="createdBy" style={{ width: `${colWidths.createdBy}px` }} />
+                  {colVis.isVisible("quoteNumber") && <col data-col="quoteNumber" style={{ width: `${colWidths.quoteNumber}px` }} />}
+                  {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}
+                  {colVis.isVisible("revision") && <col data-col="revision" style={{ width: `${colWidths.revision}px` }} />}
+                  {colVis.isVisible("clonedFrom") && <col data-col="clonedFrom" style={{ width: `${colWidths.clonedFrom}px` }} />}
+                  {colVis.isVisible("validUntil") && <col data-col="validUntil" style={{ width: `${colWidths.validUntil}px` }} />}
+                  {colVis.isVisible("subtotal") && <col data-col="subtotal" style={{ width: `${colWidths.subtotal}px` }} />}
+                  {colVis.isVisible("total") && <col data-col="total" style={{ width: `${colWidths.total}px` }} />}
+                  {colVis.isVisible("createdBy") && <col data-col="createdBy" style={{ width: `${colWidths.createdBy}px` }} />}
                   <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
                 </colgroup>
               <thead className="text-xs sticky top-0 z-10">

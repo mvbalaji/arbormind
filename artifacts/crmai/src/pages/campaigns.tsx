@@ -249,11 +249,11 @@ export default function Campaigns() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <colgroup>
-                  <col data-col="campaign" style={{ width: `${colWidths.campaign}px` }} />
-                  <col data-col="type" style={{ width: `${colWidths.type}px` }} />
-                  <col data-col="status" style={{ width: `${colWidths.status}px` }} />
-                  <col data-col="dates" style={{ width: `${colWidths.dates}px` }} />
-                  <col data-col="budget" style={{ width: `${colWidths.budget}px` }} />
+                  {colVis.isVisible("campaign") && <col data-col="campaign" style={{ width: `${colWidths.campaign}px` }} />}
+                  {colVis.isVisible("type") && <col data-col="type" style={{ width: `${colWidths.type}px` }} />}
+                  {colVis.isVisible("status") && <col data-col="status" style={{ width: `${colWidths.status}px` }} />}
+                  {colVis.isVisible("dates") && <col data-col="dates" style={{ width: `${colWidths.dates}px` }} />}
+                  {colVis.isVisible("budget") && <col data-col="budget" style={{ width: `${colWidths.budget}px` }} />}
                   <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
                 </colgroup>
               <thead className="sticky top-0 z-10">

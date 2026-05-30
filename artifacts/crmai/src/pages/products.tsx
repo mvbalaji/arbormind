@@ -230,11 +230,10 @@ export default function Products() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <colgroup>
-                <col data-col="name" style={{ width: `${colWidths.name}px` }} />
-                <col data-col="category" style={{ width: `${colWidths.category}px` }} />
-                <col data-col="price" style={{ width: `${colWidths.price}px` }} />
-                <col data-col="stock" style={{ width: `${colWidths.stock}px` }} />
-                <col data-col="status" style={{ width: `${colWidths.status}px` }} />
+                {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}
+                {colVis.isVisible("category") && <col data-col="category" style={{ width: `${colWidths.category}px` }} />}
+                {colVis.isVisible("price") && <col data-col="price" style={{ width: `${colWidths.price}px` }} />}
+                {colVis.isVisible("status") && <col data-col="status" style={{ width: `${colWidths.status}px` }} />}
                 <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
               </colgroup>
               <thead className="sticky top-0 z-10">

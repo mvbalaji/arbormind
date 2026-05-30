@@ -571,13 +571,14 @@ export default function Opportunities() {
             <div className="overflow-auto max-h-[calc(100vh-260px)]">
               <table className="w-full text-sm bg-card">
                 <colgroup>
-                  <col data-col="name" style={{ width: `${colWidths.name}px` }} />
-                  <col data-col="account" style={{ width: `${colWidths.account}px` }} />
-                  <col data-col="stage" style={{ width: `${colWidths.stage}px` }} />
-                  <col data-col="amount" style={{ width: `${colWidths.amount}px` }} />
-                  <col data-col="closeDate" style={{ width: `${colWidths.closeDate}px` }} />
-                  <col data-col="owner" style={{ width: `${colWidths.owner}px` }} />
-                  <col data-col="status" style={{ width: `${colWidths.status}px` }} />
+                  <col style={{ width: "32px" }} />
+                  {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}
+                  {colVis.isVisible("account") && <col data-col="account" style={{ width: `${colWidths.account}px` }} />}
+                  {colVis.isVisible("stage") && <col data-col="stage" style={{ width: `${colWidths.stage}px` }} />}
+                  {colVis.isVisible("amount") && <col data-col="amount" style={{ width: `${colWidths.amount}px` }} />}
+                  {colVis.isVisible("closeDate") && <col data-col="closeDate" style={{ width: `${colWidths.closeDate}px` }} />}
+                  {colVis.isVisible("owner") && <col data-col="owner" style={{ width: `${colWidths.owner}px` }} />}
+                  {colVis.isVisible("status") && <col data-col="status" style={{ width: `${colWidths.status}px` }} />}
                   <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
                 </colgroup>
                 <thead className="sticky top-0 z-30">

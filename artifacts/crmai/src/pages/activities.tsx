@@ -203,11 +203,11 @@ export default function Activities() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <colgroup>
-                <col data-col="icon" style={{ width: `${colWidths.icon}px` }} />
-                <col data-col="subject" style={{ width: `${colWidths.subject}px` }} />
-                <col data-col="related" style={{ width: `${colWidths.related}px` }} />
-                <col data-col="date" style={{ width: `${colWidths.date}px` }} />
-                <col data-col="status" style={{ width: `${colWidths.status}px` }} />
+                {colVis.isVisible("icon") && <col data-col="icon" style={{ width: `${colWidths.icon}px` }} />}
+                {colVis.isVisible("subject") && <col data-col="subject" style={{ width: `${colWidths.subject}px` }} />}
+                {colVis.isVisible("related") && <col data-col="related" style={{ width: `${colWidths.related}px` }} />}
+                {colVis.isVisible("date") && <col data-col="date" style={{ width: `${colWidths.date}px` }} />}
+                {colVis.isVisible("status") && <col data-col="status" style={{ width: `${colWidths.status}px` }} />}
                 <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
               </colgroup>
               <thead className="sticky top-0 z-10">
