@@ -596,7 +596,7 @@ export default function Quotes() {
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [searchQuery, setSearchQuery] = useState("");
   const colVis = useColumnVisibility<QuoteColKey>("col-visibility:quotes:v1", QUOTE_TOGGLEABLE_COLS);
-  const quoteColSpan = colVis.visible.size + 3;
+  const quoteColSpan = colVis.visible.size + 2;
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
   const { data, isLoading, refetch, isFetching } = useListQuotes();
@@ -828,7 +828,6 @@ export default function Quotes() {
                       className="rounded border-white/40 cursor-pointer"
                     />
                   </th>
-                  <th className="w-10 px-2 py-1 text-white/80 font-semibold uppercase tracking-wide text-center border-r border-blue-500/40">#</th>
                   {colVis.isVisible("quoteNumber") && <SortableHeader field="quoteNumber" label="Quote Number" resizeKey="quoteNumber" />}
                   {colVis.isVisible("name") && <SortableHeader field="name" label="Quote Name" resizeKey="name" />}
                   {colVis.isVisible("revision") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision<ColResizeHandle onMouseDown={startColResize("revision")} /></th>}
@@ -868,7 +867,6 @@ export default function Quotes() {
                           className="rounded border-border cursor-pointer"
                         />
                       </td>
-                      <td className="px-2 py-1 text-center text-muted-foreground border-r border-border">{idx + 1}</td>
                       {colVis.isVisible("quoteNumber") && (
                         <td className="px-3 py-1 border-r border-border">
                           <Link href={`/quotes/${q.id}`} className="text-primary hover:underline font-mono text-sm">
