@@ -30,7 +30,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { EmailCompose } from "@/components/email-compose";
-import { cn } from "@/lib/utils";
+import { cn, isRecentlyCreated } from "@/lib/utils";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/table-pagination";
 
@@ -56,10 +56,10 @@ const SCORE_COLORS = (score: number) =>
   "bg-red-100 text-red-700 border-red-200";
 
 const VIEW_OPTIONS = [
-  { label: "All Open Leads", value: "" },
-  { label: "My Leads", value: "my" },
-  { label: "Recently Viewed", value: "recent" },
+  { label: "All Open Leads", value: "", pinned: true },
+  { label: "My Leads", value: "my", pinned: true },
   { label: "Converted Leads", value: "converted" },
+  { label: "Recently Created", value: "recent" },
 ];
 
 interface LeadFormData {
@@ -264,7 +264,7 @@ export default function Leads() {
     if (statusFilter && lead.status !== statusFilter) return false;
     if (activeView.value === "converted") return lead.isConverted;
     if (activeView.value === "my") return lead.assignedTo === user?.id;
-    if (activeView.value === "recent") return true;
+    if (activeView.value === "recent") return isRecentlyCreated(lead.createdAt);
     return !lead.isConverted;
   });
 

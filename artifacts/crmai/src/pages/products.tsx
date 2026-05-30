@@ -9,6 +9,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { ListPageHeader } from "@/components/list-page-header";
+import { isRecentlyCreated } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -161,15 +162,27 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
 const PRODUCTS_COL_KEYS = ["name","category","price","stock","status","actions"] as const;
 const PRODUCTS_COL_DEFAULTS: Record<typeof PRODUCTS_COL_KEYS[number], number> = {"name":240,"category":140,"price":120,"stock":100,"status":120,"actions":120};
 
+const VIEW_OPTIONS = [
+  { label: "All Products", value: "all", pinned: true },
+  { label: "Active Products", value: "active", pinned: true },
+  { label: "Recently Created", value: "recent" },
+];
+
 export default function Products() {
   const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:products:v1", PRODUCTS_COL_KEYS, PRODUCTS_COL_DEFAULTS);
   const [search, setSearch] = useState("");
+  const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<({ id: number } & ProductFormData) | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListProducts({ search: search || undefined });
   const allProducts = data?.data ?? [];
-  const productsPagination = usePagination("products", allProducts);
+  const products = allProducts.filter((p) => {
+    if (activeView.value === "active") return p.isActive;
+    if (activeView.value === "recent") return isRecentlyCreated(p.createdAt);
+    return true;
+  });
+  const productsPagination = usePagination("products", products);
   const colVis = useColumnVisibility<ProductColKey>("col-visibility:products:v1", PRODUCT_TOGGLEABLE_COLS);
   const productColSpan = colVis.visible.size + 1;
   const deleteMutation = useDeleteProduct();
@@ -196,6 +209,9 @@ export default function Products() {
           icon={Package}
           title="Products"
           viewLabel="All Products"
+          viewOptions={VIEW_OPTIONS}
+          activeView={activeView.value}
+          onViewChange={(val) => { const v = VIEW_OPTIONS.find((o) => o.value === val); if (v) setActiveView(v); }}
           search={{ value: search, onChange: setSearch, placeholder: "Search products..." }}
           aiEntityType="products"
           onNew={() => setIsCreateOpen(true)}
@@ -238,7 +254,7 @@ export default function Products() {
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={productColSpan} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
-                ) : data?.data?.length === 0 ? (
+                ) : products.length === 0 ? (
                   <tr><td colSpan={productColSpan} className="px-6 py-12 text-center text-muted-foreground">
                     <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No products found. Add your first product to start quoting.

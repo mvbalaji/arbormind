@@ -9,6 +9,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { ListPageHeader } from "@/components/list-page-header";
+import { useAuth } from "@/context/auth";
+import { isRecentlyCreated } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,18 +69,29 @@ const defaultFormData: CaseFormData = {
 const CASES_COL_KEYS = ["caseNumber","subject","priority","status","opened","actions"] as const;
 const CASES_COL_DEFAULTS: Record<typeof CASES_COL_KEYS[number], number> = {"caseNumber":110,"subject":280,"priority":110,"status":110,"opened":130,"actions":120};
 
+const VIEW_OPTIONS = [
+  { label: "All Cases", value: "all", pinned: true },
+  { label: "My Cases", value: "my", pinned: true },
+  { label: "Recently Created", value: "recent" },
+];
+
 export default function Cases() {
   const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:cases:v1", CASES_COL_KEYS, CASES_COL_DEFAULTS);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCase, setEditingCase] = useState<{ id: number } & CaseFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { user } = useAuth();
   const { data, isLoading } = useListCases({ limit: 50 });
   const [search, setSearch] = useState("");
+  const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const allCases = data?.data ?? [];
   const caseQuery = search.trim().toLowerCase();
-  const filteredCases = caseQuery
-    ? allCases.filter((c) => Object.values(c).some((v) => typeof v === "string" && v.toLowerCase().includes(caseQuery)))
-    : allCases;
+  const filteredCases = allCases.filter((c) => {
+    if (activeView.value === "my" && c.assignedTo !== user?.id) return false;
+    if (activeView.value === "recent" && !isRecentlyCreated(c.createdAt)) return false;
+    if (caseQuery) return Object.values(c).some((v) => typeof v === "string" && v.toLowerCase().includes(caseQuery));
+    return true;
+  });
   const casesPagination = usePagination("cases", filteredCases);
   const colVis = useColumnVisibility<"caseNumber" | "subject" | "priority" | "status" | "opened">("col-visibility:cases:v1", CASE_TOGGLEABLE_COLS);
   const caseColSpan = colVis.visible.size + 1;
@@ -90,6 +103,9 @@ export default function Cases() {
           icon={LifeBuoy}
           title="Support Cases"
           viewLabel="All Cases"
+          viewOptions={VIEW_OPTIONS}
+          activeView={activeView.value}
+          onViewChange={(val) => { const v = VIEW_OPTIONS.find((o) => o.value === val); if (v) setActiveView(v); }}
           search={{ value: search, onChange: setSearch, placeholder: "Search cases..." }}
           aiEntityType="cases"
           onNew={() => setIsCreateOpen(true)}
@@ -134,7 +150,7 @@ export default function Cases() {
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={caseColSpan} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
-                ) : data?.data?.length === 0 ? (
+                ) : filteredCases.length === 0 ? (
                   <tr><td colSpan={caseColSpan} className="px-6 py-8 text-center text-muted-foreground">No cases found.</td></tr>
                 ) : (
                   casesPagination.paged.map((c) => (

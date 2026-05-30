@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth";
 import { Layout } from "@/components/layout";
 import { ListPageHeader } from "@/components/list-page-header";
+import { isRecentlyCreated } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,8 +81,8 @@ const INDUSTRY_OPTIONS = [
 ];
 
 const VIEW_OPTIONS = [
-  { label: "All Accounts", value: "all" },
-  { label: "My Accounts", value: "my" },
+  { label: "All Accounts", value: "all", pinned: true },
+  { label: "My Accounts", value: "my", pinned: true },
   { label: "Recently Created", value: "recent" },
 ];
 
@@ -106,6 +107,7 @@ export default function Accounts() {
   const filteredAccounts = allAccounts.filter((acc) => {
     if (industryFilter && acc.industry !== industryFilter) return false;
     if (activeView.value === "my") return acc.ownerId === user?.id;
+    if (activeView.value === "recent") return isRecentlyCreated(acc.createdAt);
     return true;
   });
 

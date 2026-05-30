@@ -36,6 +36,7 @@ import { ColumnsMenu } from "@/components/columns-menu";
 import { usePagination } from "@/hooks/use-pagination";
 import { ListPageHeader } from "@/components/list-page-header";
 import { TablePagination } from "@/components/table-pagination";
+import { isRecentlyCreated } from "@/lib/utils";
 
 type OrderColKey = "orderNumber" | "account" | "opportunity" | "quote" | "total" | "status" | "date";
 const ORDER_TOGGLEABLE_COLS = [
@@ -512,6 +513,11 @@ function EditOrderDialog({ open, onOpenChange, order }: { open: boolean; onOpenC
 const ORDERS_COL_KEYS = ["orderNumber","account","opportunity","quote","total","status","date","actions"] as const;
 const ORDERS_COL_DEFAULTS: Record<typeof ORDERS_COL_KEYS[number], number> = {orderNumber:140,account:200,opportunity:160,quote:140,total:120,status:120,date:120,actions:120};
 
+const VIEW_OPTIONS = [
+  { label: "All Orders", value: "all", pinned: true },
+  { label: "Recently Created", value: "recent" },
+];
+
 export default function Orders() {
   const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:orders:v1", ORDERS_COL_KEYS, ORDERS_COL_DEFAULTS);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -520,11 +526,14 @@ export default function Orders() {
   const [editingOrder, setEditingOrder] = useState<EditOrderData | null>(null);
   const { data, isLoading } = useListOrders();
   const [search, setSearch] = useState("");
+  const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const allOrders = data?.data ?? [];
   const orderQuery = search.trim().toLowerCase();
-  const filteredOrders = orderQuery
-    ? allOrders.filter((o) => Object.values(o).some((v) => typeof v === "string" && v.toLowerCase().includes(orderQuery)))
-    : allOrders;
+  const filteredOrders = allOrders.filter((o) => {
+    if (activeView.value === "recent" && !isRecentlyCreated(o.createdAt)) return false;
+    if (orderQuery) return Object.values(o).some((v) => typeof v === "string" && v.toLowerCase().includes(orderQuery));
+    return true;
+  });
   const ordersPagination = usePagination("orders", filteredOrders);
   const colVis = useColumnVisibility<OrderColKey>("col-visibility:orders:v1", ORDER_TOGGLEABLE_COLS);
   const orderColSpan = colVis.visible.size + 1;
@@ -585,6 +594,9 @@ export default function Orders() {
           icon={ShoppingCart}
           title="Orders"
           viewLabel="All Orders"
+          viewOptions={VIEW_OPTIONS}
+          activeView={activeView.value}
+          onViewChange={(val) => { const v = VIEW_OPTIONS.find((o) => o.value === val); if (v) setActiveView(v); }}
           search={{ value: search, onChange: setSearch, placeholder: "Search orders..." }}
           aiEntityType="orders"
           onNew={() => setIsCreateOpen(true)}
@@ -633,7 +645,7 @@ export default function Orders() {
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={orderColSpan} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
-                ) : data?.data?.length === 0 ? (
+                ) : filteredOrders.length === 0 ? (
                   <tr><td colSpan={orderColSpan} className="px-6 py-12 text-center text-muted-foreground">
                     <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No orders yet. Create an order or convert an accepted quote.

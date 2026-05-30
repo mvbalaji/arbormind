@@ -12,6 +12,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { ListPageHeader } from "@/components/list-page-header";
+import { useAuth } from "@/context/auth";
+import { isRecentlyCreated } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -56,15 +58,28 @@ const defaultFormData: ContactFormData = {
 const CONTACTS_COL_KEYS = ["name","contactInfo","account","owner","actions"] as const;
 const CONTACTS_COL_DEFAULTS: Record<typeof CONTACTS_COL_KEYS[number], number> = {"name":180,"contactInfo":240,"account":200,"owner":140,"actions":120};
 
+const VIEW_OPTIONS = [
+  { label: "All Contacts", value: "all", pinned: true },
+  { label: "My Contacts", value: "my", pinned: true },
+  { label: "Recently Created", value: "recent" },
+];
+
 export default function Contacts() {
   const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:contacts:v1", CONTACTS_COL_KEYS, CONTACTS_COL_DEFAULTS);
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
+  const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<{ id: number } & ContactFormData | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const { data, isLoading } = useListContacts({ search, limit: 50 });
   const allContacts = data?.data ?? [];
-  const contactsPagination = usePagination("contacts", allContacts);
+  const contacts = allContacts.filter((c) => {
+    if (activeView.value === "my") return c.ownerId === user?.id;
+    if (activeView.value === "recent") return isRecentlyCreated(c.createdAt);
+    return true;
+  });
+  const contactsPagination = usePagination("contacts", contacts);
   const colVis = useColumnVisibility<"name" | "contactInfo" | "account" | "owner">("col-visibility:contacts:v1", CONTACT_TOGGLEABLE_COLS);
   const contactColSpan = colVis.visible.size + 1;
 
@@ -75,6 +90,9 @@ export default function Contacts() {
           icon={Users}
           title="Contacts"
           viewLabel="All Contacts"
+          viewOptions={VIEW_OPTIONS}
+          activeView={activeView.value}
+          onViewChange={(val) => { const v = VIEW_OPTIONS.find((o) => o.value === val); if (v) setActiveView(v); }}
           search={{ value: search, onChange: setSearch, placeholder: "Search contacts..." }}
           aiEntityType="contacts"
           onNew={() => setIsCreateOpen(true)}
@@ -123,7 +141,7 @@ export default function Contacts() {
                       </td>
                     </tr>
                   ))
-                ) : data?.data?.length === 0 ? (
+                ) : contacts.length === 0 ? (
                   <tr>
                     <td colSpan={contactColSpan} className="px-6 py-12 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center">

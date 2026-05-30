@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useListUsers } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { ListPageHeader } from "@/components/list-page-header";
+import { isRecentlyCreated } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -120,9 +121,16 @@ async function deleteCampaign(id: number) {
 const CAMPAIGNS_COL_KEYS = ["campaign","type","status","dates","budget","actions"] as const;
 const CAMPAIGNS_COL_DEFAULTS: Record<typeof CAMPAIGNS_COL_KEYS[number], number> = {campaign:220,type:130,status:130,dates:180,budget:160,actions:120};
 
+const VIEW_OPTIONS = [
+  { label: "All Campaigns", value: "all", pinned: true },
+  { label: "Active Campaigns", value: "active", pinned: true },
+  { label: "Recently Created", value: "recent" },
+];
+
 export default function Campaigns() {
   const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:campaigns:v1", CAMPAIGNS_COL_KEYS, CAMPAIGNS_COL_DEFAULTS);
   const [search, setSearch] = useState("");
+  const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -166,7 +174,12 @@ export default function Campaigns() {
     onError: () => toast({ title: "Error", description: "Failed to delete campaign.", variant: "destructive" }),
   });
 
-  const campaigns: Campaign[] = data?.data ?? [];
+  const allCampaigns: Campaign[] = data?.data ?? [];
+  const campaigns = allCampaigns.filter((c) => {
+    if (activeView.value === "active") return c.status === "active";
+    if (activeView.value === "recent") return isRecentlyCreated(c.createdAt);
+    return true;
+  });
   const campaignsPagination = usePagination("campaigns", campaigns);
 
   return (
@@ -176,6 +189,9 @@ export default function Campaigns() {
           icon={Megaphone}
           title="Campaigns"
           viewLabel="All Campaigns"
+          viewOptions={VIEW_OPTIONS}
+          activeView={activeView.value}
+          onViewChange={(val) => { const v = VIEW_OPTIONS.find((o) => o.value === val); if (v) setActiveView(v); }}
           search={{ value: search, onChange: setSearch, placeholder: "Search campaigns..." }}
           aiEntityType="campaigns"
           onNew={() => setIsCreateOpen(true)}

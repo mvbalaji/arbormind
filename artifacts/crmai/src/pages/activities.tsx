@@ -10,6 +10,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { ListPageHeader } from "@/components/list-page-header";
+import { useAuth } from "@/context/auth";
+import { isRecentlyCreated } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,6 +126,12 @@ function WeekCalendar({ activities }: { activities: Array<{ id: number; type: st
 const ACTIVITIES_COL_KEYS = ["icon","subject","related","date","status","actions"] as const;
 const ACTIVITIES_COL_DEFAULTS: Record<typeof ACTIVITIES_COL_KEYS[number], number> = {"icon":48,"subject":280,"related":200,"date":130,"status":120,"actions":120};
 
+const VIEW_OPTIONS = [
+  { label: "All Activities", value: "all", pinned: true },
+  { label: "My Activities", value: "my", pinned: true },
+  { label: "Recently Created", value: "recent" },
+];
+
 export default function Activities() {
   const [, navigate] = useLocation();
   const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:activities:v1", ACTIVITIES_COL_KEYS, ACTIVITIES_COL_DEFAULTS);
@@ -132,14 +140,19 @@ export default function Activities() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const colVis = useColumnVisibility<"icon" | "subject" | "related" | "date" | "status">("col-visibility:activities:v1", ACTIVITY_TOGGLEABLE_COLS);
   const activityColSpan = colVis.visible.size + 1;
+  const { user } = useAuth();
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const { data, isLoading } = useListActivities({ limit: 200 });
   const [search, setSearch] = useState("");
+  const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const allActivities = data?.data ?? [];
   const activityQuery = search.trim().toLowerCase();
-  const filteredActivities = activityQuery
-    ? allActivities.filter((a) => Object.values(a).some((v) => typeof v === "string" && v.toLowerCase().includes(activityQuery)))
-    : allActivities;
+  const filteredActivities = allActivities.filter((a) => {
+    if (activeView.value === "my" && a.assignedTo !== user?.id) return false;
+    if (activeView.value === "recent" && !isRecentlyCreated(a.createdAt)) return false;
+    if (activityQuery) return Object.values(a).some((v) => typeof v === "string" && v.toLowerCase().includes(activityQuery));
+    return true;
+  });
   const activitiesPagination = usePagination("activities", filteredActivities);
 
   return (
@@ -149,6 +162,9 @@ export default function Activities() {
           icon={Activity}
           title="Activities"
           viewLabel="All Activities"
+          viewOptions={VIEW_OPTIONS}
+          activeView={activeView.value}
+          onViewChange={(val) => { const v = VIEW_OPTIONS.find((o) => o.value === val); if (v) setActiveView(v); }}
           search={{ value: search, onChange: setSearch, placeholder: "Search activities..." }}
           aiEntityType="activities"
           onNew={() => setIsCreateOpen(true)}
@@ -172,7 +188,7 @@ export default function Activities() {
 
         {viewMode === "calendar" && !isLoading && (
           <Card className="glass-panel border-border p-6">
-            <WeekCalendar activities={(data?.data ?? []).map((a) => ({
+            <WeekCalendar activities={filteredActivities.map((a) => ({
               id: a.id,
               type: a.type,
               subject: a.subject,
@@ -222,7 +238,7 @@ export default function Activities() {
               <tbody className="divide-y divide-border">
                 {isLoading ? (
                   <tr><td colSpan={activityColSpan} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
-                ) : data?.data?.length === 0 ? (
+                ) : filteredActivities.length === 0 ? (
                   <tr><td colSpan={activityColSpan} className="px-6 py-8 text-center text-muted-foreground">No activities found.</td></tr>
                 ) : (
                   activitiesPagination.paged.map((act) => {

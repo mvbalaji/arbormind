@@ -30,11 +30,17 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { ListPageHeader } from "@/components/list-page-header";
+import { isRecentlyCreated } from "@/lib/utils";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
 import { ApprovalWarning } from "@/components/approval-warning";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/table-pagination";
+
+const VIEW_OPTIONS = [
+  { label: "All Quotes", value: "all", pinned: true },
+  { label: "Recently Created", value: "recent" },
+];
 
 type QuoteColKey = "quoteNumber" | "name" | "revision" | "clonedFrom" | "validUntil" | "subtotal" | "total" | "createdBy";
 const QUOTE_TOGGLEABLE_COLS = [
@@ -616,17 +622,22 @@ export default function Quotes() {
     }
   };
 
+  const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
+
   const allQuotes = data?.data ?? [];
 
   const filteredQuotes = React.useMemo(() => {
-    if (!searchQuery.trim()) return allQuotes;
     const q = searchQuery.toLowerCase();
-    return allQuotes.filter((quote) =>
-      (quote.name ?? "").toLowerCase().includes(q) ||
-      (quote.quoteNumber ?? "").toLowerCase().includes(q) ||
-      (quote.opportunityName ?? "").toLowerCase().includes(q)
-    );
-  }, [allQuotes, searchQuery]);
+    return allQuotes.filter((quote) => {
+      if (activeView.value === "recent" && !isRecentlyCreated(quote.createdAt)) return false;
+      if (!searchQuery.trim()) return true;
+      return (
+        (quote.name ?? "").toLowerCase().includes(q) ||
+        (quote.quoteNumber ?? "").toLowerCase().includes(q) ||
+        (quote.opportunityName ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [allQuotes, searchQuery, activeView]);
 
   const sortedQuotes = React.useMemo(() => {
     return [...filteredQuotes].sort((a, b) => {
@@ -696,6 +707,9 @@ export default function Quotes() {
           icon={FileText}
           title="Quotes"
           viewLabel="All Quotes"
+          viewOptions={VIEW_OPTIONS}
+          activeView={activeView.value}
+          onViewChange={(val) => { const v = VIEW_OPTIONS.find((o) => o.value === val); if (v) setActiveView(v); }}
           search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search quotes..." }}
           aiEntityType="quotes"
           onNew={() => setIsCreateOpen(true)}
