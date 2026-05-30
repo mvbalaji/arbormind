@@ -247,7 +247,7 @@ export default function Campaigns() {
             <ColumnsMenu columns={CAMPAIGN_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left [&_tbody_td]:whitespace-nowrap">
               <colgroup>
                   {colVis.isVisible("campaign") && <col data-col="campaign" style={{ width: `${colWidths.campaign}px` }} />}
                   {colVis.isVisible("type") && <col data-col="type" style={{ width: `${colWidths.type}px` }} />}

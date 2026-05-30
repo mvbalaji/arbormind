@@ -803,7 +803,7 @@ export default function Quotes() {
             <ColumnsMenu columns={QUOTE_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left" style={{ tableLayout: "fixed" }}>
+            <table className="w-full text-sm text-left [&_tbody_td]:truncate" style={{ tableLayout: "fixed" }}>
               <colgroup>
                   <col style={{ width: "40px" }} />
                   {colVis.isVisible("quoteNumber") && <col data-col="quoteNumber" style={{ width: `${colWidths.quoteNumber}px` }} />}

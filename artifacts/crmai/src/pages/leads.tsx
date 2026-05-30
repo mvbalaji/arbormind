@@ -550,7 +550,7 @@ export default function Leads() {
             </button>
           </div>
           <div className="overflow-auto max-h-[calc(100vh-340px)]">
-            <table className="text-sm" style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
+            <table className="text-sm [&_tbody_td]:truncate" style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
               <colgroup>
                 {LEAD_COL_ORDER.filter((k) => k === "select" || k === "actions" || isColVisible(k as LeadToggleableCol)).map((k) => (
                   <col key={k} style={{ width: `${colWidths[k]}px` }} />

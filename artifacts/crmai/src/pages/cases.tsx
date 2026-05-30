@@ -109,7 +109,7 @@ export default function Cases() {
             <ColumnsMenu columns={CASE_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left [&_tbody_td]:whitespace-nowrap">
               <colgroup>
                 {colVis.isVisible("caseNumber") && <col data-col="caseNumber" style={{ width: `${colWidths.caseNumber}px` }} />}
                 {colVis.isVisible("subject") && <col data-col="subject" style={{ width: `${colWidths.subject}px` }} />}

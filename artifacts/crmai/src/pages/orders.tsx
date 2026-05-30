@@ -601,7 +601,7 @@ export default function Orders() {
             <ColumnsMenu columns={ORDER_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left [&_tbody_td]:whitespace-nowrap">
                 <colgroup>
                   {colVis.isVisible("orderNumber") && <col data-col="orderNumber" style={{ width: `${colWidths.orderNumber}px` }} />}
                   {colVis.isVisible("account") && <col data-col="account" style={{ width: `${colWidths.account}px` }} />}

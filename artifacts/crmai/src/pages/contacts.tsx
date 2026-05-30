@@ -114,7 +114,7 @@ export default function Contacts() {
             <ColumnsMenu columns={CONTACT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left [&_tbody_td]:whitespace-nowrap">
               <colgroup>
                 {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}
                 {colVis.isVisible("contactInfo") && <col data-col="contactInfo" style={{ width: `${colWidths.contactInfo}px` }} />}
