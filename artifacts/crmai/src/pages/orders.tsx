@@ -82,9 +82,13 @@ interface OrderViewDialogProps {
   onOpenChange: (v: boolean) => void;
   order: {
     orderNumber: string;
+    accountId?: number | null;
     accountName?: string | null;
+    contactId?: number | null;
     contactName?: string | null;
+    quoteId?: number | null;
     quoteNumber?: string | null;
+    opportunityId?: number | null;
     opportunityName?: string | null;
     status: string;
     total: number;
@@ -99,6 +103,8 @@ interface OrderViewDialogProps {
 
 function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
   const [activeTab, setActiveTab] = useState<"details" | "approvals">("details");
+  const [, navigate] = useLocation();
+  const drill = (path: string) => { onOpenChange(false); navigate(path); };
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const approvalRecord: Record<string, unknown> = {
@@ -135,10 +141,10 @@ function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
         {activeTab === "details" && (
         <div className="space-y-4 mt-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="text-muted-foreground">Account:</span> <span className="font-medium">{order.accountName ?? "—"}</span></div>
-            <div><span className="text-muted-foreground">Contact:</span> <span className="font-medium">{order.contactName ?? "—"}</span></div>
-            <div><span className="text-muted-foreground">Quote:</span> <span className="font-medium">{order.quoteNumber ?? "—"}</span></div>
-            <div><span className="text-muted-foreground">Opportunity:</span> <span className="font-medium">{order.opportunityName ?? "—"}</span></div>
+            <div><span className="text-muted-foreground">Account:</span> {order.accountId && order.accountName ? <span className="font-medium text-primary cursor-pointer hover:underline" onClick={() => drill(`/accounts/${order.accountId}`)}>{order.accountName}</span> : <span className="font-medium">{order.accountName ?? "—"}</span>}</div>
+            <div><span className="text-muted-foreground">Contact:</span> {order.contactId && order.contactName ? <span className="font-medium text-primary cursor-pointer hover:underline" onClick={() => drill(`/contacts/${order.contactId}`)}>{order.contactName}</span> : <span className="font-medium">{order.contactName ?? "—"}</span>}</div>
+            <div><span className="text-muted-foreground">Quote:</span> {order.quoteId && order.quoteNumber ? <span className="font-medium text-primary cursor-pointer hover:underline" onClick={() => drill(`/quotes/${order.quoteId}`)}>{order.quoteNumber}</span> : <span className="font-medium">{order.quoteNumber ?? "—"}</span>}</div>
+            <div><span className="text-muted-foreground">Opportunity:</span> {order.opportunityId && order.opportunityName ? <span className="font-medium text-primary cursor-pointer hover:underline" onClick={() => drill(`/opportunities/${order.opportunityId}`)}>{order.opportunityName}</span> : <span className="font-medium">{order.opportunityName ?? "—"}</span>}</div>
             <div><span className="text-muted-foreground">Date:</span> <span className="font-medium">{format(new Date(order.orderDate), "MMM d, yyyy")}</span></div>
           </div>
 
@@ -634,9 +640,13 @@ export default function Orders() {
                           className="font-medium text-primary hover:underline cursor-pointer font-mono"
                           onClick={() => setViewingOrder({
                             orderNumber: order.orderNumber,
+                            accountId: order.accountId,
                             accountName: order.accountName,
+                            contactId: order.contactId,
                             contactName: order.contactName,
+                            quoteId: order.quoteId,
                             quoteNumber: order.quoteNumber,
+                            opportunityId: order.opportunityId,
                             opportunityName: order.opportunityName,
                             status: order.status,
                             total: order.total,
@@ -654,12 +664,16 @@ export default function Orders() {
                     )}
                     {colVis.isVisible("account") && (
                       <td className="px-3 py-1 text-muted-foreground">
-                        {order.accountName ?? "—"}
+                        {order.accountId && order.accountName ? (
+                          <span className="text-primary cursor-pointer hover:underline" onClick={() => navigate(`/accounts/${order.accountId}`)}>{order.accountName}</span>
+                        ) : (order.accountName ?? "—")}
                       </td>
                     )}
                     {colVis.isVisible("opportunity") && (
                       <td className="px-3 py-1 text-muted-foreground">
-                        {order.opportunityName ?? "—"}
+                        {order.opportunityId && order.opportunityName ? (
+                          <span className="text-primary cursor-pointer hover:underline" onClick={() => navigate(`/opportunities/${order.opportunityId}`)}>{order.opportunityName}</span>
+                        ) : (order.opportunityName ?? "—")}
                       </td>
                     )}
                     {colVis.isVisible("quote") && (
@@ -702,9 +716,13 @@ export default function Orders() {
                           <DropdownMenuItem
                             onClick={() => setViewingOrder({
                               orderNumber: order.orderNumber,
+                              accountId: order.accountId,
                               accountName: order.accountName,
+                              contactId: order.contactId,
                               contactName: order.contactName,
+                              quoteId: order.quoteId,
                               quoteNumber: order.quoteNumber,
+                              opportunityId: order.opportunityId,
                               opportunityName: order.opportunityName,
                               status: order.status,
                               total: order.total,

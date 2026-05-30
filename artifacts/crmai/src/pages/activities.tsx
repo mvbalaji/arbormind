@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useLocation } from "wouter";
 import { useColResize } from "@/hooks/use-col-resize";
 import { ColResizeHandle } from "@/components/col-resize-handle";
 import {
@@ -124,6 +125,7 @@ const ACTIVITIES_COL_KEYS = ["icon","subject","related","date","status","actions
 const ACTIVITIES_COL_DEFAULTS: Record<typeof ACTIVITIES_COL_KEYS[number], number> = {"icon":48,"subject":280,"related":200,"date":130,"status":120,"actions":120};
 
 export default function Activities() {
+  const [, navigate] = useLocation();
   const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:activities:v1", ACTIVITIES_COL_KEYS, ACTIVITIES_COL_DEFAULTS);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<{ id: number } & ActivityFormData | null>(null);
@@ -240,7 +242,11 @@ export default function Activities() {
                         )}
                         {colVis.isVisible("related") && (
                           <td className="px-3 py-1 text-muted-foreground">
-                            {act.contactName ?? act.accountName ?? "-"}
+                            {act.contactId && act.contactName ? (
+                              <span className="text-primary cursor-pointer hover:underline" onClick={() => navigate(`/contacts/${act.contactId}`)}>{act.contactName}</span>
+                            ) : act.accountId && act.accountName ? (
+                              <span className="text-primary cursor-pointer hover:underline" onClick={() => navigate(`/accounts/${act.accountId}`)}>{act.accountName}</span>
+                            ) : (act.contactName ?? act.accountName ?? "-")}
                           </td>
                         )}
                         {colVis.isVisible("date") && (
