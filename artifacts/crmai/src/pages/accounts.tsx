@@ -234,7 +234,7 @@ export default function Accounts() {
         </div>
 
         {/* Table */}
-        <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
+        <div className="bg-card rounded-md overflow-hidden shadow-sm">
           <div className="overflow-auto max-h-[calc(100vh-260px)]">
             <table className="w-full text-sm min-w-[900px] [&_tbody_td]:whitespace-nowrap">
               <colgroup>

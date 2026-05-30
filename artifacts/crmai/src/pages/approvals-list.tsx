@@ -229,7 +229,7 @@ export default function ApprovalsList() {
         )}
 
         {/* Table */}
-        <Card className="border-2 border-blue-700 dark:border-blue-800 overflow-hidden shadow-sm">
+        <Card className="border-0 overflow-hidden shadow-sm">
           <div className="overflow-auto max-h-[calc(100vh-280px)]">
           <Table>
             <TableHeader>

@@ -93,7 +93,7 @@ export default function Cases() {
           </Button>
         </div>
 
-        <Card className="glass-panel border-2 border-blue-700 dark:border-blue-800 overflow-hidden">
+        <Card className="glass-panel border-0 overflow-hidden">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
             <TablePagination
               variant="inline"

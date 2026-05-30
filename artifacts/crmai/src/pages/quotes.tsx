@@ -778,7 +778,7 @@ export default function Quotes() {
         </div>
 
         {/* Table */}
-        <div className="bg-card border-2 border-blue-700 dark:border-blue-800 rounded-md overflow-hidden shadow-sm">
+        <div className="bg-card rounded-md overflow-hidden shadow-sm">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
             <TablePagination
               variant="inline"
