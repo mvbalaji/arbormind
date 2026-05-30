@@ -574,7 +574,7 @@ export default function Orders() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Orders</h1>

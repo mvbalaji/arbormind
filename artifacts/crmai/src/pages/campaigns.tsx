@@ -170,7 +170,7 @@ export default function Campaigns() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Campaigns</h1>
