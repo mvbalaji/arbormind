@@ -463,7 +463,7 @@ export default function QuoteDetail() {
                   {opportunities.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                 </select>
               ) : quote.opportunityId ? (
-                <button className="text-primary hover:underline font-medium text-left" onClick={() => navigate(`/opportunities`)}>
+                <button className="text-primary hover:underline font-medium text-left" onClick={() => navigate(`/opportunities/${quote.opportunityId}`)}>
                   {quote.opportunityName ?? `Opportunity #${quote.opportunityId}`}
                 </button>
               ) : (
@@ -482,6 +482,10 @@ export default function QuoteDetail() {
                   <option value="">None</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </select>
+              ) : quote.accountId && quote.accountName ? (
+                <button className="text-primary hover:underline font-medium text-left" onClick={() => navigate(`/accounts/${quote.accountId}`)}>
+                  {quote.accountName}
+                </button>
               ) : (
                 <p className="text-foreground font-medium">{quote.accountName ?? "—"}</p>
               )}
@@ -500,7 +504,13 @@ export default function QuoteDetail() {
                 </select>
               ) : (
                 <>
-                  <p className="text-foreground font-medium">{quote.contactName ?? "—"}</p>
+                  {quote.contactId && quote.contactName ? (
+                    <button className="text-primary hover:underline font-medium text-left" onClick={() => navigate(`/contacts/${quote.contactId}`)}>
+                      {quote.contactName}
+                    </button>
+                  ) : (
+                    <p className="text-foreground font-medium">{quote.contactName ?? "—"}</p>
+                  )}
                   {quote.contactEmail && <p className="text-xs text-muted-foreground mt-1">{quote.contactEmail}</p>}
                 </>
               )}
