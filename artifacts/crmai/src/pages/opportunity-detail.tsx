@@ -1263,7 +1263,11 @@ export default function OpportunityDetail() {
                       <FileText className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <div className="font-medium text-foreground text-sm">{q.name}</div>
+                      <Link href={`/quotes/${q.id}`}>
+                        <span className="font-medium text-foreground text-sm hover:text-primary hover:underline cursor-pointer">
+                          {q.name}
+                        </span>
+                      </Link>
                       <div className="text-xs text-muted-foreground font-mono mt-0.5">{q.quoteNumber}</div>
                     </div>
                   </div>
