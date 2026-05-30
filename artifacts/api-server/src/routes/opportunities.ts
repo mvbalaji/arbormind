@@ -19,6 +19,7 @@ const oppFields = {
   name: opportunitiesTable.name,
   accountId: opportunitiesTable.accountId,
   accountName: accountsTable.name,
+  priceBookId: opportunitiesTable.priceBookId,
   contactId: opportunitiesTable.contactId,
   contactFirstName: contactsTable.firstName,
   contactLastName: contactsTable.lastName,
@@ -327,7 +328,7 @@ router.put("/opportunities/:id/items", async (req, res) => {
       res.status(400).json({ error: "Request body must contain an 'items' array." });
       return;
     }
-    const items = body.items as Array<{ productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
+    const items = body.items as Array<{ productId?: number | null; priceBookEntryId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
 
     await db.delete(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, opportunityId));
 
@@ -335,6 +336,7 @@ router.put("/opportunities/:id/items", async (req, res) => {
       await db.insert(opportunityItemsTable).values(items.map((item) => ({
         opportunityId,
         productId: item.productId ?? null,
+        priceBookEntryId: item.priceBookEntryId ?? null,
         productName: item.productName,
         quantity: item.quantity.toString(),
         unitPrice: item.unitPrice.toString(),

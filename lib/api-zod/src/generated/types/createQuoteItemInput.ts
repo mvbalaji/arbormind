@@ -8,6 +8,7 @@
 
 export interface CreateQuoteItemInput {
   productId?: number | null;
+  priceBookEntryId?: number | null;
   productName: string;
   quantity: number;
   unitPrice: number;

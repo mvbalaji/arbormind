@@ -10,6 +10,7 @@ export interface OpportunityItem {
   id: number;
   opportunityId: number;
   productId?: number | null;
+  priceBookEntryId?: number | null;
   productName: string;
   quantity: number;
   unitPrice: number;

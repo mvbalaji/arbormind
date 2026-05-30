@@ -9,6 +9,7 @@
 export interface QuoteItem {
   id: number;
   productId?: number | null;
+  priceBookEntryId?: number | null;
   productName: string;
   quantity: number;
   unitPrice: number;

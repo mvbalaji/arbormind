@@ -4,8 +4,9 @@ import {
   useGetQuote, useUpdateQuote, useCreateQuoteVersion, useSendQuote, useDeleteQuote,
   useListProducts,
   useListOpportunities, useListContacts, useListAccounts,
-  getGetQuoteQueryKey, getListQuotesQueryKey,
-  CreateQuoteInputStatus,
+  useListPriceBooks, useListActivePriceBookEntries,
+  getGetQuoteQueryKey, getListQuotesQueryKey, getListActivePriceBookEntriesQueryKey,
+  CreateQuoteInputStatus, UpdateQuoteInputStatus,
 } from "@workspace/api-client-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -39,6 +40,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 interface EditableItem {
   productId: number | null;
+  priceBookEntryId: number | null;
   productName: string;
   quantity: number;
   unitPrice: number;
@@ -49,7 +51,7 @@ export default function QuoteDetail() {
   const [, params] = useRoute("/quotes/:id");
   const [, navigate] = useLocation();
   const quoteId = parseInt(params?.id ?? "0");
-  const { data: quote, isLoading, error } = useGetQuote(quoteId, { query: { enabled: quoteId > 0 } });
+  const { data: quote, isLoading, error } = useGetQuote(quoteId, { query: { enabled: quoteId > 0, queryKey: getGetQuoteQueryKey(quoteId) } });
   const updateMutation = useUpdateQuote();
   const versionMutation = useCreateQuoteVersion();
   const sendMutation = useSendQuote();
@@ -83,6 +85,15 @@ export default function QuoteDetail() {
   const [editOpportunityId, setEditOpportunityId] = useState<number | null>(null);
   const [editContactId, setEditContactId] = useState<number | null>(null);
   const [editAccountId, setEditAccountId] = useState<number | null>(null);
+  const [editPriceBookId, setEditPriceBookId] = useState<number | null>(null);
+
+  const { data: priceBooksData } = useListPriceBooks();
+  const priceBooks = (priceBooksData?.data ?? []).filter(pb => pb.isActive);
+  const { data: activeEntriesData } = useListActivePriceBookEntries(editPriceBookId ?? 0, {
+    query: { enabled: (editPriceBookId ?? 0) > 0, queryKey: getListActivePriceBookEntriesQueryKey(editPriceBookId ?? 0) },
+  });
+  const entryByProduct = new Map((activeEntriesData?.data ?? []).map(e => [e.productId, e]));
+  const priceBookName = (id: number | null | undefined) => priceBooks.find(pb => pb.id === id)?.name;
 
   useEffect(() => {
     if (quote && editingSection) {
@@ -95,8 +106,10 @@ export default function QuoteDetail() {
       setEditOpportunityId(quote.opportunityId ?? null);
       setEditContactId(quote.contactId ?? null);
       setEditAccountId(quote.accountId ?? null);
+      setEditPriceBookId(quote.priceBookId ?? null);
       setEditItems(quote.items.map(it => ({
         productId: it.productId ?? null,
+        priceBookEntryId: it.priceBookEntryId ?? null,
         productName: it.productName,
         quantity: it.quantity,
         unitPrice: it.unitPrice,
@@ -112,7 +125,7 @@ export default function QuoteDetail() {
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      await updateMutation.mutateAsync({ id: quoteId, data: { status: newStatus } });
+      await updateMutation.mutateAsync({ id: quoteId, data: { status: newStatus as UpdateQuoteInputStatus } });
       toast({ title: "Status updated", description: `Quote status changed to ${newStatus}` });
       invalidate();
     } catch {
@@ -134,8 +147,10 @@ export default function QuoteDetail() {
           opportunityId: editOpportunityId,
           contactId: editContactId,
           accountId: editAccountId,
+          priceBookId: editPriceBookId,
           items: editItems.filter(it => it.productName).map(it => ({
             productId: it.productId,
+            priceBookEntryId: it.priceBookEntryId,
             productName: it.productName,
             quantity: it.quantity || 1,
             unitPrice: it.unitPrice || 0,
@@ -183,13 +198,21 @@ export default function QuoteDetail() {
   const editTaxAmt = (editSubtotal - editDiscountAmt) * (parseFloat(editTax) || 0) / 100;
   const editTotal = editSubtotal - editDiscountAmt + editTaxAmt;
 
-  const addItem = () => setEditItems(prev => [...prev, { productId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 }]);
+  const addItem = () => setEditItems(prev => [...prev, { productId: null, priceBookEntryId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 }]);
   const removeItem = (idx: number) => setEditItems(prev => prev.filter((_, i) => i !== idx));
   const updateItem = (idx: number, changes: Partial<EditableItem>) =>
     setEditItems(prev => prev.map((item, i) => i === idx ? { ...item, ...changes } : item));
   const pickProduct = (idx: number, productId: number) => {
     const prod = products.find(p => p.id === productId);
-    if (prod) updateItem(idx, { productId: prod.id, productName: prod.name, unitPrice: prod.unitPrice, discount: 0 });
+    if (!prod) return;
+    const entry = entryByProduct.get(productId);
+    updateItem(idx, {
+      productId: prod.id,
+      productName: prod.name,
+      priceBookEntryId: entry?.id ?? null,
+      unitPrice: entry ? entry.listPrice : prod.unitPrice,
+      discount: 0,
+    });
   };
 
   if (isLoading) {
@@ -450,6 +473,22 @@ export default function QuoteDetail() {
             ) : null}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="glass-panel border-border p-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-3">
+                <Package className="w-4 h-4" />
+                <span className="text-xs font-semibold uppercase">Price Book</span>
+              </div>
+              {editingSection === "parties" ? (
+                <select className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
+                  value={editPriceBookId ?? ""}
+                  onChange={e => setEditPriceBookId(e.target.value ? parseInt(e.target.value) : null)}>
+                  <option value="">None</option>
+                  {priceBooks.map(pb => <option key={pb.id} value={pb.id}>{pb.name}</option>)}
+                </select>
+              ) : (
+                <p className="text-foreground font-medium">{priceBookName(quote.priceBookId) ?? "—"}</p>
+              )}
+            </Card>
             <Card className="glass-panel border-border p-4">
               <div className="flex items-center gap-2 text-muted-foreground mb-3">
                 <FileText className="w-4 h-4" />

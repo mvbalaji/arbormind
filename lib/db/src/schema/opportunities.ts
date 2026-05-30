@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { accountsTable } from "./accounts";
 import { contactsTable } from "./contacts";
+import { priceBooksTable } from "./price-books";
 
 export const opportunitiesTable = pgTable("opportunities", {
   id: serial("id").primaryKey(),
@@ -20,6 +21,7 @@ export const opportunitiesTable = pgTable("opportunities", {
   nextStep: text("next_step"),
   forecastCategory: text("forecast_category"),
   teamMembers: text("team_members"),
+  priceBookId: integer("price_book_id").references(() => priceBooksTable.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

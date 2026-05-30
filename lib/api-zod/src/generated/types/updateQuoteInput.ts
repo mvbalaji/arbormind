@@ -10,6 +10,10 @@ import type { UpdateQuoteInputStatus } from "./updateQuoteInputStatus";
 
 export interface UpdateQuoteInput {
   name?: string;
+  priceBookId?: number | null;
+  opportunityId?: number | null;
+  contactId?: number | null;
+  accountId?: number | null;
   status?: UpdateQuoteInputStatus;
   validUntil?: Date | null;
   discount?: number;

@@ -51,6 +51,7 @@ const quoteFields = {
   contactEmail: contactsTable.email,
   accountId: quotesTable.accountId,
   accountName: accountsTable.name,
+  priceBookId: quotesTable.priceBookId,
   createdByUserId: quotesTable.createdByUserId,
   createdByName: quotesTable.createdByName,
   createdByEmail: quotesTable.createdByEmail,
@@ -337,7 +338,7 @@ router.get("/quotes", async (req, res) => {
 router.post("/quotes", async (req, res) => {
   try {
     let { items = [], ...quoteData } = req.body as {
-      items?: Array<{ productId?: number; productName: string; quantity: number; unitPrice: number; discount?: number }>;
+      items?: Array<{ productId?: number; priceBookEntryId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
       [key: string]: unknown;
     };
 
@@ -347,6 +348,7 @@ router.post("/quotes", async (req, res) => {
       if (oppItems.length > 0) {
         items = oppItems.map(oi => ({
           productId: oi.productId ?? undefined,
+          priceBookEntryId: oi.priceBookEntryId ?? null,
           productName: oi.productName,
           quantity: Number(oi.quantity),
           unitPrice: Number(oi.unitPrice),
@@ -372,6 +374,7 @@ router.post("/quotes", async (req, res) => {
       opportunityId: (quoteData.opportunityId as number | null) ?? null,
       contactId: (quoteData.contactId as number | null) ?? null,
       accountId: (quoteData.accountId as number | null) ?? null,
+      priceBookId: (quoteData.priceBookId as number | null) ?? null,
       status: (quoteData.status as string) ?? "draft",
       validUntil: quoteData.validUntil ? new Date(quoteData.validUntil as string) : null,
       discount: (quoteData.discount as string) ?? "0",
@@ -392,6 +395,7 @@ router.post("/quotes", async (req, res) => {
       await db.insert(quoteItemsTable).values(items.map(item => ({
         quoteId: quote.id,
         productId: item.productId ?? null,
+        priceBookEntryId: item.priceBookEntryId ?? null,
         productName: item.productName,
         quantity: item.quantity.toString(),
         unitPrice: item.unitPrice.toString(),
@@ -488,11 +492,11 @@ router.put("/quotes/:id", async (req, res) => {
     }
 
     const { items, ...quoteData } = req.body as {
-      items?: Array<{ productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
+      items?: Array<{ productId?: number | null; priceBookEntryId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
       [key: string]: unknown;
     };
 
-    const allowedFields = ["name", "status", "validUntil", "discount", "tax", "notes", "opportunityId", "contactId", "accountId"];
+    const allowedFields = ["name", "status", "validUntil", "discount", "tax", "notes", "opportunityId", "contactId", "accountId", "priceBookId"];
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     for (const key of allowedFields) {
       if (quoteData[key] !== undefined) {
@@ -510,6 +514,7 @@ router.put("/quotes/:id", async (req, res) => {
         await db.insert(quoteItemsTable).values(items.map(item => ({
           quoteId: id,
           productId: item.productId ?? null,
+          priceBookEntryId: item.priceBookEntryId ?? null,
           productName: item.productName,
           quantity: item.quantity.toString(),
           unitPrice: item.unitPrice.toString(),
@@ -578,6 +583,7 @@ router.post("/quotes/:id/version", async (req, res) => {
       opportunityId: original.opportunityId,
       contactId: original.contactId,
       accountId: original.accountId,
+      priceBookId: original.priceBookId,
       status: "draft",
       validUntil: original.validUntil,
       subtotal: original.subtotal,
@@ -595,6 +601,7 @@ router.post("/quotes/:id/version", async (req, res) => {
       await db.insert(quoteItemsTable).values(originalItems.map(item => ({
         quoteId: newQuote.id,
         productId: item.productId,
+        priceBookEntryId: item.priceBookEntryId,
         productName: item.productName,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -656,6 +663,7 @@ router.post("/quotes/:id/clone", async (req, res) => {
             opportunityId: null,
             contactId: newContactId,
             accountId: newAccountId,
+            priceBookId: original.priceBookId,
             status: "draft",
             validUntil: original.validUntil,
             subtotal: original.subtotal,
@@ -677,6 +685,7 @@ router.post("/quotes/:id/clone", async (req, res) => {
         await tx.insert(quoteItemsTable).values(originalItems.map(item => ({
           quoteId: inserted!.id,
           productId: item.productId,
+          priceBookEntryId: item.priceBookEntryId,
           productName: item.productName,
           quantity: item.quantity,
           unitPrice: item.unitPrice,

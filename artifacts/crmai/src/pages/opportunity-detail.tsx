@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useListQuotes, useCreateQuote, useListProducts, useUpdateOpportunity, useListOpportunityItems, useUpdateOpportunityItems, getListQuotesQueryKey, getListOpportunityItemsQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput, type OpportunityItem } from "@workspace/api-client-react";
+import { useListQuotes, useCreateQuote, useListProducts, useUpdateOpportunity, useListOpportunityItems, useUpdateOpportunityItems, useListPriceBooks, useListActivePriceBookEntries, getListQuotesQueryKey, getListOpportunityItemsQueryKey, getListActivePriceBookEntriesQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput, type OpportunityItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
@@ -37,6 +37,7 @@ interface OpportunityDetail {
   name: string;
   accountId: number | null;
   accountName: string | null;
+  priceBookId: number | null;
   contactId: number | null;
   contactFirstName: string | null;
   contactLastName: string | null;
@@ -109,20 +110,22 @@ interface OppContact {
 
 interface QuickQuoteItem {
   productId: number | null;
+  priceBookEntryId: number | null;
   productName: string;
   quantity: number;
   unitPrice: number;
   discount: number;
 }
 
-const DEFAULT_ITEM: QuickQuoteItem = { productId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 };
+const DEFAULT_ITEM: QuickQuoteItem = { productId: null, priceBookEntryId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 };
 
 function OpportunityProductsDialog({
-  open, onOpenChange, opportunityId, initialItems,
+  open, onOpenChange, opportunityId, priceBookId, initialItems,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   opportunityId: number;
+  priceBookId: number | null;
   initialItems: OpportunityItem[];
 }) {
   const [items, setItems] = useState<QuickQuoteItem[]>([]);
@@ -131,11 +134,16 @@ function OpportunityProductsDialog({
   const updateMutation = useUpdateOpportunityItems();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { data: activeEntriesData } = useListActivePriceBookEntries(priceBookId ?? 0, {
+    query: { enabled: (priceBookId ?? 0) > 0, queryKey: getListActivePriceBookEntriesQueryKey(priceBookId ?? 0) },
+  });
+  const entryByProduct = new Map((activeEntriesData?.data ?? []).map(e => [e.productId, e]));
 
   React.useEffect(() => {
     if (open) {
       setItems(initialItems.map(it => ({
         productId: it.productId ?? null,
+        priceBookEntryId: it.priceBookEntryId ?? null,
         productName: it.productName,
         quantity: Number(it.quantity),
         unitPrice: Number(it.unitPrice),
@@ -153,7 +161,15 @@ function OpportunityProductsDialog({
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...changes } : it));
   const pickProduct = (idx: number, productId: number) => {
     const prod = products.find(p => p.id === productId);
-    if (prod) updateItem(idx, { productId: prod.id, productName: prod.name, unitPrice: prod.unitPrice, discount: 0 });
+    if (!prod) return;
+    const entry = entryByProduct.get(productId);
+    updateItem(idx, {
+      productId: prod.id,
+      productName: prod.name,
+      priceBookEntryId: entry?.id ?? null,
+      unitPrice: entry ? entry.listPrice : prod.unitPrice,
+      discount: 0,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -162,6 +178,7 @@ function OpportunityProductsDialog({
       .filter(it => it.productName && it.quantity > 0)
       .map(it => ({
         productId: it.productId || null,
+        priceBookEntryId: it.priceBookEntryId ?? null,
         productName: it.productName,
         quantity: it.quantity || 1,
         unitPrice: it.unitPrice || 0,
@@ -284,7 +301,7 @@ const QUOTE_STATUS_COLORS: Record<string, string> = {
 
 function QuickQuoteDialog({
   open, onOpenChange, opportunityId, opportunityName,
-  accountId, accountName, contactId, contactName, initialItems,
+  accountId, accountName, contactId, contactName, priceBookId, initialItems,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -294,6 +311,7 @@ function QuickQuoteDialog({
   accountName: string | null;
   contactId: number | null;
   contactName: string | null;
+  priceBookId: number | null;
   initialItems: OpportunityItem[];
 }) {
   const [name, setName] = useState(opportunityName + " Quote");
@@ -307,6 +325,10 @@ function QuickQuoteDialog({
   const createMutation = useCreateQuote();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { data: activeEntriesData } = useListActivePriceBookEntries(priceBookId ?? 0, {
+    query: { enabled: (priceBookId ?? 0) > 0, queryKey: getListActivePriceBookEntriesQueryKey(priceBookId ?? 0) },
+  });
+  const entryByProduct = new Map((activeEntriesData?.data ?? []).map(e => [e.productId, e]));
 
   React.useEffect(() => {
     if (open) {
@@ -320,6 +342,7 @@ function QuickQuoteDialog({
       setItems(
         initialItems.map((it) => ({
           productId: it.productId ?? null,
+          priceBookEntryId: it.priceBookEntryId ?? null,
           productName: it.productName,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
@@ -342,7 +365,15 @@ function QuickQuoteDialog({
 
   const pickProduct = (idx: number, productId: number) => {
     const prod = products.find(p => p.id === productId);
-    if (prod) updateItem(idx, { productId: prod.id, productName: prod.name, unitPrice: prod.unitPrice, discount: 0 });
+    if (!prod) return;
+    const entry = entryByProduct.get(productId);
+    updateItem(idx, {
+      productId: prod.id,
+      productName: prod.name,
+      priceBookEntryId: entry?.id ?? null,
+      unitPrice: entry ? entry.listPrice : prod.unitPrice,
+      discount: 0,
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -350,6 +381,7 @@ function QuickQuoteDialog({
     if (!name) return;
     const quoteItems: CreateQuoteItemInput[] = items.filter(it => it.productName).map(it => ({
       productId: it.productId || null,
+      priceBookEntryId: it.priceBookEntryId ?? null,
       productName: it.productName,
       quantity: it.quantity || 1,
       unitPrice: it.unitPrice || 0,
@@ -360,6 +392,7 @@ function QuickQuoteDialog({
       opportunityId,
       accountId: accountId ?? null,
       contactId: contactId ?? null,
+      priceBookId: priceBookId ?? null,
       status: status as CreateQuoteInputStatus,
       validUntil: validUntil || null,
       discount: parseFloat(discount) || 0,
@@ -1741,6 +1774,7 @@ export default function OpportunityDetail() {
             open={isProductsOpen}
             onOpenChange={setIsProductsOpen}
             opportunityId={numericId}
+            priceBookId={opp.priceBookId ?? null}
             initialItems={oppItems}
           />
           <QuickQuoteDialog
@@ -1751,6 +1785,7 @@ export default function OpportunityDetail() {
             accountId={opp.accountId}
             accountName={opp.accountName}
             contactId={opp.contactId}
+            priceBookId={opp.priceBookId ?? null}
             contactName={
               opp.contactFirstName || opp.contactLastName
                 ? `${opp.contactFirstName ?? ""} ${opp.contactLastName ?? ""}`.trim()
@@ -1855,9 +1890,12 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
   onSaved: () => void;
 }) {
   const { toast } = useToast();
+  const { data: priceBooksData } = useListPriceBooks();
+  const priceBooks = (priceBooksData?.data ?? []).filter(pb => pb.isActive);
   const [form, setForm] = useState({
     name: opp.name ?? "",
     stage: opp.stage ?? "prospecting",
+    priceBookId: opp.priceBookId?.toString() ?? "",
     amount: opp.amount?.toString() ?? "",
     probability: opp.probability?.toString() ?? "",
     closeDate: opp.closeDate?.slice(0, 10) ?? "",
@@ -1871,6 +1909,7 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
   React.useEffect(() => {
     if (open) setForm({
       name: opp.name ?? "", stage: opp.stage ?? "prospecting",
+      priceBookId: opp.priceBookId?.toString() ?? "",
       amount: opp.amount?.toString() ?? "", probability: opp.probability?.toString() ?? "",
       closeDate: opp.closeDate?.slice(0, 10) ?? "", leadSource: opp.leadSource ?? "",
       nextStep: opp.nextStep ?? "", forecastCategory: opp.forecastCategory ?? "",
@@ -1886,6 +1925,7 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
         credentials: "include",
         body: JSON.stringify({
           ...data,
+          priceBookId: data.priceBookId ? parseInt(data.priceBookId) : null,
           amount: data.amount ? parseFloat(data.amount) : null,
           probability: data.probability ? parseInt(data.probability) : null,
           closeDate: data.closeDate || null,
@@ -1951,6 +1991,12 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
                   <option key={s} value={s} className="bg-card">{s}</option>)}
               </select>
             </div>
+          </div>
+          <div className="space-y-1.5"><Label className="text-xs">Price Book</Label>
+            <select className={sc} value={form.priceBookId} onChange={f("priceBookId")}>
+              <option value="" className="bg-card">— None —</option>
+              {priceBooks.map(pb => <option key={pb.id} value={pb.id} className="bg-card">{pb.name}</option>)}
+            </select>
           </div>
           <div className="space-y-1.5"><Label className="text-xs">Next Step</Label>
             <Input className="bg-muted border-border h-9" placeholder="e.g. Send proposal by Friday, Schedule demo with CTO" value={form.nextStep} onChange={f("nextStep")} />

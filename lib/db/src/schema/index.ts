@@ -6,6 +6,8 @@ export * from "./opportunities";
 export * from "./opportunity-stage-history";
 export * from "./activities";
 export * from "./products";
+export * from "./price-books";
+export * from "./price-book-entries";
 export * from "./cases";
 export * from "./quotes";
 export * from "./allowed-users";

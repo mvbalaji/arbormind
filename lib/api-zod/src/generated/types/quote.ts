@@ -25,6 +25,7 @@ export interface Quote {
   contactEmail?: string | null;
   accountId?: number | null;
   accountName?: string | null;
+  priceBookId?: number | null;
   createdByUserId?: number | null;
   createdByName?: string | null;
   createdByEmail?: string | null;

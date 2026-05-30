@@ -4,6 +4,7 @@ import { productsTable } from "@workspace/db";
 import { eq, ilike, sql } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
+import { syncStandardEntry } from "../lib/pricing";
 
 const router: IRouter = Router();
 router.use("/products", requireScreenAccess("products"));
@@ -37,6 +38,7 @@ router.get("/products", async (req, res) => {
 router.post("/products", async (req, res) => {
   try {
     const [product] = await db.insert(productsTable).values(req.body).returning();
+    await syncStandardEntry(product.id, product.unitPrice, product.currency);
     res.status(201).json({ ...product, unitPrice: Number(product.unitPrice) });
   } catch (err) {
     req.log.error(err);
@@ -67,6 +69,7 @@ router.put("/products/:id", async (req, res) => {
     if (!product) {
       res.status(404).json({ error: "Product not found" });
     } else {
+      await syncStandardEntry(product.id, product.unitPrice, product.currency);
       res.json({ ...product, unitPrice: Number(product.unitPrice) });
     }
   } catch (err) {

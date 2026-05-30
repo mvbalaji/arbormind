@@ -402,6 +402,7 @@ export interface CreateOpportunityInput {
   name: string;
   accountId?: number | null;
   contactId?: number | null;
+  priceBookId?: number | null;
   stage?: CreateOpportunityInputStage;
   amount?: number | null;
   probability?: number | null;
@@ -428,6 +429,7 @@ export interface UpdateOpportunityInput {
   name?: string;
   accountId?: number | null;
   contactId?: number | null;
+  priceBookId?: number | null;
   stage?: UpdateOpportunityInputStage;
   amount?: number | null;
   probability?: number | null;
@@ -589,6 +591,94 @@ export interface UpdateProductInput {
   isActive?: boolean;
 }
 
+export interface PriceBook {
+  id: number;
+  name: string;
+  description?: string | null;
+  isStandard: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PriceBookWithCount = PriceBook & {
+  entryCount: number;
+};
+
+export interface PriceBookList {
+  data: PriceBookWithCount[];
+  total: number;
+}
+
+export interface PriceBookEntry {
+  id: number;
+  priceBookId: number;
+  productId: number;
+  listPrice: number;
+  currency: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type PriceBookEntryDetail = PriceBookEntry & {
+  productName?: string | null;
+  productCode?: string | null;
+  productCategory?: string | null;
+};
+
+export type PriceBookDetail = PriceBook & {
+  entries: PriceBookEntryDetail[];
+};
+
+export type PriceBookEntryByProduct = PriceBookEntry & {
+  priceBookName?: string | null;
+  isStandard?: boolean | null;
+};
+
+export interface PriceBookEntryByProductList {
+  data: PriceBookEntryByProduct[];
+}
+
+export interface ActivePriceBookEntry {
+  id: number;
+  priceBookId: number;
+  productId: number;
+  listPrice: number;
+  currency: string;
+  productName?: string | null;
+  productCode?: string | null;
+}
+
+export interface ActivePriceBookEntryList {
+  data: ActivePriceBookEntry[];
+}
+
+export interface CreatePriceBookInput {
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+export interface UpdatePriceBookInput {
+  name?: string;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+export interface CreatePriceBookEntryInput {
+  productId: number;
+  listPrice: number;
+  currency?: string;
+  isActive?: boolean;
+}
+
+export interface UpdatePriceBookEntryInput {
+  listPrice?: number;
+  currency?: string;
+  isActive?: boolean;
+}
+
 export type CaseStatus = (typeof CaseStatus)[keyof typeof CaseStatus];
 
 export const CaseStatus = {
@@ -717,6 +807,7 @@ export const QuoteStatus = {
 export interface QuoteItem {
   id: number;
   productId?: number | null;
+  priceBookEntryId?: number | null;
   productName: string;
   quantity: number;
   unitPrice: number;
@@ -748,6 +839,7 @@ export interface Quote {
   contactEmail?: string | null;
   accountId?: number | null;
   accountName?: string | null;
+  priceBookId?: number | null;
   createdByUserId?: number | null;
   createdByName?: string | null;
   createdByEmail?: string | null;
@@ -792,6 +884,7 @@ export const CreateQuoteInputStatus = {
 
 export interface CreateQuoteItemInput {
   productId?: number | null;
+  priceBookEntryId?: number | null;
   productName: string;
   quantity: number;
   unitPrice: number;
@@ -803,6 +896,7 @@ export interface CreateQuoteInput {
   opportunityId?: number | null;
   contactId?: number | null;
   accountId?: number | null;
+  priceBookId?: number | null;
   status?: CreateQuoteInputStatus;
   validUntil?: string | null;
   discount?: number;
@@ -815,6 +909,7 @@ export interface OpportunityItem {
   id: number;
   opportunityId: number;
   productId?: number | null;
+  priceBookEntryId?: number | null;
   productName: string;
   quantity: number;
   unitPrice: number;
@@ -836,6 +931,10 @@ export const UpdateQuoteInputStatus = {
 
 export interface UpdateQuoteInput {
   name?: string;
+  priceBookId?: number | null;
+  opportunityId?: number | null;
+  contactId?: number | null;
+  accountId?: number | null;
   status?: UpdateQuoteInputStatus;
   validUntil?: string | null;
   discount?: number;

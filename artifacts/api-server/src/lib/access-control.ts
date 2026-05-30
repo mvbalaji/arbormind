@@ -26,6 +26,7 @@ export const SEED_SCREENS: Array<{ key: string; name: string; category: string; 
   { key: "activities", name: "Activities", category: "Engagement", sortOrder: 80 },
   { key: "campaigns", name: "Campaigns", category: "Marketing", sortOrder: 90 },
   { key: "products", name: "Products", category: "Catalog", sortOrder: 100 },
+  { key: "price-books", name: "Price Books", category: "Catalog", sortOrder: 105 },
   { key: "cases", name: "Cases", category: "Service", sortOrder: 110 },
   { key: "reports", name: "Reports", category: "Insights", sortOrder: 120 },
   { key: "users", name: "Team & Data", category: "Admin", sortOrder: 130 },
@@ -38,7 +39,7 @@ export const SEED_SCREENS: Array<{ key: string; name: string; category: string; 
 // Admin-only screens that non-admin roles should NOT see at all.
 const ADMIN_ONLY_SCREENS = new Set(["access-control", "approvals"]);
 // Screens reps typically don't edit (view only).
-const REP_VIEW_ONLY = new Set(["reports", "users", "products", "campaigns"]);
+const REP_VIEW_ONLY = new Set(["reports", "users", "products", "price-books", "campaigns"]);
 
 let seeded = false;
 export async function seedAccessControl(): Promise<void> {

@@ -19,6 +19,8 @@ import Opportunities from "./pages/opportunities";
 import OpportunityDetail from "./pages/opportunity-detail";
 import Activities from "./pages/activities";
 import Products from "./pages/products";
+import PriceBooks from "./pages/price-books";
+import PriceBookDetail from "./pages/price-book-detail";
 import Cases from "./pages/cases";
 import Quotes from "./pages/quotes";
 import QuoteDetail from "./pages/quote-detail";
@@ -59,6 +61,8 @@ function CRMRoutes() {
       <Route path="/campaigns" component={Campaigns} />
       <Route path="/campaigns/:id" component={CampaignDetail} />
       <Route path="/products" component={Products} />
+      <Route path="/price-books" component={PriceBooks} />
+      <Route path="/price-books/:id" component={PriceBookDetail} />
       <Route path="/cases" component={Cases} />
       <Route path="/quotes" component={Quotes} />
       <Route path="/quotes/:id" component={QuoteDetail} />

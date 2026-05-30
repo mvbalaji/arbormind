@@ -19,6 +19,7 @@ import type {
 import type {
   Account,
   AccountList,
+  ActivePriceBookEntryList,
   ActivitiesSummary,
   Activity,
   ActivityList,
@@ -43,6 +44,8 @@ import type {
   CreateLeadInput,
   CreateOpportunityInput,
   CreateOrderInput,
+  CreatePriceBookEntryInput,
+  CreatePriceBookInput,
   CreateProductInput,
   CreateQuoteInput,
   CreateUserInput,
@@ -70,6 +73,11 @@ import type {
   Order,
   OrderList,
   PipelineReport,
+  PriceBook,
+  PriceBookDetail,
+  PriceBookEntry,
+  PriceBookEntryByProductList,
+  PriceBookList,
   Product,
   ProductList,
   Quote,
@@ -88,6 +96,8 @@ import type {
   UpdateOpportunityItems200,
   UpdateOpportunityItemsBody,
   UpdateOrderInput,
+  UpdatePriceBookEntryInput,
+  UpdatePriceBookInput,
   UpdateProductInput,
   UpdateQuoteInput,
   UpdateUserInput,
@@ -3065,6 +3075,870 @@ export const useDeleteProduct = <
 > => {
   return useMutation(getDeleteProductMutationOptions(options));
 };
+
+/**
+ * @summary List price books
+ */
+export const getListPriceBooksUrl = () => {
+  return `/api/price-books`;
+};
+
+export const listPriceBooks = async (
+  options?: RequestInit,
+): Promise<PriceBookList> => {
+  return customFetch<PriceBookList>(getListPriceBooksUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPriceBooksQueryKey = () => {
+  return [`/api/price-books`] as const;
+};
+
+export const getListPriceBooksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPriceBooks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPriceBooks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPriceBooksQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPriceBooks>>> = ({
+    signal,
+  }) => listPriceBooks({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPriceBooks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPriceBooksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPriceBooks>>
+>;
+export type ListPriceBooksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List price books
+ */
+
+export function useListPriceBooks<
+  TData = Awaited<ReturnType<typeof listPriceBooks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPriceBooks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPriceBooksQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create price book
+ */
+export const getCreatePriceBookUrl = () => {
+  return `/api/price-books`;
+};
+
+export const createPriceBook = async (
+  createPriceBookInput: CreatePriceBookInput,
+  options?: RequestInit,
+): Promise<PriceBook> => {
+  return customFetch<PriceBook>(getCreatePriceBookUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPriceBookInput),
+  });
+};
+
+export const getCreatePriceBookMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPriceBook>>,
+    TError,
+    { data: BodyType<CreatePriceBookInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPriceBook>>,
+  TError,
+  { data: BodyType<CreatePriceBookInput> },
+  TContext
+> => {
+  const mutationKey = ["createPriceBook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPriceBook>>,
+    { data: BodyType<CreatePriceBookInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPriceBook(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePriceBookMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPriceBook>>
+>;
+export type CreatePriceBookMutationBody = BodyType<CreatePriceBookInput>;
+export type CreatePriceBookMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create price book
+ */
+export const useCreatePriceBook = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPriceBook>>,
+    TError,
+    { data: BodyType<CreatePriceBookInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPriceBook>>,
+  TError,
+  { data: BodyType<CreatePriceBookInput> },
+  TContext
+> => {
+  return useMutation(getCreatePriceBookMutationOptions(options));
+};
+
+/**
+ * @summary Get price book with entries
+ */
+export const getGetPriceBookUrl = (id: number) => {
+  return `/api/price-books/${id}`;
+};
+
+export const getPriceBook = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PriceBookDetail> => {
+  return customFetch<PriceBookDetail>(getGetPriceBookUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPriceBookQueryKey = (id: number) => {
+  return [`/api/price-books/${id}`] as const;
+};
+
+export const getGetPriceBookQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPriceBook>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPriceBook>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPriceBookQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPriceBook>>> = ({
+    signal,
+  }) => getPriceBook(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPriceBook>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPriceBookQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPriceBook>>
+>;
+export type GetPriceBookQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get price book with entries
+ */
+
+export function useGetPriceBook<
+  TData = Awaited<ReturnType<typeof getPriceBook>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPriceBook>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPriceBookQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update price book
+ */
+export const getUpdatePriceBookUrl = (id: number) => {
+  return `/api/price-books/${id}`;
+};
+
+export const updatePriceBook = async (
+  id: number,
+  updatePriceBookInput: UpdatePriceBookInput,
+  options?: RequestInit,
+): Promise<PriceBook> => {
+  return customFetch<PriceBook>(getUpdatePriceBookUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePriceBookInput),
+  });
+};
+
+export const getUpdatePriceBookMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePriceBook>>,
+    TError,
+    { id: number; data: BodyType<UpdatePriceBookInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePriceBook>>,
+  TError,
+  { id: number; data: BodyType<UpdatePriceBookInput> },
+  TContext
+> => {
+  const mutationKey = ["updatePriceBook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePriceBook>>,
+    { id: number; data: BodyType<UpdatePriceBookInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePriceBook(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePriceBookMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePriceBook>>
+>;
+export type UpdatePriceBookMutationBody = BodyType<UpdatePriceBookInput>;
+export type UpdatePriceBookMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update price book
+ */
+export const useUpdatePriceBook = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePriceBook>>,
+    TError,
+    { id: number; data: BodyType<UpdatePriceBookInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePriceBook>>,
+  TError,
+  { id: number; data: BodyType<UpdatePriceBookInput> },
+  TContext
+> => {
+  return useMutation(getUpdatePriceBookMutationOptions(options));
+};
+
+/**
+ * @summary Delete price book
+ */
+export const getDeletePriceBookUrl = (id: number) => {
+  return `/api/price-books/${id}`;
+};
+
+export const deletePriceBook = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getDeletePriceBookUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePriceBookMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePriceBook>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePriceBook>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deletePriceBook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePriceBook>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deletePriceBook(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePriceBookMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePriceBook>>
+>;
+
+export type DeletePriceBookMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete price book
+ */
+export const useDeletePriceBook = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePriceBook>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePriceBook>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeletePriceBookMutationOptions(options));
+};
+
+/**
+ * @summary Add a product entry to a price book
+ */
+export const getAddPriceBookEntryUrl = (id: number) => {
+  return `/api/price-books/${id}/entries`;
+};
+
+export const addPriceBookEntry = async (
+  id: number,
+  createPriceBookEntryInput: CreatePriceBookEntryInput,
+  options?: RequestInit,
+): Promise<PriceBookEntry> => {
+  return customFetch<PriceBookEntry>(getAddPriceBookEntryUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPriceBookEntryInput),
+  });
+};
+
+export const getAddPriceBookEntryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addPriceBookEntry>>,
+    TError,
+    { id: number; data: BodyType<CreatePriceBookEntryInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addPriceBookEntry>>,
+  TError,
+  { id: number; data: BodyType<CreatePriceBookEntryInput> },
+  TContext
+> => {
+  const mutationKey = ["addPriceBookEntry"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addPriceBookEntry>>,
+    { id: number; data: BodyType<CreatePriceBookEntryInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return addPriceBookEntry(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddPriceBookEntryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addPriceBookEntry>>
+>;
+export type AddPriceBookEntryMutationBody = BodyType<CreatePriceBookEntryInput>;
+export type AddPriceBookEntryMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a product entry to a price book
+ */
+export const useAddPriceBookEntry = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addPriceBookEntry>>,
+    TError,
+    { id: number; data: BodyType<CreatePriceBookEntryInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addPriceBookEntry>>,
+  TError,
+  { id: number; data: BodyType<CreatePriceBookEntryInput> },
+  TContext
+> => {
+  return useMutation(getAddPriceBookEntryMutationOptions(options));
+};
+
+/**
+ * @summary Update a price book entry
+ */
+export const getUpdatePriceBookEntryUrl = (id: number, entryId: number) => {
+  return `/api/price-books/${id}/entries/${entryId}`;
+};
+
+export const updatePriceBookEntry = async (
+  id: number,
+  entryId: number,
+  updatePriceBookEntryInput: UpdatePriceBookEntryInput,
+  options?: RequestInit,
+): Promise<PriceBookEntry> => {
+  return customFetch<PriceBookEntry>(getUpdatePriceBookEntryUrl(id, entryId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePriceBookEntryInput),
+  });
+};
+
+export const getUpdatePriceBookEntryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePriceBookEntry>>,
+    TError,
+    { id: number; entryId: number; data: BodyType<UpdatePriceBookEntryInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePriceBookEntry>>,
+  TError,
+  { id: number; entryId: number; data: BodyType<UpdatePriceBookEntryInput> },
+  TContext
+> => {
+  const mutationKey = ["updatePriceBookEntry"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePriceBookEntry>>,
+    { id: number; entryId: number; data: BodyType<UpdatePriceBookEntryInput> }
+  > = (props) => {
+    const { id, entryId, data } = props ?? {};
+
+    return updatePriceBookEntry(id, entryId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePriceBookEntryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePriceBookEntry>>
+>;
+export type UpdatePriceBookEntryMutationBody =
+  BodyType<UpdatePriceBookEntryInput>;
+export type UpdatePriceBookEntryMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a price book entry
+ */
+export const useUpdatePriceBookEntry = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePriceBookEntry>>,
+    TError,
+    { id: number; entryId: number; data: BodyType<UpdatePriceBookEntryInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePriceBookEntry>>,
+  TError,
+  { id: number; entryId: number; data: BodyType<UpdatePriceBookEntryInput> },
+  TContext
+> => {
+  return useMutation(getUpdatePriceBookEntryMutationOptions(options));
+};
+
+/**
+ * @summary Remove a price book entry
+ */
+export const getRemovePriceBookEntryUrl = (id: number, entryId: number) => {
+  return `/api/price-books/${id}/entries/${entryId}`;
+};
+
+export const removePriceBookEntry = async (
+  id: number,
+  entryId: number,
+  options?: RequestInit,
+): Promise<DeleteResponse> => {
+  return customFetch<DeleteResponse>(getRemovePriceBookEntryUrl(id, entryId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemovePriceBookEntryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removePriceBookEntry>>,
+    TError,
+    { id: number; entryId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removePriceBookEntry>>,
+  TError,
+  { id: number; entryId: number },
+  TContext
+> => {
+  const mutationKey = ["removePriceBookEntry"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removePriceBookEntry>>,
+    { id: number; entryId: number }
+  > = (props) => {
+    const { id, entryId } = props ?? {};
+
+    return removePriceBookEntry(id, entryId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemovePriceBookEntryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removePriceBookEntry>>
+>;
+
+export type RemovePriceBookEntryMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove a price book entry
+ */
+export const useRemovePriceBookEntry = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removePriceBookEntry>>,
+    TError,
+    { id: number; entryId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removePriceBookEntry>>,
+  TError,
+  { id: number; entryId: number },
+  TContext
+> => {
+  return useMutation(getRemovePriceBookEntryMutationOptions(options));
+};
+
+/**
+ * @summary List price book entries for a product across all books
+ */
+export const getListEntriesByProductUrl = (productId: number) => {
+  return `/api/price-books/by-product/${productId}`;
+};
+
+export const listEntriesByProduct = async (
+  productId: number,
+  options?: RequestInit,
+): Promise<PriceBookEntryByProductList> => {
+  return customFetch<PriceBookEntryByProductList>(
+    getListEntriesByProductUrl(productId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListEntriesByProductQueryKey = (productId: number) => {
+  return [`/api/price-books/by-product/${productId}`] as const;
+};
+
+export const getListEntriesByProductQueryOptions = <
+  TData = Awaited<ReturnType<typeof listEntriesByProduct>>,
+  TError = ErrorType<unknown>,
+>(
+  productId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listEntriesByProduct>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListEntriesByProductQueryKey(productId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listEntriesByProduct>>
+  > = ({ signal }) =>
+    listEntriesByProduct(productId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!productId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listEntriesByProduct>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListEntriesByProductQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listEntriesByProduct>>
+>;
+export type ListEntriesByProductQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List price book entries for a product across all books
+ */
+
+export function useListEntriesByProduct<
+  TData = Awaited<ReturnType<typeof listEntriesByProduct>>,
+  TError = ErrorType<unknown>,
+>(
+  productId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listEntriesByProduct>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListEntriesByProductQueryOptions(productId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List active entries for a price book (for line item selection)
+ */
+export const getListActivePriceBookEntriesUrl = (id: number) => {
+  return `/api/price-books/${id}/active-entries`;
+};
+
+export const listActivePriceBookEntries = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ActivePriceBookEntryList> => {
+  return customFetch<ActivePriceBookEntryList>(
+    getListActivePriceBookEntriesUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListActivePriceBookEntriesQueryKey = (id: number) => {
+  return [`/api/price-books/${id}/active-entries`] as const;
+};
+
+export const getListActivePriceBookEntriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listActivePriceBookEntries>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listActivePriceBookEntries>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListActivePriceBookEntriesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listActivePriceBookEntries>>
+  > = ({ signal }) =>
+    listActivePriceBookEntries(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listActivePriceBookEntries>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListActivePriceBookEntriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listActivePriceBookEntries>>
+>;
+export type ListActivePriceBookEntriesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List active entries for a price book (for line item selection)
+ */
+
+export function useListActivePriceBookEntries<
+  TData = Awaited<ReturnType<typeof listActivePriceBookEntries>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listActivePriceBookEntries>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListActivePriceBookEntriesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List cases

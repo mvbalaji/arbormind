@@ -13,6 +13,7 @@ export interface CreateQuoteInput {
   opportunityId?: number | null;
   contactId?: number | null;
   accountId?: number | null;
+  priceBookId?: number | null;
   status?: CreateQuoteInputStatus;
   validUntil?: Date | null;
   discount?: number;

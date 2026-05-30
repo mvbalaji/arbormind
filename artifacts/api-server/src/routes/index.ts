@@ -7,6 +7,7 @@ import leadsRouter from "./leads";
 import opportunitiesRouter from "./opportunities";
 import activitiesRouter from "./activities";
 import productsRouter from "./products";
+import priceBooksRouter from "./price-books";
 import casesRouter from "./cases";
 import quotesRouter from "./quotes";
 import reportsRouter from "./reports";
@@ -27,6 +28,7 @@ import searchRouter from "./search";
 import emailSendRouter from "./email-send";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
+import { seedStandardPricing } from "../lib/pricing";
 
 const router: IRouter = Router();
 
@@ -42,6 +44,7 @@ router.use(leadsRouter);
 router.use(opportunitiesRouter);
 router.use(activitiesRouter);
 router.use(productsRouter);
+router.use(priceBooksRouter);
 router.use(casesRouter);
 router.use(quotesRouter);
 router.use(reportsRouter);
@@ -61,5 +64,6 @@ router.use(emailSendRouter);
 // access on startup.
 void seedAccessControl();
 void seedRecordAccess();
+void seedStandardPricing();
 
 export default router;

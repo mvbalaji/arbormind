@@ -3,11 +3,13 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { opportunitiesTable } from "./opportunities";
 import { productsTable } from "./products";
+import { priceBookEntriesTable } from "./price-book-entries";
 
 export const opportunityItemsTable = pgTable("opportunity_items", {
   id: serial("id").primaryKey(),
   opportunityId: integer("opportunity_id").notNull().references(() => opportunitiesTable.id),
   productId: integer("product_id").references(() => productsTable.id),
+  priceBookEntryId: integer("price_book_entry_id").references(() => priceBookEntriesTable.id),
   productName: text("product_name").notNull(),
   quantity: numeric("quantity", { precision: 15, scale: 2 }).notNull().default("1"),
   unitPrice: numeric("unit_price", { precision: 15, scale: 2 }).notNull(),

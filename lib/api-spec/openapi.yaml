@@ -824,6 +824,211 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResponse"
 
+  # PRICE BOOKS
+  /price-books:
+    get:
+      operationId: listPriceBooks
+      tags: [price-books]
+      summary: List price books
+      responses:
+        "200":
+          description: List of price books
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceBookList"
+    post:
+      operationId: createPriceBook
+      tags: [price-books]
+      summary: Create price book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePriceBookInput"
+      responses:
+        "201":
+          description: Created price book
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceBook"
+
+  /price-books/{id}:
+    get:
+      operationId: getPriceBook
+      tags: [price-books]
+      summary: Get price book with entries
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Price book with entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceBookDetail"
+    put:
+      operationId: updatePriceBook
+      tags: [price-books]
+      summary: Update price book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePriceBookInput"
+      responses:
+        "200":
+          description: Updated price book
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceBook"
+    delete:
+      operationId: deletePriceBook
+      tags: [price-books]
+      summary: Delete price book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /price-books/{id}/entries:
+    post:
+      operationId: addPriceBookEntry
+      tags: [price-books]
+      summary: Add a product entry to a price book
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePriceBookEntryInput"
+      responses:
+        "201":
+          description: Created entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceBookEntry"
+
+  /price-books/{id}/entries/{entryId}:
+    put:
+      operationId: updatePriceBookEntry
+      tags: [price-books]
+      summary: Update a price book entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePriceBookEntryInput"
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceBookEntry"
+    delete:
+      operationId: removePriceBookEntry
+      tags: [price-books]
+      summary: Remove a price book entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /price-books/by-product/{productId}:
+    get:
+      operationId: listEntriesByProduct
+      tags: [price-books]
+      summary: List price book entries for a product across all books
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Entries for the product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceBookEntryByProductList"
+
+  /price-books/{id}/active-entries:
+    get:
+      operationId: listActivePriceBookEntries
+      tags: [price-books]
+      summary: List active entries for a price book (for line item selection)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Active entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivePriceBookEntryList"
+
   # CASES
   /cases:
     get:
@@ -2476,6 +2681,9 @@ components:
         contactId:
           type: integer
           nullable: true
+        priceBookId:
+          type: integer
+          nullable: true
         stage:
           type: string
           enum: [prospecting, qualification, proposal, negotiation, closed_won, closed_lost]
@@ -2514,6 +2722,9 @@ components:
           type: integer
           nullable: true
         contactId:
+          type: integer
+          nullable: true
+        priceBookId:
           type: integer
           nullable: true
         stage:
@@ -2798,6 +3009,223 @@ components:
         isActive:
           type: boolean
 
+    # PRICE BOOK
+    PriceBook:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isStandard:
+          type: boolean
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - isStandard
+        - isActive
+        - createdAt
+        - updatedAt
+
+    PriceBookWithCount:
+      allOf:
+        - $ref: "#/components/schemas/PriceBook"
+        - type: object
+          properties:
+            entryCount:
+              type: integer
+          required:
+            - entryCount
+
+    PriceBookList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceBookWithCount"
+        total:
+          type: integer
+      required:
+        - data
+        - total
+
+    PriceBookEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        priceBookId:
+          type: integer
+        productId:
+          type: integer
+        listPrice:
+          type: number
+        currency:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - priceBookId
+        - productId
+        - listPrice
+        - currency
+        - isActive
+
+    PriceBookEntryDetail:
+      allOf:
+        - $ref: "#/components/schemas/PriceBookEntry"
+        - type: object
+          properties:
+            productName:
+              type: string
+              nullable: true
+            productCode:
+              type: string
+              nullable: true
+            productCategory:
+              type: string
+              nullable: true
+
+    PriceBookDetail:
+      allOf:
+        - $ref: "#/components/schemas/PriceBook"
+        - type: object
+          properties:
+            entries:
+              type: array
+              items:
+                $ref: "#/components/schemas/PriceBookEntryDetail"
+          required:
+            - entries
+
+    PriceBookEntryByProduct:
+      allOf:
+        - $ref: "#/components/schemas/PriceBookEntry"
+        - type: object
+          properties:
+            priceBookName:
+              type: string
+              nullable: true
+            isStandard:
+              type: boolean
+              nullable: true
+
+    PriceBookEntryByProductList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceBookEntryByProduct"
+      required:
+        - data
+
+    ActivePriceBookEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        priceBookId:
+          type: integer
+        productId:
+          type: integer
+        listPrice:
+          type: number
+        currency:
+          type: string
+        productName:
+          type: string
+          nullable: true
+        productCode:
+          type: string
+          nullable: true
+      required:
+        - id
+        - priceBookId
+        - productId
+        - listPrice
+        - currency
+
+    ActivePriceBookEntryList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivePriceBookEntry"
+      required:
+        - data
+
+    CreatePriceBookInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+          default: true
+      required:
+        - name
+
+    UpdatePriceBookInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isActive:
+          type: boolean
+
+    CreatePriceBookEntryInput:
+      type: object
+      properties:
+        productId:
+          type: integer
+        listPrice:
+          type: number
+        currency:
+          type: string
+        isActive:
+          type: boolean
+          default: true
+      required:
+        - productId
+        - listPrice
+
+    UpdatePriceBookEntryInput:
+      type: object
+      properties:
+        listPrice:
+          type: number
+        currency:
+          type: string
+        isActive:
+          type: boolean
+
     # CASE
     Case:
       type: object
@@ -2998,6 +3426,9 @@ components:
         accountName:
           type: string
           nullable: true
+        priceBookId:
+          type: integer
+          nullable: true
         createdByUserId:
           type: integer
           nullable: true
@@ -3101,6 +3532,9 @@ components:
         productId:
           type: integer
           nullable: true
+        priceBookEntryId:
+          type: integer
+          nullable: true
         productName:
           type: string
         quantity:
@@ -3152,6 +3586,9 @@ components:
         accountId:
           type: integer
           nullable: true
+        priceBookId:
+          type: integer
+          nullable: true
         status:
           type: string
           enum: [draft, sent, accepted, rejected, expired]
@@ -3186,6 +3623,9 @@ components:
         productId:
           type: integer
           nullable: true
+        priceBookEntryId:
+          type: integer
+          nullable: true
         productName:
           type: string
         quantity:
@@ -3214,6 +3654,9 @@ components:
         productId:
           type: integer
           nullable: true
+        priceBookEntryId:
+          type: integer
+          nullable: true
         productName:
           type: string
         quantity:
@@ -3233,6 +3676,18 @@ components:
       properties:
         name:
           type: string
+        priceBookId:
+          type: integer
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        accountId:
+          type: integer
+          nullable: true
         status:
           type: string
           enum: [draft, sent, accepted, rejected, expired]

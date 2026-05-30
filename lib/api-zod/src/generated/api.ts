@@ -629,6 +629,7 @@ export const CreateOpportunityBody = zod.object({
   name: zod.string(),
   accountId: zod.number().nullish(),
   contactId: zod.number().nullish(),
+  priceBookId: zod.number().nullish(),
   stage: zod
     .enum([
       "prospecting",
@@ -693,6 +694,7 @@ export const UpdateOpportunityBody = zod.object({
   name: zod.string().optional(),
   accountId: zod.number().nullish(),
   contactId: zod.number().nullish(),
+  priceBookId: zod.number().nullish(),
   stage: zod
     .enum([
       "prospecting",
@@ -765,6 +767,7 @@ export const ListOpportunityItemsResponse = zod.object({
         id: zod.number(),
         opportunityId: zod.number(),
         productId: zod.number().nullish(),
+        priceBookEntryId: zod.number().nullish(),
         productName: zod.string(),
         quantity: zod.number(),
         unitPrice: zod.number(),
@@ -789,6 +792,7 @@ export const UpdateOpportunityItemsBody = zod.object({
   items: zod.array(
     zod.object({
       productId: zod.number().nullish(),
+      priceBookEntryId: zod.number().nullish(),
       productName: zod.string(),
       quantity: zod.number(),
       unitPrice: zod.number(),
@@ -806,6 +810,7 @@ export const UpdateOpportunityItemsResponse = zod.object({
         id: zod.number(),
         opportunityId: zod.number(),
         productId: zod.number().nullish(),
+        priceBookEntryId: zod.number().nullish(),
         productName: zod.string(),
         quantity: zod.number(),
         unitPrice: zod.number(),
@@ -1066,6 +1071,222 @@ export const DeleteProductParams = zod.object({
 export const DeleteProductResponse = zod.object({
   success: zod.boolean(),
   id: zod.number(),
+});
+
+/**
+ * @summary List price books
+ */
+export const ListPriceBooksResponse = zod.object({
+  data: zod.array(
+    zod
+      .object({
+        id: zod.number(),
+        name: zod.string(),
+        description: zod.string().nullish(),
+        isStandard: zod.boolean(),
+        isActive: zod.boolean(),
+        createdAt: zod.date(),
+        updatedAt: zod.date(),
+      })
+      .and(
+        zod.object({
+          entryCount: zod.number(),
+        }),
+      ),
+  ),
+  total: zod.number(),
+});
+
+/**
+ * @summary Create price book
+ */
+export const createPriceBookBodyIsActiveDefault = true;
+
+export const CreatePriceBookBody = zod.object({
+  name: zod.string(),
+  description: zod.string().nullish(),
+  isActive: zod.boolean().default(createPriceBookBodyIsActiveDefault),
+});
+
+/**
+ * @summary Get price book with entries
+ */
+export const GetPriceBookParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPriceBookResponse = zod
+  .object({
+    id: zod.number(),
+    name: zod.string(),
+    description: zod.string().nullish(),
+    isStandard: zod.boolean(),
+    isActive: zod.boolean(),
+    createdAt: zod.date(),
+    updatedAt: zod.date(),
+  })
+  .and(
+    zod.object({
+      entries: zod.array(
+        zod
+          .object({
+            id: zod.number(),
+            priceBookId: zod.number(),
+            productId: zod.number(),
+            listPrice: zod.number(),
+            currency: zod.string(),
+            isActive: zod.boolean(),
+            createdAt: zod.date().optional(),
+            updatedAt: zod.date().optional(),
+          })
+          .and(
+            zod.object({
+              productName: zod.string().nullish(),
+              productCode: zod.string().nullish(),
+              productCategory: zod.string().nullish(),
+            }),
+          ),
+      ),
+    }),
+  );
+
+/**
+ * @summary Update price book
+ */
+export const UpdatePriceBookParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdatePriceBookBody = zod.object({
+  name: zod.string().optional(),
+  description: zod.string().nullish(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdatePriceBookResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  isStandard: zod.boolean(),
+  isActive: zod.boolean(),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Delete price book
+ */
+export const DeletePriceBookParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeletePriceBookResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary Add a product entry to a price book
+ */
+export const AddPriceBookEntryParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const addPriceBookEntryBodyIsActiveDefault = true;
+
+export const AddPriceBookEntryBody = zod.object({
+  productId: zod.number(),
+  listPrice: zod.number(),
+  currency: zod.string().optional(),
+  isActive: zod.boolean().default(addPriceBookEntryBodyIsActiveDefault),
+});
+
+/**
+ * @summary Update a price book entry
+ */
+export const UpdatePriceBookEntryParams = zod.object({
+  id: zod.coerce.number(),
+  entryId: zod.coerce.number(),
+});
+
+export const UpdatePriceBookEntryBody = zod.object({
+  listPrice: zod.number().optional(),
+  currency: zod.string().optional(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdatePriceBookEntryResponse = zod.object({
+  id: zod.number(),
+  priceBookId: zod.number(),
+  productId: zod.number(),
+  listPrice: zod.number(),
+  currency: zod.string(),
+  isActive: zod.boolean(),
+  createdAt: zod.date().optional(),
+  updatedAt: zod.date().optional(),
+});
+
+/**
+ * @summary Remove a price book entry
+ */
+export const RemovePriceBookEntryParams = zod.object({
+  id: zod.coerce.number(),
+  entryId: zod.coerce.number(),
+});
+
+export const RemovePriceBookEntryResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary List price book entries for a product across all books
+ */
+export const ListEntriesByProductParams = zod.object({
+  productId: zod.coerce.number(),
+});
+
+export const ListEntriesByProductResponse = zod.object({
+  data: zod.array(
+    zod
+      .object({
+        id: zod.number(),
+        priceBookId: zod.number(),
+        productId: zod.number(),
+        listPrice: zod.number(),
+        currency: zod.string(),
+        isActive: zod.boolean(),
+        createdAt: zod.date().optional(),
+        updatedAt: zod.date().optional(),
+      })
+      .and(
+        zod.object({
+          priceBookName: zod.string().nullish(),
+          isStandard: zod.boolean().nullish(),
+        }),
+      ),
+  ),
+});
+
+/**
+ * @summary List active entries for a price book (for line item selection)
+ */
+export const ListActivePriceBookEntriesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListActivePriceBookEntriesResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      priceBookId: zod.number(),
+      productId: zod.number(),
+      listPrice: zod.number(),
+      currency: zod.string(),
+      productName: zod.string().nullish(),
+      productCode: zod.string().nullish(),
+    }),
+  ),
 });
 
 /**
@@ -1351,6 +1572,7 @@ export const ListQuotesResponse = zod.object({
       contactEmail: zod.string().nullish(),
       accountId: zod.number().nullish(),
       accountName: zod.string().nullish(),
+      priceBookId: zod.number().nullish(),
       createdByUserId: zod.number().nullish(),
       createdByName: zod.string().nullish(),
       createdByEmail: zod.string().nullish(),
@@ -1365,6 +1587,7 @@ export const ListQuotesResponse = zod.object({
         zod.object({
           id: zod.number(),
           productId: zod.number().nullish(),
+          priceBookEntryId: zod.number().nullish(),
           productName: zod.string(),
           quantity: zod.number(),
           unitPrice: zod.number(),
@@ -1406,6 +1629,7 @@ export const CreateQuoteBody = zod.object({
   opportunityId: zod.number().nullish(),
   contactId: zod.number().nullish(),
   accountId: zod.number().nullish(),
+  priceBookId: zod.number().nullish(),
   status: zod
     .enum(["draft", "sent", "accepted", "rejected", "expired"])
     .default(createQuoteBodyStatusDefault),
@@ -1417,6 +1641,7 @@ export const CreateQuoteBody = zod.object({
     .array(
       zod.object({
         productId: zod.number().nullish(),
+        priceBookEntryId: zod.number().nullish(),
         productName: zod.string(),
         quantity: zod.number(),
         unitPrice: zod.number(),
@@ -1449,6 +1674,7 @@ export const GetQuoteResponse = zod.object({
   contactEmail: zod.string().nullish(),
   accountId: zod.number().nullish(),
   accountName: zod.string().nullish(),
+  priceBookId: zod.number().nullish(),
   createdByUserId: zod.number().nullish(),
   createdByName: zod.string().nullish(),
   createdByEmail: zod.string().nullish(),
@@ -1463,6 +1689,7 @@ export const GetQuoteResponse = zod.object({
     zod.object({
       id: zod.number(),
       productId: zod.number().nullish(),
+      priceBookEntryId: zod.number().nullish(),
       productName: zod.string(),
       quantity: zod.number(),
       unitPrice: zod.number(),
@@ -1497,6 +1724,10 @@ export const updateQuoteBodyItemsItemDiscountDefault = 0;
 
 export const UpdateQuoteBody = zod.object({
   name: zod.string().optional(),
+  priceBookId: zod.number().nullish(),
+  opportunityId: zod.number().nullish(),
+  contactId: zod.number().nullish(),
+  accountId: zod.number().nullish(),
   status: zod
     .enum(["draft", "sent", "accepted", "rejected", "expired"])
     .optional(),
@@ -1508,6 +1739,7 @@ export const UpdateQuoteBody = zod.object({
     .array(
       zod.object({
         productId: zod.number().nullish(),
+        priceBookEntryId: zod.number().nullish(),
         productName: zod.string(),
         quantity: zod.number(),
         unitPrice: zod.number(),
@@ -1533,6 +1765,7 @@ export const UpdateQuoteResponse = zod.object({
   contactEmail: zod.string().nullish(),
   accountId: zod.number().nullish(),
   accountName: zod.string().nullish(),
+  priceBookId: zod.number().nullish(),
   createdByUserId: zod.number().nullish(),
   createdByName: zod.string().nullish(),
   createdByEmail: zod.string().nullish(),
@@ -1547,6 +1780,7 @@ export const UpdateQuoteResponse = zod.object({
     zod.object({
       id: zod.number(),
       productId: zod.number().nullish(),
+      priceBookEntryId: zod.number().nullish(),
       productName: zod.string(),
       quantity: zod.number(),
       unitPrice: zod.number(),
@@ -1690,6 +1924,7 @@ export const CreateOrderBody = zod.object({
     .array(
       zod.object({
         productId: zod.number().nullish(),
+        priceBookEntryId: zod.number().nullish(),
         productName: zod.string(),
         quantity: zod.number(),
         unitPrice: zod.number(),

@@ -6,6 +6,8 @@ import { contactsTable } from "./contacts";
 import { accountsTable } from "./accounts";
 import { opportunitiesTable } from "./opportunities";
 import { productsTable } from "./products";
+import { priceBooksTable } from "./price-books";
+import { priceBookEntriesTable } from "./price-book-entries";
 
 export const quotesTable = pgTable("quotes", {
   id: serial("id").primaryKey(),
@@ -20,6 +22,7 @@ export const quotesTable = pgTable("quotes", {
   opportunityId: integer("opportunity_id").references(() => opportunitiesTable.id),
   contactId: integer("contact_id").references(() => contactsTable.id),
   accountId: integer("account_id").references(() => accountsTable.id),
+  priceBookId: integer("price_book_id").references(() => priceBooksTable.id),
   status: text("status").notNull().default("draft"),
   validUntil: timestamp("valid_until"),
   subtotal: numeric("subtotal", { precision: 15, scale: 2 }).notNull().default("0"),
@@ -35,6 +38,7 @@ export const quoteItemsTable = pgTable("quote_items", {
   id: serial("id").primaryKey(),
   quoteId: integer("quote_id").notNull().references(() => quotesTable.id),
   productId: integer("product_id").references(() => productsTable.id),
+  priceBookEntryId: integer("price_book_entry_id").references(() => priceBookEntriesTable.id),
   productName: text("product_name").notNull(),
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull(),
   unitPrice: numeric("unit_price", { precision: 15, scale: 2 }).notNull(),

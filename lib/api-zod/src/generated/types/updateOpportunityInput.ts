@@ -11,6 +11,7 @@ export interface UpdateOpportunityInput {
   name?: string;
   accountId?: number | null;
   contactId?: number | null;
+  priceBookId?: number | null;
   stage?: UpdateOpportunityInputStage;
   amount?: number | null;
   probability?: number | null;
