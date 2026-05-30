@@ -29,3 +29,9 @@ id = "ZsZJMNmu6zP502KBV-TMH"
 uri = "file://.local/outputs/ArborMind-CRM-Overview.pdf"
 type = "pdf"
 title = "ArborMind CRM Overview - 12 slides (PDF)"
+
+[[outputs]]
+id = "2U0qhvTK4Hu9k_h3rJsGe"
+uri = "file://deliverables/ArborMind_CRM_Requirements.docx"
+type = "word_document"
+title = "ArborMind CRM — Business Requirements Document"
