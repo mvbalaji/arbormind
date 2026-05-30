@@ -700,7 +700,7 @@ export default function Quotes() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {/* Breadcrumb */}
         <div className="text-xs text-muted-foreground">
           <Link href="/opportunities" className="hover:text-primary hover:underline">Opportunities</Link>
@@ -709,14 +709,14 @@ export default function Quotes() {
         </div>
 
         {/* Header bar */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="w-11 h-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 text-emerald-600" />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4 text-emerald-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-display font-bold text-foreground tracking-tight leading-tight">Quotes</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <h1 className="text-lg font-semibold text-foreground leading-tight">Quotes</h1>
+              <p className="text-xs text-muted-foreground">
                 {isLoading ? "Loading..." : `${itemCount} ${itemCount === 1 ? "item" : "items"}`}
                 {!isLoading && (
                   <>

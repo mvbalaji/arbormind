@@ -574,14 +574,14 @@ export default function Orders() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Orders</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Manage customer orders and fulfillment.</p>
+            <h1 className="text-lg font-semibold text-foreground">Orders</h1>
+            <p className="text-muted-foreground text-xs">Manage customer orders and fulfillment.</p>
           </div>
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-primary text-foreground hover:bg-primary/90 shadow-lg shadow-primary/20">
-            <Plus className="w-4 h-4 mr-2" /> Create Order
+          <Button size="sm" onClick={() => setIsCreateOpen(true)} className="h-8 text-xs gap-1.5 bg-primary text-foreground hover:bg-primary/90 shadow-sm">
+            <Plus className="w-3.5 h-3.5" /> Create Order
           </Button>
         </div>
 
