@@ -23,7 +23,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Phone, Mail, Calendar, CheckSquare, FileText, Plus, MoreHorizontal, Pencil, Trash2, List, Activity, Search } from "lucide-react";
+import { Phone, Mail, Calendar, CheckSquare, FileText, Plus, MoreHorizontal, Pencil, Trash2, List, Activity } from "lucide-react";
 import { format, startOfWeek, addDays, isSameDay, parseISO } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";

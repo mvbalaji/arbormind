@@ -8,7 +8,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth";
 import { Layout } from "@/components/layout";
-import { AISummary } from "@/components/ai-summary";
+import { ListPageHeader } from "@/components/list-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,9 +21,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Building2, Search, MapPin, Link as LinkIcon, Users, Briefcase,
+  Building2, MapPin, Users, Briefcase,
   Plus, MoreHorizontal, Pencil, Trash2, ExternalLink, ChevronDown,
-  Mail, Phone, Filter, Download, Upload, ListFilter, User,
+  Mail, Phone, Filter, Download, Upload, User,
 } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -136,105 +136,67 @@ export default function Accounts() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-0">
-        {/* Page Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <h1 className="text-lg font-semibold text-foreground">Accounts</h1>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors border-b border-primary/40 pb-0.5">
-                  {activeView.label}
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
-                {VIEW_OPTIONS.map((v) => (
-                  <DropdownMenuItem
-                    key={v.value}
-                    onClick={() => setActiveView(v)}
-                    className={`cursor-pointer text-sm ${activeView.value === v.value ? "text-primary font-medium" : ""}`}
-                  >
-                    {v.label}
-                    {v.value === "all" && <span className="ml-auto text-xs text-muted-foreground">Pinned</span>}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <div className="relative flex-shrink-0">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
-              <Input
-                placeholder="Search accounts..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-xs w-60 bg-card border-border"
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                  <Filter className="w-3.5 h-3.5" />
-                  {industryFilter ? industryFilter : "Industry"}
-                  <ChevronDown className="w-3 h-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-44">
-                <DropdownMenuItem onClick={() => setIndustryFilter("")} className="text-sm cursor-pointer">
-                  All Industries
+      <div className="flex flex-col gap-3">
+        <ListPageHeader
+          icon={Building2}
+          title="Accounts"
+          viewOptions={VIEW_OPTIONS}
+          activeView={activeView.value}
+          onViewChange={(val) => { const v = VIEW_OPTIONS.find((o) => o.value === val); if (v) setActiveView(v); }}
+          viewLabel="All Accounts"
+          search={{ value: search, onChange: setSearch, placeholder: "Search accounts..." }}
+          aiEntityType="accounts"
+          onNew={() => setIsCreateOpen(true)}
+          newLabel="New"
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                <Filter className="w-3.5 h-3.5" />
+                {industryFilter ? industryFilter : "Industry"}
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem onClick={() => setIndustryFilter("")} className="text-sm cursor-pointer">
+                All Industries
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {INDUSTRY_OPTIONS.map((ind) => (
+                <DropdownMenuItem
+                  key={ind}
+                  onClick={() => setIndustryFilter(ind)}
+                  className={`text-sm cursor-pointer ${industryFilter === ind ? "text-primary font-medium" : ""}`}
+                >
+                  {ind}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {INDUSTRY_OPTIONS.map((ind) => (
-                  <DropdownMenuItem
-                    key={ind}
-                    onClick={() => setIndustryFilter(ind)}
-                    className={`text-sm cursor-pointer ${industryFilter === ind ? "text-primary font-medium" : ""}`}
-                  >
-                    {ind}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleExport}>
-              <Download className="w-3.5 h-3.5" /> Export
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5">
-              <Upload className="w-3.5 h-3.5" /> Import
-            </Button>
-            <AISummary entityType="accounts" compact />
-            <Button
-              size="sm"
-              className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
-              onClick={() => setIsCreateOpen(true)}
-            >
-              <Plus className="w-3.5 h-3.5" /> New
-            </Button>
-          </div>
-        </div>
-
-        {/* Toolbar */}
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex-1" />
-          <TablePagination
-            variant="inline"
-            page={accountsPagination.page}
-            totalPages={accountsPagination.totalPages}
-            pageSize={accountsPagination.pageSize}
-            total={accountsPagination.total}
-            pageStart={accountsPagination.pageStart}
-            pageEnd={accountsPagination.pageEnd}
-            onPageChange={accountsPagination.setPage}
-            onPageSizeChange={accountsPagination.setPageSize}
-          />
-          <ColumnsMenu columns={ACCOUNT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
-          <span className="text-xs text-muted-foreground">{total} account{total !== 1 ? "s" : ""}</span>
-        </div>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={handleExport}>
+            <Download className="w-3.5 h-3.5" /> Export
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5">
+            <Upload className="w-3.5 h-3.5" /> Import
+          </Button>
+        </ListPageHeader>
 
         {/* Table */}
         <div className="bg-card rounded-md overflow-hidden shadow-sm">
+          <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
+            <TablePagination
+              variant="inline"
+              page={accountsPagination.page}
+              totalPages={accountsPagination.totalPages}
+              pageSize={accountsPagination.pageSize}
+              total={accountsPagination.total}
+              pageStart={accountsPagination.pageStart}
+              pageEnd={accountsPagination.pageEnd}
+              onPageChange={accountsPagination.setPage}
+              onPageSizeChange={accountsPagination.setPageSize}
+            />
+            <ColumnsMenu columns={ACCOUNT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
+          </div>
           <div className="overflow-auto max-h-[calc(100vh-260px)]">
             <table className="w-full text-sm min-w-[900px] [&_tbody_td]:whitespace-nowrap">
               <colgroup>

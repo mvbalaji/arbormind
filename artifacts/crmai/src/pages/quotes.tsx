@@ -29,8 +29,7 @@ import { useListAccounts } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
-import { AISummary } from "@/components/ai-summary";
-import { formatDistanceToNow } from "date-fns";
+import { ListPageHeader } from "@/components/list-page-header";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
 import { ApprovalWarning } from "@/components/approval-warning";
@@ -590,15 +589,10 @@ export default function Quotes() {
   const colVis = useColumnVisibility<QuoteColKey>("col-visibility:quotes:v1", QUOTE_TOGGLEABLE_COLS);
   const quoteColSpan = colVis.visible.size + 2;
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
   const { data, isLoading, refetch, isFetching } = useListQuotes();
   const deleteMutation = useDeleteQuote();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
-  React.useEffect(() => {
-    if (data) setUpdatedAt(new Date());
-  }, [data]);
 
   const handleDelete = async () => {
     if (deletingId === null) return;
@@ -694,88 +688,49 @@ export default function Quotes() {
       </th>
     );
 
-  const itemCount = sortedQuotes.length;
-  const updatedAgo = formatDistanceToNow(updatedAt, { addSuffix: true });
-  const sortLabel = ({ quoteNumber: "Quote Number", name: "Quote Name", validUntil: "Expiration Date", subtotal: "Subtotal", total: "Total Price" } as const)[sortField];
 
   return (
     <Layout>
-      <div className="flex flex-col gap-2">
-        {/* Breadcrumb */}
-        <div className="text-xs text-muted-foreground">
-          <Link href="/opportunities" className="hover:text-primary hover:underline">Opportunities</Link>
-          <span className="mx-1.5">›</span>
-          <span>All Quotes</span>
-        </div>
-
-        {/* Header bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-              <FileText className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-foreground leading-tight">Quotes</h1>
-              <p className="text-xs text-muted-foreground">
-                {isLoading ? "Loading..." : `${itemCount} ${itemCount === 1 ? "item" : "items"}`}
-                {!isLoading && (
-                  <>
-                    {" "}• Sorted by <span className="font-medium">{sortLabel}</span> • Updated {updatedAgo}
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search this list..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 pl-8 w-56 bg-card border-border"
-              />
-            </div>
-            <div className="flex items-center gap-1 border border-border rounded-md p-0.5 bg-card">
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="List settings">
-                <Settings className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                title="Refresh"
-                onClick={() => { refetch(); }}
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="Sort">
-                <ArrowUpDown className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="Filters">
-                <Filter className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => setIsCreateOpen(true)}
-              className="border-border text-foreground hover:bg-muted h-9"
-            >
-              New Quote
+      <div className="flex flex-col gap-3">
+        <ListPageHeader
+          icon={FileText}
+          title="Quotes"
+          viewLabel="All Quotes"
+          search={{ value: searchQuery, onChange: setSearchQuery, placeholder: "Search quotes..." }}
+          aiEntityType="quotes"
+          onNew={() => setIsCreateOpen(true)}
+          newLabel="New Quote"
+        >
+          <div className="flex items-center gap-1 border border-border rounded-md p-0.5 bg-card">
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="List settings">
+              <Settings className="w-3.5 h-3.5" />
             </Button>
             <Button
-              variant="outline"
-              onClick={() => { setCloneInitialSource(null); setCloneOpen(true); }}
-              className="border-border text-foreground hover:bg-muted h-9 gap-1.5"
-              title="Clone an existing quote into a different account"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+              title="Refresh"
+              onClick={() => { refetch(); }}
             >
-              <Copy className="w-3.5 h-3.5" />
-              Clone Quote
+              <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
-            <AISummary entityType="quotes" compact />
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="Sort">
+              <ArrowUpDown className="w-3.5 h-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" title="Filters">
+              <Filter className="w-3.5 h-3.5" />
+            </Button>
           </div>
-        </div>
+          <Button
+            variant="outline"
+            onClick={() => { setCloneInitialSource(null); setCloneOpen(true); }}
+            className="border-border text-foreground hover:bg-muted h-8 gap-1.5"
+            title="Clone an existing quote into a different account"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            Clone Quote
+          </Button>
+        </ListPageHeader>
 
         {/* Table */}
         <div className="bg-card rounded-md overflow-hidden shadow-sm">

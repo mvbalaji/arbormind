@@ -7,7 +7,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/auth";
 import { Layout } from "@/components/layout";
-import { AISummary } from "@/components/ai-summary";
+import { ListPageHeader } from "@/components/list-page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -24,8 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Link } from "wouter";
 import {
-  Search, Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink,
-  ChevronDown, Filter, UserCheck, Upload, ListFilter, Eye, Users, ArrowUpDown, Columns3,
+  Plus, ArrowRightLeft, MoreHorizontal, Pencil, Trash2, ExternalLink,
+  ChevronDown, UserCheck, ListFilter, Eye, Users, ArrowUpDown, Columns3,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -353,142 +353,105 @@ export default function Leads() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-0">
-        {/* Page Header */}
-        <div className="flex items-center justify-between mb-3 gap-3">
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="p-1.5 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-primary" />
-            </div>
-            <h1 className="text-lg font-semibold text-foreground">Leads</h1>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors border-b border-primary/40 pb-0.5">
-                  {activeView.label}
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
-                {VIEW_OPTIONS.map((v) => (
-                  <DropdownMenuItem
-                    key={v.value}
-                    onClick={() => setActiveView(v)}
-                    className={`cursor-pointer text-sm ${activeView.value === v.value ? "text-primary font-medium" : ""}`}
-                  >
-                    {v.label}
-                    {v.value === "" && <span className="ml-auto text-xs text-muted-foreground">Pinned</span>}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
-              <Input
-                placeholder="Search leads..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 text-xs w-60 bg-card border-border"
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                  <ListFilter className="w-3.5 h-3.5" />
-                  {statusFilter ? statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1) : "Status"}
-                  <ChevronDown className="w-3 h-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-44">
-                <DropdownMenuItem onClick={() => setStatusFilter("")} className="text-sm cursor-pointer">
-                  All Statuses
+      <div className="flex flex-col gap-3">
+        <ListPageHeader
+          icon={Users}
+          title="Leads"
+          viewOptions={VIEW_OPTIONS}
+          activeView={activeView.value}
+          onViewChange={(val) => { const v = VIEW_OPTIONS.find((o) => o.value === val); if (v) setActiveView(v); }}
+          viewLabel="All Leads"
+          search={{ value: search, onChange: setSearch, placeholder: "Search leads..." }}
+          aiEntityType="leads"
+          onNew={() => setIsCreateOpen(true)}
+          newLabel="New"
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                <ListFilter className="w-3.5 h-3.5" />
+                {statusFilter ? statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1) : "Status"}
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              <DropdownMenuItem onClick={() => setStatusFilter("")} className="text-sm cursor-pointer">
+                All Statuses
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {["new", "contacted", "qualified", "unqualified"].map((s) => (
+                <DropdownMenuItem
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`text-sm cursor-pointer capitalize ${statusFilter === s ? "text-primary font-medium" : ""}`}
+                >
+                  {s}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {["new", "contacted", "qualified", "unqualified"].map((s) => (
-                  <DropdownMenuItem
-                    key={s}
-                    onClick={() => setStatusFilter(s)}
-                    className={`text-sm cursor-pointer capitalize ${statusFilter === s ? "text-primary font-medium" : ""}`}
-                  >
-                    {s}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5"
-              disabled={selectedIds.size === 0}
-              onClick={() => {
-                setNewOwnerId("");
-                setChangeOwnerOpen(true);
-              }}
-              title={selectedIds.size === 0 ? "Select one or more leads first" : "Change owner of selected leads"}
-            >
-              <UserCheck className="w-3.5 h-3.5" /> Change Owner
-              {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
-            </Button>
-            {(() => {
-              const selectedLeads = leads.filter((l) => selectedIds.has(l.id));
-              const singleConvertible =
-                selectedLeads.length === 1 && !selectedLeads[0]!.isConverted
-                  ? selectedLeads[0]!
-                  : null;
-              return (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-xs gap-1.5"
-                    disabled={!singleConvertible}
-                    onClick={() => {
-                      if (singleConvertible) {
-                        setConvertingId({
-                          id: singleConvertible.id,
-                          name: `${singleConvertible.firstName} ${singleConvertible.lastName}`,
-                          company: singleConvertible.company,
-                        });
-                      }
-                    }}
-                    title={
-                      selectedLeads.length === 0
-                        ? "Select a lead to convert"
-                        : selectedLeads.length > 1
-                        ? "Select only one lead to convert"
-                        : selectedLeads[0]!.isConverted
-                        ? "Lead is already converted"
-                        : "Convert lead"
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            disabled={selectedIds.size === 0}
+            onClick={() => {
+              setNewOwnerId("");
+              setChangeOwnerOpen(true);
+            }}
+            title={selectedIds.size === 0 ? "Select one or more leads first" : "Change owner of selected leads"}
+          >
+            <UserCheck className="w-3.5 h-3.5" /> Change Owner
+            {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+          </Button>
+          {(() => {
+            const selectedLeads = leads.filter((l) => selectedIds.has(l.id));
+            const singleConvertible =
+              selectedLeads.length === 1 && !selectedLeads[0]!.isConverted
+                ? selectedLeads[0]!
+                : null;
+            return (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs gap-1.5"
+                  disabled={!singleConvertible}
+                  onClick={() => {
+                    if (singleConvertible) {
+                      setConvertingId({
+                        id: singleConvertible.id,
+                        name: `${singleConvertible.firstName} ${singleConvertible.lastName}`,
+                        company: singleConvertible.company,
+                      });
                     }
-                  >
-                    <ArrowRightLeft className="w-3.5 h-3.5" /> Convert
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="h-8 text-xs gap-1.5"
-                    disabled={selectedIds.size === 0}
-                    onClick={() => setBulkDeleteOpen(true)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                    {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
-                  </Button>
-                </>
-              );
-            })()}
-            <AISummary entityType="leads" compact />
-            <Button
-              size="sm"
-              className="h-8 text-xs gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
-              onClick={() => setIsCreateOpen(true)}
-            >
-              <Plus className="w-3.5 h-3.5" /> New
-            </Button>
-          </div>
-        </div>
+                  }}
+                  title={
+                    selectedLeads.length === 0
+                      ? "Select a lead to convert"
+                      : selectedLeads.length > 1
+                      ? "Select only one lead to convert"
+                      : selectedLeads[0]!.isConverted
+                      ? "Lead is already converted"
+                      : "Convert lead"
+                  }
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5" /> Convert
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 text-xs gap-1.5"
+                  disabled={selectedIds.size === 0}
+                  onClick={() => setBulkDeleteOpen(true)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                  {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+                </Button>
+              </>
+            );
+          })()}
+        </ListPageHeader>
 
         {/* Table */}
         <div className="bg-card rounded-md overflow-hidden shadow-sm">
