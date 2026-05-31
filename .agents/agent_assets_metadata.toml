@@ -35,3 +35,9 @@ id = "2U0qhvTK4Hu9k_h3rJsGe"
 uri = "file://deliverables/ArborMind_CRM_Requirements.docx"
 type = "word_document"
 title = "ArborMind CRM — Business Requirements Document"
+
+[[outputs]]
+id = "cyzaNAnT2mGcphcvL75S6"
+uri = "file://marketing/arbormind-crm-sales-email.md"
+type = "text"
+title = "ArborMind CRM — Sales Outreach Email Template"
