@@ -192,7 +192,7 @@ router.post("/price-books/:id/entries", async (req, res) => {
     // before it can be added to any custom price book.
     if (book.isStandard) {
       // Adding/keeping the standard entry also syncs the product's unitPrice.
-      await syncStandardEntry(productId, Number(listPrice), currency ?? product.currency);
+      await syncStandardEntry(productId, Number(listPrice), "GBP");
       await db
         .update(productsTable)
         .set({ unitPrice: Number(listPrice).toString(), updatedAt: new Date() })
@@ -228,7 +228,7 @@ router.post("/price-books/:id/entries", async (req, res) => {
         priceBookId,
         productId,
         listPrice: Number(listPrice).toString(),
-        currency: currency ?? product.currency,
+        currency: "GBP",
         isActive: isActive ?? true,
       })
       .returning();
@@ -265,7 +265,7 @@ router.put("/price-books/:id/entries/:entryId", async (req, res) => {
       }
       updateData.listPrice = Number(listPrice).toString();
     }
-    if (currency !== undefined) updateData.currency = currency;
+    if (currency !== undefined) updateData.currency = "GBP";
     if (isActive !== undefined) updateData.isActive = isActive;
 
     const [updated] = await db

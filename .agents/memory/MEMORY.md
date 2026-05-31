@@ -1,0 +1,1 @@
+- [CRMAI base-currency model](crmai-currency.md) — money stored as GBP numbers; display converts on the fly; currency column forced GBP server-side.

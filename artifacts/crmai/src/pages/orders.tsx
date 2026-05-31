@@ -28,6 +28,7 @@ import {
   Plus, X, Package, Eye, Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
 import { EntityApprovals } from "@/components/entity-approvals";
 import { useAuth } from "@/context/auth";
@@ -106,6 +107,7 @@ interface OrderViewDialogProps {
 function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
   const [activeTab, setActiveTab] = useState<"details" | "approvals">("details");
   const [, navigate] = useLocation();
+  const { format: fmtMoney } = useCurrency();
   const drill = (path: string) => { onOpenChange(false); navigate(path); };
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -167,8 +169,8 @@ function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
                   <tr key={idx}>
                     <td className="px-3 py-1 text-foreground">{item.productName}</td>
                     <td className="px-3 py-1 text-right text-muted-foreground">{item.quantity}</td>
-                    <td className="px-3 py-1 text-right text-muted-foreground">£{item.unitPrice.toFixed(2)}</td>
-                    <td className="px-3 py-1 text-right font-medium">£{item.total.toFixed(2)}</td>
+                    <td className="px-3 py-1 text-right text-muted-foreground">{fmtMoney(item.unitPrice)}</td>
+                    <td className="px-3 py-1 text-right font-medium">{fmtMoney(item.total)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -176,10 +178,10 @@ function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
           </div>
 
           <div className="text-sm space-y-1">
-            <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>£{order.subtotal.toFixed(2)}</span></div>
-            {order.discount > 0 && <div className="flex justify-between text-muted-foreground"><span>Discount ({order.discount}%)</span><span>-${(order.subtotal * order.discount / 100).toFixed(2)}</span></div>}
-            {order.tax > 0 && <div className="flex justify-between text-muted-foreground"><span>Tax ({order.tax}%)</span><span>£{(order.subtotal * (1 - order.discount / 100) * order.tax / 100).toFixed(2)}</span></div>}
-            <div className="flex justify-between font-bold text-foreground text-lg border-t border-border pt-2 mt-1"><span>Total</span><span>£{order.total.toFixed(2)}</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{fmtMoney(order.subtotal)}</span></div>
+            {order.discount > 0 && <div className="flex justify-between text-muted-foreground"><span>Discount ({order.discount}%)</span><span>-{fmtMoney(order.subtotal * order.discount / 100)}</span></div>}
+            {order.tax > 0 && <div className="flex justify-between text-muted-foreground"><span>Tax ({order.tax}%)</span><span>{fmtMoney(order.subtotal * (1 - order.discount / 100) * order.tax / 100)}</span></div>}
+            <div className="flex justify-between font-bold text-foreground text-lg border-t border-border pt-2 mt-1"><span>Total</span><span>{fmtMoney(order.total)}</span></div>
           </div>
 
           {order.notes && (
@@ -205,6 +207,7 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const createMutation = useCreateOrder();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { format: fmtMoney } = useCurrency();
 
   useEffect(() => {
     if (open) { setNotes(""); setDiscount("0"); setTax("0"); setItems([]); }
@@ -311,7 +314,7 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                       <Input type="number" min="0" max="100" className="h-8 bg-muted border-border text-right text-sm"
                         value={item.discount} onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                     </div>
-                    <div className="col-span-1 text-right text-sm font-medium text-foreground">£{lineTotal(item).toFixed(2)}</div>
+                    <div className="col-span-1 text-right text-sm font-medium text-foreground">{fmtMoney(lineTotal(item))}</div>
                     <div className="col-span-1 flex justify-end">
                       <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-600"
                         onClick={() => removeItem(idx)}><X className="w-3 h-3" /></Button>
@@ -333,10 +336,10 @@ function CreateOrderDialog({ open, onOpenChange }: { open: boolean; onOpenChange
                     value={tax} onChange={e => setTax(e.target.value)} /></div>
               </div>
               <div className="border-t border-border pt-2 mt-2 space-y-1 text-sm">
-                <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>£{subtotal.toFixed(2)}</span></div>
-                {discountAmt > 0 && <div className="flex justify-between text-muted-foreground"><span>Discount ({discount}%)</span><span>-${discountAmt.toFixed(2)}</span></div>}
-                {taxAmt > 0 && <div className="flex justify-between text-muted-foreground"><span>Tax ({tax}%)</span><span>£{taxAmt.toFixed(2)}</span></div>}
-                <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1"><span>Total</span><span>£{total.toFixed(2)}</span></div>
+                <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{fmtMoney(subtotal)}</span></div>
+                {discountAmt > 0 && <div className="flex justify-between text-muted-foreground"><span>Discount ({discount}%)</span><span>-{fmtMoney(discountAmt)}</span></div>}
+                {taxAmt > 0 && <div className="flex justify-between text-muted-foreground"><span>Tax ({tax}%)</span><span>{fmtMoney(taxAmt)}</span></div>}
+                <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1"><span>Total</span><span>{fmtMoney(total)}</span></div>
               </div>
             </div>
           )}
@@ -377,6 +380,7 @@ function EditOrderDialog({ open, onOpenChange, order }: { open: boolean; onOpenC
   const updateMutation = useUpdateOrder();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { format: fmtMoney } = useCurrency();
 
   useEffect(() => {
     if (open) {
@@ -470,7 +474,7 @@ function EditOrderDialog({ open, onOpenChange, order }: { open: boolean; onOpenC
                     value={item.quantity} onChange={e => updateItem(idx, "quantity", parseInt(e.target.value) || 1)} />
                   <Input className="w-20 bg-muted border-border text-sm text-right" type="number" step="0.01"
                     value={item.unitPrice} onChange={e => updateItem(idx, "unitPrice", parseFloat(e.target.value) || 0)} />
-                  <span className="text-xs text-muted-foreground w-20 text-right">£{lineTotal(item).toFixed(2)}</span>
+                  <span className="text-xs text-muted-foreground w-20 text-right">{fmtMoney(lineTotal(item))}</span>
                   <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(idx)} className="text-muted-foreground hover:text-destructive h-7 w-7">
                     <X className="w-3 h-3" />
                   </Button>
@@ -486,10 +490,10 @@ function EditOrderDialog({ open, onOpenChange, order }: { open: boolean; onOpenC
 
           {items.length > 0 && (
             <div className="text-sm space-y-1">
-              <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>£{subtotal.toFixed(2)}</span></div>
-              {parseFloat(discount) > 0 && <div className="flex justify-between text-muted-foreground"><span>Discount ({discount}%)</span><span>-${discountAmt.toFixed(2)}</span></div>}
-              {parseFloat(tax) > 0 && <div className="flex justify-between text-muted-foreground"><span>Tax ({tax}%)</span><span>£{taxAmt.toFixed(2)}</span></div>}
-              <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1"><span>Total</span><span>£{total.toFixed(2)}</span></div>
+              <div className="flex justify-between text-muted-foreground"><span>Subtotal</span><span>{fmtMoney(subtotal)}</span></div>
+              {parseFloat(discount) > 0 && <div className="flex justify-between text-muted-foreground"><span>Discount ({discount}%)</span><span>-{fmtMoney(discountAmt)}</span></div>}
+              {parseFloat(tax) > 0 && <div className="flex justify-between text-muted-foreground"><span>Tax ({tax}%)</span><span>{fmtMoney(taxAmt)}</span></div>}
+              <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1"><span>Total</span><span>{fmtMoney(total)}</span></div>
             </div>
           )}
 
@@ -524,6 +528,7 @@ export default function Orders() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<OrderViewDialogProps["order"] | null>(null);
   const [editingOrder, setEditingOrder] = useState<EditOrderData | null>(null);
+  const { format: fmtMoney } = useCurrency();
   const { data, isLoading } = useListOrders();
   const [search, setSearch] = useState("");
   const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
@@ -708,7 +713,7 @@ export default function Orders() {
                     )}
                     {colVis.isVisible("total") && (
                       <td className="px-3 py-1 text-right font-semibold text-foreground">
-                        ${order.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        {fmtMoney(order.total)}
                       </td>
                     )}
                     {colVis.isVisible("status") && (

@@ -17,6 +17,7 @@ import {
   useGetDashboardStats, useGetActivitiesSummary,
 } from "@workspace/api-client-react";
 import { format } from "date-fns";
+import { useCurrency } from "@/context/currency";
 import { Link } from "wouter";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CustomReportBuilder } from "@/components/custom-report-builder";
@@ -40,9 +41,6 @@ const STAGE_LABELS: Record<string, string> = {
   closed_won: "Closed Won",
   closed_lost: "Closed Lost",
 };
-
-const gbp = (n: number) =>
-  new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(n || 0);
 
 const ACTIVITY_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   call: Phone, email: Mail, meeting: Calendar, task: ClipboardList, note: StickyNote,
@@ -90,6 +88,8 @@ function KpiCard({
 }
 
 export default function Reports() {
+  const { format: fmtMoney } = useCurrency();
+  const gbp = (n: number) => fmtMoney(n || 0, { maximumFractionDigits: 0, minimumFractionDigits: 0 });
   const { data: stats } = useGetDashboardStats();
   const { data: pipelineData } = useGetPipelineReport();
   const { data: leadSourcesData } = useGetLeadSourcesReport();

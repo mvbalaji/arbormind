@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Pencil, Trash2, Check, X as XIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/context/currency";
+import { BASE_CURRENCY } from "@/lib/currency";
 
 interface PricingEntry {
   id: number;
@@ -29,6 +31,7 @@ function EntryPriceRow({ entry, onChanged }: { entry: PricingEntry; onChanged: (
   const updateMutation = useUpdatePriceBookEntry();
   const removeMutation = useRemovePriceBookEntry();
   const { toast } = useToast();
+  const { format } = useCurrency();
 
   React.useEffect(() => { setPrice(entry.listPrice.toString()); }, [entry.listPrice]);
 
@@ -86,7 +89,7 @@ function EntryPriceRow({ entry, onChanged }: { entry: PricingEntry; onChanged: (
         ) : (
           <>
             <span className="font-semibold text-foreground tabular-nums">
-              ${entry.listPrice.toLocaleString()} <span className="text-xs text-muted-foreground">{entry.currency}</span>
+              {format(entry.listPrice)}
             </span>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setEditing(true)}>
               <Pencil className="w-3.5 h-3.5" />
@@ -206,7 +209,7 @@ export function ProductPricingManager({
               </select>
             </div>
             <div className="w-32 space-y-1">
-              <Label htmlFor="add-price" className="text-xs">List Price</Label>
+              <Label htmlFor="add-price" className="text-xs">List Price ({BASE_CURRENCY})</Label>
               <Input
                 id="add-price" type="number" min="0" step="0.01"
                 className="h-9 bg-muted border-border text-right"

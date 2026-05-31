@@ -8,6 +8,8 @@ import {
   type CreateProductInput,
 } from "@workspace/api-client-react";
 import { ProductPricingManager } from "@/components/product-pricing-manager";
+import { useCurrency } from "@/context/currency";
+import { BASE_CURRENCY } from "@/lib/currency";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { ListPageHeader } from "@/components/list-page-header";
@@ -51,7 +53,7 @@ interface ProductFormData {
 }
 
 const defaultForm: ProductFormData = {
-  name: "", code: "", description: "", unitPrice: "", currency: "USD", category: "", isActive: true,
+  name: "", code: "", description: "", unitPrice: "", currency: BASE_CURRENCY, category: "", isActive: true,
 };
 
 interface ProductFormDialogProps {
@@ -82,7 +84,7 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
       code: formData.code || null,
       description: formData.description || null,
       unitPrice: parseFloat(formData.unitPrice),
-      currency: formData.currency || "USD",
+      currency: BASE_CURRENCY,
       category: formData.category || null,
       isActive: formData.isActive,
     };
@@ -126,17 +128,11 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
                 value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="p-price">Unit Price *</Label>
-              <Input id="p-price" type="number" min="0" step="0.01" required className="bg-muted border-border"
-                value={formData.unitPrice} onChange={e => setFormData({ ...formData, unitPrice: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="p-currency">Currency</Label>
-              <Input id="p-currency" className="bg-muted border-border"
-                value={formData.currency} onChange={e => setFormData({ ...formData, currency: e.target.value })} />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="p-price">Unit Price ({BASE_CURRENCY}) *</Label>
+            <Input id="p-price" type="number" min="0" step="0.01" required className="bg-muted border-border"
+              value={formData.unitPrice} onChange={e => setFormData({ ...formData, unitPrice: e.target.value })} />
+            <p className="text-xs text-muted-foreground">Entered in the base currency ({BASE_CURRENCY}); other currencies are converted automatically.</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="p-desc">Description</Label>
@@ -209,6 +205,7 @@ const VIEW_OPTIONS = [
 ];
 
 export default function Products() {
+  const { format } = useCurrency();
   const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:products:v1", PRODUCTS_COL_KEYS, PRODUCTS_COL_DEFAULTS);
   const [search, setSearch] = useState("");
   const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
@@ -317,7 +314,7 @@ export default function Products() {
                     )}
                     {colVis.isVisible("price") && (
                       <td className="px-3 py-1 text-right font-semibold text-foreground">
-                        ${prod.unitPrice.toLocaleString()} <span className="text-xs text-muted-foreground">{prod.currency}</span>
+                        {format(prod.unitPrice)}
                       </td>
                     )}
                     {colVis.isVisible("status") && (

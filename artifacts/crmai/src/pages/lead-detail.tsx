@@ -24,6 +24,7 @@ import {
   TrendingUp, ThumbsUp, ThumbsDown, MessageSquare, Plus, XCircle, CheckSquare,
 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
+import { useCurrency } from "@/context/currency";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -155,6 +156,7 @@ export default function LeadDetail() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [, navigate] = useLocation();
+  const { format: fmtMoney } = useCurrency();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
@@ -639,7 +641,7 @@ export default function LeadDetail() {
               <FieldRow label="Lead Source" value={lead.source?.replace(/_/g, " ")} icon={Target} />
               <FieldRow label="Industry" value={lead.industry} icon={Building2} />
               <FieldRow label="Employees" value={lead.employees?.toLocaleString()} icon={Users} />
-              <FieldRow label="Annual Revenue" value={lead.annualRevenue ? `£${lead.annualRevenue.toLocaleString()}` : null} icon={DollarSign} />
+              <FieldRow label="Annual Revenue" value={lead.annualRevenue ? fmtMoney(lead.annualRevenue) : null} icon={DollarSign} />
               {lead.score != null && (
                 <div className="py-2 border-b border-border/50 last:border-0">
                   <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">

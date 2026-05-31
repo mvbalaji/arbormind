@@ -32,7 +32,7 @@ export async function getStandardPriceBook() {
  * Upsert the Standard Price Book entry for a product so it always mirrors
  * the product's unitPrice (the canonical Standard Price).
  */
-export async function syncStandardEntry(productId: number, unitPrice: string | number, currency = "USD") {
+export async function syncStandardEntry(productId: number, unitPrice: string | number, currency = "GBP") {
   const standard = await getStandardPriceBook();
   const listPrice = unitPrice.toString();
   await db

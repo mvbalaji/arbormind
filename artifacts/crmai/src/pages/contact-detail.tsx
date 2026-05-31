@@ -10,6 +10,7 @@ import {
   Phone as CallIcon, Mail as EmailIcon, Users, Calendar, CheckCircle2, Clock,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useCurrency } from "@/context/currency";
 
 interface ContactDetail {
   id: number;
@@ -72,6 +73,7 @@ export default function ContactDetail() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [activeTab, setActiveTab] = useState<Tab>("activities");
+  const { format: fmtMoney } = useCurrency();
 
   const { data: contact, isLoading: contactLoading } = useQuery<ContactDetail>({
     queryKey: ["contact", id],
@@ -278,7 +280,7 @@ export default function ContactDetail() {
                       <div className="flex items-center gap-3 shrink-0">
                         {opp.amount !== null && (
                           <span className="text-sm font-semibold text-foreground">
-                            ${opp.amount.toLocaleString()}
+                            {fmtMoney(opp.amount)}
                           </span>
                         )}
                         <Badge variant="outline" className={`capitalize text-xs ${STAGE_COLORS[opp.stage] ?? ""}`}>

@@ -27,6 +27,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { useListAccounts } from "@workspace/api-client-react";
 import { format } from "date-fns";
+import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { ListPageHeader } from "@/components/list-page-header";
@@ -89,6 +90,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
   const [formData, setFormData] = useState<QuoteFormData>(initialData ?? DEFAULT_FORM);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { format: fmtMoney } = useCurrency();
   const createMutation = useCreateQuote();
   const updateMutation = useUpdateQuote();
   const { data: productsData } = useListProducts({ limit: 200 });
@@ -268,7 +270,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                         onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-1 text-right text-sm font-medium text-foreground">
-                      ${lineTotal(item).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {fmtMoney(lineTotal(item))}
                     </div>
                     <div className="col-span-1 flex justify-end">
                       <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-red-600"
@@ -303,23 +305,23 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
               />
               <div className="border-t border-border pt-2 mt-2 space-y-1 text-sm">
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Subtotal</span><span>£{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                  <span>Subtotal</span><span>{fmtMoney(subtotal)}</span>
                 </div>
                 {discountAmt > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Discount ({formData.discount}%)</span>
-                    <span>-${discountAmt.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span>-{fmtMoney(discountAmt)}</span>
                   </div>
                 )}
                 {taxAmt > 0 && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Tax ({formData.tax}%)</span>
-                    <span>£{taxAmt.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span>{fmtMoney(taxAmt)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1">
                   <span>Total</span>
-                  <span>£{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                  <span>{fmtMoney(total)}</span>
                 </div>
               </div>
             </div>
@@ -600,6 +602,7 @@ export default function Quotes() {
   const versionMutation = useCreateQuoteVersion();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { format: fmtMoney } = useCurrency();
   const [, navigate] = useLocation();
 
   const handleRevise = async (id: number) => {
@@ -886,12 +889,12 @@ export default function Quotes() {
                       )}
                       {colVis.isVisible("subtotal") && (
                         <td className="px-3 py-1 text-right text-foreground border-r border-border tabular-nums">
-                          £{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {fmtMoney(subtotal)}
                         </td>
                       )}
                       {colVis.isVisible("total") && (
                         <td className="px-3 py-1 text-right text-foreground border-r border-border tabular-nums">
-                          £{total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {fmtMoney(total)}
                         </td>
                       )}
                       {colVis.isVisible("createdBy") && (

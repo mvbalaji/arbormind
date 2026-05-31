@@ -30,6 +30,7 @@ import {
   UserPlus, FilePlus, Copy, MoreVertical, Globe, GripVertical,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
 
 interface OpportunityDetail {
@@ -134,6 +135,7 @@ function OpportunityProductsDialog({
   const updateMutation = useUpdateOpportunityItems();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { format: fmtMoney } = useCurrency();
   const { data: activeEntriesData } = useListActivePriceBookEntries(priceBookId ?? 0, {
     query: { enabled: (priceBookId ?? 0) > 0, queryKey: getListActivePriceBookEntriesQueryKey(priceBookId ?? 0) },
   });
@@ -254,7 +256,7 @@ function OpportunityProductsDialog({
                         value={item.discount} onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-1 text-right text-xs font-medium text-foreground">
-                      £{lineTotal(item).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {fmtMoney(lineTotal(item))}
                     </div>
                     <div className="col-span-1 flex justify-end">
                       <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600" onClick={() => removeItem(idx)}>
@@ -270,7 +272,7 @@ function OpportunityProductsDialog({
           {items.length > 0 && (
             <div className="flex justify-end border-t border-border pt-3">
               <div className="text-sm text-muted-foreground">
-                Total: <span className="ml-2 text-base font-semibold text-foreground">£{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                Total: <span className="ml-2 text-base font-semibold text-foreground">{fmtMoney(total)}</span>
               </div>
             </div>
           )}
@@ -325,6 +327,7 @@ function QuickQuoteDialog({
   const createMutation = useCreateQuote();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { format: fmtMoney } = useCurrency();
   const { data: activeEntriesData } = useListActivePriceBookEntries(priceBookId ?? 0, {
     query: { enabled: (priceBookId ?? 0) > 0, queryKey: getListActivePriceBookEntriesQueryKey(priceBookId ?? 0) },
   });
@@ -512,7 +515,7 @@ function QuickQuoteDialog({
                         value={item.discount} onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                     </div>
                     <div className="col-span-1 text-right text-xs font-medium text-foreground">
-                      ${lineTotal(item).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {fmtMoney(lineTotal(item))}
                     </div>
                     <div className="col-span-1 flex justify-end">
                       <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600" onClick={() => removeItem(idx)}>
@@ -541,7 +544,7 @@ function QuickQuoteDialog({
               </div>
               <div className="flex justify-between font-bold text-foreground border-t border-border pt-2">
                 <span>Total</span>
-                <span>£{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                <span>{fmtMoney(total)}</span>
               </div>
             </div>
           )}
@@ -558,7 +561,7 @@ function QuickQuoteDialog({
   );
 }
 
-function generateQuotePDF(quote: OppQuote, opp: OpportunityDetail) {
+function generateQuotePDF(quote: OppQuote, opp: OpportunityDetail, fmtMoney: (amount: number | null | undefined) => string) {
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -618,11 +621,11 @@ function generateQuotePDF(quote: OppQuote, opp: OpportunityDetail) {
     <tbody>
       <tr>
         <td>${quote.name}</td>
-        <td style="text-align:right">£${quote.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td style="text-align:right">${fmtMoney(quote.total)}</td>
       </tr>
       <tr class="total-row">
         <td><strong>Total</strong></td>
-        <td style="text-align:right"><strong>£${quote.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+        <td style="text-align:right"><strong>${fmtMoney(quote.total)}</strong></td>
       </tr>
     </tbody>
   </table>
@@ -661,6 +664,7 @@ export default function OpportunityDetail() {
   const ownerSeededRef = React.useRef<number | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { format: fmtMoney } = useCurrency();
   const isAdmin = user?.role === "admin";
 
   const { data: opp, isLoading } = useQuery<OpportunityDetail>({
@@ -890,7 +894,7 @@ export default function OpportunityDetail() {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-muted-foreground">Amount:</span>
-                <span className="text-foreground font-medium">{opp.amount !== null ? `£${opp.amount.toLocaleString()}` : "—"}</span>
+                <span className="text-foreground font-medium">{opp.amount !== null ? fmtMoney(opp.amount) : "—"}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-muted-foreground">Owner:</span>
@@ -1350,7 +1354,7 @@ export default function OpportunityDetail() {
                         Valid until {format(new Date(q.validUntil), "MMM d, yyyy")}
                       </span>
                     )}
-                    <span className="font-semibold text-foreground text-sm">£{q.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    <span className="font-semibold text-foreground text-sm">{fmtMoney(q.total)}</span>
                     <Badge variant="outline" className={`capitalize text-xs ${QUOTE_STATUS_COLORS[q.status] ?? ""}`}>
                       {q.status}
                     </Badge>
@@ -1359,7 +1363,7 @@ export default function OpportunityDetail() {
                       variant="ghost"
                       className="gap-1.5 text-muted-foreground hover:text-foreground h-7 px-2"
                       title="Generate PDF Quote"
-                      onClick={() => generateQuotePDF(q, opp)}
+                      onClick={() => generateQuotePDF(q, opp, fmtMoney)}
                     >
                       <Printer className="w-3.5 h-3.5" />
                     </Button>
@@ -1419,7 +1423,7 @@ export default function OpportunityDetail() {
                   { label: "Account", value: opp.accountName },
                   { label: "Stage", value: stageConfig.label },
                   { label: "Contact", value: [opp.contactFirstName, opp.contactLastName].filter(Boolean).join(" ") || null },
-                  { label: "Amount", value: opp.amount !== null ? `£${opp.amount.toLocaleString()}` : null },
+                  { label: "Amount", value: opp.amount !== null ? fmtMoney(opp.amount) : null },
                   { label: "Close Date", value: opp.closeDate ? format(new Date(opp.closeDate), "MMM d, yyyy") : null },
                   { label: "Win Probability", value: opp.probability !== null ? `${opp.probability}%` : null },
                   { label: "Lead Source", value: opp.leadSource },
@@ -1631,7 +1635,7 @@ export default function OpportunityDetail() {
                 </div>
                 <div>
                   <div className="text-[11px] text-muted-foreground mb-0.5">Annual Revenue</div>
-                  <div className="text-foreground text-sm">{accountData?.annualRevenue != null ? `£${accountData.annualRevenue.toLocaleString()}` : "—"}</div>
+                  <div className="text-foreground text-sm">{accountData?.annualRevenue != null ? fmtMoney(accountData.annualRevenue) : "—"}</div>
                 </div>
                 <div className="col-span-2">
                   <div className="text-[11px] text-muted-foreground mb-0.5">Website</div>
@@ -1684,7 +1688,7 @@ export default function OpportunityDetail() {
                         )}
                       </span>
                       <span className="text-[11px] text-muted-foreground shrink-0">
-                        {Number(it.quantity)} × £{Number(it.unitPrice).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        {Number(it.quantity)} × {fmtMoney(Number(it.unitPrice))}
                       </span>
                     </div>
                   ))}

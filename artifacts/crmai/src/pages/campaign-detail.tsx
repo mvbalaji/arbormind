@@ -20,6 +20,7 @@ import {
   UserCheck, MapPin, Smartphone, Laptop, Monitor, Tag, Flag,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
+import { useCurrency } from "@/context/currency";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -76,7 +77,7 @@ const MOCK_METRICS = [
   { label: "Leads Generated", value: "84", trend: "+24%", icon: Users },
   { label: "MQLs", value: "32", trend: "+8%", icon: UserCheck },
   { label: "Conversions", value: "12", trend: "+3%", icon: Target },
-  { label: "CPC", value: "£4.20", trend: "-8%", icon: DollarSign },
+  { label: "CPC", base: 4.2, value: "", trend: "-8%", icon: DollarSign },
   { label: "Engagement Rate", value: "6.8%", trend: "+1.2pp", icon: BarChart2 },
 ];
 
@@ -100,6 +101,7 @@ export default function CampaignDetail() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { format: fmtMoney } = useCurrency();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -333,7 +335,7 @@ export default function CampaignDetail() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Budget</p>
-            <p className="text-xl font-bold text-foreground">{campaign.budget ? `£${campaign.budget.toLocaleString()}` : "—"}</p>
+            <p className="text-xl font-bold text-foreground">{campaign.budget ? fmtMoney(campaign.budget) : "—"}</p>
             {spendProgress != null && (
               <div className="mt-2">
                 <div className="w-full bg-muted/50 rounded-full h-1">
@@ -345,7 +347,7 @@ export default function CampaignDetail() {
           </Card>
           <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Expected Revenue</p>
-            <p className="text-xl font-bold text-foreground">{campaign.expectedRevenue ? `£${campaign.expectedRevenue.toLocaleString()}` : "—"}</p>
+            <p className="text-xl font-bold text-foreground">{campaign.expectedRevenue ? fmtMoney(campaign.expectedRevenue) : "—"}</p>
           </Card>
           <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Target className="w-3 h-3" /> ROI (Projected)</p>
@@ -355,7 +357,7 @@ export default function CampaignDetail() {
           </Card>
           <Card className="glass-panel border-border p-4">
             <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Actual Cost</p>
-            <p className="text-xl font-bold text-foreground">{campaign.actualCost ? `£${campaign.actualCost.toLocaleString()}` : "—"}</p>
+            <p className="text-xl font-bold text-foreground">{campaign.actualCost ? fmtMoney(campaign.actualCost) : "—"}</p>
           </Card>
         </div>
 
@@ -434,7 +436,7 @@ export default function CampaignDetail() {
                         <p className="text-xs text-muted-foreground">{m.label}</p>
                       </div>
                       <div className="flex items-end gap-2">
-                        <p className="text-xl font-bold text-foreground">{m.value}</p>
+                        <p className="text-xl font-bold text-foreground">{"base" in m ? fmtMoney(m.base) : m.value}</p>
                         <p className={cn("text-xs pb-0.5", m.trend.startsWith("+") ? "text-emerald-600" : "text-rose-600")}>{m.trend}</p>
                       </div>
                     </div>

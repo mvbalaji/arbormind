@@ -42,6 +42,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth";
 import { useTheme } from "@/context/theme";
+import { useCurrency } from "@/context/currency";
+import { CURRENCY_META } from "@/lib/currency";
 import { NotificationBell } from "@/components/notification-bell";
 
 const NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: string; adminOnly?: boolean }> = [
@@ -77,6 +79,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { displayCurrency, setDisplayCurrency, supported } = useCurrency();
 
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
@@ -249,6 +252,37 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Display currency switcher */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-muted-foreground hover:text-foreground gap-1 font-medium"
+                    title="Display currency"
+                  >
+                    <span className="text-base leading-none">{CURRENCY_META[displayCurrency].symbol}</span>
+                    <span className="text-xs">{displayCurrency}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-card border-border text-foreground min-w-[10rem]">
+                  {supported.map((code) => (
+                    <DropdownMenuItem
+                      key={code}
+                      onClick={() => setDisplayCurrency(code)}
+                      className={cn(
+                        "cursor-pointer hover:bg-muted flex items-center gap-2",
+                        code === displayCurrency && "text-primary font-semibold",
+                      )}
+                    >
+                      <span className="text-base w-4 text-center">{CURRENCY_META[code].symbol}</span>
+                      <span className="flex-1">{CURRENCY_META[code].label}</span>
+                      <span className="text-xs text-muted-foreground">{code}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               {/* Dark / Light mode toggle */}
               <Button
                 variant="ghost"

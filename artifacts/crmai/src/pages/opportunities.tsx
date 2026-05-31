@@ -55,6 +55,8 @@ import { Link } from "wouter";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
 import { format } from "date-fns";
+import { useCurrency } from "@/context/currency";
+import { convertFromBase, CURRENCY_META } from "@/lib/currency";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -241,6 +243,7 @@ export default function Opportunities() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
+  const { format: fmtMoney, displayCurrency, rates } = useCurrency();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [columns, setColumns] = useState<Record<string, Opportunity[]>>({});
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -656,7 +659,7 @@ export default function Opportunities() {
                           )}
                           {colVis.isVisible("amount") && (
                             <td className="px-3 py-1 font-semibold text-foreground">
-                              £{(Number(opp.amount) || 0).toLocaleString()}
+                              {fmtMoney(Number(opp.amount) || 0)}
                             </td>
                           )}
                           {colVis.isVisible("closeDate") && (
@@ -742,7 +745,7 @@ export default function Opportunities() {
                           </span>
                         </div>
                         <div className="text-xs font-medium text-muted-foreground">
-                          £{(totalValue / 1000).toFixed(1)}k
+                          {`${CURRENCY_META[displayCurrency].symbol}${(convertFromBase(totalValue, displayCurrency, rates) / 1000).toFixed(1)}k`}
                         </div>
                       </div>
 
@@ -781,7 +784,7 @@ export default function Opportunities() {
                                     </div>
                                     <div className="flex justify-between items-center mt-auto pt-2 border-t border-border">
                                       <div className="flex items-center text-primary font-semibold text-sm">
-                                        £{(Number(opp.amount) || 0).toLocaleString()}
+                                        {fmtMoney(Number(opp.amount) || 0)}
                                       </div>
                                       <div className="flex items-center text-xs text-muted-foreground">
                                         <Calendar className="w-3 h-3 mr-1" />

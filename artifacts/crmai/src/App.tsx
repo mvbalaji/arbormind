@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AuthProvider, useAuth } from "@/context/auth";
 import { ThemeProvider } from "@/context/theme";
+import { CurrencyProvider } from "@/context/currency";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 
@@ -121,10 +122,12 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <AppContent />
-            </WouterRouter>
-            <Toaster />
+            <CurrencyProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                <AppContent />
+              </WouterRouter>
+              <Toaster />
+            </CurrencyProvider>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>

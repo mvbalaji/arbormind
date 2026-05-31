@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
 import { format as fmtDate, parseISO, isValid as isValidDate, subDays } from "date-fns";
+import { useCurrency } from "@/context/currency";
 
 /* ---------- Field definitions ---------- */
 
@@ -239,9 +240,6 @@ type ReportDef = {
 
 /* ---------- Helpers ---------- */
 
-const gbp = (n: number) =>
-  new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(n || 0);
-
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
 function newReport(dataset = "leads"): ReportDef {
@@ -370,6 +368,8 @@ function downloadFile(name: string, content: string, mime = "text/csv") {
 export function CustomReportBuilder() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { format: fmtMoney } = useCurrency();
+  const gbp = (n: number) => fmtMoney(n || 0, { maximumFractionDigits: 0, minimumFractionDigits: 0 });
   const storageKey = `crmai.customReports.${user?.id ?? "anon"}`;
 
   const [report, setReport] = useState<ReportDef>(() => newReport("leads"));

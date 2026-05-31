@@ -19,6 +19,7 @@ import { Search, Plus, MoreHorizontal, Pencil, Trash2, Megaphone, TrendingUp, Do
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { useCurrency } from "@/context/currency";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
 import { usePagination } from "@/hooks/use-pagination";
@@ -137,6 +138,7 @@ export default function Campaigns() {
   const colVis = useColumnVisibility<"campaign" | "type" | "status" | "dates" | "budget">("col-visibility:campaigns:v1", CAMPAIGN_TOGGLEABLE_COLS);
   const campaignColSpan = colVis.visible.size + 1;
   const { toast } = useToast();
+  const { format: fmtMoney } = useCurrency();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -227,7 +229,7 @@ export default function Campaigns() {
               <div>
                 <p className="text-xs text-muted-foreground">Expected Revenue</p>
                 <p className="text-2xl font-bold text-foreground">
-                  £{campaigns.reduce((s, c) => s + (c.expectedRevenue ?? 0), 0).toLocaleString()}
+                  {fmtMoney(campaigns.reduce((s, c) => s + (c.expectedRevenue ?? 0), 0))}
                 </p>
               </div>
             </Card>
@@ -328,9 +330,9 @@ export default function Campaigns() {
                       {colVis.isVisible("budget") && (
                         <td className="px-3 py-1 text-right">
                           <div className="text-xs text-muted-foreground">
-                            {campaign.budget != null && <div>Budget: £{campaign.budget.toLocaleString()}</div>}
+                            {campaign.budget != null && <div>Budget: {fmtMoney(campaign.budget)}</div>}
                             {campaign.expectedRevenue != null && (
-                              <div className="text-chart-3">Rev: £{campaign.expectedRevenue.toLocaleString()}</div>
+                              <div className="text-chart-3">Rev: {fmtMoney(campaign.expectedRevenue)}</div>
                             )}
                           </div>
                         </td>

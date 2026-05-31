@@ -25,6 +25,7 @@ import {
   FileText, Package, Building2, User, History, Pencil, Plus, X, Save, Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
 import { EntityApprovals } from "@/components/entity-approvals";
 import { ApprovalWarning } from "@/components/approval-warning";
@@ -61,6 +62,7 @@ export default function QuoteDetail() {
   const products = productsData?.data ?? [];
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { format: fmtMoney } = useCurrency();
   const { data: oppsData } = useListOpportunities({ limit: 200 });
   const opportunities = oppsData?.data ?? [];
   const { data: contactsData } = useListContacts({ limit: 200 });
@@ -644,7 +646,7 @@ export default function QuoteDetail() {
                       value={item.discount} onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                   </div>
                   <div className="col-span-1 text-right text-sm font-medium text-foreground">
-                    £{lineTotal(item).toFixed(2)}
+                    {fmtMoney(lineTotal(item))}
                   </div>
                   <div className="col-span-1 flex justify-end">
                     <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red-600"
@@ -674,9 +676,9 @@ export default function QuoteDetail() {
                     <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-2 py-1 text-foreground font-medium">{item.productName}</td>
                       <td className="px-2 py-1 text-right text-muted-foreground">{item.quantity}</td>
-                      <td className="px-2 py-1 text-right text-muted-foreground">£{item.unitPrice.toFixed(2)}</td>
+                      <td className="px-2 py-1 text-right text-muted-foreground">{fmtMoney(item.unitPrice)}</td>
                       <td className="px-2 py-1 text-right text-muted-foreground">{item.discount}%</td>
-                      <td className="px-2 py-1 text-right font-semibold text-foreground">£{item.total.toFixed(2)}</td>
+                      <td className="px-2 py-1 text-right font-semibold text-foreground">{fmtMoney(item.total)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -707,40 +709,40 @@ export default function QuoteDetail() {
                 </div>
                 <div className="border-t border-border pt-2 mt-2 space-y-1 text-sm max-w-xs ml-auto">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Subtotal</span><span>£{editSubtotal.toFixed(2)}</span>
+                    <span>Subtotal</span><span>{fmtMoney(editSubtotal)}</span>
                   </div>
                   {editDiscountAmt > 0 && (
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Discount ({editDiscount}%)</span><span>-£{editDiscountAmt.toFixed(2)}</span>
+                      <span>Discount ({editDiscount}%)</span><span>-{fmtMoney(editDiscountAmt)}</span>
                     </div>
                   )}
                   {editTaxAmt > 0 && (
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Tax ({editTax}%)</span><span>£{editTaxAmt.toFixed(2)}</span>
+                      <span>Tax ({editTax}%)</span><span>{fmtMoney(editTaxAmt)}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-bold text-foreground text-lg border-t border-border pt-1 mt-1">
-                    <span>Total</span><span>£{editTotal.toFixed(2)}</span>
+                    <span>Total</span><span>{fmtMoney(editTotal)}</span>
                   </div>
                 </div>
               </>
             ) : (
               <>
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Subtotal</span><span>£{quote.subtotal.toFixed(2)}</span>
+                  <span>Subtotal</span><span>{fmtMoney(quote.subtotal)}</span>
                 </div>
                 {quote.discount > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Discount ({quote.discount}%)</span><span>-${(quote.subtotal * quote.discount / 100).toFixed(2)}</span>
+                    <span>Discount ({quote.discount}%)</span><span>-{fmtMoney(quote.subtotal * quote.discount / 100)}</span>
                   </div>
                 )}
                 {quote.tax > 0 && (
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Tax ({quote.tax}%)</span><span>£{(quote.subtotal * (1 - quote.discount / 100) * quote.tax / 100).toFixed(2)}</span>
+                    <span>Tax ({quote.tax}%)</span><span>{fmtMoney(quote.subtotal * (1 - quote.discount / 100) * quote.tax / 100)}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-foreground text-lg border-t border-border pt-2 mt-2">
-                  <span>Total</span><span>£{quote.total.toFixed(2)}</span>
+                  <span>Total</span><span>{fmtMoney(quote.total)}</span>
                 </div>
               </>
             )}

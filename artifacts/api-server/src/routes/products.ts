@@ -37,7 +37,8 @@ router.get("/products", async (req, res) => {
 
 router.post("/products", async (req, res) => {
   try {
-    const [product] = await db.insert(productsTable).values(req.body).returning();
+    // Single base-currency model: all product prices are stored in GBP.
+    const [product] = await db.insert(productsTable).values({ ...req.body, currency: "GBP" }).returning();
     await syncStandardEntry(product.id, product.unitPrice, product.currency);
     res.status(201).json({ ...product, unitPrice: Number(product.unitPrice) });
   } catch (err) {
@@ -63,7 +64,7 @@ router.get("/products/:id", async (req, res) => {
 router.put("/products/:id", async (req, res) => {
   try {
     const [product] = await db.update(productsTable)
-      .set({ ...req.body, updatedAt: new Date() })
+      .set({ ...req.body, currency: "GBP", updatedAt: new Date() })
       .where(eq(productsTable.id, parseInt(req.params.id)))
       .returning();
     if (!product) {

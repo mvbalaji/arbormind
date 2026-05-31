@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Package, DollarSign, Trash2, Save } from "lucide-react";
 import { ProductPricingManager } from "@/components/product-pricing-manager";
+import { useCurrency } from "@/context/currency";
+import { BASE_CURRENCY } from "@/lib/currency";
 import { useToast } from "@/hooks/use-toast";
 
 interface ProductFormData {
@@ -32,6 +34,7 @@ interface ProductFormData {
 
 export default function ProductDetail() {
   const params = useParams<{ id: string }>();
+  const { format } = useCurrency();
   const productId = parseInt(params.id ?? "0");
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -69,7 +72,7 @@ export default function ProductDetail() {
       code: form.code || null,
       description: form.description || null,
       unitPrice: parseFloat(form.unitPrice),
-      currency: form.currency || "USD",
+      currency: BASE_CURRENCY,
       category: form.category || null,
       isActive: form.isActive,
     };
@@ -149,9 +152,9 @@ export default function ProductDetail() {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-foreground tabular-nums">
-                        ${product.unitPrice.toLocaleString()}
+                        {format(product.unitPrice)}
                       </div>
-                      <div className="text-xs text-muted-foreground">{product.currency} · Standard Price</div>
+                      <div className="text-xs text-muted-foreground">Standard Price · base {BASE_CURRENCY}</div>
                     </div>
                   </div>
                 </div>
@@ -184,17 +187,11 @@ export default function ProductDetail() {
                       value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="d-price">Unit Price *</Label>
-                    <Input id="d-price" type="number" min="0" step="0.01" required className="bg-muted border-border"
-                      value={form.unitPrice} onChange={e => setForm({ ...form, unitPrice: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="d-currency">Currency</Label>
-                    <Input id="d-currency" className="bg-muted border-border"
-                      value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })} />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="d-price">Unit Price ({BASE_CURRENCY}) *</Label>
+                  <Input id="d-price" type="number" min="0" step="0.01" required className="bg-muted border-border"
+                    value={form.unitPrice} onChange={e => setForm({ ...form, unitPrice: e.target.value })} />
+                  <p className="text-xs text-muted-foreground">Entered in the base currency ({BASE_CURRENCY}); other currencies are converted automatically.</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="d-desc">Description</Label>
