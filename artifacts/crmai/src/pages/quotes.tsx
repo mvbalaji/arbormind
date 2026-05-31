@@ -43,10 +43,19 @@ const VIEW_OPTIONS = [
   { label: "Recently Created", value: "recent" },
 ];
 
-type QuoteColKey = "quoteNumber" | "name" | "revision" | "clonedFrom" | "validUntil" | "subtotal" | "total" | "createdBy";
+const STATUS_COLORS: Record<string, string> = {
+  draft: "border-border text-muted-foreground",
+  sent: "border-blue-500/30 text-blue-600 bg-blue-500/5",
+  accepted: "border-green-500/30 text-green-600 bg-green-500/5",
+  rejected: "border-red-500/30 text-red-600 bg-red-500/5",
+  expired: "border-orange-500/30 text-orange-600 bg-orange-500/5",
+};
+
+type QuoteColKey = "quoteNumber" | "name" | "status" | "revision" | "clonedFrom" | "validUntil" | "subtotal" | "total" | "createdBy";
 const QUOTE_TOGGLEABLE_COLS = [
   { key: "quoteNumber" as const, label: "Quote Number" },
   { key: "name" as const, label: "Quote Name" },
+  { key: "status" as const, label: "Status" },
   { key: "revision" as const, label: "Revision" },
   { key: "clonedFrom" as const, label: "Cloned From" },
   { key: "validUntil" as const, label: "Expiration Date" },
@@ -581,8 +590,8 @@ function CloneQuoteDialog({ open, initialSource, sourceQuotes, onOpenChange }: C
   );
 }
 
-const QUOTES_COL_KEYS = ["quoteNumber","name","revision","clonedFrom","validUntil","subtotal","total","createdBy","actions"] as const;
-const QUOTES_COL_DEFAULTS: Record<typeof QUOTES_COL_KEYS[number], number> = {quoteNumber:72,name:320,revision:80,clonedFrom:140,validUntil:130,subtotal:110,total:120,createdBy:130,actions:60};
+const QUOTES_COL_KEYS = ["quoteNumber","name","status","revision","clonedFrom","validUntil","subtotal","total","createdBy","actions"] as const;
+const QUOTES_COL_DEFAULTS: Record<typeof QUOTES_COL_KEYS[number], number> = {quoteNumber:72,name:320,status:110,revision:80,clonedFrom:140,validUntil:130,subtotal:110,total:120,createdBy:130,actions:60};
 
 export default function Quotes() {
   const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:quotes:v4", QUOTES_COL_KEYS, QUOTES_COL_DEFAULTS);
@@ -784,6 +793,7 @@ export default function Quotes() {
                   <col style={{ width: "40px" }} />
                   {colVis.isVisible("quoteNumber") && <col data-col="quoteNumber" style={{ width: `${colWidths.quoteNumber}px` }} />}
                   {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}
+                  {colVis.isVisible("status") && <col data-col="status" style={{ width: `${colWidths.status}px` }} />}
                   {colVis.isVisible("revision") && <col data-col="revision" style={{ width: `${colWidths.revision}px` }} />}
                   {colVis.isVisible("clonedFrom") && <col data-col="clonedFrom" style={{ width: `${colWidths.clonedFrom}px` }} />}
                   {colVis.isVisible("validUntil") && <col data-col="validUntil" style={{ width: `${colWidths.validUntil}px` }} />}
@@ -805,6 +815,7 @@ export default function Quotes() {
                   </th>
                   {colVis.isVisible("quoteNumber") && <SortableHeader field="quoteNumber" label="#" resizeKey="quoteNumber" />}
                   {colVis.isVisible("name") && <SortableHeader field="name" label="Quote Name" resizeKey="name" />}
+                  {colVis.isVisible("status") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
                   {colVis.isVisible("revision") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision<ColResizeHandle onMouseDown={startColResize("revision")} /></th>}
                   {colVis.isVisible("clonedFrom") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From<ColResizeHandle onMouseDown={startColResize("clonedFrom")} /></th>}
                   {colVis.isVisible("validUntil") && <SortableHeader field="validUntil" label="Expiration Date" resizeKey="validUntil" />}
@@ -854,6 +865,13 @@ export default function Quotes() {
                           <Link href={`/quotes/${q.id}`} className="text-primary hover:underline block truncate" title={q.name}>
                             {q.name}
                           </Link>
+                        </td>
+                      )}
+                      {colVis.isVisible("status") && (
+                        <td className="px-3 py-1 border-r border-border">
+                          <Badge variant="outline" className={`capitalize ${STATUS_COLORS[q.status] ?? ""}`}>
+                            {q.status}
+                          </Badge>
                         </td>
                       )}
                       {colVis.isVisible("revision") && (
