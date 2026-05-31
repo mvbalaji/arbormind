@@ -59,6 +59,11 @@ const EMAIL_TEMPLATES: { label: string; subject: string; body: string }[] = [
     subject: "Meeting request — {{date}}",
     body: `Hi {{name}},\n\nI'd like to schedule a meeting to discuss how ArborMind can help {{company}} achieve its goals.\n\nProposed times:\n- Tuesday at 10:00 AM\n- Wednesday at 2:00 PM\n- Thursday at 11:00 AM\n\nPlease let me know which works best, or feel free to suggest an alternative.\n\nLooking forward to connecting.\n\nBest regards,`,
   },
+  {
+    label: "B2B Sales Pitch",
+    subject: "Close deals 3× faster with ArborMind CRM",
+    body: `Hi {{name}},\n\nMost sales teams don't lose deals because of effort — they lose them to scattered data, slow follow-ups, and a CRM nobody wants to update.\n\nArborMind CRM was built to fix exactly that. It's a modern, AI-powered CRM that gives high-velocity sales teams one place to manage every customer, deal, and decision.\n\nA few things teams like {{company}} tell us make the difference:\n\n- 360° Customer View — Contacts, accounts, leads, and full activity history unified in one workspace.\n- Pipeline Intelligence — A visual deals board with revenue forecasting and AI-powered win-probability scoring.\n- Built-in AI Assistant — Drafts emails, summarises deals, and surfaces the next best action automatically.\n- Quotes & Multi-Currency — Generate professional quotes in seconds and sell globally with live currency conversion.\n- Real-Time Reports & Analytics — Live dashboards and custom metrics for data-backed decisions.\n- Enterprise-Ready Security — Role-based access, granular permissions, and Google SSO for your whole team.\n\nThe results speak for themselves: customers see up to 3× faster deal cycles, an 87% improvement in win rates, and 100% ownership of their data.\n\nI'd love to show you how ArborMind could work for {{company}} in a quick 15-minute call. Would early next week work for you?\n\nIf it's easier, just reply with a time that suits you and I'll send an invite.\n\nBest regards,`,
+  },
 ];
 
 function formatBytes(n: number): string {
