@@ -603,7 +603,7 @@ export default function Quotes() {
   const [sortField, setSortField] = useState<SortField>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [searchQuery, setSearchQuery] = useState("");
-  const colVis = useColumnVisibility<QuoteColKey>("col-visibility:quotes:v1", QUOTE_TOGGLEABLE_COLS);
+  const colVis = useColumnVisibility<QuoteColKey>("col-visibility:quotes:v2", QUOTE_TOGGLEABLE_COLS);
   const quoteColSpan = colVis.visible.size + 2;
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const { data, isLoading, refetch, isFetching } = useListQuotes();
