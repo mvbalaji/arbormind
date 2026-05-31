@@ -36,6 +36,7 @@ import CampaignDetail from "./pages/campaign-detail";
 import Approvals from "./pages/approvals";
 import ApprovalsList from "./pages/approvals-list";
 import AccessControl from "./pages/access-control";
+import WebsiteVisitors from "./pages/website-visitors";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -62,6 +63,7 @@ function CRMRoutes() {
       <Route path="/activities" component={Activities} />
       <Route path="/campaigns" component={Campaigns} />
       <Route path="/campaigns/:id" component={CampaignDetail} />
+      <Route path="/website-visitors" component={WebsiteVisitors} />
       <Route path="/products" component={Products} />
       <Route path="/products/:id" component={ProductDetail} />
       <Route path="/price-books" component={PriceBooks} />

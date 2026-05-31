@@ -361,6 +361,34 @@ export default function Landing() {
     }
   }, []);
 
+  // Record this website visit so it shows up under the CRM "Website Visitors"
+  // screen. Uses an anonymous, browser-persisted session id to attribute
+  // repeat views to the same visitor.
+  useEffect(() => {
+    try {
+      let sessionId = localStorage.getItem("arbormind-visitor-id");
+      if (!sessionId) {
+        sessionId =
+          (crypto.randomUUID && crypto.randomUUID()) ||
+          `v_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem("arbormind-visitor-id", sessionId);
+      }
+      const base = import.meta.env.BASE_URL;
+      void fetch(`${base}api/website-visits`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          sessionId,
+          path: window.location.pathname,
+          referrer: document.referrer || "",
+        }),
+      }).catch(() => {});
+    } catch {
+      /* tracking must never break the page */
+    }
+  }, []);
+
   useEffect(() => {
     document.documentElement.classList.toggle("light-mode", theme === "light");
     localStorage.setItem("arbormind-theme", theme);

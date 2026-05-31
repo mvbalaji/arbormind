@@ -27,6 +27,7 @@ import recordAccessRouter from "./record-access";
 import searchRouter from "./search";
 import emailSendRouter from "./email-send";
 import exchangeRatesRouter from "./exchange-rates";
+import websiteVisitsRouter from "./website-visits";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 import { seedStandardPricing } from "../lib/pricing";
@@ -61,6 +62,7 @@ router.use(recordAccessRouter);
 router.use(searchRouter);
 router.use(emailSendRouter);
 router.use(exchangeRatesRouter);
+router.use(websiteVisitsRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
 // access on startup.

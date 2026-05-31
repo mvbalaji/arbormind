@@ -25,6 +25,7 @@ export const SEED_SCREENS: Array<{ key: string; name: string; category: string; 
   { key: "orders", name: "Orders", category: "Sales", sortOrder: 70 },
   { key: "activities", name: "Activities", category: "Engagement", sortOrder: 80 },
   { key: "campaigns", name: "Campaigns", category: "Marketing", sortOrder: 90 },
+  { key: "website-visits", name: "Website Visitors", category: "Marketing", sortOrder: 95 },
   { key: "products", name: "Products", category: "Catalog", sortOrder: 100 },
   { key: "price-books", name: "Price Books", category: "Catalog", sortOrder: 105 },
   { key: "cases", name: "Cases", category: "Service", sortOrder: 110 },
