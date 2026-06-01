@@ -397,7 +397,7 @@ export default function QuoteDetail() {
                 onClick={() => setActiveTab(t)}
                 className={`rounded-md px-4 py-1.5 text-sm font-medium transition-all capitalize ${
                   isActive
-                    ? "bg-primary text-white font-semibold shadow-md ring-1 ring-primary/40"
+                    ? "bg-sky-500 text-white font-semibold shadow-md ring-1 ring-sky-500/40"
                     : "text-muted-foreground hover:text-foreground hover:bg-background"
                 }`}
               >

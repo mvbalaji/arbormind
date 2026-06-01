@@ -130,7 +130,7 @@ function OrderViewDialog({ open, onOpenChange, order }: OrderViewDialogProps) {
               key={t}
               onClick={() => setActiveTab(t)}
               className={`px-3 py-1 text-sm font-medium transition-colors border-b-2 -mb-px capitalize ${
-                activeTab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                activeTab === t ? "border-sky-400 text-sky-400" : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               {t === "details" ? "Order Details" : "Approvals"}

@@ -369,7 +369,7 @@ export default function CampaignDetail() {
               onClick={() => setActiveTab(tab.id)}
               className={cn(
                 "px-3 py-1 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
-                activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                activeTab === tab.id ? "border-sky-400 text-sky-400" : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               {tab.label}
