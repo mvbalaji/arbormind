@@ -712,8 +712,8 @@ export default function LeadDetail() {
                 className={cn(
                   "px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors flex items-center gap-1.5",
                   relatedTab === tab.key
-                    ? "text-sky-400 border-b-2 border-sky-400 bg-card"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "text-primary border-b-2 border-primary bg-card"
+                    : "text-sky-400 hover:text-sky-300"
                 )}
               >
                 {tab.label}

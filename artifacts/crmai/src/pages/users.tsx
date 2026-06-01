@@ -251,8 +251,8 @@ export default function Users() {
               className={cn(
                 "flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all",
                 activeTab === tab.id
-                  ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                  : "text-sky-400 hover:text-sky-300"
               )}
             >
               <tab.icon className="w-4 h-4" />

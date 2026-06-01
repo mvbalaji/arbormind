@@ -1055,9 +1055,9 @@ export default function OpportunityDetail() {
                 title="Drag to reorder"
                 className={`group rounded-md px-4 py-1.5 text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap cursor-grab active:cursor-grabbing ${
                   isActive
-                    ? "bg-sky-500 text-white font-semibold shadow-md ring-1 ring-sky-500/40"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background"
-                } ${isDropTarget ? "ring-2 ring-sky-500/60" : ""} ${draggedTab === tab.id ? "opacity-50" : ""}`}
+                    ? "bg-primary text-white font-semibold shadow-md ring-1 ring-primary/40"
+                    : "text-sky-400 hover:text-sky-300 hover:bg-background"
+                } ${isDropTarget ? "ring-2 ring-primary/60" : ""} ${draggedTab === tab.id ? "opacity-50" : ""}`}
               >
                 <GripVertical className={`w-3 h-3 ${isActive ? "opacity-70" : "opacity-40 group-hover:opacity-80"}`} />
                 {tab.label}

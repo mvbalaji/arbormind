@@ -199,8 +199,8 @@ export default function ContactDetail() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-1 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === tab.id
-                  ? "border-sky-400 text-sky-400"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-sky-400 hover:text-sky-300"
               }`}
             >
               {tab.label}
