@@ -173,7 +173,7 @@ export default function ContactDetail() {
                   )}
                   {contact.accountName && (
                     <Link href={contact.accountId ? `/accounts/${contact.accountId}` : "#"}>
-                      <span className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+                      <span className="flex items-center gap-1.5 text-sm text-primary hover:underline transition-colors cursor-pointer">
                         <Building2 className="w-4 h-4" />
                         {contact.accountName}
                       </span>
@@ -272,7 +272,7 @@ export default function ContactDetail() {
                   <Card className="glass-panel border-border p-4 hover:border-primary/30 transition-all cursor-pointer group">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-foreground group-hover:text-primary transition-colors">{opp.name}</div>
+                        <div className="font-medium text-primary group-hover:underline transition-colors">{opp.name}</div>
                         {opp.accountName && (
                           <div className="text-xs text-muted-foreground mt-0.5">{opp.accountName}</div>
                         )}

@@ -301,7 +301,7 @@ export default function Products() {
                   <tr key={prod.id} className="hover:bg-muted/50 transition-colors group">
                     {colVis.isVisible("name") && (
                       <td className="px-3 py-1">
-                        <Link href={`/products/${prod.id}`} className="font-medium text-foreground flex items-center gap-2 hover:text-primary transition-colors">
+                        <Link href={`/products/${prod.id}`} className="font-medium text-primary hover:underline flex items-center gap-2 transition-colors">
                           <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                             <Package className="w-4 h-4 text-primary" />
                           </div>

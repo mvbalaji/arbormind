@@ -583,7 +583,7 @@ export default function LeadDetail() {
                         <User className="w-3.5 h-3.5 text-primary" />
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">{contact.firstName} {contact.lastName}</div>
+                        <div className="text-xs font-semibold text-primary group-hover:underline transition-colors">{contact.firstName} {contact.lastName}</div>
                         <div className="text-xs text-muted-foreground">View contact →</div>
                       </div>
                     </div>
@@ -595,7 +595,7 @@ export default function LeadDetail() {
                         <User className="w-3.5 h-3.5 text-primary" />
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">Contact</div>
+                        <div className="text-xs font-semibold text-primary group-hover:underline transition-colors">Contact</div>
                         <div className="text-xs text-muted-foreground">View record →</div>
                       </div>
                     </div>
@@ -608,7 +608,7 @@ export default function LeadDetail() {
                         <Building2 className="w-3.5 h-3.5 text-primary" />
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">Account</div>
+                        <div className="text-xs font-semibold text-primary group-hover:underline transition-colors">Account</div>
                         <div className="text-xs text-muted-foreground">View record →</div>
                       </div>
                     </div>
@@ -621,7 +621,7 @@ export default function LeadDetail() {
                         <Briefcase className="w-3.5 h-3.5 text-primary" />
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">Opportunity</div>
+                        <div className="text-xs font-semibold text-primary group-hover:underline transition-colors">Opportunity</div>
                         <div className="text-xs text-muted-foreground">View record →</div>
                       </div>
                     </div>
@@ -1183,7 +1183,7 @@ export default function LeadDetail() {
                           {contact.firstName?.[0] ?? ""}{contact.lastName?.[0] ?? ""}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                          <div className="text-sm font-semibold text-primary group-hover:underline transition-colors">
                             {contact.firstName} {contact.lastName}
                           </div>
                           {contact.title && <div className="text-xs text-muted-foreground">{contact.title}</div>}

@@ -375,7 +375,7 @@ export default function AccountDetail() {
                           {initials}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground group-hover:text-primary transition-colors">
+                          <p className="font-medium text-primary group-hover:underline transition-colors">
                             {contact.firstName} {contact.lastName}
                           </p>
                           <p className="text-xs text-muted-foreground">{contact.title ?? contact.email ?? "—"}</p>
@@ -408,7 +408,7 @@ export default function AccountDetail() {
                     <div className="flex items-center gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-foreground group-hover:text-primary transition-colors truncate">{opp.name}</p>
+                          <p className="font-medium text-primary group-hover:underline transition-colors truncate">{opp.name}</p>
                           <Badge variant="outline" className={cn("text-xs capitalize shrink-0", STAGE_BADGE[opp.stage] ?? "")}>
                             {opp.stage.replace("_", " ")}
                           </Badge>

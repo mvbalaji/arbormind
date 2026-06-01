@@ -882,7 +882,7 @@ export default function OpportunityDetail() {
                 <span className="text-muted-foreground">Account:</span>
                 {opp.accountId ? (
                   <Link href={`/accounts/${opp.accountId}`}>
-                    <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium">{opp.accountName ?? "—"}</span>
+                    <span className="text-primary hover:underline cursor-pointer font-medium">{opp.accountName ?? "—"}</span>
                   </Link>
                 ) : (
                   <span className="text-foreground font-medium">{opp.accountName ?? "—"}</span>
@@ -1341,7 +1341,7 @@ export default function OpportunityDetail() {
                     </div>
                     <div>
                       <Link href={`/quotes/${q.id}`}>
-                        <span className="font-medium text-foreground text-sm hover:text-primary hover:underline cursor-pointer">
+                        <span className="font-medium text-primary text-sm hover:underline cursor-pointer">
                           {q.name}
                         </span>
                       </Link>
@@ -1611,7 +1611,7 @@ export default function OpportunityDetail() {
                   <div className="text-[11px] text-muted-foreground mb-0.5">Account Name</div>
                   {opp.accountId ? (
                     <Link href={`/accounts/${opp.accountId}`}>
-                      <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-sm">{opp.accountName ?? "—"}</span>
+                      <span className="text-primary hover:underline cursor-pointer text-sm">{opp.accountName ?? "—"}</span>
                     </Link>
                   ) : (
                     <div className="text-foreground text-sm">{opp.accountName ?? "—"}</div>
@@ -1681,7 +1681,7 @@ export default function OpportunityDetail() {
                       <span className="truncate text-foreground" title={it.productName}>
                         {it.productId ? (
                           <Link href={`/products/${it.productId}`}>
-                            <span className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">{it.productName}</span>
+                            <span className="text-primary hover:underline cursor-pointer">{it.productName}</span>
                           </Link>
                         ) : (
                           it.productName
@@ -1733,7 +1733,7 @@ export default function OpportunityDetail() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <Link href={`/contacts/${c.id}`}>
-                            <span className="text-blue-600 dark:text-blue-400 hover:underline text-sm cursor-pointer truncate block">
+                            <span className="text-primary hover:underline text-sm cursor-pointer truncate block">
                               {c.firstName} {c.lastName}
                               {isPrimaryContact && <span className="ml-1.5 text-[9px] font-bold text-orange-700 dark:text-orange-300">PRIMARY</span>}
                             </span>

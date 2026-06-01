@@ -351,7 +351,7 @@ export default function Reports() {
                   {(stats?.recentLeads ?? []).map((l) => (
                     <li key={l.id} className="py-2 flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <Link href={`/leads/${l.id}`} className="text-sm font-medium hover:text-primary truncate block">
+                        <Link href={`/leads/${l.id}`} className="text-sm font-medium text-primary hover:underline truncate block">
                           {l.firstName} {l.lastName}
                         </Link>
                         <div className="text-[11px] text-muted-foreground truncate">

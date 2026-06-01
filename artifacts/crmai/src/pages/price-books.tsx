@@ -182,7 +182,7 @@ export default function PriceBooks() {
                 ) : books.map(book => (
                   <tr key={book.id} className="hover:bg-muted/50 transition-colors group">
                     <td className="px-3 py-1.5">
-                      <Link href={`/price-books/${book.id}`} className="font-medium text-foreground flex items-center gap-2 hover:text-primary">
+                      <Link href={`/price-books/${book.id}`} className="font-medium text-primary hover:underline flex items-center gap-2">
                         <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                           <BookText className="w-4 h-4 text-primary" />
                         </div>

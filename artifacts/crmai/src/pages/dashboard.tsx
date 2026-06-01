@@ -350,7 +350,7 @@ export default function Dashboard() {
                             {initials}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{lead.firstName} {lead.lastName}</p>
+                            <p className="text-sm font-medium text-primary group-hover:underline truncate">{lead.firstName} {lead.lastName}</p>
                             <p className="text-xs text-muted-foreground truncate">{lead.company ?? lead.email ?? "—"}</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
@@ -403,7 +403,7 @@ export default function Dashboard() {
                       <div className="px-2 py-1 hover:bg-muted/50 transition-colors cursor-pointer">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground truncate">{deal.name}</p>
+                            <p className="text-sm font-medium text-primary group-hover:underline truncate">{deal.name}</p>
                             <p className="text-xs text-muted-foreground">{deal.accountName ?? "—"}</p>
                           </div>
                           <div className="text-right shrink-0">
