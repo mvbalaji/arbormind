@@ -28,6 +28,7 @@ import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, Command
 import { useListAccounts } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
+import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useLocation } from "wouter";
 import { ListPageHeader } from "@/components/list-page-header";
@@ -40,6 +41,7 @@ import { TablePagination } from "@/components/table-pagination";
 
 const VIEW_OPTIONS = [
   { label: "All Quotes", value: "all", pinned: true },
+  { label: "My Quotes", value: "my", pinned: true },
   { label: "Recently Created", value: "recent" },
 ];
 
@@ -607,6 +609,7 @@ export default function Quotes() {
   const quoteColSpan = colVis.visible.size + 2;
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const { data, isLoading, refetch, isFetching } = useListQuotes();
+  const { user: currentUser } = useAuth();
   const deleteMutation = useDeleteQuote();
   const versionMutation = useCreateQuoteVersion();
   const queryClient = useQueryClient();
@@ -655,6 +658,7 @@ export default function Quotes() {
     const q = searchQuery.toLowerCase();
     return allQuotes.filter((quote) => {
       if (activeView.value === "recent" && !isRecentlyCreated(quote.createdAt)) return false;
+      if (activeView.value === "my" && quote.createdByUserId !== currentUser?.id) return false;
       if (!searchQuery.trim()) return true;
       return (
         (quote.name ?? "").toLowerCase().includes(q) ||
@@ -662,7 +666,7 @@ export default function Quotes() {
         (quote.opportunityName ?? "").toLowerCase().includes(q)
       );
     });
-  }, [allQuotes, searchQuery, activeView]);
+  }, [allQuotes, searchQuery, activeView, currentUser?.id]);
 
   const sortedQuotes = React.useMemo(() => {
     return [...filteredQuotes].sort((a, b) => {

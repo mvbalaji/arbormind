@@ -1868,6 +1868,7 @@ export const ListOrdersResponse = zod.object({
       contactName: zod.string().nullish(),
       accountId: zod.number().nullish(),
       accountName: zod.string().nullish(),
+      createdByUserId: zod.number().nullish(),
       status: zod.enum([
         "pending",
         "confirmed",
@@ -1959,6 +1960,7 @@ export const GetOrderResponse = zod.object({
   contactName: zod.string().nullish(),
   accountId: zod.number().nullish(),
   accountName: zod.string().nullish(),
+  createdByUserId: zod.number().nullish(),
   status: zod.enum([
     "pending",
     "confirmed",
@@ -2012,6 +2014,7 @@ export const UpdateOrderResponse = zod.object({
   contactName: zod.string().nullish(),
   accountId: zod.number().nullish(),
   accountName: zod.string().nullish(),
+  createdByUserId: zod.number().nullish(),
   status: zod.enum([
     "pending",
     "confirmed",

@@ -519,6 +519,7 @@ const ORDERS_COL_DEFAULTS: Record<typeof ORDERS_COL_KEYS[number], number> = {ord
 
 const VIEW_OPTIONS = [
   { label: "All Orders", value: "all", pinned: true },
+  { label: "My Orders", value: "my", pinned: true },
   { label: "Recently Created", value: "recent" },
 ];
 
@@ -529,6 +530,7 @@ export default function Orders() {
   const [viewingOrder, setViewingOrder] = useState<OrderViewDialogProps["order"] | null>(null);
   const [editingOrder, setEditingOrder] = useState<EditOrderData | null>(null);
   const { format: fmtMoney } = useCurrency();
+  const { user } = useAuth();
   const { data, isLoading } = useListOrders();
   const [search, setSearch] = useState("");
   const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
@@ -536,6 +538,7 @@ export default function Orders() {
   const orderQuery = search.trim().toLowerCase();
   const filteredOrders = allOrders.filter((o) => {
     if (activeView.value === "recent" && !isRecentlyCreated(o.createdAt)) return false;
+    if (activeView.value === "my" && o.createdByUserId !== user?.id) return false;
     if (orderQuery) return Object.values(o).some((v) => typeof v === "string" && v.toLowerCase().includes(orderQuery));
     return true;
   });

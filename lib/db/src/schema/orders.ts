@@ -6,6 +6,7 @@ import { opportunitiesTable } from "./opportunities";
 import { contactsTable } from "./contacts";
 import { accountsTable } from "./accounts";
 import { productsTable } from "./products";
+import { usersTable } from "./users";
 
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
@@ -14,6 +15,7 @@ export const ordersTable = pgTable("orders", {
   opportunityId: integer("opportunity_id").references(() => opportunitiesTable.id),
   contactId: integer("contact_id").references(() => contactsTable.id),
   accountId: integer("account_id").references(() => accountsTable.id),
+  createdByUserId: integer("created_by_user_id").references(() => usersTable.id),
   status: text("status").notNull().default("pending"),
   subtotal: numeric("subtotal", { precision: 15, scale: 2 }).notNull().default("0"),
   discount: numeric("discount", { precision: 15, scale: 2 }).notNull().default("0"),

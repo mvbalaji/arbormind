@@ -19,6 +19,7 @@ export interface Order {
   contactName?: string | null;
   accountId?: number | null;
   accountName?: string | null;
+  createdByUserId?: number | null;
   status: OrderStatus;
   subtotal: number;
   discount: number;

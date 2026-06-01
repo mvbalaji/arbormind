@@ -1,2 +1,1 @@
-- [CRMAI base-currency model](crmai-currency.md) — money stored as GBP numbers; display converts on the fly; currency column forced GBP server-side.
-- [Adding a CRM screen/tab](crmai-new-screen.md) — wiring checklist; new screens MUST be added to SEED_SCREENS or the nav tab is hidden; public-vs-authed route ordering + untrusted-referrer link safety.
+- [Composite project references](composite-project-references.md) — after editing lib/db schema or running api-spec codegen, run `pnpm run typecheck:libs` (tsc --build) or downstream typechecks see stale types.

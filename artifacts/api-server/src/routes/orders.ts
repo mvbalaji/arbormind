@@ -20,6 +20,7 @@ const orderFields = {
   opportunityId: ordersTable.opportunityId,
   contactId: ordersTable.contactId,
   accountId: ordersTable.accountId,
+  createdByUserId: ordersTable.createdByUserId,
   status: ordersTable.status,
   subtotal: ordersTable.subtotal,
   discount: ordersTable.discount,
@@ -118,6 +119,8 @@ router.post("/orders", async (req, res) => {
       [key: string]: unknown;
     };
 
+    const sessionUserId = (req.session as any)?.user?.id ?? (req as any).user?.id ?? null;
+
     const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable);
     const nextNum = maxOrder?.maxNum ? parseInt(maxOrder.maxNum.replace("ORD-", "")) + 1 : 5001;
     const orderNumber = `ORD-${nextNum}`;
@@ -136,6 +139,7 @@ router.post("/orders", async (req, res) => {
       opportunityId: (orderData.opportunityId as number | null) ?? null,
       contactId: (orderData.contactId as number | null) ?? null,
       accountId: (orderData.accountId as number | null) ?? null,
+      createdByUserId: sessionUserId,
       status: (orderData.status as string) ?? "pending",
       notes: (orderData.notes as string) ?? null,
       subtotal: subtotal.toString(),
@@ -177,6 +181,8 @@ router.post("/orders/from-quote/:quoteId", async (req, res) => {
 
     const quoteItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, quoteId));
 
+    const sessionUserId = (req.session as any)?.user?.id ?? (req as any).user?.id ?? quote.createdByUserId ?? null;
+
     const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable);
     const nextNum = maxOrder?.maxNum ? parseInt(maxOrder.maxNum.replace("ORD-", "")) + 1 : 5001;
     const orderNumber = `ORD-${nextNum}`;
@@ -187,6 +193,7 @@ router.post("/orders/from-quote/:quoteId", async (req, res) => {
       opportunityId: quote.opportunityId,
       contactId: quote.contactId,
       accountId: quote.accountId,
+      createdByUserId: sessionUserId,
       status: "pending",
       subtotal: quote.subtotal,
       discount: quote.discount,

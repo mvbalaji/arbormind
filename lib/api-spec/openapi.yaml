@@ -3910,6 +3910,9 @@ components:
         accountName:
           type: string
           nullable: true
+        createdByUserId:
+          type: integer
+          nullable: true
         status:
           type: string
           enum: [pending, confirmed, shipped, delivered, cancelled]
