@@ -106,7 +106,7 @@ export default function AIAssistant() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-1 font-medium text-sm capitalize transition-all border-b-2 ${activeTab === tab ? "border-accent text-primary" : "border-transparent text-sky-400 hover:text-sky-300"}`}
+              className={`px-3 py-1 font-medium text-sm capitalize transition-all border-b-2 ${activeTab === tab ? "border-accent text-primary" : "border-transparent bg-sky-100 text-sky-700 hover:bg-sky-200"}`}
             >
               {tab === "insights" ? "Next Best Actions" : tab === "drafts" ? "Email Drafter" : "Lead Scoring"}
             </button>

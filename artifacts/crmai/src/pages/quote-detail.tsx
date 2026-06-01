@@ -398,7 +398,7 @@ export default function QuoteDetail() {
                 className={`rounded-md px-4 py-1.5 text-sm font-medium transition-all capitalize ${
                   isActive
                     ? "bg-primary text-white font-semibold shadow-md ring-1 ring-primary/40"
-                    : "text-sky-400 hover:text-sky-300 hover:bg-background"
+                    : "bg-sky-100 text-sky-700 hover:bg-sky-200"
                 }`}
               >
                 {t === "details" ? "Quote Details" : "Approvals"}

@@ -200,7 +200,7 @@ export default function ContactDetail() {
               className={`px-3 py-1 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
-                  : "border-transparent text-sky-400 hover:text-sky-300"
+                  : "border-transparent bg-sky-100 text-sky-700 hover:bg-sky-200"
               }`}
             >
               {tab.label}

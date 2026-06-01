@@ -252,7 +252,7 @@ export default function Users() {
                 "flex items-center gap-2 px-3 py-1 rounded-lg text-sm font-medium transition-all",
                 activeTab === tab.id
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                  : "text-sky-400 hover:text-sky-300"
+                  : "bg-sky-100 text-sky-700 hover:bg-sky-200"
               )}
             >
               <tab.icon className="w-4 h-4" />

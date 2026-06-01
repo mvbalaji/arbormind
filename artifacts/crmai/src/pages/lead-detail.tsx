@@ -713,7 +713,7 @@ export default function LeadDetail() {
                   "px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors flex items-center gap-1.5",
                   relatedTab === tab.key
                     ? "text-primary border-b-2 border-primary bg-card"
-                    : "text-sky-400 hover:text-sky-300"
+                    : "bg-sky-100 text-sky-700 hover:bg-sky-200"
                 )}
               >
                 {tab.label}

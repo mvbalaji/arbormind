@@ -1056,7 +1056,7 @@ export default function OpportunityDetail() {
                 className={`group rounded-md px-4 py-1.5 text-sm font-medium transition-all flex items-center gap-1.5 whitespace-nowrap cursor-grab active:cursor-grabbing ${
                   isActive
                     ? "bg-primary text-white font-semibold shadow-md ring-1 ring-primary/40"
-                    : "text-sky-400 hover:text-sky-300 hover:bg-background"
+                    : "bg-sky-100 text-sky-700 hover:bg-sky-200"
                 } ${isDropTarget ? "ring-2 ring-primary/60" : ""} ${draggedTab === tab.id ? "opacity-50" : ""}`}
               >
                 <GripVertical className={`w-3 h-3 ${isActive ? "opacity-70" : "opacity-40 group-hover:opacity-80"}`} />
