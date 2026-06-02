@@ -2546,6 +2546,42 @@ export const RenewContractParams = zod.object({
 });
 
 /**
+ * @summary List contract document versions (revision history)
+ */
+export const ListContractDocumentsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListContractDocumentsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      contractId: zod.number(),
+      version: zod.number(),
+      title: zod.string().nullish(),
+      content: zod.string(),
+      changeSummary: zod.string().nullish(),
+      createdByUserId: zod.number().nullish(),
+      createdByName: zod.string().nullish(),
+      createdAt: zod.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Save a new revision of the contract document
+ */
+export const CreateContractDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateContractDocumentBody = zod.object({
+  title: zod.string().nullish(),
+  content: zod.string(),
+  changeSummary: zod.string().nullish(),
+});
+
+/**
  * @summary Get dashboard statistics
  */
 export const GetDashboardStatsResponse = zod.object({

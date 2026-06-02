@@ -34,6 +34,8 @@ import type {
   Contact,
   ContactList,
   Contract,
+  ContractDocument,
+  ContractDocumentList,
   ContractList,
   ContractPricingResponse,
   ConvertLeadInput,
@@ -44,6 +46,7 @@ import type {
   CreateApprovalRoleInput,
   CreateCaseInput,
   CreateContactInput,
+  CreateContractDocumentInput,
   CreateContractInput,
   CreateLeadInput,
   CreateOpportunityInput,
@@ -6887,6 +6890,182 @@ export const useRenewContract = <
   TContext
 > => {
   return useMutation(getRenewContractMutationOptions(options));
+};
+
+/**
+ * @summary List contract document versions (revision history)
+ */
+export const getListContractDocumentsUrl = (id: number) => {
+  return `/api/contracts/${id}/documents`;
+};
+
+export const listContractDocuments = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ContractDocumentList> => {
+  return customFetch<ContractDocumentList>(getListContractDocumentsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListContractDocumentsQueryKey = (id: number) => {
+  return [`/api/contracts/${id}/documents`] as const;
+};
+
+export const getListContractDocumentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listContractDocuments>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listContractDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListContractDocumentsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listContractDocuments>>
+  > = ({ signal }) => listContractDocuments(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listContractDocuments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListContractDocumentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listContractDocuments>>
+>;
+export type ListContractDocumentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List contract document versions (revision history)
+ */
+
+export function useListContractDocuments<
+  TData = Awaited<ReturnType<typeof listContractDocuments>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listContractDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListContractDocumentsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save a new revision of the contract document
+ */
+export const getCreateContractDocumentUrl = (id: number) => {
+  return `/api/contracts/${id}/documents`;
+};
+
+export const createContractDocument = async (
+  id: number,
+  createContractDocumentInput: CreateContractDocumentInput,
+  options?: RequestInit,
+): Promise<ContractDocument> => {
+  return customFetch<ContractDocument>(getCreateContractDocumentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createContractDocumentInput),
+  });
+};
+
+export const getCreateContractDocumentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createContractDocument>>,
+    TError,
+    { id: number; data: BodyType<CreateContractDocumentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createContractDocument>>,
+  TError,
+  { id: number; data: BodyType<CreateContractDocumentInput> },
+  TContext
+> => {
+  const mutationKey = ["createContractDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createContractDocument>>,
+    { id: number; data: BodyType<CreateContractDocumentInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createContractDocument(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateContractDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createContractDocument>>
+>;
+export type CreateContractDocumentMutationBody =
+  BodyType<CreateContractDocumentInput>;
+export type CreateContractDocumentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save a new revision of the contract document
+ */
+export const useCreateContractDocument = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createContractDocument>>,
+    TError,
+    { id: number; data: BodyType<CreateContractDocumentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createContractDocument>>,
+  TError,
+  { id: number; data: BodyType<CreateContractDocumentInput> },
+  TContext
+> => {
+  return useMutation(getCreateContractDocumentMutationOptions(options));
 };
 
 /**

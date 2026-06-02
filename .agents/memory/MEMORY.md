@@ -1,2 +1,3 @@
 - [Composite project references](composite-project-references.md) — after editing lib/db schema or running api-spec codegen, run `pnpm run typecheck:libs` (tsc --build) or downstream typechecks see stale types.
 - [CLM contract pricing & lifecycle](clm-contract-pricing.md) — active-pricing must pick latest-activated winner by explicit rank (not row order); auto-expire is reconciled on read; CNTR-#### numbering mirrors quotes/orders.
+- [Per-entity version allocation](per-entity-version-allocation.md) — "version per parent" (e.g. contract document version) needs composite unique index + retry-on-23505, not just app max()+1; parent DELETE must delete children first.

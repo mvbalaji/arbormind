@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
 import { CONTRACT_STATUS_COLORS, contractStatusLabel } from "./contracts";
+import { ContractDocumentPanel } from "@/components/contract-document-panel";
 
 export default function ContractDetail() {
   const params = useParams<{ id: string }>();
@@ -227,6 +228,8 @@ export default function ContractDetail() {
             </div>
           </div>
         </Card>
+
+        <ContractDocumentPanel contractId={id} />
       </div>
 
       <AlertDialog open={terminateOpen} onOpenChange={(v) => { setTerminateOpen(v); if (!v) setTerminateReason(""); }}>

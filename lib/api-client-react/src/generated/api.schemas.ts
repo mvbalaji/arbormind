@@ -1168,6 +1168,28 @@ export interface ContractList {
   limit: number;
 }
 
+export interface ContractDocument {
+  id: number;
+  contractId: number;
+  version: number;
+  title?: string | null;
+  content: string;
+  changeSummary?: string | null;
+  createdByUserId?: number | null;
+  createdByName?: string | null;
+  createdAt: string;
+}
+
+export interface ContractDocumentList {
+  data: ContractDocument[];
+}
+
+export interface CreateContractDocumentInput {
+  title?: string | null;
+  content: string;
+  changeSummary?: string | null;
+}
+
 export interface CreateContractLineItemInput {
   productId?: number | null;
   productName: string;

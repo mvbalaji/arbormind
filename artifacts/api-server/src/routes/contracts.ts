@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import {
   contractsTable,
   contractLineItemsTable,
+  contractDocumentsTable,
   accountsTable,
   contactsTable,
   opportunitiesTable,
@@ -302,6 +303,85 @@ router.post("/contracts/from-opportunity/:opportunityId", async (req, res) => {
   }
 });
 
+// ----- Contract documents (versioned, with revision history) -----
+const documentFields = {
+  id: contractDocumentsTable.id,
+  contractId: contractDocumentsTable.contractId,
+  version: contractDocumentsTable.version,
+  title: contractDocumentsTable.title,
+  content: contractDocumentsTable.content,
+  changeSummary: contractDocumentsTable.changeSummary,
+  createdByUserId: contractDocumentsTable.createdByUserId,
+  createdByName: usersTable.name,
+  createdAt: contractDocumentsTable.createdAt,
+};
+
+router.get("/contracts/:id/documents", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const docs = await db
+      .select(documentFields)
+      .from(contractDocumentsTable)
+      .leftJoin(usersTable, eq(contractDocumentsTable.createdByUserId, usersTable.id))
+      .where(eq(contractDocumentsTable.contractId, id))
+      .orderBy(desc(contractDocumentsTable.version));
+    res.json({ data: docs });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/contracts/:id/documents", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const [contract] = await db.select({ id: contractsTable.id }).from(contractsTable).where(eq(contractsTable.id, id));
+    if (!contract) { res.status(404).json({ error: "Contract not found" }); return; }
+
+    const data = req.body ?? {};
+    if (typeof data.content !== "string" || data.content.trim() === "") {
+      res.status(400).json({ error: "content is required" });
+      return;
+    }
+
+    // Allocate the next version. A composite unique index on (contract_id,
+    // version) guards against duplicates; retry on a unique violation in case
+    // two revisions race for the same number.
+    let doc: typeof contractDocumentsTable.$inferSelect | undefined;
+    for (let attempt = 0; attempt < 5 && !doc; attempt++) {
+      const [maxRow] = await db
+        .select({ maxVer: sql<number>`max(${contractDocumentsTable.version})` })
+        .from(contractDocumentsTable)
+        .where(eq(contractDocumentsTable.contractId, id));
+      const version = (Number(maxRow?.maxVer) || 0) + 1;
+      try {
+        [doc] = await db.insert(contractDocumentsTable).values({
+          contractId: id,
+          version,
+          title: data.title ?? null,
+          content: data.content,
+          changeSummary: data.changeSummary ?? null,
+          createdByUserId: sessionUserId(req),
+        }).returning();
+      } catch (e) {
+        if ((e as { code?: string })?.code === "23505") continue; // unique violation: retry
+        throw e;
+      }
+    }
+
+    if (!doc) {
+      res.status(409).json({ error: "Could not allocate a document version, please retry" });
+      return;
+    }
+    res.status(201).json({ ...doc, createdByName: null });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ----- Get one -----
 router.get("/contracts/:id", async (req, res) => {
   try {
@@ -513,6 +593,7 @@ router.delete("/contracts/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    await db.delete(contractDocumentsTable).where(eq(contractDocumentsTable.contractId, id));
     await db.delete(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
     await db.delete(contractsTable).where(eq(contractsTable.id, id));
     res.json({ success: true, id });

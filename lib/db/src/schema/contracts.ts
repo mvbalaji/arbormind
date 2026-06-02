@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, numeric, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -63,7 +63,21 @@ export const contractLineItemsTable = pgTable("contract_line_items", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const contractDocumentsTable = pgTable("contract_documents", {
+  id: serial("id").primaryKey(),
+  contractId: integer("contract_id").notNull().references(() => contractsTable.id),
+  version: integer("version").notNull(),
+  title: text("title"),
+  content: text("content").notNull(),
+  changeSummary: text("change_summary"),
+  createdByUserId: integer("created_by_user_id").references(() => usersTable.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  contractVersionUnique: uniqueIndex("contract_documents_contract_version_unique").on(t.contractId, t.version),
+}));
+
 export const insertContractSchema = createInsertSchema(contractsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertContract = z.infer<typeof insertContractSchema>;
 export type Contract = typeof contractsTable.$inferSelect;
 export type ContractLineItem = typeof contractLineItemsTable.$inferSelect;
+export type ContractDocument = typeof contractDocumentsTable.$inferSelect;
