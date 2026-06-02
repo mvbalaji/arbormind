@@ -171,14 +171,11 @@ async function insertContractDocumentVersion(
   return doc;
 }
 
-// Builds the contract document from current contract data and stores it as a new
-// revision. Returns "not_found" if the contract is missing, the inserted document,
-// or undefined if version allocation failed after retries.
-async function generateContractDocumentRevision(
+// Builds the contract document text from the contract's current data.
+// Returns "not_found" if the contract is missing, otherwise the title/content.
+async function buildContractDocumentContent(
   contractId: number,
-  userId: number | null,
-  changeSummary: string,
-): Promise<"not_found" | typeof contractDocumentsTable.$inferSelect | undefined> {
+): Promise<"not_found" | { title: string; content: string }> {
   const [row] = await db
     .select(contractFields)
     .from(contractsTable)
@@ -205,7 +202,7 @@ async function generateContractDocumentRevision(
   }
 
   const contactName = row.contactFirstName ? `${row.contactFirstName} ${row.contactLastName ?? ""}`.trim() : null;
-  const { title, content } = generateContractDocument({
+  return generateContractDocument({
     contractNumber: row.contractNumber as string,
     name: row.name as string,
     accountName: row.accountName as string | null,
@@ -228,13 +225,45 @@ async function generateContractDocumentRevision(
       total: Number(it.total),
     })),
   });
+}
+
+// Builds the contract document from current contract data and stores it as a new
+// revision. Returns "not_found" if the contract is missing, the inserted document,
+// or undefined if version allocation failed after retries.
+async function generateContractDocumentRevision(
+  contractId: number,
+  userId: number | null,
+  changeSummary: string,
+): Promise<"not_found" | typeof contractDocumentsTable.$inferSelect | undefined> {
+  const built = await buildContractDocumentContent(contractId);
+  if (built === "not_found") return "not_found";
 
   return insertContractDocumentVersion(contractId, {
-    title,
-    content,
+    title: built.title,
+    content: built.content,
     changeSummary,
     createdByUserId: userId,
   });
+}
+
+// Keeps a draft contract's latest existing document in sync with edits by
+// rewriting its content in place — no new revision is created. No-op when the
+// contract has no document yet (nothing to download) or has been removed.
+async function syncDraftContractDocument(contractId: number): Promise<void> {
+  const [latest] = await db
+    .select({ id: contractDocumentsTable.id })
+    .from(contractDocumentsTable)
+    .where(eq(contractDocumentsTable.contractId, contractId))
+    .orderBy(desc(contractDocumentsTable.version))
+    .limit(1);
+  if (!latest) return;
+
+  const built = await buildContractDocumentContent(contractId);
+  if (built === "not_found") return;
+
+  await db.update(contractDocumentsTable)
+    .set({ title: built.title, content: built.content })
+    .where(eq(contractDocumentsTable.id, latest.id));
 }
 
 // ----- Active contract pricing lookup for an account -----
@@ -543,6 +572,19 @@ router.put("/contracts/:id", async (req, res) => {
 
     const [contract] = await db.update(contractsTable).set(updateData).where(eq(contractsTable.id, id)).returning();
     const updatedItems = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
+
+    // Keep a draft contract's existing document in sync with the edit so a
+    // downloaded PDF/Word reflects the latest data. Drafts are not yet signed,
+    // so we rewrite the latest document in place rather than adding a revision.
+    // Best-effort: the edit already committed, so a sync hiccup must not fail it.
+    if (contract.status === "draft") {
+      try {
+        await syncDraftContractDocument(id);
+      } catch (syncErr) {
+        req.log.error({ err: syncErr, contractId: id }, "Failed to sync draft contract document after edit");
+      }
+    }
+
     res.json(formatContract(contract, updatedItems.map(formatItem)));
   } catch (err) {
     req.log.error(err);
