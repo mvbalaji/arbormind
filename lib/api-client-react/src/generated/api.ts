@@ -6806,6 +6806,90 @@ export const useSubmitContractForApproval = <
 };
 
 /**
+ * @summary Generate the contract document from current data as a new revision
+ */
+export const getGenerateContractDocumentUrl = (id: number) => {
+  return `/api/contracts/${id}/generate-document`;
+};
+
+export const generateContractDocument = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ContractDocument> => {
+  return customFetch<ContractDocument>(getGenerateContractDocumentUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getGenerateContractDocumentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateContractDocument>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateContractDocument>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateContractDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateContractDocument>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateContractDocument(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateContractDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateContractDocument>>
+>;
+
+export type GenerateContractDocumentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate the contract document from current data as a new revision
+ */
+export const useGenerateContractDocument = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateContractDocument>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateContractDocument>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateContractDocumentMutationOptions(options));
+};
+
+/**
  * @summary Terminate a contract
  */
 export const getTerminateContractUrl = (id: number) => {

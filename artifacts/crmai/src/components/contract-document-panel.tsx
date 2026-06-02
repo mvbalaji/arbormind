@@ -3,6 +3,7 @@ import { diffWords } from "diff";
 import {
   useListContractDocuments,
   useCreateContractDocument,
+  useGenerateContractDocument,
   getListContractDocumentsQueryKey,
   type ContractDocument,
 } from "@workspace/api-client-react";
@@ -15,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, Plus, GitCompare, History, FileDown } from "lucide-react";
+import { FileText, Plus, GitCompare, History, FileDown, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { downloadAsPdf, downloadAsWord } from "@/lib/document-export";
@@ -23,6 +24,7 @@ import { downloadAsPdf, downloadAsWord } from "@/lib/document-export";
 export function ContractDocumentPanel({ contractId }: { contractId: number }) {
   const { data, isLoading } = useListContractDocuments(contractId);
   const createMutation = useCreateContractDocument();
+  const generateMutation = useGenerateContractDocument();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -60,6 +62,18 @@ export function ContractDocumentPanel({ contractId }: { contractId: number }) {
       }
     } catch {
       toast({ title: "Error", description: `Could not generate the ${kind === "pdf" ? "PDF" : "Word"} file.`, variant: "destructive" });
+    }
+  };
+
+  const handleGenerate = async () => {
+    try {
+      await generateMutation.mutateAsync({ id: contractId });
+      await queryClient.invalidateQueries({ queryKey: getListContractDocumentsQueryKey(contractId) });
+      setSelectedVersion(null);
+      setShowRedline(false);
+      toast({ title: "Document generated", description: "Created a new revision from the contract data." });
+    } catch {
+      toast({ title: "Error", description: "Could not generate the document.", variant: "destructive" });
     }
   };
 
@@ -121,6 +135,9 @@ export function ContractDocumentPanel({ contractId }: { contractId: number }) {
               <GitCompare className="w-4 h-4 mr-1" /> Redline
             </Button>
           )}
+          <Button variant="outline" size="sm" className="border-border" onClick={handleGenerate} disabled={generateMutation.isPending}>
+            <Sparkles className="w-4 h-4 mr-1" /> {generateMutation.isPending ? "Generating…" : "Generate Document"}
+          </Button>
           <Button size="sm" onClick={openEditor}>
             <Plus className="w-4 h-4 mr-1" /> {docs.length === 0 ? "Add Document" : "New Revision"}
           </Button>

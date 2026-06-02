@@ -1731,6 +1731,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/Contract"
 
+  /contracts/{id}/generate-document:
+    post:
+      operationId: generateContractDocument
+      tags: [contracts]
+      summary: Generate the contract document from current data as a new revision
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Generated contract document revision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractDocument"
+
   /contracts/{id}/terminate:
     post:
       operationId: terminateContract

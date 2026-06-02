@@ -2535,6 +2535,13 @@ export const SubmitContractForApprovalResponse = zod.object({
 });
 
 /**
+ * @summary Generate the contract document from current data as a new revision
+ */
+export const GenerateContractDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Terminate a contract
  */
 export const TerminateContractParams = zod.object({

@@ -171,6 +171,72 @@ async function insertContractDocumentVersion(
   return doc;
 }
 
+// Builds the contract document from current contract data and stores it as a new
+// revision. Returns "not_found" if the contract is missing, the inserted document,
+// or undefined if version allocation failed after retries.
+async function generateContractDocumentRevision(
+  contractId: number,
+  userId: number | null,
+  changeSummary: string,
+): Promise<"not_found" | typeof contractDocumentsTable.$inferSelect | undefined> {
+  const [row] = await db
+    .select(contractFields)
+    .from(contractsTable)
+    .leftJoin(accountsTable, eq(contractsTable.accountId, accountsTable.id))
+    .leftJoin(contactsTable, eq(contractsTable.contactId, contactsTable.id))
+    .leftJoin(opportunitiesTable, eq(contractsTable.opportunityId, opportunitiesTable.id))
+    .leftJoin(usersTable, eq(contractsTable.ownerId, usersTable.id))
+    .where(eq(contractsTable.id, contractId));
+  if (!row) return "not_found";
+
+  const items = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, contractId));
+
+  let companySignerName: string | null = null;
+  if (row.companySignedById) {
+    const [u] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.companySignedById));
+    companySignerName = u?.name ?? null;
+  }
+  let customerSignerName: string | null = null;
+  if (row.customerSignedByContactId) {
+    const [c] = await db
+      .select({ firstName: contactsTable.firstName, lastName: contactsTable.lastName })
+      .from(contactsTable).where(eq(contactsTable.id, row.customerSignedByContactId));
+    customerSignerName = c ? `${c.firstName} ${c.lastName ?? ""}`.trim() : null;
+  }
+
+  const contactName = row.contactFirstName ? `${row.contactFirstName} ${row.contactLastName ?? ""}`.trim() : null;
+  const { title, content } = generateContractDocument({
+    contractNumber: row.contractNumber as string,
+    name: row.name as string,
+    accountName: row.accountName as string | null,
+    contactName,
+    ownerName: row.ownerName as string | null,
+    startDate: row.startDate as Date | null,
+    endDate: row.endDate as Date | null,
+    contractTermMonths: row.contractTermMonths as number | null,
+    autoRenew: row.autoRenew as boolean | null,
+    renewalTermMonths: row.renewalTermMonths as number | null,
+    specialTerms: row.specialTerms as string | null,
+    description: row.description as string | null,
+    total: Number(row.total),
+    companySignerName,
+    customerSignerName,
+    items: items.map((it) => ({
+      productName: it.productName,
+      quantity: Number(it.quantity),
+      unitPrice: Number(it.unitPrice),
+      total: Number(it.total),
+    })),
+  });
+
+  return insertContractDocumentVersion(contractId, {
+    title,
+    content,
+    changeSummary,
+    createdByUserId: userId,
+  });
+}
+
 // ----- Active contract pricing lookup for an account -----
 router.get("/contracts/active-pricing/:accountId", async (req, res) => {
   try {
@@ -502,63 +568,8 @@ router.post("/contracts/:id/submit-for-approval", async (req, res) => {
       return;
     }
 
-    const [row] = await db
-      .select(contractFields)
-      .from(contractsTable)
-      .leftJoin(accountsTable, eq(contractsTable.accountId, accountsTable.id))
-      .leftJoin(contactsTable, eq(contractsTable.contactId, contactsTable.id))
-      .leftJoin(opportunitiesTable, eq(contractsTable.opportunityId, opportunitiesTable.id))
-      .leftJoin(usersTable, eq(contractsTable.ownerId, usersTable.id))
-      .where(eq(contractsTable.id, id));
-
-    const items = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
-
-    // Resolve signatory display names.
-    let companySignerName: string | null = null;
-    if (row.companySignedById) {
-      const [u] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.companySignedById));
-      companySignerName = u?.name ?? null;
-    }
-    let customerSignerName: string | null = null;
-    if (row.customerSignedByContactId) {
-      const [c] = await db
-        .select({ firstName: contactsTable.firstName, lastName: contactsTable.lastName })
-        .from(contactsTable).where(eq(contactsTable.id, row.customerSignedByContactId));
-      customerSignerName = c ? `${c.firstName} ${c.lastName ?? ""}`.trim() : null;
-    }
-
-    const contactName = row.contactFirstName ? `${row.contactFirstName} ${row.contactLastName ?? ""}`.trim() : null;
-    const { title, content } = generateContractDocument({
-      contractNumber: row.contractNumber as string,
-      name: row.name as string,
-      accountName: row.accountName as string | null,
-      contactName,
-      ownerName: row.ownerName as string | null,
-      startDate: row.startDate as Date | null,
-      endDate: row.endDate as Date | null,
-      contractTermMonths: row.contractTermMonths as number | null,
-      autoRenew: row.autoRenew as boolean | null,
-      renewalTermMonths: row.renewalTermMonths as number | null,
-      specialTerms: row.specialTerms as string | null,
-      description: row.description as string | null,
-      total: Number(row.total),
-      companySignerName,
-      customerSignerName,
-      items: items.map((it) => ({
-        productName: it.productName,
-        quantity: Number(it.quantity),
-        unitPrice: Number(it.unitPrice),
-        total: Number(it.total),
-      })),
-    });
-
-    const doc = await insertContractDocumentVersion(id, {
-      title,
-      content,
-      changeSummary: "Auto-generated on submission for approval",
-      createdByUserId: sessionUserId(req),
-    });
-    if (!doc) {
+    const doc = await generateContractDocumentRevision(id, sessionUserId(req), "Auto-generated on submission for approval");
+    if (doc === "not_found" || !doc) {
       // Generation failed after we claimed the transition; roll status back to draft.
       await db.update(contractsTable)
         .set({ status: "draft", updatedAt: new Date() })
@@ -567,7 +578,25 @@ router.post("/contracts/:id/submit-for-approval", async (req, res) => {
       return;
     }
 
+    const items = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
     res.json(formatContract(claimed, items.map(formatItem)));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ----- Generate the contract document from current data (no status change) -----
+router.post("/contracts/:id/generate-document", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+
+    const doc = await generateContractDocumentRevision(id, sessionUserId(req), "Generated from contract data");
+    if (doc === "not_found") { res.status(404).json({ error: "Contract not found" }); return; }
+    if (!doc) { res.status(409).json({ error: "Could not generate the contract document, please retry" }); return; }
+
+    res.status(201).json({ ...doc, createdByName: null });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
