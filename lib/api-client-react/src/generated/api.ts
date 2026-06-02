@@ -6722,6 +6722,90 @@ export const useActivateContract = <
 };
 
 /**
+ * @summary Submit a draft contract for approval and auto-generate its document
+ */
+export const getSubmitContractForApprovalUrl = (id: number) => {
+  return `/api/contracts/${id}/submit-for-approval`;
+};
+
+export const submitContractForApproval = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Contract> => {
+  return customFetch<Contract>(getSubmitContractForApprovalUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getSubmitContractForApprovalMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitContractForApproval>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitContractForApproval>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["submitContractForApproval"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitContractForApproval>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return submitContractForApproval(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitContractForApprovalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitContractForApproval>>
+>;
+
+export type SubmitContractForApprovalMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Submit a draft contract for approval and auto-generate its document
+ */
+export const useSubmitContractForApproval = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitContractForApproval>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitContractForApproval>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getSubmitContractForApprovalMutationOptions(options));
+};
+
+/**
  * @summary Terminate a contract
  */
 export const getTerminateContractUrl = (id: number) => {

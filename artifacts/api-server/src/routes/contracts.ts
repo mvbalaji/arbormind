@@ -10,10 +10,11 @@ import {
   opportunityItemsTable,
   usersTable,
 } from "@workspace/db";
-import { eq, sql, inArray, desc } from "drizzle-orm";
+import { eq, and, sql, inArray, desc } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
 import { computeEndDate, getActiveContractPricing, expireElapsedContracts } from "../lib/contracts";
+import { generateContractDocument } from "../lib/contract-document";
 
 const router: IRouter = Router();
 router.use("/contracts", requireScreenAccess("contracts"));
@@ -137,6 +138,37 @@ async function nextContractNumber(): Promise<string> {
 
 function sessionUserId(req: any): number | null {
   return req.session?.user?.id ?? req.user?.id ?? null;
+}
+
+// Allocate the next version and insert a contract document revision. A composite
+// unique index on (contract_id, version) guards against duplicates; retry on a
+// unique violation in case two revisions race for the same number.
+async function insertContractDocumentVersion(
+  contractId: number,
+  values: { title: string | null; content: string; changeSummary: string | null; createdByUserId: number | null },
+): Promise<typeof contractDocumentsTable.$inferSelect | undefined> {
+  let doc: typeof contractDocumentsTable.$inferSelect | undefined;
+  for (let attempt = 0; attempt < 5 && !doc; attempt++) {
+    const [maxRow] = await db
+      .select({ maxVer: sql<number>`max(${contractDocumentsTable.version})` })
+      .from(contractDocumentsTable)
+      .where(eq(contractDocumentsTable.contractId, contractId));
+    const version = (Number(maxRow?.maxVer) || 0) + 1;
+    try {
+      [doc] = await db.insert(contractDocumentsTable).values({
+        contractId,
+        version,
+        title: values.title,
+        content: values.content,
+        changeSummary: values.changeSummary,
+        createdByUserId: values.createdByUserId,
+      }).returning();
+    } catch (e) {
+      if ((e as { code?: string })?.code === "23505") continue; // unique violation: retry
+      throw e;
+    }
+  }
+  return doc;
 }
 
 // ----- Active contract pricing lookup for an account -----
@@ -346,30 +378,12 @@ router.post("/contracts/:id/documents", async (req, res) => {
       return;
     }
 
-    // Allocate the next version. A composite unique index on (contract_id,
-    // version) guards against duplicates; retry on a unique violation in case
-    // two revisions race for the same number.
-    let doc: typeof contractDocumentsTable.$inferSelect | undefined;
-    for (let attempt = 0; attempt < 5 && !doc; attempt++) {
-      const [maxRow] = await db
-        .select({ maxVer: sql<number>`max(${contractDocumentsTable.version})` })
-        .from(contractDocumentsTable)
-        .where(eq(contractDocumentsTable.contractId, id));
-      const version = (Number(maxRow?.maxVer) || 0) + 1;
-      try {
-        [doc] = await db.insert(contractDocumentsTable).values({
-          contractId: id,
-          version,
-          title: data.title ?? null,
-          content: data.content,
-          changeSummary: data.changeSummary ?? null,
-          createdByUserId: sessionUserId(req),
-        }).returning();
-      } catch (e) {
-        if ((e as { code?: string })?.code === "23505") continue; // unique violation: retry
-        throw e;
-      }
-    }
+    const doc = await insertContractDocumentVersion(id, {
+      title: data.title ?? null,
+      content: data.content,
+      changeSummary: data.changeSummary ?? null,
+      createdByUserId: sessionUserId(req),
+    });
 
     if (!doc) {
       res.status(409).json({ error: "Could not allocate a document version, please retry" });
@@ -463,6 +477,97 @@ router.put("/contracts/:id", async (req, res) => {
     const [contract] = await db.update(contractsTable).set(updateData).where(eq(contractsTable.id, id)).returning();
     const updatedItems = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
     res.json(formatContract(contract, updatedItems.map(formatItem)));
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ----- Lifecycle: submit for approval (auto-generates the contract document) -----
+router.post("/contracts/:id/submit-for-approval", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+
+    // Atomically claim the draft -> in_approval transition so concurrent submits
+    // cannot both proceed and generate duplicate documents.
+    const [claimed] = await db.update(contractsTable)
+      .set({ status: "in_approval", updatedAt: new Date() })
+      .where(and(eq(contractsTable.id, id), eq(contractsTable.status, "draft")))
+      .returning();
+    if (!claimed) {
+      const [exists] = await db.select({ status: contractsTable.status }).from(contractsTable).where(eq(contractsTable.id, id));
+      if (!exists) { res.status(404).json({ error: "Contract not found" }); return; }
+      res.status(400).json({ error: `Only draft contracts can be submitted for approval (current status: ${exists.status})` });
+      return;
+    }
+
+    const [row] = await db
+      .select(contractFields)
+      .from(contractsTable)
+      .leftJoin(accountsTable, eq(contractsTable.accountId, accountsTable.id))
+      .leftJoin(contactsTable, eq(contractsTable.contactId, contactsTable.id))
+      .leftJoin(opportunitiesTable, eq(contractsTable.opportunityId, opportunitiesTable.id))
+      .leftJoin(usersTable, eq(contractsTable.ownerId, usersTable.id))
+      .where(eq(contractsTable.id, id));
+
+    const items = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
+
+    // Resolve signatory display names.
+    let companySignerName: string | null = null;
+    if (row.companySignedById) {
+      const [u] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.companySignedById));
+      companySignerName = u?.name ?? null;
+    }
+    let customerSignerName: string | null = null;
+    if (row.customerSignedByContactId) {
+      const [c] = await db
+        .select({ firstName: contactsTable.firstName, lastName: contactsTable.lastName })
+        .from(contactsTable).where(eq(contactsTable.id, row.customerSignedByContactId));
+      customerSignerName = c ? `${c.firstName} ${c.lastName ?? ""}`.trim() : null;
+    }
+
+    const contactName = row.contactFirstName ? `${row.contactFirstName} ${row.contactLastName ?? ""}`.trim() : null;
+    const { title, content } = generateContractDocument({
+      contractNumber: row.contractNumber as string,
+      name: row.name as string,
+      accountName: row.accountName as string | null,
+      contactName,
+      ownerName: row.ownerName as string | null,
+      startDate: row.startDate as Date | null,
+      endDate: row.endDate as Date | null,
+      contractTermMonths: row.contractTermMonths as number | null,
+      autoRenew: row.autoRenew as boolean | null,
+      renewalTermMonths: row.renewalTermMonths as number | null,
+      specialTerms: row.specialTerms as string | null,
+      description: row.description as string | null,
+      total: Number(row.total),
+      companySignerName,
+      customerSignerName,
+      items: items.map((it) => ({
+        productName: it.productName,
+        quantity: Number(it.quantity),
+        unitPrice: Number(it.unitPrice),
+        total: Number(it.total),
+      })),
+    });
+
+    const doc = await insertContractDocumentVersion(id, {
+      title,
+      content,
+      changeSummary: "Auto-generated on submission for approval",
+      createdByUserId: sessionUserId(req),
+    });
+    if (!doc) {
+      // Generation failed after we claimed the transition; roll status back to draft.
+      await db.update(contractsTable)
+        .set({ status: "draft", updatedAt: new Date() })
+        .where(eq(contractsTable.id, id));
+      res.status(409).json({ error: "Could not generate the contract document, please retry" });
+      return;
+    }
+
+    res.json(formatContract(claimed, items.map(formatItem)));
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import {
   useGetContract, useActivateContract, useTerminateContract, useRenewContract, useDeleteContract,
-  getGetContractQueryKey, getListContractsQueryKey,
+  useSubmitContractForApproval,
+  getGetContractQueryKey, getListContractsQueryKey, getListContractDocumentsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -14,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Trash2, FileSignature } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Trash2, FileSignature, Send } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +31,7 @@ export default function ContractDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { data: contract, isLoading } = useGetContract(id);
   const activateMutation = useActivateContract();
+  const submitMutation = useSubmitContractForApproval();
   const terminateMutation = useTerminateContract();
   const renewMutation = useRenewContract();
   const deleteMutation = useDeleteContract();
@@ -63,6 +65,17 @@ export default function ContractDetail() {
       </Layout>
     );
   }
+
+  const handleSubmitForApproval = async () => {
+    try {
+      await submitMutation.mutateAsync({ id });
+      toast({ title: "Submitted for approval", description: "Contract document generated." });
+      queryClient.invalidateQueries({ queryKey: getListContractDocumentsQueryKey(id) });
+      refresh();
+    } catch {
+      toast({ title: "Error", description: "Could not submit the contract for approval.", variant: "destructive" });
+    }
+  };
 
   const handleActivate = async () => {
     try {
@@ -132,6 +145,12 @@ export default function ContractDetail() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {contract.status === "draft" && (
+                  <Button onClick={handleSubmitForApproval} disabled={submitMutation.isPending}
+                    variant="outline" className="border-border">
+                    <Send className="w-4 h-4 mr-1" /> Submit for Approval
+                  </Button>
+                )}
                 {(contract.status === "draft" || contract.status === "in_approval") && (
                   <Button onClick={handleActivate} disabled={activateMutation.isPending}
                     className="bg-green-600 hover:bg-green-700 text-white">

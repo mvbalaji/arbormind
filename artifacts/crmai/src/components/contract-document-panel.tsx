@@ -15,9 +15,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText, Plus, GitCompare, History } from "lucide-react";
+import { FileText, Plus, GitCompare, History, FileDown } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { downloadAsPdf, downloadAsWord } from "@/lib/document-export";
 
 export function ContractDocumentPanel({ contractId }: { contractId: number }) {
   const { data, isLoading } = useListContractDocuments(contractId);
@@ -46,6 +47,21 @@ export function ContractDocumentPanel({ contractId }: { contractId: number }) {
     () => (selected ? docs.find((d) => d.version === selected.version - 1) ?? null : null),
     [docs, selected],
   );
+
+  const handleDownload = async (kind: "pdf" | "word") => {
+    if (!selected) return;
+    const title = selected.title || `Version ${selected.version}`;
+    const baseName = `${title}-v${selected.version}`;
+    try {
+      if (kind === "pdf") {
+        downloadAsPdf(title, selected.content, baseName);
+      } else {
+        await downloadAsWord(title, selected.content, baseName);
+      }
+    } catch {
+      toast({ title: "Error", description: `Could not generate the ${kind === "pdf" ? "PDF" : "Word"} file.`, variant: "destructive" });
+    }
+  };
 
   const openEditor = () => {
     setDraftTitle(latest?.title ?? "");
@@ -85,6 +101,16 @@ export function ContractDocumentPanel({ contractId }: { contractId: number }) {
           <FileText className="w-4 h-4" /> Contract Document
         </h2>
         <div className="flex items-center gap-2">
+          {selected && (
+            <>
+              <Button variant="outline" size="sm" className="border-border" onClick={() => handleDownload("pdf")}>
+                <FileDown className="w-4 h-4 mr-1" /> PDF
+              </Button>
+              <Button variant="outline" size="sm" className="border-border" onClick={() => handleDownload("word")}>
+                <FileDown className="w-4 h-4 mr-1" /> Word
+              </Button>
+            </>
+          )}
           {previous && (
             <Button
               variant={showRedline ? "default" : "outline"}

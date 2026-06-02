@@ -2472,6 +2472,69 @@ export const ActivateContractResponse = zod.object({
 });
 
 /**
+ * @summary Submit a draft contract for approval and auto-generate its document
+ */
+export const SubmitContractForApprovalParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SubmitContractForApprovalResponse = zod.object({
+  id: zod.number(),
+  contractNumber: zod.string(),
+  name: zod.string(),
+  accountId: zod.number().nullish(),
+  accountName: zod.string().nullish(),
+  contactId: zod.number().nullish(),
+  contactName: zod.string().nullish(),
+  opportunityId: zod.number().nullish(),
+  opportunityName: zod.string().nullish(),
+  priceBookId: zod.number().nullish(),
+  ownerId: zod.number().nullish(),
+  ownerName: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "in_approval",
+    "activated",
+    "expired",
+    "terminated",
+    "cancelled",
+  ]),
+  startDate: zod.date().nullish(),
+  contractTermMonths: zod.number().nullish(),
+  endDate: zod.date().nullish(),
+  signedDate: zod.date().nullish(),
+  companySignedById: zod.number().nullish(),
+  customerSignedByContactId: zod.number().nullish(),
+  autoRenew: zod.boolean(),
+  renewalTermMonths: zod.number().nullish(),
+  specialTerms: zod.string().nullish(),
+  description: zod.string().nullish(),
+  subtotal: zod.number(),
+  discount: zod.number(),
+  tax: zod.number(),
+  total: zod.number(),
+  activatedAt: zod.date().nullish(),
+  terminatedAt: zod.date().nullish(),
+  terminationReason: zod.string().nullish(),
+  createdByUserId: zod.number().nullish(),
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      contractId: zod.number(),
+      productId: zod.number().nullish(),
+      productName: zod.string(),
+      quantity: zod.number(),
+      listPrice: zod.number(),
+      unitPrice: zod.number(),
+      discount: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
  * @summary Terminate a contract
  */
 export const TerminateContractParams = zod.object({
