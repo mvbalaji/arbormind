@@ -25,7 +25,7 @@ export const contractsTable = pgTable("contracts", {
   accountId: integer("account_id").references(() => accountsTable.id),
   contactId: integer("contact_id").references(() => contactsTable.id),
   opportunityId: integer("opportunity_id").references(() => opportunitiesTable.id),
-  priceBookId: integer("price_book_id").references(() => priceBooksTable.id),
+  priceBookId: integer("price_book_id").references(() => priceBooksTable.id, { onDelete: "set null" }),
   ownerId: integer("owner_id").references(() => usersTable.id),
   status: text("status").notNull().default("draft"),
   startDate: timestamp("start_date"),
@@ -53,7 +53,7 @@ export const contractsTable = pgTable("contracts", {
 export const contractLineItemsTable = pgTable("contract_line_items", {
   id: serial("id").primaryKey(),
   contractId: integer("contract_id").notNull().references(() => contractsTable.id),
-  productId: integer("product_id").references(() => productsTable.id),
+  productId: integer("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   productName: text("product_name").notNull(),
   quantity: numeric("quantity", { precision: 10, scale: 2 }).notNull().default("1"),
   listPrice: numeric("list_price", { precision: 15, scale: 2 }).notNull().default("0"),

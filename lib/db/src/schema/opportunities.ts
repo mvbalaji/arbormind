@@ -21,7 +21,7 @@ export const opportunitiesTable = pgTable("opportunities", {
   nextStep: text("next_step"),
   forecastCategory: text("forecast_category"),
   teamMembers: text("team_members"),
-  priceBookId: integer("price_book_id").references(() => priceBooksTable.id),
+  priceBookId: integer("price_book_id").references(() => priceBooksTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
