@@ -15,7 +15,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Trash2, FileSignature, Send, History, Pencil } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Trash2, FileSignature, Send, History, Pencil, Check } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
@@ -180,6 +180,58 @@ export default function ContractDetail() {
             </div>
           </Card>
         </div>
+
+        {(() => {
+          const baseStages = [
+            { id: "draft", label: "Draft" },
+            { id: "in_approval", label: "In Approval" },
+            { id: "activated", label: "Activated" },
+          ];
+          let stages = baseStages;
+          if (contract.status === "terminated") stages = [...baseStages, { id: "terminated", label: "Terminated" }];
+          else if (contract.status === "expired") stages = [...baseStages, { id: "expired", label: "Expired" }];
+          const idx = stages.findIndex((s) => s.id === contract.status);
+          if (idx < 0) return null;
+          const currentCls =
+            contract.status === "terminated" ? "bg-red-600 text-white" :
+            contract.status === "expired" ? "bg-amber-500 text-white" :
+            "bg-blue-600 text-white";
+          return (
+            <Card className="glass-panel border-border p-5">
+              <h2 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">Lifecycle Stage</h2>
+              <ol
+                role="list"
+                aria-label="Contract lifecycle stage"
+                className="flex items-stretch overflow-hidden rounded-md border border-border bg-muted/30 list-none p-0 m-0"
+              >
+                {stages.map((s, i) => {
+                  const done = i < idx;
+                  const current = i === idx;
+                  const isLast = i === stages.length - 1;
+                  return (
+                    <li
+                      key={s.id}
+                      role="listitem"
+                      aria-current={current ? "step" : undefined}
+                      aria-label={`${s.label} — ${done ? "Completed" : current ? "Current" : "Upcoming"}`}
+                      className={`relative flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium min-w-0 ${
+                        done ? "bg-emerald-500 text-white" :
+                        current ? currentCls :
+                        "bg-muted/50 text-muted-foreground"
+                      }`}
+                      style={!isLast
+                        ? { clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)" }
+                        : { clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)" }}
+                    >
+                      {done && <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
+                      <span className="truncate max-w-full">{s.label}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </Card>
+          );
+        })()}
 
         <Card className="glass-panel border-border p-5">
           <h2 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">Contract Information</h2>
