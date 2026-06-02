@@ -32,6 +32,7 @@ const accountFields = {
   optyOwner: accountsTable.optyOwner,
   optyTeam: accountsTable.optyTeam,
   ownerId: accountsTable.ownerId,
+  clmEnabled: accountsTable.clmEnabled,
   createdBy: accountsTable.createdBy,
   modifiedBy: accountsTable.modifiedBy,
   ownerName: usersTable.name,
@@ -85,7 +86,7 @@ const ALLOWED_FIELDS = [
   "name", "industry", "website", "phone", "email", "address", "city", "country",
   "employees", "annualRevenue", "description", "status", "stage", "amount",
   "closeDate", "probability", "forecastCategory", "nextStep", "optyOwner",
-  "optyTeam", "ownerId",
+  "optyTeam", "ownerId", "clmEnabled",
 ];
 
 router.get("/accounts", async (req, res) => {

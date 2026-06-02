@@ -5,7 +5,9 @@ import {
   useListProducts,
   useListOpportunities, useListContacts, useListAccounts,
   useListPriceBooks, useListActivePriceBookEntries,
+  useGetActiveContractPricing,
   getGetQuoteQueryKey, getListQuotesQueryKey, getListActivePriceBookEntriesQueryKey,
+  getGetActiveContractPricingQueryKey,
   CreateQuoteInputStatus, UpdateQuoteInputStatus,
 } from "@workspace/api-client-react";
 import {
@@ -96,6 +98,13 @@ export default function QuoteDetail() {
   });
   const entryByProduct = new Map((activeEntriesData?.data ?? []).map(e => [e.productId, e]));
   const priceBookName = (id: number | null | undefined) => priceBooks.find(pb => pb.id === id)?.name;
+
+  const pricingAccountId = editAccountId ?? quote?.accountId ?? 0;
+  const { data: contractPricingData } = useGetActiveContractPricing(pricingAccountId, {
+    query: { enabled: pricingAccountId > 0, queryKey: getGetActiveContractPricingQueryKey(pricingAccountId) },
+  });
+  const contractPricing = contractPricingData?.pricing ?? {};
+  const contractPriceFor = (productId: number) => contractPricing[String(productId)] ?? null;
 
   useEffect(() => {
     if (quote && editingSection) {
@@ -208,11 +217,13 @@ export default function QuoteDetail() {
     const prod = products.find(p => p.id === productId);
     if (!prod) return;
     const entry = entryByProduct.get(productId);
+    const contractPrice = contractPriceFor(productId);
+    const basePrice = entry ? entry.listPrice : prod.unitPrice;
     updateItem(idx, {
       productId: prod.id,
       productName: prod.name,
       priceBookEntryId: entry?.id ?? null,
-      unitPrice: entry ? entry.listPrice : prod.unitPrice,
+      unitPrice: contractPrice ? contractPrice.unitPrice : basePrice,
       discount: 0,
     });
   };
@@ -631,6 +642,11 @@ export default function QuoteDetail() {
                     {!item.productId && (
                       <Input className="mt-1 h-7 text-xs bg-muted border-border" placeholder="Product name..."
                         value={item.productName} onChange={e => updateItem(idx, { productName: e.target.value })} />
+                    )}
+                    {item.productId != null && contractPriceFor(item.productId) && (
+                      <p className="mt-1 text-[10px] text-green-600 flex items-center gap-1">
+                        Contract price applied ({contractPriceFor(item.productId)!.contractNumber})
+                      </p>
                     )}
                   </div>
                   <div className="col-span-2">

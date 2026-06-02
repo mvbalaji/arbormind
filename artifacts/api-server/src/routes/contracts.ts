@@ -12,7 +12,7 @@ import {
 import { eq, sql, inArray, desc } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
-import { computeEndDate, getActiveContractPricing } from "../lib/contracts";
+import { computeEndDate, getActiveContractPricing, expireElapsedContracts } from "../lib/contracts";
 
 const router: IRouter = Router();
 router.use("/contracts", requireScreenAccess("contracts"));
@@ -159,6 +159,9 @@ router.get("/contracts", async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
+    // Keep lifecycle state current: expire any elapsed activated contracts.
+    await expireElapsedContracts(accountId ? parseInt(accountId) : undefined);
+
     const conditions = [];
     if (accountId) conditions.push(eq(contractsTable.accountId, parseInt(accountId)));
     if (status) conditions.push(eq(contractsTable.status, status));
@@ -279,7 +282,7 @@ router.post("/contracts/from-opportunity/:opportunityId", async (req, res) => {
       accountId: opp.accountId ?? null,
       contactId: opp.contactId ?? null,
       opportunityId: opp.id,
-      ownerId: opp.ownerId ?? sessionUserId(req),
+      ownerId: opp.assignedTo ?? sessionUserId(req),
       status: "draft",
       subtotal: subtotal.toString(),
       discount: "0",

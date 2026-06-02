@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { useParams, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useParams, Link, useLocation } from "wouter";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useUpdateAccount } from "@workspace/api-client-react";
+import { useToast } from "@/hooks/use-toast";
 import { Layout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +12,7 @@ import { EmailCompose } from "@/components/email-compose";
 import {
   ArrowLeft, Building2, Globe, Phone, Mail, MapPin, Users, Briefcase,
   DollarSign, TrendingUp, Activity, Clock, Calendar, CheckCircle2,
-  User, Send, ArrowRight, FileText, AlertTriangle, ShieldCheck,
+  User, Send, ArrowRight, FileText, AlertTriangle, ShieldCheck, FileSignature,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
@@ -43,10 +45,22 @@ interface AccountDetail {
   createdBy: number | null;
   modifiedBy: number | null;
   ownerName: string | null;
+  clmEnabled: boolean | null;
   contactCount: number;
   dealCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+interface ContractRecord {
+  id: number;
+  contractNumber: string;
+  name: string;
+  status: string;
+  total: number;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
 }
 
 interface Contact {
@@ -138,7 +152,7 @@ const QUOTE_STATUS_BADGE: Record<string, string> = {
   expired: "text-orange-600 bg-orange-50 border-orange-200",
 };
 
-type Tab = "contacts" | "opportunities" | "activities" | "quotes" | "cases" | "about";
+type Tab = "contacts" | "opportunities" | "activities" | "quotes" | "contracts" | "cases" | "about";
 
 export default function AccountDetail() {
   const params = useParams<{ id: string }>();
@@ -146,6 +160,10 @@ export default function AccountDetail() {
   const [activeTab, setActiveTab] = useState<Tab>("contacts");
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const { format: fmtMoney, displayCurrency, rates } = useCurrency();
+  const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const updateAccountMutation = useUpdateAccount();
 
   const { data: account, isLoading } = useQuery<AccountDetail>({
     queryKey: ["account", id],
@@ -202,6 +220,26 @@ export default function AccountDetail() {
     enabled: !!id,
   });
 
+  const { data: contractsData } = useQuery<{ data: ContractRecord[] }>({
+    queryKey: ["account-contracts", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/contracts?accountId=${id}&limit=100`, { credentials: "include" });
+      return res.json() as Promise<{ data: ContractRecord[] }>;
+    },
+    enabled: !!id,
+  });
+
+  const toggleClm = async (enabled: boolean) => {
+    if (!id) return;
+    try {
+      await updateAccountMutation.mutateAsync({ id: parseInt(id), data: { clmEnabled: enabled } });
+      toast({ title: enabled ? "Contract management enabled" : "Contract management disabled" });
+      void queryClient.invalidateQueries({ queryKey: ["account", id] });
+    } catch {
+      toast({ title: "Error", description: "Could not update contract management setting.", variant: "destructive" });
+    }
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -229,6 +267,8 @@ export default function AccountDetail() {
   const activities = activitiesData?.data ?? [];
   const quotes = quotesData?.data ?? [];
   const cases = casesData?.data ?? [];
+  const contracts = contractsData?.data ?? [];
+  const clmEnabled = !!account.clmEnabled;
 
   const totalDealValue = opportunities
     .filter(o => o.stage !== "closed_lost")
@@ -242,6 +282,7 @@ export default function AccountDetail() {
     { id: "opportunities", label: "Opportunities", count: opportunities.length },
     { id: "activities", label: "Activities", count: activities.length },
     { id: "quotes", label: "Quotes", count: quotes.length },
+    ...(clmEnabled ? [{ id: "contracts" as Tab, label: "Contracts", count: contracts.length }] : []),
     { id: "cases", label: "Cases", count: cases.length },
     { id: "about", label: "About" },
   ];
@@ -304,6 +345,21 @@ export default function AccountDetail() {
                         <Briefcase className="w-3.5 h-3.5" /> New Opportunity
                       </Button>
                     </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => toggleClm(!clmEnabled)}
+                      disabled={updateAccountMutation.isPending}
+                      className={cn(
+                        "gap-1.5",
+                        clmEnabled
+                          ? "border-green-300 text-green-700 hover:bg-green-50"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      )}
+                    >
+                      <FileSignature className="w-3.5 h-3.5" />
+                      {clmEnabled ? "Contract Mgmt: On" : "Enable Contract Mgmt"}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -518,6 +574,48 @@ export default function AccountDetail() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-lg font-bold text-foreground">{fmtMoney(Number(q.total))}</p>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === "contracts" && (
+          <div className="space-y-2">
+            {!contracts.length ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileSignature className="w-10 h-8 mx-auto mb-3 opacity-30" />
+                No contracts for this account yet.
+              </div>
+            ) : (
+              contracts.map((c) => (
+                <Card key={c.id} className="glass-panel border-border hover:border-primary/30 transition-all p-4 cursor-pointer" onClick={() => navigate(`/contracts/${c.id}`)}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <FileSignature className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-foreground truncate">{c.name}</p>
+                        <Badge variant="outline" className="text-xs capitalize shrink-0">
+                          {c.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>#{c.contractNumber}</span>
+                        {c.startDate && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(c.startDate), "MMM d, yyyy")}
+                            {c.endDate ? ` → ${format(new Date(c.endDate), "MMM d, yyyy")}` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-bold text-foreground">{fmtMoney(Number(c.total))}</p>
                     </div>
                   </div>
                 </Card>
