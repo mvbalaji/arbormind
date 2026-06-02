@@ -4,7 +4,7 @@ import {
   useListContracts, useCreateContract, useUpdateContract, useActivateContract, useTerminateContract,
   useRenewContract, useDeleteContract,
   useListProducts, useListAccounts,
-  getListContractsQueryKey, getGetContractQueryKey,
+  getListContractsQueryKey, getGetContractQueryKey, getListContractDocumentsQueryKey,
   type Contract,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -136,6 +136,9 @@ export function CreateContractDialog({ open, onOpenChange, contract }: { open: b
         await updateMutation.mutateAsync({ id: contract.id, data: payload });
         toast({ title: "Contract updated" });
         void queryClient.invalidateQueries({ queryKey: getGetContractQueryKey(contract.id) });
+        // The server re-syncs a draft contract's latest document on edit, so
+        // refresh the document list/revisions to pick up the new content.
+        void queryClient.invalidateQueries({ queryKey: getListContractDocumentsQueryKey(contract.id) });
       } else {
         await createMutation.mutateAsync({ data: payload });
         toast({ title: "Contract created" });

@@ -1,5 +1,6 @@
-- [Composite project references](composite-project-references.md) — after editing lib/db schema or running api-spec codegen, run `pnpm run typecheck:libs` (tsc --build) or downstream typechecks see stale types.
-- [CLM contract pricing & lifecycle](clm-contract-pricing.md) — active-pricing must pick latest-activated winner by explicit rank (not row order); auto-expire is reconciled on read; CNTR-#### numbering mirrors quotes/orders.
-- [Per-entity version allocation](per-entity-version-allocation.md) — "version per parent" (e.g. contract document version) needs composite unique index + retry-on-23505, not just app max()+1; parent DELETE must delete children first.
-- [Contract lifecycle transitions with side effects](contract-lifecycle-transitions.md) — status changes that trigger side effects (e.g. doc auto-gen on submit) must atomically claim the transition (guarded UPDATE) before the side effect, then roll back on failure.
-- [Pricing model invariants](pricing-model-invariants.md) — line items snapshot name/price, so product/book/entry deletes null live FK links (onDelete set null) + delete-children-first for NOT NULL entry FKs; null priceBookId defaults to Standard server-side.
+- [Composite project references](composite-project-references.md) — after lib/db schema or api-spec codegen edits, run `pnpm run typecheck:libs` or downstream sees stale types.
+- [CLM contract pricing & lifecycle](clm-contract-pricing.md) — active-pricing picks latest-activated winner by explicit rank; auto-expire reconciled on read.
+- [Per-entity version allocation](per-entity-version-allocation.md) — version-per-parent needs composite unique index + retry-on-23505; parent DELETE deletes children first.
+- [Contract lifecycle transitions with side effects](contract-lifecycle-transitions.md) — atomically claim a status transition (guarded UPDATE) before its side effect, roll back on failure.
+- [Pricing model invariants](pricing-model-invariants.md) — line items snapshot name/price; deletes null live FK links; null priceBookId defaults to Standard server-side.
+- [Mutation cache invalidation](mutation-cache-invalidation.md) — if a server endpoint updates a RELATED entity in place, the client mutation must invalidate that related query key too, else stale UI.
