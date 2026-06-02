@@ -22,6 +22,7 @@ import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
 import { CONTRACT_STATUS_COLORS, contractStatusLabel } from "./contracts";
 import { ContractRevisions } from "@/components/contract-revisions";
+import { EntityNotes } from "@/components/entity-notes";
 
 interface EditLineItem {
   productId: number | null;
@@ -227,15 +228,17 @@ export default function ContractDetail() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-5 max-w-5xl mx-auto">
-        <div>
-          <Link href="/contracts">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-3 hover:text-foreground">
-              <ArrowLeft className="w-4 h-4" /> Back to Contracts
-            </Button>
-          </Link>
+      <div className="max-w-6xl mx-auto">
+        <Link href="/contracts">
+          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-3 hover:text-foreground">
+            <ArrowLeft className="w-4 h-4" /> Back to Contracts
+          </Button>
+        </Link>
 
-          <Card className="glass-panel border-border p-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5 items-start">
+          <div className="flex flex-col gap-5 min-w-0">
+            <div>
+              <Card className="glass-panel border-border p-5">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -561,6 +564,12 @@ export default function ContractDetail() {
           </div>
           <ContractRevisions contractId={id} heading={false} />
         </Card>
+          </div>
+
+          <aside className="lg:sticky lg:top-4 self-start min-w-0">
+            <EntityNotes entity="contract" entityId={id} />
+          </aside>
+        </div>
       </div>
 
       <AlertDialog open={terminateOpen} onOpenChange={(v) => { setTerminateOpen(v); if (!v) setTerminateReason(""); }}>

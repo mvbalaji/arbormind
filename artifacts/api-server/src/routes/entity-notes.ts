@@ -4,7 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-const ENTITY_TYPES = ["account", "opportunity", "quote", "order", "contact", "lead", "campaign"] as const;
+const ENTITY_TYPES = ["account", "opportunity", "quote", "order", "contact", "lead", "campaign", "contract"] as const;
 type EntityType = (typeof ENTITY_TYPES)[number];
 const isEntityType = (s: unknown): s is EntityType =>
   typeof s === "string" && (ENTITY_TYPES as readonly string[]).includes(s);

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import React, { useState, useEffect, useMemo } from "react";
+import { useLocation, Link } from "wouter";
 import {
   useListContracts, useCreateContract, useUpdateContract, useActivateContract, useTerminateContract,
   useRenewContract, useDeleteContract,
@@ -9,11 +9,11 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -22,15 +22,21 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   FileSignature, MoreHorizontal, Trash2, CheckCircle, XCircle, RefreshCw,
-  Plus, X, Package, Eye, ChevronRight, ChevronDown, Pencil,
+  Plus, X, Package, Eye, ChevronDown, Pencil, ArrowUpDown, Search, Check,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
-import { isRecentlyCreated } from "@/lib/utils";
-import { ContractRevisions } from "@/components/contract-revisions";
+import { isRecentlyCreated, cn } from "@/lib/utils";
+import { useColResize } from "@/hooks/use-col-resize";
+import { ColResizeHandle } from "@/components/col-resize-handle";
+import { useColumnVisibility } from "@/hooks/use-column-visibility";
+import { ColumnsMenu } from "@/components/columns-menu";
+import { usePagination } from "@/hooks/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 
 export const CONTRACT_STATUS_COLORS: Record<string, string> = {
   draft: "border-gray-500/30 text-gray-600 bg-gray-500/5",
@@ -283,15 +289,81 @@ export function CreateContractDialog({ open, onOpenChange, contract }: { open: b
   );
 }
 
+type ContractViewId =
+  | "all" | "draft" | "in_approval" | "active"
+  | "expiring_soon" | "expired" | "terminated" | "recently_created" | "high_value";
+
+interface ContractListView {
+  id: ContractViewId;
+  label: string;
+  pinned: boolean;
+  filter: (c: Contract) => boolean;
+}
+
+const cNow = () => new Date();
+
+const CONTRACT_LIST_VIEWS: ContractListView[] = [
+  { id: "all", label: "All Contracts", pinned: true, filter: () => true },
+  { id: "draft", label: "Draft Contracts", pinned: true, filter: (c) => c.status === "draft" },
+  { id: "in_approval", label: "In Approval", pinned: true, filter: (c) => c.status === "in_approval" },
+  { id: "active", label: "Active Contracts", pinned: true, filter: (c) => c.status === "activated" },
+  {
+    id: "expiring_soon", label: "Expiring Soon", pinned: false,
+    filter: (c) => {
+      if (c.status !== "activated" || !c.endDate) return false;
+      const d = new Date(c.endDate);
+      const n = cNow();
+      const in30 = new Date(n);
+      in30.setDate(in30.getDate() + 30);
+      return d >= n && d <= in30;
+    },
+  },
+  { id: "expired", label: "Expired", pinned: false, filter: (c) => c.status === "expired" },
+  { id: "terminated", label: "Terminated", pinned: false, filter: (c) => c.status === "terminated" },
+  {
+    id: "recently_created", label: "Recently Created", pinned: false,
+    filter: (c) => {
+      if (!c.createdAt) return false;
+      const d = new Date(c.createdAt);
+      const n = cNow();
+      const weekAgo = new Date(n);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return d >= weekAgo;
+    },
+  },
+  { id: "high_value", label: "High Value", pinned: false, filter: (c) => (Number(c.total) || 0) >= 100000 },
+];
+
+const CONTRACT_PINNED_VIEWS = CONTRACT_LIST_VIEWS.filter((v) => v.pinned);
+const CONTRACT_OTHER_VIEWS = CONTRACT_LIST_VIEWS.filter((v) => !v.pinned);
+
+const CONTRACT_TOGGLEABLE_COLS = [
+  { key: "number" as const, label: "Contract #" },
+  { key: "name" as const, label: "Name" },
+  { key: "account" as const, label: "Account" },
+  { key: "term" as const, label: "Term" },
+  { key: "value" as const, label: "Value" },
+  { key: "status" as const, label: "Status" },
+];
+
+const CONTRACTS_COL_KEYS = ["number", "name", "account", "term", "value", "status", "actions"] as const;
+const CONTRACTS_COL_DEFAULTS: Record<typeof CONTRACTS_COL_KEYS[number], number> =
+  { number: 140, name: 240, account: 180, term: 210, value: 130, status: 130, actions: 110 };
+
 export default function Contracts() {
   const [, navigate] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [editContract, setEditContract] = useState<Contract | null>(null);
   const [terminateId, setTerminateId] = useState<number | null>(null);
   const [terminateReason, setTerminateReason] = useState("");
   const [deleteId, setDeleteId] = useState<number | null>(null);
-  const { data, isLoading } = useListContracts({ limit: 100 });
+  const [sortField, setSortField] = useState<string>("number");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [activeViewId, setActiveViewId] = useState<ContractViewId>("all");
+  const [viewPickerOpen, setViewPickerOpen] = useState(false);
+  const [viewPickerSearch, setViewPickerSearch] = useState("");
+  const { data, isLoading } = useListContracts({ limit: 200 });
   const activateMutation = useActivateContract();
   const terminateMutation = useTerminateContract();
   const renewMutation = useRenewContract();
@@ -300,8 +372,89 @@ export default function Contracts() {
   const { toast } = useToast();
   const { format: fmtMoney } = useCurrency();
 
-  const contracts = data?.data ?? [];
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:contracts:v1", CONTRACTS_COL_KEYS, CONTRACTS_COL_DEFAULTS);
+  const colVis = useColumnVisibility<"number" | "name" | "account" | "term" | "value" | "status">(
+    "col-visibility:contracts:v1",
+    CONTRACT_TOGGLEABLE_COLS,
+  );
+  const contractColSpan = colVis.visible.size + 2;
+
   const refresh = () => queryClient.invalidateQueries({ queryKey: getListContractsQueryKey() });
+
+  const allContracts = data?.data ?? [];
+  const activeView = CONTRACT_LIST_VIEWS.find((v) => v.id === activeViewId) ?? CONTRACT_LIST_VIEWS[0];
+
+  const viewFiltered = useMemo(() => allContracts.filter((c) => activeView.filter(c)), [allContracts, activeView]);
+
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return viewFiltered;
+    const q = searchQuery.toLowerCase();
+    return viewFiltered.filter((c) =>
+      (c.contractNumber ?? "").toLowerCase().includes(q) ||
+      (c.name ?? "").toLowerCase().includes(q) ||
+      (c.accountName ?? "").toLowerCase().includes(q) ||
+      (c.status ?? "").toLowerCase().includes(q));
+  }, [viewFiltered, searchQuery]);
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "number": cmp = (a.contractNumber ?? "").localeCompare(b.contractNumber ?? "", undefined, { numeric: true }); break;
+        case "name": cmp = (a.name ?? "").localeCompare(b.name ?? ""); break;
+        case "account": cmp = (a.accountName ?? "").localeCompare(b.accountName ?? ""); break;
+        case "term": cmp = (a.startDate ? new Date(a.startDate).getTime() : 0) - (b.startDate ? new Date(b.startDate).getTime() : 0); break;
+        case "value": cmp = (Number(a.total) || 0) - (Number(b.total) || 0); break;
+        case "status": cmp = (a.status ?? "").localeCompare(b.status ?? ""); break;
+        default: cmp = 0;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sortField, sortDir]);
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const visibleIds = useMemo(() => new Set(sorted.map((c) => c.id)), [sorted]);
+  const pagination = usePagination("contracts", sorted);
+  const visibleSelectedCount = useMemo(() => {
+    let count = 0;
+    for (const id of selectedIds) { if (visibleIds.has(id)) count++; }
+    return count;
+  }, [selectedIds, visibleIds]);
+  const allVisibleSelected = visibleIds.size > 0 && visibleSelectedCount === visibleIds.size;
+  const someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) { for (const id of visibleIds) next.delete(id); }
+      else { for (const id of visibleIds) next.add(id); }
+      return next;
+    });
+  };
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const SortHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
+    <button
+      onClick={() => toggleSort(field)}
+      aria-sort={sortField === field ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+      className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+    >
+      {children}
+      <ArrowUpDown className={cn("w-3 h-3", sortField === field ? "opacity-100" : "opacity-40")} />
+    </button>
+  );
 
   const handleActivate = async (id: number) => {
     try {
@@ -348,122 +501,293 @@ export default function Contracts() {
     }
   };
 
+  const thClass = "relative text-left px-3 py-1.5";
+
   return (
     <Layout>
-      <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileSignature className="w-6 h-6 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Contracts</h1>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <FileSignature className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-display font-bold text-foreground tracking-tight">Contracts</h1>
+              <Popover open={viewPickerOpen} onOpenChange={(o) => { setViewPickerOpen(o); if (!o) setViewPickerSearch(""); }}>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    {activeView.label}
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" sideOffset={6} className="w-64 p-0">
+                  <div className="p-2 border-b border-border">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <Input
+                        autoFocus
+                        placeholder="Search list views..."
+                        value={viewPickerSearch}
+                        onChange={(e) => setViewPickerSearch(e.target.value)}
+                        className="pl-7 h-7 text-xs bg-card border-border"
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-72 overflow-auto py-1" role="listbox">
+                    {(() => {
+                      const q = viewPickerSearch.trim().toLowerCase();
+                      const filteredPinned = CONTRACT_PINNED_VIEWS.filter((v) => v.label.toLowerCase().includes(q));
+                      const filteredOther = CONTRACT_OTHER_VIEWS.filter((v) => v.label.toLowerCase().includes(q));
+                      if (filteredPinned.length === 0 && filteredOther.length === 0) {
+                        return <div className="px-3 py-4 text-center text-xs text-muted-foreground">No views found.</div>;
+                      }
+                      const renderView = (view: ContractListView) => (
+                        <button
+                          key={view.id}
+                          role="option"
+                          aria-selected={activeViewId === view.id}
+                          onClick={() => { setActiveViewId(view.id); setViewPickerOpen(false); setViewPickerSearch(""); setSelectedIds(new Set()); }}
+                          className={cn(
+                            "w-full flex items-center gap-2 px-3 py-1 text-sm text-left hover:bg-muted transition-colors",
+                            activeViewId === view.id && "text-primary font-medium"
+                          )}
+                        >
+                          {activeViewId === view.id ? (
+                            <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                          ) : (
+                            <span className="w-3.5 shrink-0" />
+                          )}
+                          {view.label}
+                        </button>
+                      );
+                      return (
+                        <>
+                          {filteredPinned.length > 0 && (
+                            <>
+                              <div className="px-3 pt-2 pb-1">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pinned List Views</span>
+                              </div>
+                              {filteredPinned.map(renderView)}
+                            </>
+                          )}
+                          {filteredOther.length > 0 && (
+                            <>
+                              <div className="border-t border-border mt-1" />
+                              <div className="px-3 pt-2 pb-1">
+                                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">All Other Views</span>
+                              </div>
+                              {filteredOther.map(renderView)}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
-          <Button onClick={() => setCreateOpen(true)} className="bg-primary hover:bg-primary/90 text-foreground">
-            <Plus className="w-4 h-4 mr-1" /> New Contract
-          </Button>
+
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search this list..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 w-48 text-sm bg-card border-border"
+              />
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 h-8"
+            >
+              <Plus className="w-4 h-4 mr-1" /> New
+            </Button>
+          </div>
         </div>
 
-        <Card className="glass-panel border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 border-b border-border">
-              <tr>
-                <th className="w-8 px-2 py-2"></th>
-                <th className="px-4 py-2 text-left text-xs text-muted-foreground font-medium">Contract #</th>
-                <th className="px-4 py-2 text-left text-xs text-muted-foreground font-medium">Name</th>
-                <th className="px-4 py-2 text-left text-xs text-muted-foreground font-medium">Account</th>
-                <th className="px-4 py-2 text-left text-xs text-muted-foreground font-medium">Term</th>
-                <th className="px-4 py-2 text-right text-xs text-muted-foreground font-medium">Value</th>
-                <th className="px-4 py-2 text-left text-xs text-muted-foreground font-medium">Status</th>
-                <th className="px-4 py-2 text-right text-xs text-muted-foreground font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">Loading...</td></tr>
-              ) : contracts.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No contracts yet. Create your first contract.</td></tr>
-              ) : contracts.map(c => (
-                <React.Fragment key={c.id}>
-                <tr className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate(`/contracts/${c.id}`)}>
-                  <td className="w-8 px-2 py-2 text-center" onClick={e => e.stopPropagation()}>
-                    <button
-                      className="text-muted-foreground hover:text-foreground p-1 rounded transition-colors"
-                      title={expanded.has(c.id) ? "Hide revisions" : "Show revisions"}
-                      onClick={() => setExpanded(prev => {
-                        const next = new Set(prev);
-                        if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
-                        return next;
-                      })}
-                    >
-                      {expanded.has(c.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                    </button>
-                  </td>
-                  <td className="px-4 py-2 font-medium text-primary">
-                    {c.contractNumber}
-                    {isRecentlyCreated(c.createdAt) && <span className="ml-2 text-[10px] text-green-600">New</span>}
-                  </td>
-                  <td className="px-4 py-2 text-foreground">{c.name}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{c.accountName ?? "—"}</td>
-                  <td className="px-4 py-2 text-muted-foreground">
-                    {c.startDate ? format(new Date(c.startDate), "MMM d, yyyy") : "—"}
-                    {c.endDate ? ` → ${format(new Date(c.endDate), "MMM d, yyyy")}` : ""}
-                  </td>
-                  <td className="px-4 py-2 text-right font-medium">{fmtMoney(c.total)}</td>
-                  <td className="px-4 py-2">
-                    <Badge variant="outline" className={CONTRACT_STATUS_COLORS[c.status] ?? ""}>{contractStatusLabel(c.status)}</Badge>
-                  </td>
-                  <td className="px-4 py-2 text-right" onClick={e => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-4 h-4" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-card border-border">
-                        <DropdownMenuItem onClick={() => navigate(`/contracts/${c.id}`)}>
-                          <Eye className="w-4 h-4 mr-2" /> View
-                        </DropdownMenuItem>
-                        {(c.status === "draft" || c.status === "in_approval") && (
-                          <DropdownMenuItem onClick={() => setEditContract(c)}>
-                            <Pencil className="w-4 h-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                        )}
-                        {(c.status === "draft" || c.status === "in_approval") && (
-                          <DropdownMenuItem onClick={() => handleActivate(c.id)}>
-                            <CheckCircle className="w-4 h-4 mr-2 text-green-600" /> Activate
-                          </DropdownMenuItem>
-                        )}
-                        {c.status === "activated" && (
-                          <DropdownMenuItem onClick={() => setTerminateId(c.id)}>
-                            <XCircle className="w-4 h-4 mr-2 text-red-600" /> Terminate
-                          </DropdownMenuItem>
-                        )}
-                        {["activated", "expired", "terminated"].includes(c.status) && (
-                          <DropdownMenuItem onClick={() => handleRenew(c.id)}>
-                            <RefreshCw className="w-4 h-4 mr-2 text-blue-600" /> Renew
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => setDeleteId(c.id)} className="text-red-600">
-                          <Trash2 className="w-4 h-4 mr-2" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-                {expanded.has(c.id) && (
-                  <tr className="bg-muted/20">
-                    <td></td>
-                    <td colSpan={7} className="px-4 pb-3 pt-0">
-                      <ContractRevisions contractId={c.id} />
-                    </td>
+        {isLoading ? (
+          <div className="bg-card rounded-md h-64 animate-pulse" />
+        ) : (
+          <div className="bg-card rounded-md overflow-hidden shadow-sm">
+            <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
+              <TablePagination
+                variant="inline"
+                page={pagination.page}
+                totalPages={pagination.totalPages}
+                pageSize={pagination.pageSize}
+                total={pagination.total}
+                pageStart={pagination.pageStart}
+                pageEnd={pagination.pageEnd}
+                onPageChange={pagination.setPage}
+                onPageSizeChange={pagination.setPageSize}
+              />
+              <ColumnsMenu columns={CONTRACT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
+            </div>
+            <div className="overflow-auto max-h-[calc(100vh-260px)]">
+              <table className="w-full text-sm bg-card [&_tbody_td]:whitespace-nowrap">
+                <colgroup>
+                  <col style={{ width: "32px" }} />
+                  {colVis.isVisible("number") && <col data-col="number" style={{ width: `${colWidths.number}px` }} />}
+                  {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}
+                  {colVis.isVisible("account") && <col data-col="account" style={{ width: `${colWidths.account}px` }} />}
+                  {colVis.isVisible("term") && <col data-col="term" style={{ width: `${colWidths.term}px` }} />}
+                  {colVis.isVisible("value") && <col data-col="value" style={{ width: `${colWidths.value}px` }} />}
+                  {colVis.isVisible("status") && <col data-col="status" style={{ width: `${colWidths.status}px` }} />}
+                  <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
+                </colgroup>
+                <thead className="sticky top-0 z-30">
+                  <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
+                    <th className="w-8 px-2 py-1.5">
+                      <Checkbox
+                        checked={allVisibleSelected ? true : someVisibleSelected ? "indeterminate" : false}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Select all contracts"
+                        className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700 data-[state=indeterminate]:bg-white data-[state=indeterminate]:text-blue-700"
+                      />
+                    </th>
+                    {colVis.isVisible("number") && (
+                      <th className={cn(thClass, "[&_*]:!text-white")}>
+                        <SortHeader field="number">Contract #</SortHeader>
+                        <ColResizeHandle onMouseDown={startColResize("number")} />
+                      </th>
+                    )}
+                    {colVis.isVisible("name") && (
+                      <th className={cn(thClass, "[&_*]:!text-white")}>
+                        <SortHeader field="name">Name</SortHeader>
+                        <ColResizeHandle onMouseDown={startColResize("name")} />
+                      </th>
+                    )}
+                    {colVis.isVisible("account") && (
+                      <th className={cn(thClass, "[&_*]:!text-white")}>
+                        <SortHeader field="account">Account</SortHeader>
+                        <ColResizeHandle onMouseDown={startColResize("account")} />
+                      </th>
+                    )}
+                    {colVis.isVisible("term") && (
+                      <th className={cn(thClass, "[&_*]:!text-white")}>
+                        <SortHeader field="term">Term</SortHeader>
+                        <ColResizeHandle onMouseDown={startColResize("term")} />
+                      </th>
+                    )}
+                    {colVis.isVisible("value") && (
+                      <th className={cn(thClass, "[&_*]:!text-white")}>
+                        <SortHeader field="value">Value</SortHeader>
+                        <ColResizeHandle onMouseDown={startColResize("value")} />
+                      </th>
+                    )}
+                    {colVis.isVisible("status") && (
+                      <th className={cn(thClass, "[&_*]:!text-white")}>
+                        <SortHeader field="status">Status</SortHeader>
+                        <ColResizeHandle onMouseDown={startColResize("status")} />
+                      </th>
+                    )}
+                    <th className="relative text-center px-3 py-1.5">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</span>
+                      <ColResizeHandle onMouseDown={startColResize("actions")} />
+                    </th>
                   </tr>
-                )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+                </thead>
+                <tbody className="divide-y divide-border bg-card">
+                  {sorted.length === 0 ? (
+                    <tr><td colSpan={contractColSpan} className="px-4 py-12 text-center text-muted-foreground">{searchQuery ? "No contracts match your search." : "No contracts in this view yet."}</td></tr>
+                  ) : pagination.paged.map((c) => (
+                    <tr key={c.id} className="hover:bg-muted/30 transition-colors group">
+                      <td className="w-8 px-2 py-1">
+                        <Checkbox
+                          checked={selectedIds.has(c.id)}
+                          onCheckedChange={() => toggleSelect(c.id)}
+                          aria-label={`Select contract ${c.contractNumber}`}
+                        />
+                      </td>
+                      {colVis.isVisible("number") && (
+                        <td className="px-3 py-1">
+                          <Link href={`/contracts/${c.id}`}>
+                            <span
+                              className="font-medium text-primary hover:underline cursor-pointer inline-flex items-center truncate"
+                              style={{ maxWidth: `${colWidths.number}px` }}
+                              title={c.contractNumber}
+                            >
+                              {c.contractNumber}
+                              {isRecentlyCreated(c.createdAt) && <span className="ml-2 text-[10px] text-green-600">New</span>}
+                            </span>
+                          </Link>
+                        </td>
+                      )}
+                      {colVis.isVisible("name") && (
+                        <td className="px-3 py-1 text-foreground">
+                          <span className="block truncate" style={{ maxWidth: `${colWidths.name}px` }} title={c.name}>{c.name}</span>
+                        </td>
+                      )}
+                      {colVis.isVisible("account") && (
+                        <td className="px-3 py-1 text-muted-foreground">
+                          <span className="block truncate" style={{ maxWidth: `${colWidths.account}px` }} title={c.accountName ?? ""}>{c.accountName ?? "—"}</span>
+                        </td>
+                      )}
+                      {colVis.isVisible("term") && (
+                        <td className="px-3 py-1 text-muted-foreground">
+                          {c.startDate ? format(new Date(c.startDate), "MMM d, yyyy") : "—"}
+                          {c.endDate ? ` → ${format(new Date(c.endDate), "MMM d, yyyy")}` : ""}
+                        </td>
+                      )}
+                      {colVis.isVisible("value") && (
+                        <td className="px-3 py-1 font-semibold text-foreground">{fmtMoney(c.total)}</td>
+                      )}
+                      {colVis.isVisible("status") && (
+                        <td className="px-3 py-1">
+                          <Badge variant="outline" className={CONTRACT_STATUS_COLORS[c.status] ?? ""}>{contractStatusLabel(c.status)}</Badge>
+                        </td>
+                      )}
+                      <td className="px-3 py-1">
+                        <div className="flex items-center justify-center gap-1">
+                          <Link href={`/contracts/${c.id}`}>
+                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground">
+                              <Pencil className="w-3.5 h-3.5" /> Edit
+                            </Button>
+                          </Link>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" aria-label={`More actions for ${c.contractNumber}`}><MoreHorizontal className="w-4 h-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-card border-border">
+                              <DropdownMenuItem onClick={() => navigate(`/contracts/${c.id}`)}>
+                                <Eye className="w-4 h-4 mr-2" /> View Details
+                              </DropdownMenuItem>
+                              {(c.status === "draft" || c.status === "in_approval") && (
+                                <DropdownMenuItem onClick={() => handleActivate(c.id)}>
+                                  <CheckCircle className="w-4 h-4 mr-2 text-green-600" /> Activate
+                                </DropdownMenuItem>
+                              )}
+                              {c.status === "activated" && (
+                                <DropdownMenuItem onClick={() => setTerminateId(c.id)}>
+                                  <XCircle className="w-4 h-4 mr-2 text-red-600" /> Terminate
+                                </DropdownMenuItem>
+                              )}
+                              {["activated", "expired", "terminated"].includes(c.status) && (
+                                <DropdownMenuItem onClick={() => handleRenew(c.id)}>
+                                  <RefreshCw className="w-4 h-4 mr-2 text-blue-600" /> Renew
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setDeleteId(c.id)} className="text-red-600">
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       <CreateContractDialog open={createOpen} onOpenChange={setCreateOpen} />
-      <CreateContractDialog open={editContract != null} onOpenChange={(v) => { if (!v) setEditContract(null); }} contract={editContract} />
 
       <AlertDialog open={terminateId != null} onOpenChange={(v) => { if (!v) { setTerminateId(null); setTerminateReason(""); } }}>
         <AlertDialogContent className="bg-card border-border">
