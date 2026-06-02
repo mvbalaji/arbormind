@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { productsTable } from "@workspace/db";
+import { productsTable, priceBookEntriesTable } from "@workspace/db";
 import { eq, ilike, sql } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
@@ -82,6 +82,9 @@ router.put("/products/:id", async (req, res) => {
 router.delete("/products/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    // Remove dependent price book entries first (FK is NOT NULL), including the
+    // auto-created Standard Price entry, otherwise the delete fails with a FK violation.
+    await db.delete(priceBookEntriesTable).where(eq(priceBookEntriesTable.productId, id));
     await db.delete(productsTable).where(eq(productsTable.id, id));
     res.json({ success: true, id });
   } catch (err) {

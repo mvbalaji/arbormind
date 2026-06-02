@@ -29,6 +29,15 @@ export async function getStandardPriceBook() {
 }
 
 /**
+ * Returns the Standard Price Book id, creating the book if necessary. Use this to
+ * default quote/opportunity selections when the user does not choose a price book.
+ */
+export async function getStandardPriceBookId(): Promise<number> {
+  const standard = await getStandardPriceBook();
+  return standard.id;
+}
+
+/**
  * Upsert the Standard Price Book entry for a product so it always mirrors
  * the product's unitPrice (the canonical Standard Price).
  */

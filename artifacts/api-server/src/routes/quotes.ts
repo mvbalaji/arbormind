@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable, opportunityItemsTable } from "@workspace/db";
+import { getStandardPriceBookId } from "../lib/pricing";
 import { eq, sql, inArray, desc, and, or } from "drizzle-orm";
 import PDFDocument from "pdfkit";
 import nodemailer from "nodemailer";
@@ -374,7 +375,7 @@ router.post("/quotes", async (req, res) => {
       opportunityId: (quoteData.opportunityId as number | null) ?? null,
       contactId: (quoteData.contactId as number | null) ?? null,
       accountId: (quoteData.accountId as number | null) ?? null,
-      priceBookId: (quoteData.priceBookId as number | null) ?? null,
+      priceBookId: (quoteData.priceBookId as number | null) ?? (await getStandardPriceBookId()),
       status: (quoteData.status as string) ?? "draft",
       validUntil: quoteData.validUntil ? new Date(quoteData.validUntil as string) : null,
       discount: (quoteData.discount as string) ?? "0",
@@ -506,6 +507,10 @@ router.put("/quotes/:id", async (req, res) => {
           updateData[key] = quoteData[key];
         }
       }
+    }
+    // If the price book was explicitly cleared, fall back to the Standard Price Book.
+    if (updateData.priceBookId === null) {
+      updateData.priceBookId = await getStandardPriceBookId();
     }
 
     if (items) {

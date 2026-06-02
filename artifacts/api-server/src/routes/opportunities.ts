@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { opportunitiesTable, usersTable, accountsTable, contactsTable, activitiesTable, opportunityItemsTable, opportunityStageHistoryTable } from "@workspace/db";
+import { getStandardPriceBookId } from "../lib/pricing";
 import { eq, ilike, sql, and, isNull, asc } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
@@ -88,7 +89,12 @@ router.get("/opportunities", async (req, res) => {
 
 router.post("/opportunities", async (req, res) => {
   try {
-    const [opportunity] = await db.insert(opportunitiesTable).values(req.body).returning();
+    const oppData = { ...req.body };
+    // Default to the Standard Price Book when none was chosen.
+    if (oppData.priceBookId == null) {
+      oppData.priceBookId = await getStandardPriceBookId();
+    }
+    const [opportunity] = await db.insert(opportunitiesTable).values(oppData).returning();
     await db.insert(opportunityStageHistoryTable).values({
       opportunityId: opportunity.id,
       stage: opportunity.stage,
@@ -128,6 +134,10 @@ router.put("/opportunities/:id", async (req, res) => {
     const patch: Record<string, unknown> = { ...rawBody };
     if (typeof patch.closeDate === "string") {
       patch.closeDate = patch.closeDate ? new Date(patch.closeDate) : null;
+    }
+    // If the price book was explicitly cleared, fall back to the Standard Price Book.
+    if ("priceBookId" in patch && patch.priceBookId == null) {
+      patch.priceBookId = await getStandardPriceBookId();
     }
     const opportunity = await db.transaction(async (tx) => {
       const [prev] = await tx.select({ stage: opportunitiesTable.stage }).from(opportunitiesTable).where(eq(opportunitiesTable.id, id)).for("update");
