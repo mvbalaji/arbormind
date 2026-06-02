@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { StagePipeline } from "@/components/stage-pipeline";
 import {
   ArrowLeft, Download, Send, Copy, CheckCircle, XCircle, Clock, Check,
   FileText, FileSignature, Calendar, Package, Building2, User, History, Pencil, Plus, X, Save, Trash2,
@@ -496,41 +497,26 @@ export default function QuoteDetail() {
             else if (quote.status === "expired") stages = [...baseStages, { id: "expired", label: "Expired" }];
             const idx = stages.findIndex((s) => s.id === quote.status);
             if (idx < 0) return null;
-            const currentCls =
-              quote.status === "rejected" ? "bg-red-600 text-white" :
-              quote.status === "expired" ? "bg-amber-500 text-white" :
-              "bg-blue-600 text-white";
+            const currentTone =
+              quote.status === "rejected" ? "red" as const :
+              quote.status === "expired" ? "amber" as const :
+              "blue" as const;
+            const stageDate = (stageId: string): Date | null =>
+              stageId === "draft" && quote.createdAt ? new Date(quote.createdAt) : null;
+            const advance =
+              quote.status === "draft"
+                ? { label: "Send to Customer", icon: Send, onClick: handleSend, disabled: sendMutation.isPending, tone: "blue" as const }
+                : quote.status === "sent"
+                ? { label: "Mark Accepted", icon: CheckCircle, onClick: () => handleStatusChange("accepted"), disabled: updateMutation.isPending, tone: "emerald" as const }
+                : null;
             return (
-              <ol
-                role="list"
-                aria-label="Quote status"
-                className="flex items-stretch overflow-hidden rounded-md border border-border bg-muted/30 list-none p-0 m-0"
-              >
-                {stages.map((s, i) => {
-                  const done = i < idx;
-                  const current = i === idx;
-                  const isLast = i === stages.length - 1;
-                  return (
-                    <li
-                      key={s.id}
-                      role="listitem"
-                      aria-current={current ? "step" : undefined}
-                      aria-label={`${s.label} — ${done ? "Completed" : current ? "Current" : "Upcoming"}`}
-                      className={`relative flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium min-w-0 ${
-                        done ? "bg-emerald-500 text-white" :
-                        current ? currentCls :
-                        "bg-muted/50 text-muted-foreground"
-                      }`}
-                      style={!isLast
-                        ? { clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)" }
-                        : { clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)" }}
-                    >
-                      {done && <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
-                      <span className="truncate max-w-full">{s.label}</span>
-                    </li>
-                  );
-                })}
-              </ol>
+              <StagePipeline
+                ariaLabel="Quote status"
+                stages={stages.map((s) => ({ ...s, enteredAt: stageDate(s.id) }))}
+                currentId={quote.status}
+                currentTone={currentTone}
+                advance={advance}
+              />
             );
           })()}
         </Card>

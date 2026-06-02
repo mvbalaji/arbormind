@@ -17,6 +17,7 @@ import { AISummary } from "@/components/ai-summary";
 import { AINextActions } from "@/components/ai-next-actions";
 import { EmailCompose } from "@/components/email-compose";
 import { EmailViewer } from "@/components/email-viewer";
+import { StagePipeline } from "@/components/stage-pipeline";
 import {
   ArrowLeft, Mail, Phone, Building2, User, Calendar, Activity,
   CheckCircle2, Clock, ArrowRightLeft, Pencil, MapPin, DollarSign,
@@ -261,9 +262,7 @@ export default function LeadDetail() {
 
   const fullName = `${lead.firstName} ${lead.lastName}`;
   const initials = `${lead.firstName[0] ?? ""}${lead.lastName[0] ?? ""}`.toUpperCase();
-  const currentStageIdx = PIPELINE_STAGES.findIndex((s) => s.key === lead.status);
   const activities = activitiesData?.data ?? [];
-  const daysSinceUpdate = differenceInDays(new Date(), new Date(lead.updatedAt));
   const daysSinceCreated = differenceInDays(new Date(), new Date(lead.createdAt));
 
   const handleStatusChange = (newStatus: string) => {
@@ -510,64 +509,41 @@ export default function LeadDetail() {
           )}
 
           {/* Chevron Pipeline Status Bar */}
-          {!lead.isConverted && (
-            <div className="px-5 py-3 flex items-center gap-3">
-              <div className="flex items-stretch flex-1 min-w-0 overflow-x-auto">
-                {PIPELINE_STAGES.filter((s) => s.key !== "converted").map((stage, i, arr) => {
-                  const isCompleted = i < currentStageIdx;
-                  const isCurrent = stage.key === lead.status;
-                  const isFirst = i === 0;
-                  const isLast = i === arr.length - 1;
-                  return (
-                    <button
-                      key={stage.key}
-                      onClick={() => handleStatusChange(stage.key)}
-                      title={`Set to ${stage.label}`}
-                      className={cn(
-                        "flex-1 min-w-[80px] flex flex-col items-center justify-center py-2 px-4 text-center transition-all relative select-none",
-                        "border-y border-r first:border-l",
-                        isFirst ? "rounded-l-sm" : "",
-                        isLast ? "rounded-r-sm" : "",
-                        isCurrent
-                          ? "bg-primary border-primary text-primary-foreground z-10"
-                          : isCompleted
-                          ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-                          : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/60"
-                      )}
-                      style={{
-                        clipPath: isFirst
-                          ? "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%)"
-                          : isLast
-                          ? "polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)"
-                          : "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)",
-                        marginLeft: i > 0 ? "-1px" : "0",
-                      }}
-                    >
-                      <span className="text-[10px] font-semibold leading-tight">{stage.label}</span>
-                      {isCurrent && (
-                        <span className="text-[9px] opacity-80 mt-0.5">
-                          {daysSinceUpdate === 0 ? "Today" : `${daysSinceUpdate}d`}
-                        </span>
-                      )}
-                      {isCompleted && (
-                        <CheckCircle2 className="w-3 h-3 mt-0.5 opacity-60" />
-                      )}
-                    </button>
-                  );
-                })}
+          {!lead.isConverted && (() => {
+            const baseStages = [
+              { id: "new", label: "New" },
+              { id: "contacted", label: "Contacted" },
+              { id: "qualified", label: "Qualified" },
+            ];
+            const stages = lead.status === "unqualified"
+              ? [...baseStages, { id: "unqualified", label: "Unqualified" }]
+              : [...baseStages, { id: "converted", label: "Converted" }];
+            const currentTone = lead.status === "unqualified" ? "red" as const : "blue" as const;
+            const stageDate = (stageId: string): Date | null =>
+              stageId === "new" && lead.createdAt ? new Date(lead.createdAt) : null;
+            const canAdvance = advanceStageIdx >= 0 && advanceStageIdx < ADVANCE_STAGES.length - 1;
+            const isQualified = lead.status === "qualified";
+            const advance = canAdvance
+              ? {
+                  label: isQualified ? "Convert Lead" : "Advance Stage",
+                  icon: isQualified ? ArrowRightLeft : ChevronRight,
+                  onClick: handleMarkComplete,
+                  disabled: updateMutation.isPending,
+                  tone: (isQualified ? "emerald" : "blue") as "blue" | "emerald",
+                }
+              : null;
+            return (
+              <div className="px-5 py-3">
+                <StagePipeline
+                  ariaLabel="Lead pipeline stage"
+                  stages={stages.map((s) => ({ ...s, enteredAt: stageDate(s.id) }))}
+                  currentId={lead.status}
+                  currentTone={currentTone}
+                  advance={advance}
+                />
               </div>
-              {advanceStageIdx >= 0 && advanceStageIdx < ADVANCE_STAGES.length - 1 && (
-                <Button
-                  size="sm"
-                  className="ml-2 h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground flex-shrink-0"
-                  onClick={handleMarkComplete}
-                  disabled={updateMutation.isPending}
-                >
-                  Advance Stage →
-                </Button>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           {lead.isConverted && (
             <div className="px-5 py-4 border-t border-green-100 bg-green-50">

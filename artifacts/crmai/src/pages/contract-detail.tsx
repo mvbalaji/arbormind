@@ -16,7 +16,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { StagePipeline } from "@/components/stage-pipeline";
 import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Trash2, FileSignature, Send, History, Pencil, Check, Plus, X, Package } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
@@ -295,10 +295,10 @@ export default function ContractDetail() {
           else if (contract.status === "expired") stages = [...baseStages, { id: "expired", label: "Expired" }];
           const idx = stages.findIndex((s) => s.id === contract.status);
           if (idx < 0) return null;
-          const currentCls =
-            contract.status === "terminated" ? "bg-red-600 text-white" :
-            contract.status === "expired" ? "bg-amber-500 text-white" :
-            "bg-blue-600 text-white";
+          const currentTone =
+            contract.status === "terminated" ? "red" as const :
+            contract.status === "expired" ? "amber" as const :
+            "blue" as const;
 
           const stageDate = (stageId: string): Date | null => {
             if (stageId === "draft" && contract.createdAt) return new Date(contract.createdAt);
@@ -306,88 +306,25 @@ export default function ContractDetail() {
             return null;
           };
 
-          const nextAction =
+          const advance =
             contract.status === "draft"
-              ? { label: "Submit for Approval", icon: Send, fn: handleSubmitForApproval, pending: submitMutation.isPending, cls: "bg-blue-600 hover:bg-blue-700 text-white" }
+              ? { label: "Submit for Approval", icon: Send, onClick: handleSubmitForApproval, disabled: submitMutation.isPending, tone: "blue" as const }
               : contract.status === "in_approval"
-              ? { label: "Activate", icon: CheckCircle, fn: handleActivate, pending: activateMutation.isPending, cls: "bg-emerald-600 hover:bg-emerald-700 text-white" }
+              ? { label: "Activate", icon: CheckCircle, onClick: handleActivate, disabled: activateMutation.isPending, tone: "emerald" as const }
+              : contract.status === "activated"
+              ? { label: "Activated", icon: Check, onClick: () => {}, disabled: true, tone: "emerald" as const }
               : null;
 
           return (
             <Card className="glass-panel border-border p-5">
               <h2 className="text-sm font-semibold text-foreground mb-4 uppercase tracking-wide">Lifecycle Stage</h2>
-              <div className="flex items-stretch gap-0 -mx-1">
-                <TooltipProvider delayDuration={150}>
-                  <ol
-                    role="list"
-                    aria-label="Contract lifecycle stage"
-                    className="flex-1 flex items-stretch overflow-hidden rounded-md border border-border bg-muted/30 list-none p-0 m-0"
-                  >
-                    {stages.map((s, i) => {
-                      const done = i < idx;
-                      const current = i === idx;
-                      const isLast = i === stages.length - 1;
-                      const stateLabel = done ? "Completed" : current ? "Current" : "Upcoming";
-                      const entered = stageDate(s.id);
-                      return (
-                        <Tooltip key={s.id}>
-                          <TooltipTrigger asChild>
-                            <li
-                              role="listitem"
-                              tabIndex={0}
-                              aria-current={current ? "step" : undefined}
-                              aria-label={`${s.label} — ${stateLabel}`}
-                              className={`relative flex-1 flex items-center justify-center px-3 py-1 text-xs font-medium min-w-0 cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-inset ${
-                                done ? "bg-emerald-500 text-white" :
-                                current ? currentCls :
-                                "bg-muted/50 text-muted-foreground"
-                              }`}
-                              style={!isLast
-                                ? { clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)" }
-                                : { clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)" }}
-                            >
-                              {done ? (
-                                <>
-                                  <span aria-hidden="true" className="flex items-center justify-center w-5 h-5 rounded-full bg-white/20"><Check className="w-3.5 h-3.5" /></span>
-                                  <span className="sr-only">{s.label}</span>
-                                </>
-                              ) : (
-                                <span className="truncate max-w-full">{s.label}</span>
-                              )}
-                            </li>
-                          </TooltipTrigger>
-                          <TooltipContent side="bottom" className="bg-foreground text-background border-border max-w-xs">
-                            <div className="text-xs">
-                              <div className="font-semibold mb-1">{s.label}</div>
-                              <div className="flex items-center gap-1.5 mb-1">
-                                <span className={`inline-block w-1.5 h-1.5 rounded-full ${done ? "bg-emerald-400" : current ? "bg-blue-400" : "bg-muted-foreground/50"}`} />
-                                <span>Status: {stateLabel}</span>
-                              </div>
-                              {entered && <div className="opacity-80">Entered: {format(entered, "MMM d, yyyy")}</div>}
-                              {!entered && !current && !done && <div className="opacity-70">Not yet reached</div>}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      );
-                    })}
-                  </ol>
-                </TooltipProvider>
-                {nextAction ? (
-                  <Button
-                    size="sm"
-                    onClick={nextAction.fn}
-                    disabled={nextAction.pending}
-                    className={`shrink-0 ml-2 gap-1.5 ${nextAction.cls}`}
-                  >
-                    <nextAction.icon className="w-3.5 h-3.5" />
-                    {nextAction.label}
-                  </Button>
-                ) : contract.status === "activated" ? (
-                  <Button size="sm" disabled className="shrink-0 ml-2 gap-1.5 bg-emerald-600 text-white">
-                    <Check className="w-3.5 h-3.5" /> Activated
-                  </Button>
-                ) : null}
-              </div>
+              <StagePipeline
+                ariaLabel="Contract lifecycle stage"
+                stages={stages.map((s) => ({ ...s, enteredAt: stageDate(s.id) }))}
+                currentId={contract.status}
+                currentTone={currentTone}
+                advance={advance}
+              />
             </Card>
           );
         })()}
