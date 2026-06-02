@@ -3,9 +3,8 @@ import { useLocation } from "wouter";
 import {
   useListContracts, useCreateContract, useActivateContract, useTerminateContract,
   useRenewContract, useDeleteContract,
-  useListProducts, useListAccounts, useListContractDocuments,
+  useListProducts, useListAccounts,
   getListContractsQueryKey,
-  type ContractDocument,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -24,13 +23,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   FileSignature, MoreHorizontal, Trash2, CheckCircle, XCircle, RefreshCw,
-  Plus, X, Package, Eye, ChevronRight, ChevronDown, History, FileDown,
+  Plus, X, Package, Eye, ChevronRight, ChevronDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
 import { isRecentlyCreated } from "@/lib/utils";
-import { downloadAsPdf, downloadAsWord } from "@/lib/document-export";
+import { ContractRevisions } from "@/components/contract-revisions";
 
 export const CONTRACT_STATUS_COLORS: Record<string, string> = {
   draft: "border-gray-500/30 text-gray-600 bg-gray-500/5",
@@ -251,66 +250,6 @@ function CreateContractDialog({ open, onOpenChange }: { open: boolean; onOpenCha
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function ContractRevisions({ contractId }: { contractId: number }) {
-  const { data, isLoading } = useListContractDocuments(contractId);
-  const { toast } = useToast();
-  const docs = [...(data?.data ?? [])].sort((a, b) => b.version - a.version);
-  const latestVersion = docs[0]?.version;
-
-  const handleDownload = async (doc: ContractDocument, kind: "pdf" | "word") => {
-    const title = doc.title || `Version ${doc.version}`;
-    const baseName = `${title}-v${doc.version}`;
-    try {
-      if (kind === "pdf") downloadAsPdf(title, doc.content, baseName);
-      else await downloadAsWord(title, doc.content, baseName);
-    } catch {
-      toast({ title: "Error", description: `Could not generate the ${kind === "pdf" ? "PDF" : "Word"} file.`, variant: "destructive" });
-    }
-  };
-
-  return (
-    <div className="py-2">
-      <div className="px-1 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-        <History className="w-3.5 h-3.5" /> Revisions
-      </div>
-      {isLoading ? (
-        <div className="px-1 py-3 text-sm text-muted-foreground">Loading revisions…</div>
-      ) : docs.length === 0 ? (
-        <div className="px-1 py-3 text-sm text-muted-foreground">No document revisions for this contract yet.</div>
-      ) : (
-        <ul className="flex flex-col gap-1.5">
-          {docs.map((d) => (
-            <li key={d.id} className="flex items-center justify-between gap-3 rounded-md bg-background/60 border border-border px-3 py-2">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground">v{d.version}</span>
-                  {d.version === latestVersion && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-500/40 text-green-600">Current</Badge>
-                  )}
-                  {d.title && <span className="text-sm text-foreground truncate">{d.title}</span>}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-                  <span>{d.createdAt ? format(new Date(d.createdAt), "MMM d, yyyy h:mm a") : "—"}</span>
-                  {d.createdByName && <span>· {d.createdByName}</span>}
-                  {d.changeSummary && <span className="italic">· {d.changeSummary}</span>}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button variant="outline" size="sm" className="border-border h-7" onClick={() => handleDownload(d, "pdf")}>
-                  <FileDown className="w-3.5 h-3.5 mr-1" /> PDF
-                </Button>
-                <Button variant="outline" size="sm" className="border-border h-7" onClick={() => handleDownload(d, "word")}>
-                  <FileDown className="w-3.5 h-3.5 mr-1" /> Word
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 

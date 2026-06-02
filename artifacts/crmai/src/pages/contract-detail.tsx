@@ -15,11 +15,12 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Trash2, FileSignature, Send } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Trash2, FileSignature, Send, History } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
 import { CONTRACT_STATUS_COLORS, contractStatusLabel } from "./contracts";
+import { ContractRevisions } from "@/components/contract-revisions";
 
 export default function ContractDetail() {
   const params = useParams<{ id: string }>();
@@ -245,6 +246,14 @@ export default function ContractDetail() {
               <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1"><span>Total</span><span>{fmtMoney(contract.total)}</span></div>
             </div>
           </div>
+        </Card>
+
+        <Card className="glass-panel border-border p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <History className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Document Revisions</h2>
+          </div>
+          <ContractRevisions contractId={id} heading={false} />
         </Card>
       </div>
 
