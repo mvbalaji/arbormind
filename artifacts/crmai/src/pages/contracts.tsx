@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
-  useListContracts, useCreateContract, useActivateContract, useTerminateContract,
+  useListContracts, useCreateContract, useUpdateContract, useActivateContract, useTerminateContract,
   useRenewContract, useDeleteContract,
   useListProducts, useListAccounts,
-  getListContractsQueryKey,
+  getListContractsQueryKey, getGetContractQueryKey,
+  type Contract,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   FileSignature, MoreHorizontal, Trash2, CheckCircle, XCircle, RefreshCw,
-  Plus, X, Package, Eye, ChevronRight, ChevronDown,
+  Plus, X, Package, Eye, ChevronRight, ChevronDown, Pencil,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
@@ -53,7 +54,8 @@ interface ContractLineItem {
   discount: number;
 }
 
-function CreateContractDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function CreateContractDialog({ open, onOpenChange, contract }: { open: boolean; onOpenChange: (v: boolean) => void; contract?: Contract | null }) {
+  const isEdit = !!contract;
   const [name, setName] = useState("");
   const [accountId, setAccountId] = useState<string>("");
   const [startDate, setStartDate] = useState("");
@@ -67,16 +69,36 @@ function CreateContractDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   const products = productsData?.data ?? [];
   const accounts = accountsData?.data ?? [];
   const createMutation = useCreateContract();
+  const updateMutation = useUpdateContract();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { format: fmtMoney } = useCurrency();
+  const isPending = createMutation.isPending || updateMutation.isPending;
 
   useEffect(() => {
     if (open) {
-      setName(""); setAccountId(""); setStartDate(""); setTermMonths("12");
-      setAutoRenew(false); setRenewalTermMonths("12"); setDescription(""); setItems([]);
+      if (contract) {
+        setName(contract.name ?? "");
+        setAccountId(contract.accountId != null ? String(contract.accountId) : "");
+        setStartDate(contract.startDate ? contract.startDate.slice(0, 10) : "");
+        setTermMonths(contract.contractTermMonths != null ? String(contract.contractTermMonths) : "");
+        setAutoRenew(!!contract.autoRenew);
+        setRenewalTermMonths(contract.renewalTermMonths != null ? String(contract.renewalTermMonths) : "12");
+        setDescription(contract.description ?? "");
+        setItems((contract.items ?? []).map(it => ({
+          productId: it.productId ?? null,
+          productName: it.productName,
+          quantity: it.quantity,
+          listPrice: it.listPrice,
+          unitPrice: it.unitPrice,
+          discount: it.discount,
+        })));
+      } else {
+        setName(""); setAccountId(""); setStartDate(""); setTermMonths("12");
+        setAutoRenew(false); setRenewalTermMonths("12"); setDescription(""); setItems([]);
+      }
     }
-  }, [open]);
+  }, [open, contract]);
 
   const lineTotal = (item: ContractLineItem) => item.quantity * item.unitPrice * (1 - item.discount / 100);
   const subtotal = items.reduce((sum, item) => sum + lineTotal(item), 0);
@@ -92,31 +114,36 @@ function CreateContractDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      name: name || undefined,
+      accountId: accountId ? parseInt(accountId) : null,
+      startDate: startDate || null,
+      contractTermMonths: termMonths ? parseInt(termMonths) : null,
+      autoRenew,
+      renewalTermMonths: renewalTermMonths ? parseInt(renewalTermMonths) : null,
+      description: description || null,
+      items: items.filter(it => it.productName).map(it => ({
+        productId: it.productId,
+        productName: it.productName,
+        quantity: it.quantity || 1,
+        listPrice: it.listPrice || 0,
+        unitPrice: it.unitPrice || 0,
+        discount: it.discount || 0,
+      })),
+    };
     try {
-      await createMutation.mutateAsync({
-        data: {
-          name: name || undefined,
-          accountId: accountId ? parseInt(accountId) : null,
-          startDate: startDate || null,
-          contractTermMonths: termMonths ? parseInt(termMonths) : null,
-          autoRenew,
-          renewalTermMonths: renewalTermMonths ? parseInt(renewalTermMonths) : null,
-          description: description || null,
-          items: items.filter(it => it.productName).map(it => ({
-            productId: it.productId,
-            productName: it.productName,
-            quantity: it.quantity || 1,
-            listPrice: it.listPrice || 0,
-            unitPrice: it.unitPrice || 0,
-            discount: it.discount || 0,
-          })),
-        },
-      });
-      toast({ title: "Contract created" });
+      if (contract) {
+        await updateMutation.mutateAsync({ id: contract.id, data: payload });
+        toast({ title: "Contract updated" });
+        void queryClient.invalidateQueries({ queryKey: getGetContractQueryKey(contract.id) });
+      } else {
+        await createMutation.mutateAsync({ data: payload });
+        toast({ title: "Contract created" });
+      }
       void queryClient.invalidateQueries({ queryKey: getListContractsQueryKey() });
       onOpenChange(false);
     } catch {
-      toast({ title: "Error", description: "Could not create contract.", variant: "destructive" });
+      toast({ title: "Error", description: `Could not ${contract ? "update" : "create"} contract.`, variant: "destructive" });
     }
   };
 
@@ -124,7 +151,7 @@ function CreateContractDialog({ open, onOpenChange }: { open: boolean; onOpenCha
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border text-foreground max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create Contract</DialogTitle>
+          <DialogTitle>{isEdit ? `Edit Contract${contract?.contractNumber ? ` ${contract.contractNumber}` : ""}` : "Create Contract"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5 mt-2">
           <div className="grid grid-cols-2 gap-4">
@@ -243,8 +270,8 @@ function CreateContractDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
-            <Button type="submit" disabled={createMutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground">
-              {createMutation.isPending ? "Creating..." : "Create Contract"}
+            <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">
+              {isPending ? (isEdit ? "Saving..." : "Creating...") : (isEdit ? "Save Changes" : "Create Contract")}
             </Button>
           </DialogFooter>
         </form>
@@ -257,6 +284,7 @@ export default function Contracts() {
   const [, navigate] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [editContract, setEditContract] = useState<Contract | null>(null);
   const [terminateId, setTerminateId] = useState<number | null>(null);
   const [terminateReason, setTerminateReason] = useState("");
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -389,6 +417,11 @@ export default function Contracts() {
                           <Eye className="w-4 h-4 mr-2" /> View
                         </DropdownMenuItem>
                         {(c.status === "draft" || c.status === "in_approval") && (
+                          <DropdownMenuItem onClick={() => setEditContract(c)}>
+                            <Pencil className="w-4 h-4 mr-2" /> Edit
+                          </DropdownMenuItem>
+                        )}
+                        {(c.status === "draft" || c.status === "in_approval") && (
                           <DropdownMenuItem onClick={() => handleActivate(c.id)}>
                             <CheckCircle className="w-4 h-4 mr-2 text-green-600" /> Activate
                           </DropdownMenuItem>
@@ -427,6 +460,7 @@ export default function Contracts() {
       </div>
 
       <CreateContractDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <CreateContractDialog open={editContract != null} onOpenChange={(v) => { if (!v) setEditContract(null); }} contract={editContract} />
 
       <AlertDialog open={terminateId != null} onOpenChange={(v) => { if (!v) { setTerminateId(null); setTerminateReason(""); } }}>
         <AlertDialogContent className="bg-card border-border">

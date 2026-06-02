@@ -15,11 +15,11 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Trash2, FileSignature, Send, History } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, RefreshCw, Trash2, FileSignature, Send, History, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
-import { CONTRACT_STATUS_COLORS, contractStatusLabel } from "./contracts";
+import { CONTRACT_STATUS_COLORS, contractStatusLabel, CreateContractDialog } from "./contracts";
 import { ContractRevisions } from "@/components/contract-revisions";
 
 export default function ContractDetail() {
@@ -29,6 +29,7 @@ export default function ContractDetail() {
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [terminateReason, setTerminateReason] = useState("");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const { data: contract, isLoading } = useGetContract(id);
   const activateMutation = useActivateContract();
   const submitMutation = useSubmitContractForApproval();
@@ -145,6 +146,11 @@ export default function ContractDetail() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {(contract.status === "draft" || contract.status === "in_approval") && (
+                  <Button onClick={() => setEditOpen(true)} variant="outline" className="border-border">
+                    <Pencil className="w-4 h-4 mr-1" /> Edit
+                  </Button>
+                )}
                 {contract.status === "draft" && (
                   <Button onClick={handleSubmitForApproval} disabled={submitMutation.isPending}
                     variant="outline" className="border-border">
@@ -286,6 +292,8 @@ export default function ContractDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CreateContractDialog open={editOpen} onOpenChange={setEditOpen} contract={contract} />
     </Layout>
   );
 }
