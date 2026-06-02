@@ -282,7 +282,7 @@ export default function AccountDetail() {
     { id: "opportunities", label: "Opportunities", count: opportunities.length },
     { id: "activities", label: "Activities", count: activities.length },
     { id: "quotes", label: "Quotes", count: quotes.length },
-    ...(clmEnabled ? [{ id: "contracts" as Tab, label: "Contracts", count: contracts.length }] : []),
+    ...(clmEnabled || contracts.length > 0 ? [{ id: "contracts" as Tab, label: "Contracts", count: contracts.length }] : []),
     { id: "cases", label: "Cases", count: cases.length },
     { id: "about", label: "About" },
   ];
