@@ -3,8 +3,9 @@ import { useLocation } from "wouter";
 import {
   useListContracts, useCreateContract, useActivateContract, useTerminateContract,
   useRenewContract, useDeleteContract,
-  useListProducts, useListAccounts,
+  useListProducts, useListAccounts, useListContractDocuments,
   getListContractsQueryKey,
+  type ContractDocument,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -23,12 +24,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   FileSignature, MoreHorizontal, Trash2, CheckCircle, XCircle, RefreshCw,
-  Plus, X, Package, Eye,
+  Plus, X, Package, Eye, ChevronRight, ChevronDown, History, FileDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { useToast } from "@/hooks/use-toast";
 import { isRecentlyCreated } from "@/lib/utils";
+import { downloadAsPdf, downloadAsWord } from "@/lib/document-export";
 
 export const CONTRACT_STATUS_COLORS: Record<string, string> = {
   draft: "border-gray-500/30 text-gray-600 bg-gray-500/5",
@@ -252,9 +254,70 @@ function CreateContractDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   );
 }
 
+function ContractRevisions({ contractId }: { contractId: number }) {
+  const { data, isLoading } = useListContractDocuments(contractId);
+  const { toast } = useToast();
+  const docs = [...(data?.data ?? [])].sort((a, b) => b.version - a.version);
+  const latestVersion = docs[0]?.version;
+
+  const handleDownload = async (doc: ContractDocument, kind: "pdf" | "word") => {
+    const title = doc.title || `Version ${doc.version}`;
+    const baseName = `${title}-v${doc.version}`;
+    try {
+      if (kind === "pdf") downloadAsPdf(title, doc.content, baseName);
+      else await downloadAsWord(title, doc.content, baseName);
+    } catch {
+      toast({ title: "Error", description: `Could not generate the ${kind === "pdf" ? "PDF" : "Word"} file.`, variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="py-2">
+      <div className="px-1 pb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+        <History className="w-3.5 h-3.5" /> Revisions
+      </div>
+      {isLoading ? (
+        <div className="px-1 py-3 text-sm text-muted-foreground">Loading revisions…</div>
+      ) : docs.length === 0 ? (
+        <div className="px-1 py-3 text-sm text-muted-foreground">No document revisions for this contract yet.</div>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {docs.map((d) => (
+            <li key={d.id} className="flex items-center justify-between gap-3 rounded-md bg-background/60 border border-border px-3 py-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">v{d.version}</span>
+                  {d.version === latestVersion && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-500/40 text-green-600">Current</Badge>
+                  )}
+                  {d.title && <span className="text-sm text-foreground truncate">{d.title}</span>}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                  <span>{d.createdAt ? format(new Date(d.createdAt), "MMM d, yyyy h:mm a") : "—"}</span>
+                  {d.createdByName && <span>· {d.createdByName}</span>}
+                  {d.changeSummary && <span className="italic">· {d.changeSummary}</span>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="sm" className="border-border h-7" onClick={() => handleDownload(d, "pdf")}>
+                  <FileDown className="w-3.5 h-3.5 mr-1" /> PDF
+                </Button>
+                <Button variant="outline" size="sm" className="border-border h-7" onClick={() => handleDownload(d, "word")}>
+                  <FileDown className="w-3.5 h-3.5 mr-1" /> Word
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function Contracts() {
   const [, navigate] = useLocation();
   const [createOpen, setCreateOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [terminateId, setTerminateId] = useState<number | null>(null);
   const [terminateReason, setTerminateReason] = useState("");
   const [deleteId, setDeleteId] = useState<number | null>(null);
@@ -332,6 +395,7 @@ export default function Contracts() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
+                <th className="w-8 px-2 py-2"></th>
                 <th className="px-4 py-2 text-left text-xs text-muted-foreground font-medium">Contract #</th>
                 <th className="px-4 py-2 text-left text-xs text-muted-foreground font-medium">Name</th>
                 <th className="px-4 py-2 text-left text-xs text-muted-foreground font-medium">Account</th>
@@ -343,11 +407,25 @@ export default function Contracts() {
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">Loading...</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">Loading...</td></tr>
               ) : contracts.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">No contracts yet. Create your first contract.</td></tr>
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No contracts yet. Create your first contract.</td></tr>
               ) : contracts.map(c => (
-                <tr key={c.id} className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate(`/contracts/${c.id}`)}>
+                <React.Fragment key={c.id}>
+                <tr className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate(`/contracts/${c.id}`)}>
+                  <td className="w-8 px-2 py-2 text-center" onClick={e => e.stopPropagation()}>
+                    <button
+                      className="text-muted-foreground hover:text-foreground p-1 rounded transition-colors"
+                      title={expanded.has(c.id) ? "Hide revisions" : "Show revisions"}
+                      onClick={() => setExpanded(prev => {
+                        const next = new Set(prev);
+                        if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                        return next;
+                      })}
+                    >
+                      {expanded.has(c.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                  </td>
                   <td className="px-4 py-2 font-medium text-primary">
                     {c.contractNumber}
                     {isRecentlyCreated(c.createdAt) && <span className="ml-2 text-[10px] text-green-600">New</span>}
@@ -394,6 +472,15 @@ export default function Contracts() {
                     </DropdownMenu>
                   </td>
                 </tr>
+                {expanded.has(c.id) && (
+                  <tr className="bg-muted/20">
+                    <td></td>
+                    <td colSpan={7} className="px-4 pb-3 pt-0">
+                      <ContractRevisions contractId={c.id} />
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
