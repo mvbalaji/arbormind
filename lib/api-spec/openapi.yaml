@@ -1546,6 +1546,220 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResponse"
 
+  # CONTRACTS (CLM)
+  /contracts:
+    get:
+      operationId: listContracts
+      tags: [contracts]
+      summary: List contracts
+      parameters:
+        - name: accountId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of contracts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractList"
+    post:
+      operationId: createContract
+      tags: [contracts]
+      summary: Create contract
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateContractInput"
+      responses:
+        "201":
+          description: Created contract
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+
+  /contracts/active-pricing/{accountId}:
+    get:
+      operationId: getActiveContractPricing
+      tags: [contracts]
+      summary: Get active contract pricing for an account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Active contract pricing map
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractPricingResponse"
+
+  /contracts/from-opportunity/{opportunityId}:
+    post:
+      operationId: createContractFromOpportunity
+      tags: [contracts]
+      summary: Create a contract from an opportunity
+      parameters:
+        - name: opportunityId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Contract created from opportunity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+
+  /contracts/{id}:
+    get:
+      operationId: getContract
+      tags: [contracts]
+      summary: Get contract by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Contract
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+    put:
+      operationId: updateContract
+      tags: [contracts]
+      summary: Update contract
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateContractInput"
+      responses:
+        "200":
+          description: Updated contract
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+    delete:
+      operationId: deleteContract
+      tags: [contracts]
+      summary: Delete contract
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /contracts/{id}/activate:
+    post:
+      operationId: activateContract
+      tags: [contracts]
+      summary: Activate a contract
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activated contract
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+
+  /contracts/{id}/terminate:
+    post:
+      operationId: terminateContract
+      tags: [contracts]
+      summary: Terminate a contract
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  nullable: true
+      responses:
+        "200":
+          description: Terminated contract
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+
+  /contracts/{id}/renew:
+    post:
+      operationId: renewContract
+      tags: [contracts]
+      summary: Renew a contract (creates a new draft contract)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "201":
+          description: Renewal contract
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+
   # REPORTS / DASHBOARD
   /reports/dashboard:
     get:
@@ -2000,6 +2214,8 @@ components:
         modifiedBy:
           type: integer
           nullable: true
+        clmEnabled:
+          type: boolean
         ownerName:
           type: string
           nullable: true
@@ -2105,6 +2321,8 @@ components:
         ownerId:
           type: integer
           nullable: true
+        clmEnabled:
+          type: boolean
       required:
         - name
 
@@ -2173,6 +2391,8 @@ components:
         ownerId:
           type: integer
           nullable: true
+        clmEnabled:
+          type: boolean
 
     # CONTACT
     Contact:
@@ -4040,6 +4260,353 @@ components:
         notes:
           type: string
           nullable: true
+
+    # CONTRACTS (CLM)
+    Contract:
+      type: object
+      properties:
+        id:
+          type: integer
+        contractNumber:
+          type: string
+        name:
+          type: string
+        accountId:
+          type: integer
+          nullable: true
+        accountName:
+          type: string
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        contactName:
+          type: string
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+        opportunityName:
+          type: string
+          nullable: true
+        priceBookId:
+          type: integer
+          nullable: true
+        ownerId:
+          type: integer
+          nullable: true
+        ownerName:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, in_approval, activated, expired, terminated, cancelled]
+        startDate:
+          type: string
+          format: date-time
+          nullable: true
+        contractTermMonths:
+          type: integer
+          nullable: true
+        endDate:
+          type: string
+          format: date-time
+          nullable: true
+        signedDate:
+          type: string
+          format: date-time
+          nullable: true
+        companySignedById:
+          type: integer
+          nullable: true
+        customerSignedByContactId:
+          type: integer
+          nullable: true
+        autoRenew:
+          type: boolean
+        renewalTermMonths:
+          type: integer
+          nullable: true
+        specialTerms:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        subtotal:
+          type: number
+        discount:
+          type: number
+        tax:
+          type: number
+        total:
+          type: number
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        terminatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        terminationReason:
+          type: string
+          nullable: true
+        createdByUserId:
+          type: integer
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContractLineItem"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - contractNumber
+        - name
+        - status
+        - autoRenew
+        - subtotal
+        - discount
+        - tax
+        - total
+        - items
+        - createdAt
+        - updatedAt
+
+    ContractLineItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        contractId:
+          type: integer
+        productId:
+          type: integer
+          nullable: true
+        productName:
+          type: string
+        quantity:
+          type: number
+        listPrice:
+          type: number
+        unitPrice:
+          type: number
+        discount:
+          type: number
+        total:
+          type: number
+      required:
+        - id
+        - contractId
+        - productName
+        - quantity
+        - listPrice
+        - unitPrice
+        - discount
+        - total
+
+    ContractList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Contract"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    CreateContractLineItemInput:
+      type: object
+      properties:
+        productId:
+          type: integer
+          nullable: true
+        productName:
+          type: string
+        quantity:
+          type: number
+          default: 1
+        listPrice:
+          type: number
+        unitPrice:
+          type: number
+        discount:
+          type: number
+          default: 0
+      required:
+        - productName
+        - unitPrice
+
+    CreateContractInput:
+      type: object
+      properties:
+        name:
+          type: string
+        accountId:
+          type: integer
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+        priceBookId:
+          type: integer
+          nullable: true
+        ownerId:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [draft, in_approval, activated, expired, terminated, cancelled]
+          default: draft
+        startDate:
+          type: string
+          nullable: true
+        contractTermMonths:
+          type: integer
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        signedDate:
+          type: string
+          nullable: true
+        companySignedById:
+          type: integer
+          nullable: true
+        customerSignedByContactId:
+          type: integer
+          nullable: true
+        autoRenew:
+          type: boolean
+          default: false
+        renewalTermMonths:
+          type: integer
+          nullable: true
+        specialTerms:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        discount:
+          type: number
+          default: 0
+        tax:
+          type: number
+          default: 0
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateContractLineItemInput"
+
+    UpdateContractInput:
+      type: object
+      properties:
+        name:
+          type: string
+        accountId:
+          type: integer
+          nullable: true
+        contactId:
+          type: integer
+          nullable: true
+        opportunityId:
+          type: integer
+          nullable: true
+        priceBookId:
+          type: integer
+          nullable: true
+        ownerId:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [draft, in_approval, activated, expired, terminated, cancelled]
+        startDate:
+          type: string
+          nullable: true
+        contractTermMonths:
+          type: integer
+          nullable: true
+        endDate:
+          type: string
+          nullable: true
+        signedDate:
+          type: string
+          nullable: true
+        companySignedById:
+          type: integer
+          nullable: true
+        customerSignedByContactId:
+          type: integer
+          nullable: true
+        autoRenew:
+          type: boolean
+        renewalTermMonths:
+          type: integer
+          nullable: true
+        specialTerms:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        discount:
+          type: number
+        tax:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateContractLineItemInput"
+
+    ContractPrice:
+      type: object
+      properties:
+        productId:
+          type: integer
+        unitPrice:
+          type: number
+        contractId:
+          type: integer
+        contractNumber:
+          type: string
+      required:
+        - productId
+        - unitPrice
+        - contractId
+        - contractNumber
+
+    ContractPricingResponse:
+      type: object
+      properties:
+        accountId:
+          type: integer
+        pricing:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ContractPrice"
+      required:
+        - accountId
+        - pricing
 
     # APPROVAL FRAMEWORK
     ApprovalRole:

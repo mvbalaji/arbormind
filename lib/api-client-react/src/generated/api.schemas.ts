@@ -105,6 +105,7 @@ export interface Account {
   ownerId?: number | null;
   createdBy?: number | null;
   modifiedBy?: number | null;
+  clmEnabled?: boolean;
   ownerName?: string | null;
   contactCount: number;
   dealCount: number;
@@ -141,6 +142,7 @@ export interface CreateAccountInput {
   optyOwner?: string | null;
   optyTeam?: string | null;
   ownerId?: number | null;
+  clmEnabled?: boolean;
 }
 
 export interface UpdateAccountInput {
@@ -165,6 +167,7 @@ export interface UpdateAccountInput {
   optyOwner?: string | null;
   optyTeam?: string | null;
   ownerId?: number | null;
+  clmEnabled?: boolean;
 }
 
 export interface Contact {
@@ -1097,6 +1100,167 @@ export interface UpdateOrderInput {
   notes?: string | null;
 }
 
+export type ContractStatus =
+  (typeof ContractStatus)[keyof typeof ContractStatus];
+
+export const ContractStatus = {
+  draft: "draft",
+  in_approval: "in_approval",
+  activated: "activated",
+  expired: "expired",
+  terminated: "terminated",
+  cancelled: "cancelled",
+} as const;
+
+export interface ContractLineItem {
+  id: number;
+  contractId: number;
+  productId?: number | null;
+  productName: string;
+  quantity: number;
+  listPrice: number;
+  unitPrice: number;
+  discount: number;
+  total: number;
+}
+
+export interface Contract {
+  id: number;
+  contractNumber: string;
+  name: string;
+  accountId?: number | null;
+  accountName?: string | null;
+  contactId?: number | null;
+  contactName?: string | null;
+  opportunityId?: number | null;
+  opportunityName?: string | null;
+  priceBookId?: number | null;
+  ownerId?: number | null;
+  ownerName?: string | null;
+  status: ContractStatus;
+  startDate?: string | null;
+  contractTermMonths?: number | null;
+  endDate?: string | null;
+  signedDate?: string | null;
+  companySignedById?: number | null;
+  customerSignedByContactId?: number | null;
+  autoRenew: boolean;
+  renewalTermMonths?: number | null;
+  specialTerms?: string | null;
+  description?: string | null;
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  activatedAt?: string | null;
+  terminatedAt?: string | null;
+  terminationReason?: string | null;
+  createdByUserId?: number | null;
+  items: ContractLineItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContractList {
+  data: Contract[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface CreateContractLineItemInput {
+  productId?: number | null;
+  productName: string;
+  quantity?: number;
+  listPrice?: number;
+  unitPrice: number;
+  discount?: number;
+}
+
+export type CreateContractInputStatus =
+  (typeof CreateContractInputStatus)[keyof typeof CreateContractInputStatus];
+
+export const CreateContractInputStatus = {
+  draft: "draft",
+  in_approval: "in_approval",
+  activated: "activated",
+  expired: "expired",
+  terminated: "terminated",
+  cancelled: "cancelled",
+} as const;
+
+export interface CreateContractInput {
+  name?: string;
+  accountId?: number | null;
+  contactId?: number | null;
+  opportunityId?: number | null;
+  priceBookId?: number | null;
+  ownerId?: number | null;
+  status?: CreateContractInputStatus;
+  startDate?: string | null;
+  contractTermMonths?: number | null;
+  endDate?: string | null;
+  signedDate?: string | null;
+  companySignedById?: number | null;
+  customerSignedByContactId?: number | null;
+  autoRenew?: boolean;
+  renewalTermMonths?: number | null;
+  specialTerms?: string | null;
+  description?: string | null;
+  discount?: number;
+  tax?: number;
+  items?: CreateContractLineItemInput[];
+}
+
+export type UpdateContractInputStatus =
+  (typeof UpdateContractInputStatus)[keyof typeof UpdateContractInputStatus];
+
+export const UpdateContractInputStatus = {
+  draft: "draft",
+  in_approval: "in_approval",
+  activated: "activated",
+  expired: "expired",
+  terminated: "terminated",
+  cancelled: "cancelled",
+} as const;
+
+export interface UpdateContractInput {
+  name?: string;
+  accountId?: number | null;
+  contactId?: number | null;
+  opportunityId?: number | null;
+  priceBookId?: number | null;
+  ownerId?: number | null;
+  status?: UpdateContractInputStatus;
+  startDate?: string | null;
+  contractTermMonths?: number | null;
+  endDate?: string | null;
+  signedDate?: string | null;
+  companySignedById?: number | null;
+  customerSignedByContactId?: number | null;
+  autoRenew?: boolean;
+  renewalTermMonths?: number | null;
+  specialTerms?: string | null;
+  description?: string | null;
+  discount?: number;
+  tax?: number;
+  items?: CreateContractLineItemInput[];
+}
+
+export interface ContractPrice {
+  productId: number;
+  unitPrice: number;
+  contractId: number;
+  contractNumber: string;
+}
+
+export type ContractPricingResponsePricing = { [key: string]: ContractPrice };
+
+export interface ContractPricingResponse {
+  accountId: number;
+  pricing: ContractPricingResponsePricing;
+}
+
 export interface ApprovalRole {
   id: number;
   name: string;
@@ -1337,6 +1501,17 @@ export type ListQuotesParams = {
 export type ListOrdersParams = {
   page?: number;
   limit?: number;
+};
+
+export type ListContractsParams = {
+  accountId?: number;
+  status?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type TerminateContractBody = {
+  reason?: string | null;
 };
 
 export type ListApprovalCriteriaParams = {

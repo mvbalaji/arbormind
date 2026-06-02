@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, numeric, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -25,6 +25,7 @@ export const accountsTable = pgTable("accounts", {
   nextStep: text("next_step"),
   optyOwner: text("opty_owner"),
   optyTeam: text("opty_team"),
+  clmEnabled: boolean("clm_enabled").notNull().default(false),
   ownerId: integer("owner_id").references(() => usersTable.id),
   createdBy: integer("created_by").references(() => usersTable.id),
   modifiedBy: integer("modified_by").references(() => usersTable.id),

@@ -31,6 +31,7 @@ export interface Account {
   ownerId?: number | null;
   createdBy?: number | null;
   modifiedBy?: number | null;
+  clmEnabled?: boolean;
   ownerName?: string | null;
   contactCount: number;
   dealCount: number;

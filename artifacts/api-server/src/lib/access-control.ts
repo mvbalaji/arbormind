@@ -23,6 +23,7 @@ export const SEED_SCREENS: Array<{ key: string; name: string; category: string; 
   { key: "opportunities", name: "Opportunities", category: "Sales", sortOrder: 50 },
   { key: "quotes", name: "Quotes", category: "Sales", sortOrder: 60 },
   { key: "orders", name: "Orders", category: "Sales", sortOrder: 70 },
+  { key: "contracts", name: "Contracts", category: "Sales", sortOrder: 75 },
   { key: "activities", name: "Activities", category: "Engagement", sortOrder: 80 },
   { key: "campaigns", name: "Campaigns", category: "Marketing", sortOrder: 90 },
   { key: "website-visits", name: "Website Visitors", category: "Marketing", sortOrder: 95 },

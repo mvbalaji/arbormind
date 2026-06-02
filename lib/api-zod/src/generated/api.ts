@@ -418,6 +418,7 @@ export const ListAccountsResponse = zod.object({
       ownerId: zod.number().nullish(),
       createdBy: zod.number().nullish(),
       modifiedBy: zod.number().nullish(),
+      clmEnabled: zod.boolean().optional(),
       ownerName: zod.string().nullish(),
       contactCount: zod.number(),
       dealCount: zod.number(),
@@ -455,6 +456,7 @@ export const CreateAccountBody = zod.object({
   optyOwner: zod.string().nullish(),
   optyTeam: zod.string().nullish(),
   ownerId: zod.number().nullish(),
+  clmEnabled: zod.boolean().optional(),
 });
 
 /**
@@ -489,6 +491,7 @@ export const GetAccountResponse = zod.object({
   ownerId: zod.number().nullish(),
   createdBy: zod.number().nullish(),
   modifiedBy: zod.number().nullish(),
+  clmEnabled: zod.boolean().optional(),
   ownerName: zod.string().nullish(),
   contactCount: zod.number(),
   dealCount: zod.number(),
@@ -525,6 +528,7 @@ export const UpdateAccountBody = zod.object({
   optyOwner: zod.string().nullish(),
   optyTeam: zod.string().nullish(),
   ownerId: zod.number().nullish(),
+  clmEnabled: zod.boolean().optional(),
 });
 
 export const UpdateAccountResponse = zod.object({
@@ -552,6 +556,7 @@ export const UpdateAccountResponse = zod.object({
   ownerId: zod.number().nullish(),
   createdBy: zod.number().nullish(),
   modifiedBy: zod.number().nullish(),
+  clmEnabled: zod.boolean().optional(),
   ownerName: zod.string().nullish(),
   contactCount: zod.number(),
   dealCount: zod.number(),
@@ -2053,6 +2058,491 @@ export const DeleteOrderParams = zod.object({
 export const DeleteOrderResponse = zod.object({
   success: zod.boolean(),
   id: zod.number(),
+});
+
+/**
+ * @summary List contracts
+ */
+export const listContractsQueryPageDefault = 1;
+export const listContractsQueryLimitDefault = 50;
+
+export const ListContractsQueryParams = zod.object({
+  accountId: zod.coerce.number().optional(),
+  status: zod.coerce.string().optional(),
+  page: zod.coerce.number().default(listContractsQueryPageDefault),
+  limit: zod.coerce.number().default(listContractsQueryLimitDefault),
+});
+
+export const ListContractsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      contractNumber: zod.string(),
+      name: zod.string(),
+      accountId: zod.number().nullish(),
+      accountName: zod.string().nullish(),
+      contactId: zod.number().nullish(),
+      contactName: zod.string().nullish(),
+      opportunityId: zod.number().nullish(),
+      opportunityName: zod.string().nullish(),
+      priceBookId: zod.number().nullish(),
+      ownerId: zod.number().nullish(),
+      ownerName: zod.string().nullish(),
+      status: zod.enum([
+        "draft",
+        "in_approval",
+        "activated",
+        "expired",
+        "terminated",
+        "cancelled",
+      ]),
+      startDate: zod.date().nullish(),
+      contractTermMonths: zod.number().nullish(),
+      endDate: zod.date().nullish(),
+      signedDate: zod.date().nullish(),
+      companySignedById: zod.number().nullish(),
+      customerSignedByContactId: zod.number().nullish(),
+      autoRenew: zod.boolean(),
+      renewalTermMonths: zod.number().nullish(),
+      specialTerms: zod.string().nullish(),
+      description: zod.string().nullish(),
+      subtotal: zod.number(),
+      discount: zod.number(),
+      tax: zod.number(),
+      total: zod.number(),
+      activatedAt: zod.date().nullish(),
+      terminatedAt: zod.date().nullish(),
+      terminationReason: zod.string().nullish(),
+      createdByUserId: zod.number().nullish(),
+      items: zod.array(
+        zod.object({
+          id: zod.number(),
+          contractId: zod.number(),
+          productId: zod.number().nullish(),
+          productName: zod.string(),
+          quantity: zod.number(),
+          listPrice: zod.number(),
+          unitPrice: zod.number(),
+          discount: zod.number(),
+          total: zod.number(),
+        }),
+      ),
+      createdAt: zod.date(),
+      updatedAt: zod.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
+});
+
+/**
+ * @summary Create contract
+ */
+export const createContractBodyStatusDefault = `draft`;
+export const createContractBodyAutoRenewDefault = false;
+export const createContractBodyDiscountDefault = 0;
+export const createContractBodyTaxDefault = 0;
+export const createContractBodyItemsItemQuantityDefault = 1;
+export const createContractBodyItemsItemDiscountDefault = 0;
+
+export const CreateContractBody = zod.object({
+  name: zod.string().optional(),
+  accountId: zod.number().nullish(),
+  contactId: zod.number().nullish(),
+  opportunityId: zod.number().nullish(),
+  priceBookId: zod.number().nullish(),
+  ownerId: zod.number().nullish(),
+  status: zod
+    .enum([
+      "draft",
+      "in_approval",
+      "activated",
+      "expired",
+      "terminated",
+      "cancelled",
+    ])
+    .default(createContractBodyStatusDefault),
+  startDate: zod.string().nullish(),
+  contractTermMonths: zod.number().nullish(),
+  endDate: zod.string().nullish(),
+  signedDate: zod.string().nullish(),
+  companySignedById: zod.number().nullish(),
+  customerSignedByContactId: zod.number().nullish(),
+  autoRenew: zod.boolean().default(createContractBodyAutoRenewDefault),
+  renewalTermMonths: zod.number().nullish(),
+  specialTerms: zod.string().nullish(),
+  description: zod.string().nullish(),
+  discount: zod.number().default(createContractBodyDiscountDefault),
+  tax: zod.number().default(createContractBodyTaxDefault),
+  items: zod
+    .array(
+      zod.object({
+        productId: zod.number().nullish(),
+        productName: zod.string(),
+        quantity: zod
+          .number()
+          .default(createContractBodyItemsItemQuantityDefault),
+        listPrice: zod.number().optional(),
+        unitPrice: zod.number(),
+        discount: zod
+          .number()
+          .default(createContractBodyItemsItemDiscountDefault),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * @summary Get active contract pricing for an account
+ */
+export const GetActiveContractPricingParams = zod.object({
+  accountId: zod.coerce.number(),
+});
+
+export const GetActiveContractPricingResponse = zod.object({
+  accountId: zod.number(),
+  pricing: zod.record(
+    zod.string(),
+    zod.object({
+      productId: zod.number(),
+      unitPrice: zod.number(),
+      contractId: zod.number(),
+      contractNumber: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a contract from an opportunity
+ */
+export const CreateContractFromOpportunityParams = zod.object({
+  opportunityId: zod.coerce.number(),
+});
+
+/**
+ * @summary Get contract by ID
+ */
+export const GetContractParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetContractResponse = zod.object({
+  id: zod.number(),
+  contractNumber: zod.string(),
+  name: zod.string(),
+  accountId: zod.number().nullish(),
+  accountName: zod.string().nullish(),
+  contactId: zod.number().nullish(),
+  contactName: zod.string().nullish(),
+  opportunityId: zod.number().nullish(),
+  opportunityName: zod.string().nullish(),
+  priceBookId: zod.number().nullish(),
+  ownerId: zod.number().nullish(),
+  ownerName: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "in_approval",
+    "activated",
+    "expired",
+    "terminated",
+    "cancelled",
+  ]),
+  startDate: zod.date().nullish(),
+  contractTermMonths: zod.number().nullish(),
+  endDate: zod.date().nullish(),
+  signedDate: zod.date().nullish(),
+  companySignedById: zod.number().nullish(),
+  customerSignedByContactId: zod.number().nullish(),
+  autoRenew: zod.boolean(),
+  renewalTermMonths: zod.number().nullish(),
+  specialTerms: zod.string().nullish(),
+  description: zod.string().nullish(),
+  subtotal: zod.number(),
+  discount: zod.number(),
+  tax: zod.number(),
+  total: zod.number(),
+  activatedAt: zod.date().nullish(),
+  terminatedAt: zod.date().nullish(),
+  terminationReason: zod.string().nullish(),
+  createdByUserId: zod.number().nullish(),
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      contractId: zod.number(),
+      productId: zod.number().nullish(),
+      productName: zod.string(),
+      quantity: zod.number(),
+      listPrice: zod.number(),
+      unitPrice: zod.number(),
+      discount: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Update contract
+ */
+export const UpdateContractParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const updateContractBodyItemsItemQuantityDefault = 1;
+export const updateContractBodyItemsItemDiscountDefault = 0;
+
+export const UpdateContractBody = zod.object({
+  name: zod.string().optional(),
+  accountId: zod.number().nullish(),
+  contactId: zod.number().nullish(),
+  opportunityId: zod.number().nullish(),
+  priceBookId: zod.number().nullish(),
+  ownerId: zod.number().nullish(),
+  status: zod
+    .enum([
+      "draft",
+      "in_approval",
+      "activated",
+      "expired",
+      "terminated",
+      "cancelled",
+    ])
+    .optional(),
+  startDate: zod.string().nullish(),
+  contractTermMonths: zod.number().nullish(),
+  endDate: zod.string().nullish(),
+  signedDate: zod.string().nullish(),
+  companySignedById: zod.number().nullish(),
+  customerSignedByContactId: zod.number().nullish(),
+  autoRenew: zod.boolean().optional(),
+  renewalTermMonths: zod.number().nullish(),
+  specialTerms: zod.string().nullish(),
+  description: zod.string().nullish(),
+  discount: zod.number().optional(),
+  tax: zod.number().optional(),
+  items: zod
+    .array(
+      zod.object({
+        productId: zod.number().nullish(),
+        productName: zod.string(),
+        quantity: zod
+          .number()
+          .default(updateContractBodyItemsItemQuantityDefault),
+        listPrice: zod.number().optional(),
+        unitPrice: zod.number(),
+        discount: zod
+          .number()
+          .default(updateContractBodyItemsItemDiscountDefault),
+      }),
+    )
+    .optional(),
+});
+
+export const UpdateContractResponse = zod.object({
+  id: zod.number(),
+  contractNumber: zod.string(),
+  name: zod.string(),
+  accountId: zod.number().nullish(),
+  accountName: zod.string().nullish(),
+  contactId: zod.number().nullish(),
+  contactName: zod.string().nullish(),
+  opportunityId: zod.number().nullish(),
+  opportunityName: zod.string().nullish(),
+  priceBookId: zod.number().nullish(),
+  ownerId: zod.number().nullish(),
+  ownerName: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "in_approval",
+    "activated",
+    "expired",
+    "terminated",
+    "cancelled",
+  ]),
+  startDate: zod.date().nullish(),
+  contractTermMonths: zod.number().nullish(),
+  endDate: zod.date().nullish(),
+  signedDate: zod.date().nullish(),
+  companySignedById: zod.number().nullish(),
+  customerSignedByContactId: zod.number().nullish(),
+  autoRenew: zod.boolean(),
+  renewalTermMonths: zod.number().nullish(),
+  specialTerms: zod.string().nullish(),
+  description: zod.string().nullish(),
+  subtotal: zod.number(),
+  discount: zod.number(),
+  tax: zod.number(),
+  total: zod.number(),
+  activatedAt: zod.date().nullish(),
+  terminatedAt: zod.date().nullish(),
+  terminationReason: zod.string().nullish(),
+  createdByUserId: zod.number().nullish(),
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      contractId: zod.number(),
+      productId: zod.number().nullish(),
+      productName: zod.string(),
+      quantity: zod.number(),
+      listPrice: zod.number(),
+      unitPrice: zod.number(),
+      discount: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Delete contract
+ */
+export const DeleteContractParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteContractResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary Activate a contract
+ */
+export const ActivateContractParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ActivateContractResponse = zod.object({
+  id: zod.number(),
+  contractNumber: zod.string(),
+  name: zod.string(),
+  accountId: zod.number().nullish(),
+  accountName: zod.string().nullish(),
+  contactId: zod.number().nullish(),
+  contactName: zod.string().nullish(),
+  opportunityId: zod.number().nullish(),
+  opportunityName: zod.string().nullish(),
+  priceBookId: zod.number().nullish(),
+  ownerId: zod.number().nullish(),
+  ownerName: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "in_approval",
+    "activated",
+    "expired",
+    "terminated",
+    "cancelled",
+  ]),
+  startDate: zod.date().nullish(),
+  contractTermMonths: zod.number().nullish(),
+  endDate: zod.date().nullish(),
+  signedDate: zod.date().nullish(),
+  companySignedById: zod.number().nullish(),
+  customerSignedByContactId: zod.number().nullish(),
+  autoRenew: zod.boolean(),
+  renewalTermMonths: zod.number().nullish(),
+  specialTerms: zod.string().nullish(),
+  description: zod.string().nullish(),
+  subtotal: zod.number(),
+  discount: zod.number(),
+  tax: zod.number(),
+  total: zod.number(),
+  activatedAt: zod.date().nullish(),
+  terminatedAt: zod.date().nullish(),
+  terminationReason: zod.string().nullish(),
+  createdByUserId: zod.number().nullish(),
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      contractId: zod.number(),
+      productId: zod.number().nullish(),
+      productName: zod.string(),
+      quantity: zod.number(),
+      listPrice: zod.number(),
+      unitPrice: zod.number(),
+      discount: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Terminate a contract
+ */
+export const TerminateContractParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const TerminateContractBody = zod.object({
+  reason: zod.string().nullish(),
+});
+
+export const TerminateContractResponse = zod.object({
+  id: zod.number(),
+  contractNumber: zod.string(),
+  name: zod.string(),
+  accountId: zod.number().nullish(),
+  accountName: zod.string().nullish(),
+  contactId: zod.number().nullish(),
+  contactName: zod.string().nullish(),
+  opportunityId: zod.number().nullish(),
+  opportunityName: zod.string().nullish(),
+  priceBookId: zod.number().nullish(),
+  ownerId: zod.number().nullish(),
+  ownerName: zod.string().nullish(),
+  status: zod.enum([
+    "draft",
+    "in_approval",
+    "activated",
+    "expired",
+    "terminated",
+    "cancelled",
+  ]),
+  startDate: zod.date().nullish(),
+  contractTermMonths: zod.number().nullish(),
+  endDate: zod.date().nullish(),
+  signedDate: zod.date().nullish(),
+  companySignedById: zod.number().nullish(),
+  customerSignedByContactId: zod.number().nullish(),
+  autoRenew: zod.boolean(),
+  renewalTermMonths: zod.number().nullish(),
+  specialTerms: zod.string().nullish(),
+  description: zod.string().nullish(),
+  subtotal: zod.number(),
+  discount: zod.number(),
+  tax: zod.number(),
+  total: zod.number(),
+  activatedAt: zod.date().nullish(),
+  terminatedAt: zod.date().nullish(),
+  terminationReason: zod.string().nullish(),
+  createdByUserId: zod.number().nullish(),
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      contractId: zod.number(),
+      productId: zod.number().nullish(),
+      productName: zod.string(),
+      quantity: zod.number(),
+      listPrice: zod.number(),
+      unitPrice: zod.number(),
+      discount: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+  createdAt: zod.date(),
+  updatedAt: zod.date(),
+});
+
+/**
+ * @summary Renew a contract (creates a new draft contract)
+ */
+export const RenewContractParams = zod.object({
+  id: zod.coerce.number(),
 });
 
 /**
