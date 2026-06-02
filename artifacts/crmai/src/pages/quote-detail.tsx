@@ -23,7 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, Download, Send, Copy, CheckCircle, XCircle, Clock,
+  ArrowLeft, Download, Send, Copy, CheckCircle, XCircle, Clock, Check,
   FileText, FileSignature, Calendar, Package, Building2, User, History, Pencil, Plus, X, Save, Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -483,44 +483,56 @@ export default function QuoteDetail() {
         )}
 
         {activeTab === "details" && (<>
-        {/* Status Workflow Bar */}
+        {/* Status Workflow Bar — Salesforce-style chevrons */}
         <Card className="glass-panel border-border p-4">
-          <div className="flex items-center gap-1">
-            {["draft", "sent", "accepted"].map((s, idx) => {
-              const mainStages = ["draft", "sent", "accepted"];
-              const isActive = s === quote.status;
-              const isPast = mainStages.indexOf(quote.status) > idx;
-              return (
-                <React.Fragment key={s}>
-                  {idx > 0 && <div className={`flex-1 h-0.5 ${isPast ? "bg-green-500" : "bg-border"}`} />}
-                  <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    isActive ? "bg-primary/10 text-primary"
-                    : isPast ? "bg-green-500/10 text-green-600"
-                    : "bg-muted text-muted-foreground"
-                  }`}>
-                    {isPast ? <CheckCircle className="w-3 h-3" /> : null}
-                    <span className="capitalize">{s}</span>
-                  </div>
-                </React.Fragment>
-              );
-            })}
-            {quote.status === "rejected" && (
-              <>
-                <div className="flex-1 h-0.5 bg-red-500/30" />
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-600">
-                  <XCircle className="w-3 h-3" /> Rejected
-                </div>
-              </>
-            )}
-            {quote.status === "expired" && (
-              <>
-                <div className="flex-1 h-0.5 bg-orange-500/30" />
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-600">
-                  <Clock className="w-3 h-3" /> Expired
-                </div>
-              </>
-            )}
-          </div>
+          {(() => {
+            const baseStages = [
+              { id: "draft", label: "Draft" },
+              { id: "sent", label: "Sent" },
+              { id: "accepted", label: "Accepted" },
+            ];
+            let stages = baseStages;
+            if (quote.status === "rejected") stages = [...baseStages, { id: "rejected", label: "Rejected" }];
+            else if (quote.status === "expired") stages = [...baseStages, { id: "expired", label: "Expired" }];
+            const idx = stages.findIndex((s) => s.id === quote.status);
+            if (idx < 0) return null;
+            const currentCls =
+              quote.status === "rejected" ? "bg-red-600 text-white" :
+              quote.status === "expired" ? "bg-amber-500 text-white" :
+              "bg-blue-600 text-white";
+            return (
+              <ol
+                role="list"
+                aria-label="Quote status"
+                className="flex items-stretch overflow-hidden rounded-md border border-border bg-muted/30 list-none p-0 m-0"
+              >
+                {stages.map((s, i) => {
+                  const done = i < idx;
+                  const current = i === idx;
+                  const isLast = i === stages.length - 1;
+                  return (
+                    <li
+                      key={s.id}
+                      role="listitem"
+                      aria-current={current ? "step" : undefined}
+                      aria-label={`${s.label} — ${done ? "Completed" : current ? "Current" : "Upcoming"}`}
+                      className={`relative flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium min-w-0 ${
+                        done ? "bg-emerald-500 text-white" :
+                        current ? currentCls :
+                        "bg-muted/50 text-muted-foreground"
+                      }`}
+                      style={!isLast
+                        ? { clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)" }
+                        : { clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)" }}
+                    >
+                      {done && <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />}
+                      <span className="truncate max-w-full">{s.label}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            );
+          })()}
         </Card>
 
         <div className="space-y-2">
