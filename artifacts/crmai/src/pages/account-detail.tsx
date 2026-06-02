@@ -7,12 +7,16 @@ import { Layout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { AISummary } from "@/components/ai-summary";
 import { EmailCompose } from "@/components/email-compose";
 import {
   ArrowLeft, Building2, Globe, Phone, Mail, MapPin, Users, Briefcase,
   DollarSign, TrendingUp, Activity, Clock, Calendar, CheckCircle2,
   User, Send, ArrowRight, FileText, AlertTriangle, ShieldCheck, FileSignature,
+  Pencil, Save, X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
@@ -159,6 +163,8 @@ export default function AccountDetail() {
   const id = params.id;
   const [activeTab, setActiveTab] = useState<Tab>("contacts");
   const [isEmailOpen, setIsEmailOpen] = useState(false);
+  const [editingAbout, setEditingAbout] = useState(false);
+  const [aboutForm, setAboutForm] = useState<Record<string, string>>({});
   const { format: fmtMoney, displayCurrency, rates } = useCurrency();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -237,6 +243,104 @@ export default function AccountDetail() {
       void queryClient.invalidateQueries({ queryKey: ["account", id] });
     } catch {
       toast({ title: "Error", description: "Could not update contract management setting.", variant: "destructive" });
+    }
+  };
+
+  const startEditAbout = () => {
+    if (!account) return;
+    setAboutForm({
+      name: account.name ?? "",
+      industry: account.industry ?? "",
+      status: account.status ?? "",
+      stage: account.stage ?? "",
+      website: account.website ?? "",
+      phone: account.phone ?? "",
+      email: account.email ?? "",
+      employees: account.employees != null ? String(account.employees) : "",
+      annualRevenue: account.annualRevenue != null ? String(account.annualRevenue) : "",
+      amount: account.amount != null ? String(account.amount) : "",
+      closeDate: account.closeDate ? account.closeDate.split("T")[0] : "",
+      probability: account.probability != null ? String(account.probability) : "",
+      forecastCategory: account.forecastCategory ?? "",
+      nextStep: account.nextStep ?? "",
+      optyOwner: account.optyOwner ?? "",
+      optyTeam: account.optyTeam ?? "",
+      address: account.address ?? "",
+      city: account.city ?? "",
+      country: account.country ?? "",
+      description: account.description ?? "",
+    });
+    setEditingAbout(true);
+  };
+
+  const cancelEditAbout = () => {
+    setEditingAbout(false);
+    setAboutForm({});
+  };
+
+  const setAboutField = (key: string, value: string) =>
+    setAboutForm((prev) => ({ ...prev, [key]: value }));
+
+  const handleSaveAbout = async () => {
+    if (!id) return;
+    const trimmedName = (aboutForm.name ?? "").trim();
+    if (!trimmedName) {
+      toast({ title: "Account name is required", variant: "destructive" });
+      return;
+    }
+    const str = (v: string) => (v.trim() === "" ? null : v.trim());
+    const numFields: Array<[string, string]> = [
+      ["employees", "Employees"],
+      ["annualRevenue", "Annual Revenue"],
+      ["amount", "Amount"],
+      ["probability", "Probability"],
+    ];
+    const nums: Record<string, number | null> = {};
+    for (const [key, label] of numFields) {
+      const t = (aboutForm[key] ?? "").trim();
+      if (t === "") {
+        nums[key] = null;
+        continue;
+      }
+      const n = Number(t);
+      if (!Number.isFinite(n)) {
+        toast({ title: `Invalid ${label}`, description: "Please enter a valid number.", variant: "destructive" });
+        return;
+      }
+      nums[key] = n;
+    }
+    try {
+      await updateAccountMutation.mutateAsync({
+        id: parseInt(id),
+        data: {
+          name: trimmedName,
+          industry: str(aboutForm.industry),
+          status: str(aboutForm.status),
+          stage: str(aboutForm.stage),
+          website: str(aboutForm.website),
+          phone: str(aboutForm.phone),
+          email: str(aboutForm.email),
+          employees: nums.employees,
+          annualRevenue: nums.annualRevenue,
+          amount: nums.amount,
+          closeDate: str(aboutForm.closeDate),
+          probability: nums.probability,
+          forecastCategory: str(aboutForm.forecastCategory),
+          nextStep: str(aboutForm.nextStep),
+          optyOwner: str(aboutForm.optyOwner),
+          optyTeam: str(aboutForm.optyTeam),
+          address: str(aboutForm.address),
+          city: str(aboutForm.city),
+          country: str(aboutForm.country),
+          description: str(aboutForm.description),
+        },
+      });
+      toast({ title: "Account updated" });
+      void queryClient.invalidateQueries({ queryKey: ["account", id] });
+      setEditingAbout(false);
+      setAboutForm({});
+    } catch {
+      toast({ title: "Error", description: "Could not update account.", variant: "destructive" });
     }
   };
 
@@ -663,44 +767,110 @@ export default function AccountDetail() {
 
         {activeTab === "about" && (
           <Card className="glass-panel border-border p-6">
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-              {[
-                { label: "Account Name", value: account.name },
-                { label: "Industry", value: account.industry },
-                { label: "Status", value: account.status },
-                { label: "Stage", value: account.stage },
-                { label: "Website", value: account.website },
-                { label: "Phone", value: account.phone },
-                { label: "Email", value: account.email },
-                { label: "Employees", value: account.employees?.toLocaleString() },
-                { label: "Annual Revenue", value: account.annualRevenue ? fmtMoney(Number(account.annualRevenue)) : null },
-                { label: "Amount", value: account.amount ? fmtMoney(Number(account.amount)) : null },
-                { label: "Close Date", value: account.closeDate },
-                { label: "Probability", value: account.probability != null ? `${account.probability}%` : null },
-                { label: "Forecast Category", value: account.forecastCategory },
-                { label: "Next Step", value: account.nextStep },
-                { label: "Opportunity Owner", value: account.optyOwner },
-                { label: "Opportunity Team", value: account.optyTeam },
-                { label: "Address", value: account.address },
-                { label: "City", value: account.city },
-                { label: "Country", value: account.country },
-                { label: "Account Owner", value: account.ownerName },
-                { label: "Created", value: format(new Date(account.createdAt), "MMM d, yyyy") },
-                { label: "Last Updated", value: format(new Date(account.updatedAt), "MMM d, yyyy") },
-              ].map(({ label, value }) =>
-                value ? (
-                  <div key={label}>
-                    <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
-                    <dd className="text-sm text-foreground">{value}</dd>
-                  </div>
-                ) : null
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Account Details</h2>
+              {editingAbout ? (
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSaveAbout} disabled={updateAccountMutation.isPending} className="h-8 gap-1.5 bg-primary hover:bg-primary/90 text-foreground">
+                    <Save className="w-3.5 h-3.5" /> Save
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={cancelEditAbout} className="h-8 gap-1.5 border-border">
+                    <X className="w-3.5 h-3.5" /> Cancel
+                  </Button>
+                </div>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={startEditAbout} className="h-7 text-xs text-muted-foreground hover:text-foreground">
+                  <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                </Button>
               )}
-            </dl>
-            {account.description && (
-              <div className="mt-6 pt-6 border-t border-border">
-                <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Description</dt>
-                <dd className="text-sm text-muted-foreground leading-relaxed">{account.description}</dd>
-              </div>
+            </div>
+
+            {editingAbout ? (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                  {([
+                    { key: "name", label: "Account Name", type: "text" },
+                    { key: "industry", label: "Industry", type: "text" },
+                    { key: "status", label: "Status", type: "text" },
+                    { key: "stage", label: "Stage", type: "text" },
+                    { key: "website", label: "Website", type: "text" },
+                    { key: "phone", label: "Phone", type: "text" },
+                    { key: "email", label: "Email", type: "email" },
+                    { key: "employees", label: "Employees", type: "number" },
+                    { key: "annualRevenue", label: "Annual Revenue", type: "number" },
+                    { key: "amount", label: "Amount", type: "number" },
+                    { key: "closeDate", label: "Close Date", type: "date" },
+                    { key: "probability", label: "Probability (%)", type: "number" },
+                    { key: "forecastCategory", label: "Forecast Category", type: "text" },
+                    { key: "nextStep", label: "Next Step", type: "text" },
+                    { key: "optyOwner", label: "Opportunity Owner", type: "text" },
+                    { key: "optyTeam", label: "Opportunity Team", type: "text" },
+                    { key: "address", label: "Address", type: "text" },
+                    { key: "city", label: "City", type: "text" },
+                    { key: "country", label: "Country", type: "text" },
+                  ] as const).map(({ key, label, type }) => (
+                    <div key={key}>
+                      <Label className="text-xs text-muted-foreground uppercase tracking-wide mb-1 block">{label}</Label>
+                      <Input
+                        type={type}
+                        value={aboutForm[key] ?? ""}
+                        onChange={(e) => setAboutField(key, e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 pt-6 border-t border-border">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide mb-2 block">Description</Label>
+                  <Textarea
+                    value={aboutForm.description ?? ""}
+                    onChange={(e) => setAboutField("description", e.target.value)}
+                    rows={4}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+                  {[
+                    { label: "Account Name", value: account.name },
+                    { label: "Industry", value: account.industry },
+                    { label: "Status", value: account.status },
+                    { label: "Stage", value: account.stage },
+                    { label: "Website", value: account.website },
+                    { label: "Phone", value: account.phone },
+                    { label: "Email", value: account.email },
+                    { label: "Employees", value: account.employees?.toLocaleString() },
+                    { label: "Annual Revenue", value: account.annualRevenue ? fmtMoney(Number(account.annualRevenue)) : null },
+                    { label: "Amount", value: account.amount ? fmtMoney(Number(account.amount)) : null },
+                    { label: "Close Date", value: account.closeDate },
+                    { label: "Probability", value: account.probability != null ? `${account.probability}%` : null },
+                    { label: "Forecast Category", value: account.forecastCategory },
+                    { label: "Next Step", value: account.nextStep },
+                    { label: "Opportunity Owner", value: account.optyOwner },
+                    { label: "Opportunity Team", value: account.optyTeam },
+                    { label: "Address", value: account.address },
+                    { label: "City", value: account.city },
+                    { label: "Country", value: account.country },
+                    { label: "Account Owner", value: account.ownerName },
+                    { label: "Created", value: format(new Date(account.createdAt), "MMM d, yyyy") },
+                    { label: "Last Updated", value: format(new Date(account.updatedAt), "MMM d, yyyy") },
+                  ].map(({ label, value }) =>
+                    value ? (
+                      <div key={label}>
+                        <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
+                        <dd className="text-sm text-foreground">{value}</dd>
+                      </div>
+                    ) : null
+                  )}
+                </dl>
+                {account.description && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Description</dt>
+                    <dd className="text-sm text-muted-foreground leading-relaxed">{account.description}</dd>
+                  </div>
+                )}
+              </>
             )}
           </Card>
         )}
