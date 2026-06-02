@@ -5,8 +5,8 @@ import {
   useListProducts,
   useListOpportunities, useListContacts, useListAccounts,
   useListPriceBooks, useListActivePriceBookEntries,
-  useGetActiveContractPricing,
-  getGetQuoteQueryKey, getListQuotesQueryKey, getListActivePriceBookEntriesQueryKey,
+  useGetActiveContractPricing, useListContracts,
+  getGetQuoteQueryKey, getListQuotesQueryKey, getListActivePriceBookEntriesQueryKey, getListContractsQueryKey,
   getGetActiveContractPricingQueryKey,
   CreateQuoteInputStatus, UpdateQuoteInputStatus,
 } from "@workspace/api-client-react";
@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Download, Send, Copy, CheckCircle, XCircle, Clock,
-  FileText, Package, Building2, User, History, Pencil, Plus, X, Save, Trash2,
+  FileText, FileSignature, Calendar, Package, Building2, User, History, Pencil, Plus, X, Save, Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
@@ -72,7 +72,12 @@ export default function QuoteDetail() {
   const { data: accountsData } = useListAccounts({ limit: 200 });
   const accounts = accountsData?.data ?? [];
 
-  const [activeTab, setActiveTab] = useState<"details" | "approvals">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "approvals" | "contracts">("details");
+  const { data: quoteContractsData } = useListContracts(
+    { opportunityId: quote?.opportunityId ?? undefined, limit: 100 },
+    { query: { enabled: !!quote?.opportunityId, queryKey: getListContractsQueryKey({ opportunityId: quote?.opportunityId ?? undefined, limit: 100 }) } },
+  );
+  const quoteContracts = quoteContractsData?.data ?? [];
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   type EditSection = "header" | "parties" | "items" | "notes";
@@ -400,19 +405,23 @@ export default function QuoteDetail() {
 
         {/* Tabs */}
         <div className="inline-flex items-center gap-1 rounded-lg bg-muted/70 border border-border p-1">
-          {(["details", "approvals"] as const).map((t) => {
+          {(["details", "contracts", "approvals"] as const).map((t) => {
             const isActive = activeTab === t;
+            const label = t === "details" ? "Quote Details" : t === "contracts" ? "Contracts" : "Approvals";
             return (
               <button
                 key={t}
                 onClick={() => setActiveTab(t)}
-                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-all capitalize ${
+                className={`rounded-md px-4 py-1.5 text-sm font-medium transition-all capitalize flex items-center gap-1.5 ${
                   isActive
                     ? "bg-primary text-white font-semibold shadow-md ring-1 ring-primary/40"
                     : "bg-sky-100 text-sky-700 hover:bg-sky-200"
                 }`}
               >
-                {t === "details" ? "Quote Details" : "Approvals"}
+                {label}
+                {t === "contracts" && quoteContracts.length > 0 && (
+                  <span className={`text-xs rounded-full px-1.5 py-0.5 ${isActive ? "bg-white/20 text-white" : "bg-muted text-foreground"}`}>{quoteContracts.length}</span>
+                )}
               </button>
             );
           })}
@@ -424,6 +433,53 @@ export default function QuoteDetail() {
             record={quote as unknown as Record<string, unknown>}
             isAdmin={isAdmin}
           />
+        )}
+
+        {activeTab === "contracts" && (
+          <div className="flex flex-col gap-3">
+            {!quote.opportunityId ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileSignature className="w-10 h-8 mx-auto mb-3 opacity-30" />
+                Link this quote to an opportunity to see its contracts.
+              </div>
+            ) : quoteContracts.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileSignature className="w-10 h-8 mx-auto mb-3 opacity-30" />
+                No contracts for this deal yet.
+              </div>
+            ) : (
+              quoteContracts.map((c) => (
+                <Card key={c.id} className="glass-panel border-border hover:border-primary/30 transition-all p-4 cursor-pointer" onClick={() => navigate(`/contracts/${c.id}`)}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <FileSignature className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-foreground truncate">{c.name}</p>
+                        <Badge variant="outline" className="text-xs capitalize shrink-0">
+                          {c.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>#{c.contractNumber}</span>
+                        {c.startDate && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(c.startDate), "MMM d, yyyy")}
+                            {c.endDate ? ` → ${format(new Date(c.endDate), "MMM d, yyyy")}` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-bold text-foreground">{fmtMoney(Number(c.total))}</p>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
         )}
 
         {activeTab === "details" && (<>

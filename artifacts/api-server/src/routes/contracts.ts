@@ -253,7 +253,7 @@ router.get("/contracts/active-pricing/:accountId", async (req, res) => {
 // ----- List -----
 router.get("/contracts", async (req, res) => {
   try {
-    const { accountId, status, page = "1", limit = "50" } = req.query as Record<string, string>;
+    const { accountId, opportunityId, status, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
@@ -263,6 +263,7 @@ router.get("/contracts", async (req, res) => {
 
     const conditions = [];
     if (accountId) conditions.push(eq(contractsTable.accountId, parseInt(accountId)));
+    if (opportunityId) conditions.push(eq(contractsTable.opportunityId, parseInt(opportunityId)));
     if (status) conditions.push(eq(contractsTable.status, status));
     const where = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
 

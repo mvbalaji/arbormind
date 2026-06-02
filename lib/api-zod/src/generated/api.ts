@@ -2068,6 +2068,7 @@ export const listContractsQueryLimitDefault = 50;
 
 export const ListContractsQueryParams = zod.object({
   accountId: zod.coerce.number().optional(),
+  opportunityId: zod.coerce.number().optional(),
   status: zod.coerce.string().optional(),
   page: zod.coerce.number().default(listContractsQueryPageDefault),
   limit: zod.coerce.number().default(listContractsQueryLimitDefault),

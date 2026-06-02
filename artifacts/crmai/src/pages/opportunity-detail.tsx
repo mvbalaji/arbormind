@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useListQuotes, useCreateQuote, useListProducts, useUpdateOpportunity, useListOpportunityItems, useUpdateOpportunityItems, useListPriceBooks, useListActivePriceBookEntries, getListQuotesQueryKey, getListOpportunityItemsQueryKey, getListActivePriceBookEntriesQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput, type OpportunityItem } from "@workspace/api-client-react";
+import { useListQuotes, useCreateQuote, useListProducts, useUpdateOpportunity, useListOpportunityItems, useUpdateOpportunityItems, useListPriceBooks, useListActivePriceBookEntries, useListContracts, getListContractsQueryKey, getListQuotesQueryKey, getListOpportunityItemsQueryKey, getListActivePriceBookEntriesQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput, type OpportunityItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
@@ -25,7 +25,7 @@ import { useAuth } from "@/context/auth";
 import {
   ArrowLeft, ArrowRight, Pencil, DollarSign, Calendar, Activity, Building2,
   Phone, Mail, Users, Briefcase, Check, CheckCircle2, Clock, TrendingUp,
-  FileText, Plus, Package, X, Printer, ShieldCheck,
+  FileText, FileSignature, Plus, Package, X, Printer, ShieldCheck,
   Filter, RotateCw, ChevronDown, ChevronRight, PhoneCall, CalendarPlus, ListTodo,
   UserPlus, FilePlus, Copy, MoreVertical, Globe, GripVertical,
 } from "lucide-react";
@@ -85,9 +85,9 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
   demo: Briefcase,
 };
 
-type Tab = "activities" | "quotes" | "approvals" | "notes" | "about";
+type Tab = "activities" | "quotes" | "contracts" | "approvals" | "notes" | "about";
 
-const DEFAULT_OPP_TAB_ORDER: readonly Tab[] = ["about", "quotes", "approvals", "activities", "notes"];
+const DEFAULT_OPP_TAB_ORDER: readonly Tab[] = ["about", "quotes", "contracts", "approvals", "activities", "notes"];
 
 interface OppQuote {
   id: number;
@@ -758,6 +758,11 @@ export default function OpportunityDetail() {
   const numericId = id ? parseInt(id) : undefined;
   const { data: quotesData } = useListQuotes(numericId ? { opportunityId: numericId } : undefined);
   const oppQuotes: OppQuote[] = (quotesData?.data ?? []) as OppQuote[];
+  const { data: contractsData } = useListContracts(
+    { opportunityId: numericId, limit: 100 },
+    { query: { enabled: !!numericId, queryKey: getListContractsQueryKey({ opportunityId: numericId, limit: 100 }) } },
+  );
+  const oppContracts = contractsData?.data ?? [];
   const { data: oppItemsData } = useListOpportunityItems(numericId ?? 0, {
     query: {
       enabled: !!numericId,
@@ -766,7 +771,7 @@ export default function OpportunityDetail() {
   });
   const oppItems: OpportunityItem[] = oppItemsData?.data ?? [];
 
-  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity:v5`, DEFAULT_OPP_TAB_ORDER);
+  const { order: tabOrder, move: moveTab } = useTabOrder<Tab>(`tab-order:opportunity:v6`, DEFAULT_OPP_TAB_ORDER);
 
   const updateOppMutation = useUpdateOpportunity();
   const { toast: toastTop } = useToast();
@@ -818,6 +823,7 @@ export default function OpportunityDetail() {
   const TAB_META: Record<Tab, { label: string; count?: number }> = {
     activities: { label: "Activities", count: activitiesData?.data.length },
     quotes: { label: "Quotes", count: oppQuotes.length },
+    contracts: { label: "Contracts", count: oppContracts.length },
     approvals: { label: "Approvals" },
     notes: { label: "Notes & Attachments" },
     about: { label: "Details" },
@@ -1367,6 +1373,49 @@ export default function OpportunityDetail() {
                     >
                       <Printer className="w-3.5 h-3.5" />
                     </Button>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Contracts Tab */}
+        {activeTab === "contracts" && (
+          <div className="flex flex-col gap-3">
+            {oppContracts.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileSignature className="w-10 h-8 mx-auto mb-3 opacity-30" />
+                No contracts for this opportunity yet.
+              </div>
+            ) : (
+              oppContracts.map((c) => (
+                <Card key={c.id} className="glass-panel border-border hover:border-primary/30 transition-all p-4 cursor-pointer" onClick={() => { window.location.href = `/contracts/${c.id}`; }}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <FileSignature className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-foreground truncate">{c.name}</p>
+                        <Badge variant="outline" className="text-xs capitalize shrink-0">
+                          {c.status.replace("_", " ")}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>#{c.contractNumber}</span>
+                        {c.startDate && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(c.startDate), "MMM d, yyyy")}
+                            {c.endDate ? ` → ${format(new Date(c.endDate), "MMM d, yyyy")}` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-bold text-foreground">{fmtMoney(Number(c.total))}</p>
+                    </div>
                   </div>
                 </Card>
               ))

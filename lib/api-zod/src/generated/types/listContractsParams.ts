@@ -8,6 +8,7 @@
 
 export type ListContractsParams = {
   accountId?: number;
+  opportunityId?: number;
   status?: string;
   page?: number;
   limit?: number;
