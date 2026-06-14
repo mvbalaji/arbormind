@@ -29,9 +29,11 @@ import searchRouter from "./search";
 import emailSendRouter from "./email-send";
 import exchangeRatesRouter from "./exchange-rates";
 import websiteVisitsRouter from "./website-visits";
+import appModulesRouter from "./app-modules";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 import { seedStandardPricing } from "../lib/pricing";
+import { seedAppModules } from "../lib/app-modules";
 
 const router: IRouter = Router();
 
@@ -65,11 +67,13 @@ router.use(searchRouter);
 router.use(emailSendRouter);
 router.use(exchangeRatesRouter);
 router.use(websiteVisitsRouter);
+router.use(appModulesRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
 // access on startup.
 void seedAccessControl();
 void seedRecordAccess();
 void seedStandardPricing();
+void seedAppModules();
 
 export default router;

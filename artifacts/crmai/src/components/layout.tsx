@@ -48,7 +48,7 @@ import { useCurrency } from "@/context/currency";
 import { CURRENCY_META } from "@/lib/currency";
 import { NotificationBell } from "@/components/notification-bell";
 
-const NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: string; adminOnly?: boolean }> = [
+const NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: string; adminOnly?: boolean; moduleKey?: string }> = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, screenKey: "dashboard" },
   { label: "Leads", href: "/leads", icon: UserPlus, screenKey: "leads" },
   { label: "Contacts", href: "/contacts", icon: Users, screenKey: "contacts" },
@@ -59,9 +59,9 @@ const NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: str
   { label: "Activities", href: "/activities", icon: Activity, screenKey: "activities" },
   { label: "Products", href: "/products", icon: Package, screenKey: "products" },
   { label: "Price Books", href: "/price-books", icon: BookText, screenKey: "price-books" },
-  { label: "Quotes", href: "/quotes", icon: FileText, screenKey: "quotes" },
-  { label: "Orders", href: "/orders", icon: ShoppingCart, screenKey: "orders" },
-  { label: "Contracts", href: "/contracts", icon: FileSignature, screenKey: "contracts" },
+  { label: "Quotes", href: "/quotes", icon: FileText, screenKey: "quotes", moduleKey: "quotes" },
+  { label: "Orders", href: "/orders", icon: ShoppingCart, screenKey: "orders", moduleKey: "orders" },
+  { label: "Contracts", href: "/contracts", icon: FileSignature, screenKey: "contracts", moduleKey: "contracts" },
   { label: "Cases", href: "/cases", icon: LifeBuoy, screenKey: "cases" },
   { label: "Reports", href: "/reports", icon: BarChart3, screenKey: "reports" },
   { label: "AI Assistant", href: "/ai-assistant", icon: Bot, screenKey: "ai-assistant" },
@@ -152,12 +152,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
       ro.disconnect();
       window.removeEventListener("resize", compute);
     };
-  }, [user?.role, user?.screenAccess]);
+  }, [user?.role, user?.screenAccess, user?.enabledModules]);
 
   const visibleNavItems = useMemo(() => {
+    const isFullAdmin = user?.role === "admin" || user?.role === "super_admin";
     const allowed = NAV_ITEMS.filter((item) => {
-      if (item.adminOnly && user?.role !== "admin") return false;
-      if (user?.role === "admin") return true;
+      // Module gate — hide nav item if its module is disabled
+      if (item.moduleKey && user?.enabledModules) {
+        if (!user.enabledModules[item.moduleKey]) return false;
+      }
+      if (item.adminOnly && !isFullAdmin) return false;
+      if (isFullAdmin) return true;
       if (!item.screenKey) return true;
       const lvl = user?.screenAccess?.[item.screenKey];
       return lvl != null && lvl !== "none";

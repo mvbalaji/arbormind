@@ -27,3 +27,4 @@ export * from "./record-access";
 export * from "./email-tracking";
 export * from "./email-attachments";
 export * from "./website-visits";
+export * from "./app-modules";

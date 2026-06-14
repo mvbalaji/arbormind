@@ -22,6 +22,7 @@ import { DataImport } from "@/components/data-import";
 import { cn } from "@/lib/utils";
 import { AccessControlInline } from "./access-control";
 import { ApprovalConfigInline } from "@/components/approval-config-inline";
+import { AppManagementInline } from "./app-management";
 
 interface AppUser {
   id: number;
@@ -119,7 +120,7 @@ export default function Users() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("sales_rep");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail" | "apps">("team");
 
   // Edit dialog state
   const [editName, setEditName] = useState("");
@@ -330,6 +331,7 @@ export default function Users() {
         <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border flex-wrap">
           {([
             { id: "team", label: "Team Settings", icon: UsersIcon },
+            { id: "apps", label: "App Management", icon: Settings },
             { id: "access", label: "Access Control", icon: Shield },
             { id: "approvals", label: "Approval Config", icon: ShieldCheck },
             { id: "import", label: "Data Import", icon: Upload },
@@ -350,6 +352,9 @@ export default function Users() {
             </button>
           ))}
         </div>
+
+        {/* App Management Tab */}
+        {activeTab === "apps" && <AppManagementInline />}
 
         {/* Access Control Tab */}
         {activeTab === "access" && <AccessControlInline />}

@@ -10,6 +10,7 @@ export interface AuthUser {
   avatarUrl?: string | null;
   username?: string;
   screenAccess?: Record<string, ScreenAccessLevel>;
+  enabledModules?: Record<string, boolean>;
   isImpersonating?: boolean;
   originalUser?: { id: number; email: string; name: string; role: string };
 }
@@ -20,7 +21,8 @@ const LEVEL_RANK: Record<ScreenAccessLevel, number> = {
 
 export function useScreenAccess(screenKey: string) {
   const { user } = useAuth();
-  const level: ScreenAccessLevel = user?.role === "admin"
+  const isFullAdmin = user?.role === "admin" || user?.role === "super_admin";
+  const level: ScreenAccessLevel = isFullAdmin
     ? "edit"
     : (user?.screenAccess?.[screenKey] ?? "none");
   const meets = (req: ScreenAccessLevel) => LEVEL_RANK[level] >= LEVEL_RANK[req];
@@ -62,7 +64,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json() as { user: AuthUser };
         setUser((prev) => {
-          if (prev && data.user && prev.id === data.user.id && prev.email === data.user.email && prev.role === data.user.role && prev.name === data.user.name) {
+          if (
+            prev && data.user &&
+            prev.id === data.user.id &&
+            prev.email === data.user.email &&
+            prev.role === data.user.role &&
+            prev.name === data.user.name
+          ) {
             return prev;
           }
           return data.user;

@@ -247,8 +247,12 @@ router.get("/auth/me", async (req, res) => {
 
   try {
     const { getScreenAccessForRole } = await import("../lib/access-control");
-    const screenAccess = await getScreenAccessForRole(userData.role ?? "");
-    res.json({ user: { ...userData, screenAccess, ...impersonation } });
+    const { getEnabledModules } = await import("../lib/app-modules");
+    const [screenAccess, enabledModules] = await Promise.all([
+      getScreenAccessForRole(userData.role ?? ""),
+      getEnabledModules(),
+    ]);
+    res.json({ user: { ...userData, screenAccess, enabledModules, ...impersonation } });
   } catch {
     res.json({ user: { ...userData, ...impersonation } });
   }
