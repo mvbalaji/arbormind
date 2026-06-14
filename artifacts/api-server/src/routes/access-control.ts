@@ -5,7 +5,7 @@ import {
   ACCESS_LEVELS, type AccessLevel,
 } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
-import { isValidAccessLevel } from "../lib/access-control";
+import { isValidAccessLevel, FULL_ACCESS_ROLES } from "../lib/access-control";
 
 const router: IRouter = Router();
 
@@ -15,7 +15,7 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  if (u.role !== "admin") {
+  if (!FULL_ACCESS_ROLES.has(u.role)) {
     res.status(403).json({ error: "Forbidden — System Administrator role required" });
     return;
   }
@@ -42,7 +42,8 @@ router.get("/admin/access-control/screens", requireAdmin, async (req, res) => {
     for (const s of screens) {
       matrix[s.key] = {};
       for (const r of roles) {
-        matrix[s.key][r.key] = r.key === "admin" ? "edit" : "none";
+        // super_admin and admin always have full edit
+        matrix[s.key][r.key] = FULL_ACCESS_ROLES.has(r.key) ? "edit" : "none";
       }
     }
     for (const row of accessRows) {
@@ -65,8 +66,8 @@ router.put("/admin/access-control/screens/:screenKey/roles/:roleKey", requireAdm
       res.status(400).json({ error: `accessLevel must be one of: ${ACCESS_LEVELS.join(", ")}` });
       return;
     }
-    if (roleKey === "admin") {
-      res.status(400).json({ error: "Administrator role always has full edit access and cannot be modified." });
+    if (FULL_ACCESS_ROLES.has(roleKey)) {
+      res.status(400).json({ error: "Administrator roles always have full edit access and cannot be modified." });
       return;
     }
     // Verify FK targets exist for clearer errors.
@@ -77,8 +78,6 @@ router.put("/admin/access-control/screens/:screenKey/roles/:roleKey", requireAdm
 
     const actor = (req.user || (req.session as any)?.user) as { id?: number; name?: string; email?: string } | undefined;
 
-    // Atomic read + upsert + audit inside a single transaction so the
-    // recorded `previousLevel` is consistent under concurrent updates.
     const result = await db.transaction(async (tx) => {
       const [existing] = await tx.select().from(screenAccessTable)
         .where(and(eq(screenAccessTable.screenKey, screenKey), eq(screenAccessTable.roleKey, roleKey)));

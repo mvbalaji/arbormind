@@ -7,6 +7,7 @@ import {
 import { eq, and } from "drizzle-orm";
 
 export const SEED_ROLES: Array<{ key: string; label: string; sortOrder: number }> = [
+  { key: "super_admin", label: "Super Administrator", sortOrder: 5 },
   { key: "admin", label: "System Administrator", sortOrder: 10 },
   { key: "md", label: "Managing Director", sortOrder: 20 },
   { key: "vp", label: "Vice President", sortOrder: 30 },
@@ -43,17 +44,23 @@ const ADMIN_ONLY_SCREENS = new Set(["access-control", "approvals"]);
 // Screens reps typically don't edit (view only).
 const REP_VIEW_ONLY = new Set(["reports", "users", "products", "price-books", "campaigns"]);
 
+// Roles that always have full edit access to everything.
+export const FULL_ACCESS_ROLES = new Set(["admin", "super_admin"]);
+
 let seeded = false;
 export async function seedAccessControl(): Promise<void> {
   if (seeded) return;
   try {
     await db.insert(rolesTable).values(SEED_ROLES).onConflictDoNothing();
     await db.insert(screensTable).values(SEED_SCREENS).onConflictDoNothing();
-    // Default admin → edit everywhere
-    const adminRows = SEED_SCREENS.map((s) => ({
-      screenKey: s.key, roleKey: "admin", accessLevel: "edit" as const,
-    }));
-    await db.insert(screenAccessTable).values(adminRows).onConflictDoNothing();
+
+    // super_admin and admin → edit everywhere (including any future screens)
+    const fullAccessRows = SEED_SCREENS.flatMap((s) =>
+      ["super_admin", "admin"].map((roleKey) => ({
+        screenKey: s.key, roleKey, accessLevel: "edit" as const,
+      }))
+    );
+    await db.insert(screenAccessTable).values(fullAccessRows).onConflictDoNothing();
 
     // Sensible defaults for non-admin roles so impersonation shows a useful app.
     // Existing custom rules are preserved via onConflictDoNothing.
@@ -102,8 +109,8 @@ function normalizeRole(role: string): string {
 
 export async function getScreenAccessForRole(role: string): Promise<Record<string, AccessLevel>> {
   const normalized = normalizeRole(role);
-  // Admin always has full edit access regardless of stored rules.
-  if (normalized === "admin") {
+  // super_admin and admin always have full edit access regardless of stored rules.
+  if (FULL_ACCESS_ROLES.has(normalized)) {
     const out: Record<string, AccessLevel> = {};
     for (const s of SEED_SCREENS) out[s.key] = "edit";
     return out;
@@ -123,7 +130,7 @@ export async function userHasScreenAccess(
   role: string, screenKey: string, required: AccessLevel
 ): Promise<boolean> {
   const normalized = normalizeRole(role);
-  if (normalized === "admin") return true;
+  if (FULL_ACCESS_ROLES.has(normalized)) return true;
   const [row] = await db.select({ accessLevel: screenAccessTable.accessLevel })
     .from(screenAccessTable)
     .where(and(eq(screenAccessTable.roleKey, normalized), eq(screenAccessTable.screenKey, screenKey)));

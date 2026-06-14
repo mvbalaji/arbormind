@@ -35,6 +35,8 @@ const ADMIN_EMAILS = [
 const DEMO_USERNAME = "demo@arbormind.in";
 const DEMO_PASSWORD = "demo1234";
 
+const FULL_ACCESS_ROLES = new Set(["admin", "super_admin"]);
+
 function getCallbackUrl() {
   if (process.env.NODE_ENV === "production" && process.env.GOOGLE_CALLBACK_URL) return process.env.GOOGLE_CALLBACK_URL;
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.CUSTOM_DOMAIN;
@@ -192,7 +194,6 @@ router.get(
   (req, res) => {
     console.log("[OAuth Callback] After authenticate - user:", !!req.user, "req.isAuthenticated:", req.isAuthenticated?.());
     console.log("[OAuth Callback] Session before save:", { sessionId: req.session.id, userId: (req.user as any)?.id });
-    // Ensure session is saved before redirecting
     req.session.save((err) => {
       if (err) {
         console.error("[OAuth Callback] Session save failed:", err);
@@ -254,10 +255,7 @@ router.get("/auth/me", async (req, res) => {
 });
 
 /* ============================================================
- * IMPERSONATION — admin-only "Login as" any user.
- * Preserves the original admin in session.originalUser so we
- * can restore on stop. All access-control middleware sees the
- * impersonated user, so the entire app behaves as that role.
+ * IMPERSONATION — admin/super_admin "Login as" any user.
  * ============================================================ */
 
 router.post("/auth/impersonate", async (req, res) => {
@@ -269,8 +267,8 @@ router.post("/auth/impersonate", async (req, res) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  if (actor.role !== "admin") {
-    res.status(403).json({ error: "Only admins can impersonate users" });
+  if (!FULL_ACCESS_ROLES.has(actor.role)) {
+    res.status(403).json({ error: "Only administrators can impersonate users" });
     return;
   }
 
@@ -296,7 +294,6 @@ router.post("/auth/impersonate", async (req, res) => {
       if (row) target = { id: row.id, email: row.email, name: row.name, role: row.role, avatarUrl: row.avatarUrl, isActive: row.isActive };
     }
     // Fallback: impersonate a CRM team member directly from the users table
-    // (covers seeded reps/managers that aren't in the allowed_users access list).
     if (!target && targetEmail) {
       const [row] = await db.select().from(usersTable).where(eq(usersTable.email, targetEmail));
       if (row) target = { id: row.id, email: row.email, name: row.name, role: row.role, avatarUrl: row.avatarUrl, isActive: row.isActive };
@@ -340,7 +337,7 @@ router.post("/auth/impersonate", async (req, res) => {
     (req as unknown as { user: typeof impersonated }).user = impersonated;
 
     console.log(
-      `[Impersonate] ${originalUser.email} (admin) -> ${impersonated.email} (${impersonated.role})`,
+      `[Impersonate] ${originalUser.email} (${originalUser.role}) -> ${impersonated.email} (${impersonated.role})`,
     );
 
     req.session.save((err) => {
@@ -422,7 +419,7 @@ router.get("/auth/users", async (req, res) => {
     return;
   }
   const u = req.user as { role?: string } | undefined;
-  if (u?.role !== "admin") {
+  if (!FULL_ACCESS_ROLES.has(u?.role ?? "")) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -441,7 +438,7 @@ router.post("/auth/users", async (req, res) => {
     return;
   }
   const u = req.user as { role?: string; email?: string } | undefined;
-  if (u?.role !== "admin") {
+  if (!FULL_ACCESS_ROLES.has(u?.role ?? "")) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
@@ -449,6 +446,12 @@ router.post("/auth/users", async (req, res) => {
   const { email, name, role } = req.body as { email: string; name?: string; role?: string };
   if (!email) {
     res.status(400).json({ error: "Email required" });
+    return;
+  }
+
+  // Only super_admin can create another super_admin
+  if (role === "super_admin" && u?.role !== "super_admin") {
+    res.status(403).json({ error: "Only Super Administrators can create Super Admin users." });
     return;
   }
 
@@ -472,19 +475,80 @@ router.post("/auth/users", async (req, res) => {
   }
 });
 
+// Update user details (name, role, isActive)
+router.put("/auth/users/:id", async (req, res) => {
+  if (!req.isAuthenticated || !req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const actor = req.user as { role?: string; email?: string; id?: number } | undefined;
+  if (!FULL_ACCESS_ROLES.has(actor?.role ?? "")) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid user id" });
+    return;
+  }
+
+  try {
+    const [existing] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.id, id));
+    if (!existing) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Protect super_admin users — only super_admin can modify them
+    if (existing.role === "super_admin" && actor?.role !== "super_admin") {
+      res.status(403).json({ error: "Only Super Administrators can modify Super Admin users." });
+      return;
+    }
+
+    // Admin cannot promote someone to super_admin
+    const { name, role, isActive } = req.body as { name?: string; role?: string; isActive?: boolean };
+    if (role === "super_admin" && actor?.role !== "super_admin") {
+      res.status(403).json({ error: "Only Super Administrators can assign the Super Admin role." });
+      return;
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (name !== undefined) updates.name = name;
+    if (role !== undefined) updates.role = role;
+    if (isActive !== undefined) updates.isActive = isActive;
+
+    const [updated] = await db
+      .update(allowedUsersTable)
+      .set(updates)
+      .where(eq(allowedUsersTable.id, id))
+      .returning();
+
+    res.json({ user: updated });
+  } catch {
+    res.status(500).json({ error: "Failed to update user" });
+  }
+});
+
 router.delete("/auth/users/:id", async (req, res) => {
   if (!req.isAuthenticated || !req.isAuthenticated()) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const u = req.user as { role?: string } | undefined;
-  if (u?.role !== "admin") {
+  const actor = req.user as { role?: string; id?: number } | undefined;
+  if (!FULL_ACCESS_ROLES.has(actor?.role ?? "")) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
 
   const id = parseInt(req.params.id);
   try {
+    const [existing] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.id, id));
+    if (existing?.role === "super_admin" && actor?.role !== "super_admin") {
+      res.status(403).json({ error: "Only Super Administrators can remove Super Admin users." });
+      return;
+    }
+
     await db
       .update(allowedUsersTable)
       .set({ isActive: false, updatedAt: new Date() })

@@ -275,7 +275,7 @@ export function AccessControlInline() {
                               <React.Fragment key={s.key}>
                                 {data.roles.map((r, idx) => {
                                   const lvl = data.matrix[s.key]?.[r.key] ?? "none";
-                                  const isLocked = r.key === "admin";
+                                  const isLocked = r.key === "admin" || r.key === "super_admin";
                                   const pendKey = `${s.key}:${r.key}`;
                                   return (
                                     <tr key={`${s.key}:${r.key}`} className="hover:bg-muted/20">
@@ -359,7 +359,7 @@ export function AccessControlInline() {
                           <React.Fragment key={rt.key}>
                             {recordData.roles.map((role, idx) => {
                               const perms = recordData.matrix[rt.key]?.[role.key];
-                              const isAdmin = role.key === "admin";
+                              const isAdmin = role.key === "admin" || role.key === "super_admin";
                               return (
                                 <tr key={`${rt.key}:${role.key}`} className="hover:bg-muted/20">
                                   {idx === 0 ? (

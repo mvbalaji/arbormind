@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import {
   Settings, Shield, UserPlus, Trash2, Loader2, Users as UsersIcon, Upload,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff, Clock, Play, UserCog, ShieldCheck,
+  Pencil, Crown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/auth";
 import { DataImport } from "@/components/data-import";
@@ -69,21 +71,61 @@ const defaultSettings: MailSettings = {
   syncIntervalMinutes: 15,
 };
 
+const ALL_ROLES = [
+  { value: "super_admin", label: "Super Administrator" },
+  { value: "admin", label: "System Administrator" },
+  { value: "md", label: "Managing Director" },
+  { value: "vp", label: "Vice President" },
+  { value: "sales_director", label: "Sales Director" },
+  { value: "sales_manager", label: "Sales Manager" },
+  { value: "sales_rep", label: "Sales Rep" },
+];
+
+function getRoleBadgeClass(role: string) {
+  switch (role) {
+    case "super_admin": return "border-purple-400/60 text-purple-700 bg-purple-100 dark:text-purple-300 dark:bg-purple-950 dark:border-purple-600";
+    case "admin": return "border-accent/50 text-primary bg-accent/10";
+    default: return "border-border text-muted-foreground";
+  }
+}
+
+function getRoleLabel(role: string) {
+  return ALL_ROLES.find((r) => r.value === role)?.label ?? role;
+}
+
+function RoleBadge({ role }: { role: string }) {
+  return (
+    <Badge variant="outline" className={`capitalize text-xs ${getRoleBadgeClass(role)}`}>
+      {role === "super_admin" && <Crown className="w-3 h-3 mr-1" />}
+      {role === "admin" && <Shield className="w-3 h-3 mr-1" />}
+      {getRoleLabel(role)}
+    </Badge>
+  );
+}
+
 export default function Users() {
-  const { data, isLoading } = useListUsers();
+  const { data, isLoading, refetch: refetchCrmUsers } = useListUsers();
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
-  const isAdmin = currentUser?.role === "admin";
+  const isSuperAdmin = currentUser?.role === "super_admin";
+  const isAdmin = currentUser?.role === "admin" || isSuperAdmin;
 
   const [appUsers, setAppUsers] = useState<AppUser[]>([]);
   const [appUsersLoading, setAppUsersLoading] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [removeId, setRemoveId] = useState<number | null>(null);
+  const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
-  const [newRole, setNewRole] = useState("sales");
+  const [newRole, setNewRole] = useState("sales_rep");
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail">("team");
+
+  // Edit dialog state
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [editActive, setEditActive] = useState(true);
+  const [editSaving, setEditSaving] = useState(false);
 
   // Mail settings state
   const [mailSettings, setMailSettings] = useState<MailSettings>(defaultSettings);
@@ -124,6 +166,15 @@ export default function Users() {
   useEffect(() => { void fetchAppUsers(); }, [isAdmin]);
   useEffect(() => { if (activeTab === "mail") void fetchMailSettings(); }, [activeTab, fetchMailSettings]);
 
+  // Check if the current user can edit/delete a target user
+  const canModifyUser = (target: AppUser) => {
+    if (!isAdmin) return false;
+    if (target.email === currentUser?.email) return false;
+    // Only super_admin can touch super_admin users
+    if (target.role === "super_admin" && !isSuperAdmin) return false;
+    return true;
+  };
+
   const handleAddUser = async () => {
     if (!newEmail) return;
     setSaving(true);
@@ -137,7 +188,7 @@ export default function Users() {
       if (res.ok) {
         toast({ title: "Access granted", description: `${newEmail} can now sign in.` });
         setAddDialogOpen(false);
-        setNewEmail(""); setNewName(""); setNewRole("sales");
+        setNewEmail(""); setNewName(""); setNewRole("sales_rep");
         void fetchAppUsers();
       } else {
         const err = await res.json() as { error?: string };
@@ -154,9 +205,42 @@ export default function Users() {
       if (res.ok) {
         toast({ title: "Access revoked" });
         void fetchAppUsers();
+      } else {
+        const err = await res.json() as { error?: string };
+        toast({ title: "Error", description: err.error ?? "Failed to revoke access", variant: "destructive" });
       }
     } finally {
       setRemoveId(null);
+    }
+  };
+
+  const openEditDialog = (u: AppUser) => {
+    setEditUser(u);
+    setEditName(u.name ?? "");
+    setEditRole(u.role);
+    setEditActive(u.isActive);
+  };
+
+  const handleEditUser = async () => {
+    if (!editUser) return;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/auth/users/${editUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ name: editName || undefined, role: editRole, isActive: editActive }),
+      });
+      if (res.ok) {
+        toast({ title: "User updated", description: `${editUser.email} has been updated.` });
+        setEditUser(null);
+        void fetchAppUsers();
+      } else {
+        const err = await res.json() as { error?: string };
+        toast({ title: "Error", description: err.error ?? "Failed to update user", variant: "destructive" });
+      }
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -226,6 +310,12 @@ export default function Users() {
     setTestResult(null);
   };
 
+  // Available roles for the add/edit dialogs based on current user's role
+  const availableRoles = ALL_ROLES.filter((r) => {
+    if (r.value === "super_admin") return isSuperAdmin;
+    return true;
+  });
+
   return (
     <Layout>
       <div className="flex flex-col gap-6">
@@ -237,7 +327,7 @@ export default function Users() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border">
+        <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border flex-wrap">
           {([
             { id: "team", label: "Team Settings", icon: UsersIcon },
             { id: "access", label: "Access Control", icon: Shield },
@@ -276,10 +366,12 @@ export default function Users() {
             <Card className="glass-panel border-border">
               <div className="p-6 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-primary" />
+                  {isSuperAdmin ? <Crown className="w-5 h-5 text-purple-600" /> : <Shield className="w-5 h-5 text-primary" />}
                   <div>
                     <h2 className="font-semibold text-foreground">App Access Control</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Manage who can sign in with Google</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isSuperAdmin ? "Super Admin — full control over all users and roles" : "Manage who can sign in with Google"}
+                    </p>
                   </div>
                 </div>
                 <Button
@@ -288,18 +380,18 @@ export default function Users() {
                   size="sm"
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Add Access
+                  Add User
                 </Button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                     <tr className="divide-x divide-border">
-                      <th className="px-3 py-1 font-medium">User</th>
-                      <th className="px-3 py-1 font-medium">Role</th>
-                      <th className="px-3 py-1 font-medium">Status</th>
-                      <th className="px-3 py-1 font-medium">Last Login</th>
-                      <th className="px-3 py-1 font-medium w-16"></th>
+                      <th className="px-3 py-2 font-medium">User</th>
+                      <th className="px-3 py-2 font-medium">Role</th>
+                      <th className="px-3 py-2 font-medium">Status</th>
+                      <th className="px-3 py-2 font-medium">Last Login</th>
+                      <th className="px-3 py-2 font-medium w-32 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -309,7 +401,7 @@ export default function Users() {
                       <tr><td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">No users yet</td></tr>
                     ) : appUsers.map((u) => (
                       <tr key={u.id} className="hover:bg-muted/50 transition-colors">
-                        <td className="px-3 py-1">
+                        <td className="px-3 py-2">
                           <div className="flex items-center gap-3">
                             <Avatar className="w-8 h-8 border border-border">
                               {u.avatarUrl && <img src={u.avatarUrl} alt={u.name ?? u.email} />}
@@ -323,24 +415,22 @@ export default function Users() {
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-1">
-                          <Badge variant="outline" className={`capitalize ${u.role === "admin" ? "border-accent/50 text-primary bg-accent/10" : "border-border text-muted-foreground"}`}>
-                            {u.role === "admin" && <Shield className="w-3 h-3 mr-1" />}
-                            {u.role}
-                          </Badge>
+                        <td className="px-3 py-2">
+                          <RoleBadge role={u.role} />
                         </td>
-                        <td className="px-3 py-1">
+                        <td className="px-3 py-2">
                           <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${u.isActive ? "text-green-600" : "text-muted-foreground"}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${u.isActive ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" : "bg-gray-500"}`} />
                             {u.isActive ? "Active" : "Revoked"}
                           </span>
                         </td>
-                        <td className="px-3 py-1 text-muted-foreground text-xs">
+                        <td className="px-3 py-2 text-muted-foreground text-xs">
                           {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : "Never"}
                         </td>
-                        <td className="px-3 py-1">
-                          <div className="flex items-center justify-end gap-1">
-                            {isAdmin && u.email !== currentUser?.email && u.isActive && (
+                        <td className="px-3 py-2">
+                          <div className="flex items-center justify-center gap-1">
+                            {/* Login As */}
+                            {u.email !== currentUser?.email && u.isActive && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -356,21 +446,13 @@ export default function Users() {
                                     });
                                     if (!res.ok) {
                                       const data = await res.json().catch(() => ({}));
-                                      toast({
-                                        title: "Could not switch user",
-                                        description: data.error ?? "Try again.",
-                                        variant: "destructive",
-                                      });
+                                      toast({ title: "Could not switch user", description: (data as any).error ?? "Try again.", variant: "destructive" });
                                       return;
                                     }
                                     window.location.href = "/#/dashboard";
                                     setTimeout(() => window.location.reload(), 50);
                                   } catch {
-                                    toast({
-                                      title: "Network error",
-                                      description: "Could not start impersonation.",
-                                      variant: "destructive",
-                                    });
+                                    toast({ title: "Network error", description: "Could not start impersonation.", variant: "destructive" });
                                   }
                                 }}
                               >
@@ -378,8 +460,27 @@ export default function Users() {
                                 Login as
                               </Button>
                             )}
-                            {u.email !== currentUser?.email && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" onClick={() => setRemoveId(u.id)}>
+                            {/* Edit */}
+                            {canModifyUser(u) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-blue-600"
+                                title="Edit user"
+                                onClick={() => openEditDialog(u)}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            )}
+                            {/* Delete */}
+                            {canModifyUser(u) && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-red-600"
+                                title="Revoke access"
+                                onClick={() => setRemoveId(u.id)}
+                              >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             )}
@@ -394,22 +495,37 @@ export default function Users() {
           )}
 
           <Card className="glass-panel border-border">
-            <div className="p-6 border-b border-border flex items-center gap-2">
-              <UsersIcon className="w-5 h-5 text-primary" />
-              <div>
-                <h2 className="font-semibold text-foreground">CRM Team Members</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Sales reps, managers and their roles</p>
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UsersIcon className="w-5 h-5 text-primary" />
+                <div>
+                  <h2 className="font-semibold text-foreground">CRM Team Members</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sales reps, managers and their roles</p>
+                </div>
               </div>
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  className="rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-foreground hover:opacity-90"
+                  onClick={() => {
+                    // TODO: open add CRM team member dialog
+                    toast({ title: "Coming soon", description: "Add team member from the CRM users endpoint." });
+                  }}
+                >
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Add Member
+                </Button>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-muted-foreground uppercase bg-muted/50 border-b border-border">
                   <tr className="divide-x divide-border">
-                    <th className="px-3 py-1 font-medium">User</th>
-                    <th className="px-3 py-1 font-medium">Role</th>
-                    <th className="px-3 py-1 font-medium">Team</th>
-                    <th className="px-3 py-1 font-medium">Status</th>
-                    {isAdmin && <th className="px-3 py-1 font-medium w-28 text-right"></th>}
+                    <th className="px-3 py-2 font-medium">User</th>
+                    <th className="px-3 py-2 font-medium">Role</th>
+                    <th className="px-3 py-2 font-medium">Team</th>
+                    <th className="px-3 py-2 font-medium">Status</th>
+                    {isAdmin && <th className="px-3 py-2 font-medium w-28 text-center">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -417,7 +533,7 @@ export default function Users() {
                     <tr><td colSpan={isAdmin ? 5 : 4} className="px-6 py-8 text-center text-muted-foreground">Loading...</td></tr>
                   ) : data?.data?.map(user => (
                     <tr key={user.id} className="hover:bg-muted/50 transition-colors">
-                      <td className="px-3 py-1">
+                      <td className="px-3 py-2">
                         <div className="flex items-center gap-3">
                           <Avatar className="w-8 h-8 border border-border">
                             <AvatarImage src={user.avatarUrl || ''} />
@@ -429,59 +545,50 @@ export default function Users() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-1">
-                        <Badge variant="outline" className={`capitalize ${user.role === 'admin' ? 'border-accent/50 text-primary bg-accent/10' : 'border-border text-muted-foreground bg-muted'}`}>
-                          {user.role === 'admin' && <Shield className="w-3 h-3 mr-1" />}
-                          {user.role}
-                        </Badge>
+                      <td className="px-3 py-2">
+                        <RoleBadge role={user.role} />
                       </td>
-                      <td className="px-3 py-1 text-muted-foreground">{user.team || '-'}</td>
-                      <td className="px-3 py-1">
+                      <td className="px-3 py-2 text-muted-foreground">{user.team || '-'}</td>
+                      <td className="px-3 py-2">
                         <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.isActive ? 'text-green-600' : 'text-muted-foreground'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-gray-500'}`} />
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       {isAdmin && (
-                        <td className="px-3 py-1 text-right">
-                          {user.email !== currentUser?.email && user.isActive && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-2 text-xs hover:border-primary hover:text-primary"
-                              title={`Login as ${user.name} to test the app as a ${user.role}`}
-                              onClick={async () => {
-                                try {
-                                  const res = await fetch("/api/auth/impersonate", {
-                                    method: "POST",
-                                    headers: { "Content-Type": "application/json" },
-                                    credentials: "include",
-                                    body: JSON.stringify({ email: user.email }),
-                                  });
-                                  if (!res.ok) {
-                                    const data = await res.json().catch(() => ({}));
-                                    toast({
-                                      title: "Could not switch user",
-                                      description: data.error ?? "Try again.",
-                                      variant: "destructive",
+                        <td className="px-3 py-2 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            {user.email !== currentUser?.email && user.isActive && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2 text-xs hover:border-primary hover:text-primary"
+                                title={`Login as ${user.name} to test the app as a ${user.role}`}
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch("/api/auth/impersonate", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      credentials: "include",
+                                      body: JSON.stringify({ email: user.email }),
                                     });
-                                    return;
+                                    if (!res.ok) {
+                                      const data = await res.json().catch(() => ({}));
+                                      toast({ title: "Could not switch user", description: (data as any).error ?? "Try again.", variant: "destructive" });
+                                      return;
+                                    }
+                                    window.location.href = "/#/dashboard";
+                                    setTimeout(() => window.location.reload(), 50);
+                                  } catch {
+                                    toast({ title: "Network error", description: "Could not start impersonation.", variant: "destructive" });
                                   }
-                                  window.location.href = "/#/dashboard";
-                                  setTimeout(() => window.location.reload(), 50);
-                                } catch {
-                                  toast({
-                                    title: "Network error",
-                                    description: "Could not start impersonation.",
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                            >
-                              <UserCog className="w-3.5 h-3.5 mr-1" />
-                              Login as
-                            </Button>
-                          )}
+                                }}
+                              >
+                                <UserCog className="w-3.5 h-3.5 mr-1" />
+                                Login as
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -513,302 +620,285 @@ export default function Users() {
                   )}>
                     {mailSettings.lastSyncStatus === "ok" ? <CheckCircle className="w-5 h-5 text-green-500" /> :
                      mailSettings.lastSyncStatus === "error" ? <XCircle className="w-5 h-5 text-red-500" /> :
-                     <Mail className="w-5 h-5 text-muted-foreground" />}
+                     <Clock className="w-5 h-5 text-muted-foreground" />}
                   </div>
                   <div>
-                    <p className="font-medium text-foreground text-sm">
-                      {mailSettings.syncEnabled ? "Auto-sync enabled" : "Auto-sync disabled"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
+                    <div className="text-sm font-medium text-foreground">
+                      {mailSettings.lastSyncStatus === "ok" ? "Last sync successful" :
+                       mailSettings.lastSyncStatus === "error" ? "Last sync failed" : "No sync yet"}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
                       {mailSettings.lastSyncAt
-                        ? `Last sync: ${new Date(mailSettings.lastSyncAt).toLocaleString()} — ${mailSettings.lastSyncMessage ?? ""}`
-                        : "Never synced"}
-                    </p>
+                        ? `${new Date(mailSettings.lastSyncAt).toLocaleString()} · ${mailSettings.emailsProcessed ?? 0} emails processed`
+                        : mailSettings.lastSyncMessage ?? "Configure IMAP below to begin syncing"}
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {mailSettings.emailsProcessed !== undefined && mailSettings.emailsProcessed > 0 && (
-                    <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-lg">
-                      {mailSettings.emailsProcessed} email{mailSettings.emailsProcessed !== 1 ? "s" : ""} processed total
-                    </span>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={() => void handleManualSync()}
-                    disabled={mailSyncing || !mailSettings.imapUser}
-                  >
-                    {mailSyncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2" />}
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={handleManualSync} disabled={mailSyncing} className="h-8">
+                    {mailSyncing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Play className="w-3.5 h-3.5 mr-1.5" />}
                     Sync Now
                   </Button>
                 </div>
               </div>
             </Card>
 
-            {/* IMAP Settings */}
-            <Card className="glass-panel border-border">
-              <div className="p-5 border-b border-border flex items-center gap-2">
-                <Mail className="w-5 h-5 text-primary" />
-                <div>
-                  <h2 className="font-semibold text-foreground">Incoming Mail (IMAP)</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Connect to your Spacemail inbox to fetch incoming emails</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* IMAP */}
+              <Card className="glass-panel border-border">
+                <div className="p-5 border-b border-border flex items-center gap-2">
+                  <WifiOff className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-foreground text-sm">IMAP (Incoming)</h3>
                 </div>
-              </div>
-              {mailLoading ? (
-                <div className="p-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-              ) : (
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div>
-                    <label className="text-sm text-muted-foreground mb-1.5 block">IMAP Host</label>
-                    <Input
-                      value={mailSettings.imapHost}
-                      onChange={e => setMail("imapHost", e.target.value)}
-                      placeholder="mail.spacemail.com"
-                    />
+                <div className="p-5 flex flex-col gap-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">Host</Label>
+                      <Input value={mailSettings.imapHost} onChange={e => setMail("imapHost", e.target.value)} className="h-8 text-sm" placeholder="mail.example.com" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">Port</Label>
+                      <Input type="number" value={mailSettings.imapPort} onChange={e => setMail("imapPort", parseInt(e.target.value))} className="h-8 text-sm" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground mb-1.5 block">IMAP Port</label>
-                    <Input
-                      type="number"
-                      value={mailSettings.imapPort}
-                      onChange={e => setMail("imapPort", Number(e.target.value))}
-                      placeholder="993"
-                    />
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Username</Label>
+                    <Input value={mailSettings.imapUser} onChange={e => setMail("imapUser", e.target.value)} className="h-8 text-sm" placeholder="user@example.com" />
                   </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground mb-1.5 block">Email Address</label>
-                    <Input
-                      type="email"
-                      value={mailSettings.imapUser}
-                      onChange={e => setMail("imapUser", e.target.value)}
-                      placeholder="crm@yourcompany.com"
-                    />
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Password</Label>
+                    <Input type="password" value={mailSettings.imapPassword} onChange={e => setMail("imapPassword", e.target.value)} className="h-8 text-sm" />
                   </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground mb-1.5 block">Password</label>
-                    <Input
-                      type="password"
-                      value={mailSettings.imapPassword}
-                      onChange={e => setMail("imapPassword", e.target.value)}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 col-span-full">
-                    <Switch
-                      checked={mailSettings.imapSecure}
-                      onCheckedChange={val => setMail("imapSecure", val)}
-                    />
-                    <span className="text-sm text-foreground">Use SSL/TLS (recommended — port 993)</span>
-                  </div>
-                  <div className="col-span-full">
-                    <Button
-                      variant="outline"
-                      className="rounded-xl"
-                      onClick={() => void handleTestConnection()}
-                      disabled={mailTesting || !mailSettings.imapUser || !mailSettings.imapPassword}
-                    >
-                      {mailTesting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wifi className="w-4 h-4 mr-2" />}
-                      Test IMAP Connection
-                    </Button>
-                    {testResult && (
-                      <div className={cn(
-                        "mt-3 flex items-center gap-2 text-sm px-3 py-1 rounded-xl border",
-                        testResult.ok
-                          ? "border-green-500/30 bg-green-500/10 text-green-600"
-                          : "border-red-500/30 bg-red-500/10 text-red-500"
-                      )}>
-                        {testResult.ok ? <CheckCircle className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-                        {testResult.msg}
-                      </div>
-                    )}
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">SSL/TLS</Label>
+                    <Switch checked={mailSettings.imapSecure} onCheckedChange={v => setMail("imapSecure", v)} />
                   </div>
                 </div>
-              )}
-            </Card>
+              </Card>
 
-            {/* SMTP Settings */}
+              {/* SMTP */}
+              <Card className="glass-panel border-border">
+                <div className="p-5 border-b border-border flex items-center gap-2">
+                  <Wifi className="w-4 h-4 text-primary" />
+                  <h3 className="font-semibold text-foreground text-sm">SMTP (Outgoing)</h3>
+                </div>
+                <div className="p-5 flex flex-col gap-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">Host</Label>
+                      <Input value={mailSettings.smtpHost} onChange={e => setMail("smtpHost", e.target.value)} className="h-8 text-sm" placeholder="mail.example.com" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">Port</Label>
+                      <Input type="number" value={mailSettings.smtpPort} onChange={e => setMail("smtpPort", parseInt(e.target.value))} className="h-8 text-sm" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Username</Label>
+                    <Input value={mailSettings.smtpUser} onChange={e => setMail("smtpUser", e.target.value)} className="h-8 text-sm" placeholder="user@example.com" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">Password</Label>
+                    <Input type="password" value={mailSettings.smtpPassword} onChange={e => setMail("smtpPassword", e.target.value)} className="h-8 text-sm" />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label className="text-xs">From Name</Label>
+                    <Input value={mailSettings.smtpFromName} onChange={e => setMail("smtpFromName", e.target.value)} className="h-8 text-sm" placeholder="ArborMind CRM" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">SSL/TLS</Label>
+                    <Switch checked={mailSettings.smtpSecure} onCheckedChange={v => setMail("smtpSecure", v)} />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Sync settings */}
             <Card className="glass-panel border-border">
               <div className="p-5 border-b border-border flex items-center gap-2">
-                <Settings className="w-5 h-5 text-primary" />
-                <div>
-                  <h2 className="font-semibold text-foreground">Outgoing Mail (SMTP)</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Used when sending emails from the CRM</p>
-                </div>
+                <RefreshCw className="w-4 h-4 text-primary" />
+                <h3 className="font-semibold text-foreground text-sm">Sync Settings</h3>
               </div>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">SMTP Host</label>
-                  <Input
-                    value={mailSettings.smtpHost}
-                    onChange={e => setMail("smtpHost", e.target.value)}
-                    placeholder="mail.spacemail.com"
-                  />
+              <div className="p-5 flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-3">
+                  <Switch checked={mailSettings.syncEnabled} onCheckedChange={v => setMail("syncEnabled", v)} />
+                  <Label className="text-sm">Enable automatic sync</Label>
                 </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">SMTP Port</label>
+                <div className="flex items-center gap-3">
+                  <Label className="text-xs whitespace-nowrap">Interval (minutes)</Label>
                   <Input
                     type="number"
-                    value={mailSettings.smtpPort}
-                    onChange={e => setMail("smtpPort", Number(e.target.value))}
-                    placeholder="465"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">Email Address</label>
-                  <Input
-                    type="email"
-                    value={mailSettings.smtpUser}
-                    onChange={e => setMail("smtpUser", e.target.value)}
-                    placeholder="crm@yourcompany.com"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">Password</label>
-                  <Input
-                    type="password"
-                    value={mailSettings.smtpPassword}
-                    onChange={e => setMail("smtpPassword", e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-muted-foreground mb-1.5 block">From Name</label>
-                  <Input
-                    value={mailSettings.smtpFromName}
-                    onChange={e => setMail("smtpFromName", e.target.value)}
-                    placeholder="ArborMind CRM"
-                  />
-                </div>
-                <div className="flex items-center gap-3 self-end pb-0.5">
-                  <Switch
-                    checked={mailSettings.smtpSecure}
-                    onCheckedChange={val => setMail("smtpSecure", val)}
-                  />
-                  <span className="text-sm text-foreground">Use SSL/TLS (port 465)</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* Sync Schedule */}
-            <Card className="glass-panel border-border">
-              <div className="p-5 border-b border-border flex items-center gap-2">
-                <Clock className="w-5 h-5 text-primary" />
-                <div>
-                  <h2 className="font-semibold text-foreground">Auto-Sync Schedule</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Automatically check inbox and create leads/opportunities</p>
-                </div>
-              </div>
-              <div className="p-6 flex flex-col gap-5">
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={mailSettings.syncEnabled}
-                    onCheckedChange={val => setMail("syncEnabled", val)}
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Enable auto-sync</p>
-                    <p className="text-xs text-muted-foreground">CRM will poll your inbox automatically</p>
-                  </div>
-                </div>
-                <div className="max-w-xs">
-                  <label className="text-sm text-muted-foreground mb-1.5 block">Check every</label>
-                  <Select
-                    value={String(mailSettings.syncIntervalMinutes)}
-                    onValueChange={val => setMail("syncIntervalMinutes", Number(val))}
+                    value={mailSettings.syncIntervalMinutes}
+                    onChange={e => setMail("syncIntervalMinutes", parseInt(e.target.value))}
+                    className="h-8 text-sm w-24"
+                    min={5}
+                    max={1440}
                     disabled={!mailSettings.syncEnabled}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5 minutes</SelectItem>
-                      <SelectItem value="10">10 minutes</SelectItem>
-                      <SelectItem value="15">15 minutes</SelectItem>
-                      <SelectItem value="30">30 minutes</SelectItem>
-                      <SelectItem value="60">1 hour</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="rounded-xl bg-muted/40 border border-border p-4 text-sm text-muted-foreground">
-                  <p className="font-medium text-foreground mb-1.5">How it works</p>
-                  <ul className="space-y-1 text-xs list-disc list-inside">
-                    <li>Emails from <strong>known contacts</strong> automatically create an <strong>Opportunity</strong></li>
-                    <li>Emails from <strong>unknown senders</strong> automatically create a <strong>Lead</strong></li>
-                    <li>Processed emails are marked as read in your inbox</li>
-                    <li>All emails are logged in the Inbox view for review</li>
-                  </ul>
+                  />
                 </div>
               </div>
             </Card>
 
-            {/* Save Button */}
-            <div className="flex justify-end">
-              <Button
-                className="rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-primary-foreground px-8"
-                onClick={() => void handleSaveMailSettings()}
-                disabled={mailSaving}
-              >
-                {mailSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                Save Mail Settings
+            {/* Test result */}
+            {testResult && (
+              <div className={cn(
+                "flex items-center gap-3 p-4 rounded-xl border text-sm",
+                testResult.ok ? "bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400" : "bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400"
+              )}>
+                {testResult.ok ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <XCircle className="w-4 h-4 flex-shrink-0" />}
+                {testResult.msg}
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button onClick={handleSaveMailSettings} disabled={mailSaving} className="bg-primary text-white">
+                {mailSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Save Settings
+              </Button>
+              <Button variant="outline" onClick={handleTestConnection} disabled={mailTesting}>
+                {mailTesting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wifi className="w-4 h-4 mr-2" />}
+                Test IMAP Connection
               </Button>
             </div>
           </div>
         )}
+
+        {/* ── Add User Dialog ── */}
+        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-primary" />
+                Add User Access
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-2">
+              <div className="flex flex-col gap-1.5">
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  placeholder="user@example.com"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && void handleAddUser()}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Name</Label>
+                <Input
+                  placeholder="Full name (optional)"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label>Role</Label>
+                <Select value={newRole} onValueChange={setNewRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRoles.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleAddUser} disabled={saving || !newEmail}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Grant Access
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Edit User Dialog ── */}
+        <Dialog open={!!editUser} onOpenChange={(open) => { if (!open) setEditUser(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-primary" />
+                Edit User
+              </DialogTitle>
+            </DialogHeader>
+            {editUser && (
+              <div className="flex flex-col gap-4 py-2">
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                  <Avatar className="w-9 h-9 border border-border">
+                    {editUser.avatarUrl && <img src={editUser.avatarUrl} alt={editUser.name ?? editUser.email} />}
+                    <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                      {(editUser.name ?? editUser.email).substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="text-sm font-medium text-foreground">{editUser.email}</div>
+                    <div className="text-xs text-muted-foreground">Member since {new Date(editUser.createdAt).toLocaleDateString()}</div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Name</Label>
+                  <Input
+                    placeholder="Full name"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label>Role</Label>
+                  <Select value={editRole} onValueChange={setEditRole}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableRoles.map((r) => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div>
+                    <Label className="text-sm">Active Status</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">Inactive users cannot sign in</p>
+                  </div>
+                  <Switch checked={editActive} onCheckedChange={setEditActive} />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
+              <Button onClick={handleEditUser} disabled={editSaving}>
+                {editSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ── Remove Confirmation ── */}
+        <AlertDialog open={removeId !== null} onOpenChange={(open) => { if (!open) setRemoveId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Revoke Access</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will prevent the user from signing in. You can re-grant access later by adding them again.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => removeId !== null && void handleRemoveUser(removeId)}
+              >
+                Revoke Access
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      {/* Add User Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Grant App Access</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4 py-2">
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Email address *</label>
-              <Input placeholder="user@example.com" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} type="email" />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Display name</label>
-              <Input placeholder="Optional" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1.5 block">Role</label>
-              <Select value={newRole} onValueChange={setNewRole}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sales">Sales</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => void handleAddUser()} disabled={!newEmail || saving}>
-              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Grant Access
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Remove User Confirm */}
-      <AlertDialog open={removeId !== null} onOpenChange={() => setRemoveId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Revoke access?</AlertDialogTitle>
-            <AlertDialogDescription>This user will no longer be able to sign in.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 text-destructive-foreground hover:bg-red-700" onClick={() => removeId && void handleRemoveUser(removeId)}>
-              Revoke
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Layout>
   );
 }
