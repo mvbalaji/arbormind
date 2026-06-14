@@ -25,6 +25,8 @@ export const leadsTable = pgTable("leads", {
   convertedContactId: integer("converted_contact_id").references(() => contactsTable.id),
   convertedAccountId: integer("converted_account_id").references(() => accountsTable.id),
   convertedOpportunityId: integer("converted_opportunity_id"),
+  buyerClassification: text("buyer_classification"),
+  insightsGeneratedAt: timestamp("insights_generated_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

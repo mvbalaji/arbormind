@@ -50,10 +50,23 @@ const STATUS_BADGE_COLORS: Record<string, string> = {
   converted: "bg-gray-500 text-white border-gray-500",
 };
 
-const SCORE_COLORS = (score: number) =>
-  score >= 80 ? "bg-green-100 text-green-700 border-green-200" :
-  score >= 50 ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
-  "bg-red-100 text-red-700 border-red-200";
+const SCORE_META = (score: number) => {
+  if (score >= 70) return { label: "🔥 Hot", classes: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" };
+  if (score >= 40) return { label: "♨ Warm", classes: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" };
+  return { label: "❄ Cold", classes: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800" };
+};
+
+const BUYER_CLASS_LABELS: Record<string, string> = {
+  high_potential: "High Potential",
+  medium_potential: "Med Potential",
+  low_potential: "Low Potential",
+};
+
+const BUYER_CLASS_COLORS: Record<string, string> = {
+  high_potential: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-700",
+  medium_potential: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700",
+  low_potential: "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700",
+};
 
 const VIEW_OPTIONS = [
   { label: "All Open Leads", value: "", pinned: true },
@@ -602,11 +615,24 @@ export default function Leads() {
                       )}
                       {isColVisible("score") && (
                         <td className="px-3 py-1 text-center">
-                          {lead.score != null ? (
-                            <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full border text-xs font-bold ${SCORE_COLORS(lead.score)}`}>
-                              {lead.score}
-                            </span>
-                          ) : <span className="text-muted-foreground">—</span>}
+                          {lead.score != null ? (() => {
+                            const meta = SCORE_META(lead.score);
+                            return (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className={cn("inline-flex items-center justify-center w-7 h-5 rounded-md border text-[10px] font-bold", meta.classes)}>
+                                  {lead.score}
+                                </span>
+                                <span className={cn("text-[9px] font-semibold leading-none px-1 rounded", meta.classes)}>
+                                  {meta.label}
+                                </span>
+                                {(lead as unknown as { buyerClassification?: string }).buyerClassification && (
+                                  <span className={cn("text-[9px] px-1 rounded border mt-0.5", BUYER_CLASS_COLORS[(lead as unknown as { buyerClassification: string }).buyerClassification] ?? "")}>
+                                    {BUYER_CLASS_LABELS[(lead as unknown as { buyerClassification: string }).buyerClassification] ?? ""}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })() : <span className="text-muted-foreground">—</span>}
                         </td>
                       )}
                       {isColVisible("createdAt") && (

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTable, leadContactsTable, activitiesTable } from "@workspace/db";
+import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTable, leadContactsTable, activitiesTable, leadInsightsTable } from "@workspace/db";
 import { eq, ilike, or, sql, and } from "drizzle-orm";
 import { computeLeadScore } from "../lib/lead-scoring";
 import { requireScreenAccess } from "../lib/access-control";
@@ -29,6 +29,8 @@ const leadFields = {
   convertedContactId: leadsTable.convertedContactId,
   convertedAccountId: leadsTable.convertedAccountId,
   convertedOpportunityId: leadsTable.convertedOpportunityId,
+  buyerClassification: leadsTable.buyerClassification,
+  insightsGeneratedAt: leadsTable.insightsGeneratedAt,
   createdAt: leadsTable.createdAt,
   updatedAt: leadsTable.updatedAt,
 };
@@ -336,6 +338,31 @@ router.post("/leads/:id/convert", async (req, res) => {
     }
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /leads/:id/analyze — trigger AI insight analysis
+router.post("/leads/:id/analyze", async (req, res) => {
+  try {
+    const leadId = parseInt(req.params.id);
+    const { analyzeLeadWithAI } = await import("../lib/lead-analyzer");
+    const result = await analyzeLeadWithAI(leadId);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "Analysis failed" });
+  }
+});
+
+// GET /leads/:id/insights — fetch stored insights
+router.get("/leads/:id/insights", async (req, res) => {
+  try {
+    const leadId = parseInt(req.params.id);
+    const [insights] = await db.select().from(leadInsightsTable).where(eq(leadInsightsTable.leadId, leadId));
+    res.json({ insights: insights ?? null });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Failed to fetch insights" });
   }
 });
 

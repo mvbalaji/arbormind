@@ -24,6 +24,7 @@ import {
   Globe, Users, Briefcase, Star, Target, Send, ChevronDown, ChevronUp, ChevronRight,
   TrendingUp, ThumbsUp, ThumbsDown, MessageSquare, Plus, XCircle, CheckSquare,
 } from "lucide-react";
+import { LeadInsightsPanel } from "@/components/lead-insights-panel";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,8 @@ interface LeadDetail {
   convertedContactId: number | null;
   convertedAccountId: number | null;
   convertedOpportunityId: number | null;
+  buyerClassification: string | null;
+  insightsGeneratedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -665,8 +668,16 @@ export default function LeadDetail() {
             </CollapsibleSection>
           </div>
 
-          {/* Right column — AI Summary */}
+          {/* Right column — AI Insights + Summary */}
           <div className="lg:col-span-2 flex flex-col gap-3">
+            <LeadInsightsPanel
+              leadId={lead.id}
+              currentScore={lead.score}
+              buyerClassification={lead.buyerClassification}
+              insightsGeneratedAt={lead.insightsGeneratedAt}
+              onConvertClick={!lead.isConverted ? () => setIsConvertOpen(true) : undefined}
+              isConverted={lead.isConverted}
+            />
             <AISummary entityType="lead" entityData={lead as unknown as Record<string, unknown>} />
             <AINextActions entityType="lead" entityId={lead.id} />
           </div>
@@ -1586,7 +1597,7 @@ function LeadEditDialog({ open, onOpenChange, lead, onSaved }: {
         industry: form.industry ?? undefined,
         description: form.description ?? undefined,
         employees: form.employees ? parseInt(form.employees) : undefined,
-        annualRevenue: form.annualRevenue ? form.annualRevenue : undefined,
+        annualRevenue: form.annualRevenue ? Number(form.annualRevenue) : undefined,
       },
     }, {
       onSuccess: () => { toast({ title: "Lead updated" }); onSaved(); onOpenChange(false); },
