@@ -385,6 +385,42 @@ export default function Opportunities() {
     );
   };
 
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds).filter((id) => visibleIds.has(id));
+    if (ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} selected opportunit${ids.length === 1 ? "y" : "ies"}? This cannot be undone.`)) return;
+    let completed = 0;
+    let failed = 0;
+    ids.forEach((id) => {
+      deleteMutation.mutate(
+        { id },
+        {
+          onSuccess: () => {
+            completed++;
+            setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+            if (completed + failed === ids.length) {
+              queryClient.invalidateQueries({ queryKey: getListOpportunitiesQueryKey() });
+              toast({
+                title: failed === 0 ? "Deleted" : "Partially deleted",
+                description: failed === 0
+                  ? `${completed} opportunit${completed === 1 ? "y" : "ies"} removed.`
+                  : `${completed} deleted, ${failed} failed.`,
+                variant: failed > 0 ? "destructive" : "default",
+              });
+            }
+          },
+          onError: () => {
+            failed++;
+            if (completed + failed === ids.length) {
+              queryClient.invalidateQueries({ queryKey: getListOpportunitiesQueryKey() });
+              toast({ title: "Error", description: `${failed} deletion${failed === 1 ? "" : "s"} failed.`, variant: "destructive" });
+            }
+          },
+        }
+      );
+    });
+  };
+
   const SortHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
     <button
       onClick={() => toggleSort(field)}
@@ -548,6 +584,31 @@ export default function Opportunities() {
             </Button>
           </div>
         </div>
+
+        {visibleSelectedCount > 0 && (
+          <div className="flex items-center gap-3 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg text-sm">
+            <span className="font-medium text-foreground">
+              {visibleSelectedCount} selected
+            </span>
+            <div className="h-4 w-px bg-border" />
+            <Button
+              size="sm"
+              variant="destructive"
+              className="h-7 gap-1.5"
+              onClick={handleBulkDelete}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete {visibleSelectedCount === 1 ? "opportunity" : `${visibleSelectedCount} opportunities`}
+            </Button>
+            <button
+              className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear selection
+            </button>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="flex gap-4 h-64">
