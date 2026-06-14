@@ -22,7 +22,7 @@ import {
   ArrowLeft, Mail, Phone, Building2, User, Calendar, Activity,
   CheckCircle2, Clock, ArrowRightLeft, Pencil, MapPin, DollarSign,
   Globe, Users, Briefcase, Star, Target, Send, ChevronDown, ChevronUp, ChevronRight,
-  TrendingUp, ThumbsUp, ThumbsDown, MessageSquare, Plus, XCircle, CheckSquare,
+  TrendingUp, ThumbsUp, ThumbsDown, MessageSquare, Plus, XCircle, CheckSquare, Save, X,
 } from "lucide-react";
 import { LeadInsightsPanel } from "@/components/lead-insights-panel";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
@@ -140,17 +140,31 @@ function FieldRow({ label, value, icon: Icon }: { label: string; value?: string 
   );
 }
 
-function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+function CollapsibleSection({ title, children, defaultOpen = true, onEdit, isEditing }: {
+  title: string; children: React.ReactNode; defaultOpen?: boolean;
+  onEdit?: () => void; isEditing?: boolean;
+}) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="bg-card border border-border rounded-md overflow-hidden shadow-sm">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-2 py-1 bg-muted/30 hover:bg-muted/50 transition-colors border-b border-border"
-      >
-        <span className="text-xs font-semibold text-foreground uppercase tracking-wide">{title}</span>
-        {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
-      </button>
+      <div className="flex items-center justify-between px-2 py-1 bg-muted/30 border-b border-border">
+        <button
+          onClick={() => setOpen(!open)}
+          className="flex-1 flex items-center justify-between text-left hover:opacity-80 transition-opacity"
+        >
+          <span className="text-xs font-semibold text-foreground uppercase tracking-wide">{title}</span>
+          {open ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+        </button>
+        {onEdit && !isEditing && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="ml-2 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Edit section"
+          >
+            <Pencil className="w-3 h-3" />
+          </button>
+        )}
+      </div>
       {open && <div className="px-3 py-1">{children}</div>}
     </div>
   );
@@ -161,8 +175,22 @@ export default function LeadDetail() {
   const id = params.id;
   const [, navigate] = useLocation();
   const { format: fmtMoney } = useCurrency();
-  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isConvertOpen, setIsConvertOpen] = useState(false);
+  type LeadEditSection = "contact" | "details";
+  const [editingSection, setEditingSection] = useState<LeadEditSection | null>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editCompany, setEditCompany] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editSource, setEditSource] = useState("");
+  const [editScore, setEditScore] = useState("");
+  const [editAssignedTo, setEditAssignedTo] = useState("");
+  const [editIndustry, setEditIndustry] = useState("");
+  const [editEmployees, setEditEmployees] = useState("");
+  const [editAnnualRevenue, setEditAnnualRevenue] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerActivityId, setViewerActivityId] = useState<number | null>(null);
@@ -240,6 +268,61 @@ export default function LeadDetail() {
 
   const updateMutation = useUpdateLead();
   const convertMutation = useConvertLead();
+  const { data: usersForEdit } = useListUsers({ limit: 50 });
+
+  const startEdit = (section: LeadEditSection) => {
+    if (!lead) return;
+    if (section === "contact") {
+      setEditFirstName(lead.firstName);
+      setEditLastName(lead.lastName);
+      setEditEmail(lead.email ?? "");
+      setEditPhone(lead.phone ?? "");
+      setEditCompany(lead.company ?? "");
+      setEditTitle(lead.title ?? "");
+    } else {
+      setEditSource(lead.source ?? "");
+      setEditScore(lead.score?.toString() ?? "");
+      setEditAssignedTo(lead.assignedTo?.toString() ?? "");
+      setEditIndustry(lead.industry ?? "");
+      setEditEmployees(lead.employees?.toString() ?? "");
+      setEditAnnualRevenue(lead.annualRevenue?.toString() ?? "");
+      setEditDescription(lead.description ?? "");
+    }
+    setEditingSection(section);
+  };
+
+  const cancelEdit = () => setEditingSection(null);
+
+  const handleSaveSection = async () => {
+    if (!lead || !editingSection) return;
+    const data = {
+      firstName: editingSection === "contact" ? editFirstName : lead.firstName,
+      lastName: editingSection === "contact" ? editLastName : lead.lastName,
+      email: editingSection === "contact" ? (editEmail || undefined) : (lead.email ?? undefined),
+      phone: editingSection === "contact" ? (editPhone || undefined) : (lead.phone ?? undefined),
+      company: editingSection === "contact" ? (editCompany || undefined) : (lead.company ?? undefined),
+      title: editingSection === "contact" ? (editTitle || undefined) : (lead.title ?? undefined),
+      status: lead.status as "new" | "contacted" | "qualified" | "unqualified" | "converted",
+      source: editingSection === "details" ? (editSource as "website" | "referral" | "linkedin" | "email_campaign" | "trade_show" | "cold_call" | "other" | undefined || undefined) : (lead.source as "website" | "referral" | "linkedin" | "email_campaign" | "trade_show" | "cold_call" | "other" | undefined ?? undefined),
+      score: editingSection === "details" ? (editScore ? parseInt(editScore) : undefined) : (lead.score ?? undefined),
+      assignedTo: editingSection === "details" ? (editAssignedTo ? parseInt(editAssignedTo) : undefined) : (lead.assignedTo ?? undefined),
+      industry: editingSection === "details" ? (editIndustry || undefined) : (lead.industry ?? undefined),
+      employees: editingSection === "details" ? (editEmployees ? parseInt(editEmployees) : undefined) : (lead.employees ?? undefined),
+      annualRevenue: editingSection === "details" ? (editAnnualRevenue ? Number(editAnnualRevenue) : undefined) : (lead.annualRevenue ?? undefined),
+      description: editingSection === "details" ? (editDescription || undefined) : (lead.description ?? undefined),
+    };
+    try {
+      await updateMutation.mutateAsync({ id: lead.id, data });
+      toast({ title: "Saved" });
+      setEditingSection(null);
+      queryClient.invalidateQueries({ queryKey: ["lead", id] });
+      queryClient.invalidateQueries({ queryKey: getListLeadsQueryKey() });
+    } catch {
+      toast({ title: "Error", description: "Failed to save.", variant: "destructive" });
+    }
+  };
+
+  const inputCls = "w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
 
   if (isLoading) {
     return (
@@ -454,9 +537,6 @@ export default function LeadDetail() {
                   </Button>
                 </>
               )}
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={() => setIsEditOpen(true)}>
-                <Pencil className="w-3.5 h-3.5" /> Edit
-              </Button>
             </div>
           </div>
 
@@ -615,47 +695,164 @@ export default function LeadDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left column — Details */}
           <div className="lg:col-span-1 flex flex-col gap-3">
-            {/* About */}
-            <CollapsibleSection title="About">
-              <FieldRow label="Lead Source" value={lead.source?.replace(/_/g, " ")} icon={Target} />
-              <FieldRow label="Industry" value={lead.industry} icon={Building2} />
-              <FieldRow label="Employees" value={lead.employees?.toLocaleString()} icon={Users} />
-              <FieldRow label="Annual Revenue" value={lead.annualRevenue ? fmtMoney(lead.annualRevenue) : null} icon={DollarSign} />
-              {lead.score != null && (
-                <div className="py-2 border-b border-border/50 last:border-0">
-                  <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                    <Star className="w-3 h-3" /> Lead Score
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
-                      <div
-                        className={cn("h-full rounded-full", lead.score >= 70 ? "bg-green-500" : lead.score >= 40 ? "bg-yellow-500" : "bg-red-500")}
-                        style={{ width: `${lead.score}%` }}
-                      />
+            {/* Contact Information */}
+            <CollapsibleSection
+              title="Contact Information"
+              onEdit={() => startEdit("contact")}
+              isEditing={editingSection === "contact"}
+            >
+              {editingSection === "contact" ? (
+                <div className="py-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">First Name *</label>
+                      <input className={inputCls} value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} required />
                     </div>
-                    <span className={cn(
-                      "text-sm font-bold",
-                      lead.score >= 70 ? "text-green-600" : lead.score >= 40 ? "text-yellow-600" : "text-red-600"
-                    )}>
-                      {lead.score}
-                    </span>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Last Name *</label>
+                      <input className={inputCls} value={editLastName} onChange={(e) => setEditLastName(e.target.value)} required />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Email</label>
+                    <input className={inputCls} type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="user@example.com" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                    <input className={inputCls} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+91 9876543210" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Company</label>
+                      <input className={inputCls} value={editCompany} onChange={(e) => setEditCompany(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Title</label>
+                      <input className={inputCls} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="h-8 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => void handleSaveSection()} disabled={updateMutation.isPending || !editFirstName || !editLastName}>
+                      <Save className="w-3.5 h-3.5" /> {updateMutation.isPending ? "Saving…" : "Save"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={cancelEdit}>
+                      <X className="w-3.5 h-3.5" /> Cancel
+                    </Button>
                   </div>
                 </div>
-              )}
-              {lead.description && (
-                <div className="py-2">
-                  <div className="text-xs text-muted-foreground mb-1">Description</div>
-                  <p className="text-sm text-foreground leading-relaxed">{lead.description}</p>
-                </div>
+              ) : (
+                <>
+                  <FieldRow label="Email" value={lead.email} icon={Mail} />
+                  <FieldRow label="Phone" value={lead.phone} icon={Phone} />
+                  <FieldRow label="Company" value={lead.company} icon={Building2} />
+                  <FieldRow label="Title" value={lead.title} icon={User} />
+                  {!lead.email && !lead.phone && !lead.company && !lead.title && (
+                    <p className="text-xs text-muted-foreground py-2">No contact details yet.</p>
+                  )}
+                </>
               )}
             </CollapsibleSection>
 
-            {/* Get in Touch */}
-            <CollapsibleSection title="Get in Touch">
-              <FieldRow label="Email" value={lead.email} icon={Mail} />
-              <FieldRow label="Phone" value={lead.phone} icon={Phone} />
-              <FieldRow label="Company" value={lead.company} icon={Building2} />
-              <FieldRow label="Title" value={lead.title} icon={User} />
+            {/* Lead Details */}
+            <CollapsibleSection
+              title="Lead Details"
+              onEdit={() => startEdit("details")}
+              isEditing={editingSection === "details"}
+            >
+              {editingSection === "details" ? (
+                <div className="py-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Source</label>
+                      <select className={inputCls} value={editSource} onChange={(e) => setEditSource(e.target.value)}>
+                        <option value="">—</option>
+                        {["website", "referral", "linkedin", "email_campaign", "trade_show", "cold_call", "other"].map((s) => (
+                          <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Industry</label>
+                      <input className={inputCls} value={editIndustry} onChange={(e) => setEditIndustry(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Employees</label>
+                      <input className={inputCls} type="number" value={editEmployees} onChange={(e) => setEditEmployees(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Annual Revenue</label>
+                      <input className={inputCls} type="number" value={editAnnualRevenue} onChange={(e) => setEditAnnualRevenue(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Score (0–100)</label>
+                      <input className={inputCls} type="number" min="0" max="100" value={editScore} onChange={(e) => setEditScore(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Assigned To</label>
+                      <select className={inputCls} value={editAssignedTo} onChange={(e) => setEditAssignedTo(e.target.value)}>
+                        <option value="">Unassigned</option>
+                        {usersForEdit?.data?.map((u) => (
+                          <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Description</label>
+                    <textarea
+                      className={cn(inputCls, "h-20 py-2 resize-none")}
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="h-8 gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => void handleSaveSection()} disabled={updateMutation.isPending}>
+                      <Save className="w-3.5 h-3.5" /> {updateMutation.isPending ? "Saving…" : "Save"}
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={cancelEdit}>
+                      <X className="w-3.5 h-3.5" /> Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <FieldRow label="Lead Source" value={lead.source?.replace(/_/g, " ")} icon={Target} />
+                  <FieldRow label="Industry" value={lead.industry} icon={Building2} />
+                  <FieldRow label="Employees" value={lead.employees?.toLocaleString()} icon={Users} />
+                  <FieldRow label="Annual Revenue" value={lead.annualRevenue ? fmtMoney(lead.annualRevenue) : null} icon={DollarSign} />
+                  {lead.score != null && (
+                    <div className="py-2 border-b border-border/50 last:border-0">
+                      <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                        <Star className="w-3 h-3" /> Lead Score
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
+                          <div
+                            className={cn("h-full rounded-full", lead.score >= 70 ? "bg-green-500" : lead.score >= 40 ? "bg-yellow-500" : "bg-red-500")}
+                            style={{ width: `${lead.score}%` }}
+                          />
+                        </div>
+                        <span className={cn(
+                          "text-sm font-bold",
+                          lead.score >= 70 ? "text-green-600" : lead.score >= 40 ? "text-yellow-600" : "text-red-600"
+                        )}>
+                          {lead.score}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {lead.description && (
+                    <div className="py-2">
+                      <div className="text-xs text-muted-foreground mb-1">Description</div>
+                      <p className="text-sm text-foreground leading-relaxed">{lead.description}</p>
+                    </div>
+                  )}
+                </>
+              )}
             </CollapsibleSection>
 
             {/* Record Info */}
@@ -1278,13 +1475,6 @@ export default function LeadDetail() {
         onConvert={handleConvertSubmit}
       />
 
-      {/* Edit Dialog */}
-      <LeadEditDialog
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        lead={lead}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ["lead", id] })}
-      />
     </Layout>
   );
 }
@@ -1523,194 +1713,3 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
   );
 }
 
-function LeadEditDialog({ open, onOpenChange, lead, onSaved }: {
-  open: boolean; onOpenChange: (v: boolean) => void; lead: LeadDetail; onSaved: () => void;
-}) {
-  const { toast } = useToast();
-  const { data: usersData } = useListUsers({ limit: 50 });
-  const updateMutation = useUpdateLead();
-  const [form, setForm] = useState({
-    ...lead,
-    assignedTo: lead.assignedTo?.toString() ?? "",
-    score: lead.score?.toString() ?? "",
-    annualRevenue: lead.annualRevenue?.toString() ?? "",
-    employees: lead.employees?.toString() ?? "",
-  });
-
-  const [emailError, setEmailError] = useState("");
-  const [phoneError, setPhoneError] = useState("");
-
-  React.useEffect(() => {
-    if (open) {
-      setForm({
-        ...lead,
-        assignedTo: lead.assignedTo?.toString() ?? "",
-        score: lead.score?.toString() ?? "",
-        annualRevenue: lead.annualRevenue?.toString() ?? "",
-        employees: lead.employees?.toString() ?? "",
-      });
-      setEmailError("");
-      setPhoneError("");
-    }
-  }, [open, lead]);
-
-  const validateEmail = (val: string) => {
-    if (!val) return "";
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(val) ? "" : "Enter a valid email address";
-  };
-
-  const validatePhone = (val: string) => {
-    if (!val) return "";
-    const cleaned = val.replace(/\s/g, "");
-    const re = /^\+?[0-9]{7,15}$/;
-    return re.test(cleaned) ? "" : "Enter a valid phone number (e.g. +91 9876543210)";
-  };
-
-  const f = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const v = e.target.value;
-    setForm({ ...form, [field]: v });
-    if (field === "email") setEmailError(validateEmail(v));
-    if (field === "phone") setPhoneError(validatePhone(v));
-  };
-
-  const sc = "w-full h-9 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const ee = validateEmail(form.email ?? "");
-    const pe = validatePhone(form.phone ?? "");
-    if (ee || pe) { setEmailError(ee); setPhoneError(pe); return; }
-    updateMutation.mutate({
-      id: lead.id,
-      data: {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email ?? undefined,
-        phone: form.phone ?? undefined,
-        company: form.company ?? undefined,
-        title: form.title ?? undefined,
-        status: form.status as "new" | "contacted" | "qualified" | "unqualified" | "converted",
-        source: form.source ?? undefined,
-        score: form.score ? parseInt(form.score) : undefined,
-        assignedTo: form.assignedTo ? parseInt(form.assignedTo) : undefined,
-        industry: form.industry ?? undefined,
-        description: form.description ?? undefined,
-        employees: form.employees ? parseInt(form.employees) : undefined,
-        annualRevenue: form.annualRevenue ? Number(form.annualRevenue) : undefined,
-      },
-    }, {
-      onSuccess: () => { toast({ title: "Lead updated" }); onSaved(); onOpenChange(false); },
-      onError: () => toast({ title: "Error", description: "Failed to update.", variant: "destructive" }),
-    });
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="border-b border-border pb-3">
-          <DialogTitle className="text-base font-semibold">Edit Lead</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-3 py-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">First Name *</Label>
-              <Input required className="h-8 text-sm" value={form.firstName} onChange={f("firstName")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Last Name *</Label>
-              <Input required className="h-8 text-sm" value={form.lastName} onChange={f("lastName")} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Email</Label>
-              <Input
-                type="text"
-                className={cn("h-9 text-sm", emailError ? "border-destructive focus:ring-destructive/30" : "")}
-                value={form.email ?? ""}
-                onChange={f("email")}
-                placeholder="user@example.com"
-              />
-              {emailError && <p className="text-xs text-destructive">{emailError}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Phone</Label>
-              <Input
-                className={cn("h-9 text-sm", phoneError ? "border-destructive focus:ring-destructive/30" : "")}
-                value={form.phone ?? ""}
-                onChange={f("phone")}
-                placeholder="+91 9876543210"
-              />
-              {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Company</Label>
-              <Input className="h-8 text-sm" value={form.company ?? ""} onChange={f("company")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Title</Label>
-              <Input className="h-8 text-sm" value={form.title ?? ""} onChange={f("title")} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Status</Label>
-              <select className={sc} value={form.status} onChange={f("status")}>
-                {["new", "contacted", "qualified", "unqualified"].map((s) => (
-                  <option key={s} value={s} className="capitalize">{s}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Source</Label>
-              <select className={sc} value={form.source ?? ""} onChange={f("source")}>
-                <option value="">—</option>
-                {["website", "referral", "linkedin", "email_campaign", "trade_show", "cold_call", "other"].map((s) => (
-                  <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Score (0–100)</Label>
-              <Input type="number" min="0" max="100" className="h-8 text-sm" value={form.score} onChange={f("score")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Assigned To</Label>
-              <select className={sc} value={form.assignedTo} onChange={f("assignedTo")}>
-                <option value="">Unassigned</option>
-                {usersData?.data?.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Industry</Label>
-              <Input className="h-8 text-sm" value={form.industry ?? ""} onChange={f("industry")} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Employees</Label>
-              <Input type="number" className="h-8 text-sm" value={form.employees} onChange={f("employees")} />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Description</Label>
-            <textarea className={cn(sc, "h-20 py-2 resize-none")} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          </div>
-          <DialogFooter className="pt-3 border-t border-border gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" size="sm" disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              {updateMutation.isPending ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}

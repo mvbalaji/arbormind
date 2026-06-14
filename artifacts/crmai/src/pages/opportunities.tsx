@@ -385,40 +385,20 @@ export default function Opportunities() {
     );
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds).filter((id) => visibleIds.has(id));
     if (ids.length === 0) return;
     if (!window.confirm(`Delete ${ids.length} selected opportunit${ids.length === 1 ? "y" : "ies"}? This cannot be undone.`)) return;
-    let completed = 0;
-    let failed = 0;
-    ids.forEach((id) => {
-      deleteMutation.mutate(
-        { id },
-        {
-          onSuccess: () => {
-            completed++;
-            setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
-            if (completed + failed === ids.length) {
-              queryClient.invalidateQueries({ queryKey: getListOpportunitiesQueryKey() });
-              toast({
-                title: failed === 0 ? "Deleted" : "Partially deleted",
-                description: failed === 0
-                  ? `${completed} opportunit${completed === 1 ? "y" : "ies"} removed.`
-                  : `${completed} deleted, ${failed} failed.`,
-                variant: failed > 0 ? "destructive" : "default",
-              });
-            }
-          },
-          onError: () => {
-            failed++;
-            if (completed + failed === ids.length) {
-              queryClient.invalidateQueries({ queryKey: getListOpportunitiesQueryKey() });
-              toast({ title: "Error", description: `${failed} deletion${failed === 1 ? "" : "s"} failed.`, variant: "destructive" });
-            }
-          },
-        }
-      );
-    });
+    const results = await Promise.allSettled(ids.map((id) => deleteMutation.mutateAsync({ id })));
+    const succeeded = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setSelectedIds(new Set());
+    queryClient.invalidateQueries({ queryKey: getListOpportunitiesQueryKey() });
+    if (failed === 0) {
+      toast({ title: "Deleted", description: `${succeeded} opportunit${succeeded === 1 ? "y" : "ies"} removed.` });
+    } else {
+      toast({ title: "Partially deleted", description: `${succeeded} deleted, ${failed} failed.`, variant: "destructive" });
+    }
   };
 
   const SortHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
