@@ -390,4 +390,48 @@ router.get("/leads/:id/contacts", async (req, res) => {
   }
 });
 
+// POST /leads/:id/hunter — look up contacts via Hunter.io domain search
+router.post("/leads/:id/hunter", async (req, res) => {
+  try {
+    const leadId = parseInt(req.params.id);
+    const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
+    if (!lead) return res.status(404).json({ error: "Lead not found" });
+
+    const apiKey = process.env.HUNTER_API_KEY;
+    if (!apiKey) return res.status(400).json({ error: "Hunter.io API key not configured. Add HUNTER_API_KEY to your environment secrets." });
+
+    const domain = lead.website
+      ? lead.website.replace(/^https?:\/\//, "").split("/")[0]
+      : lead.email?.includes("@") ? lead.email.split("@")[1] : null;
+
+    if (!domain) return res.status(400).json({ error: "No company domain available. Add a website to this lead first." });
+
+    const url = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&limit=5&api_key=${apiKey}`;
+    const response = await fetch(url);
+    const data = await response.json() as {
+      data?: {
+        domain: string;
+        organization: string;
+        pattern: string;
+        emails: Array<{ value: string; first_name: string; last_name: string; position: string; confidence: number; linkedin_url?: string; }>;
+      };
+      errors?: Array<{ details: string }>;
+    };
+
+    if (!response.ok || data.errors?.length) {
+      return res.status(400).json({ error: data.errors?.[0]?.details ?? "Hunter.io lookup failed" });
+    }
+
+    res.json({
+      domain,
+      organization: data.data?.organization ?? null,
+      pattern: data.data?.pattern ?? null,
+      emails: data.data?.emails ?? [],
+    });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Hunter.io lookup failed" });
+  }
+});
+
 export default router;

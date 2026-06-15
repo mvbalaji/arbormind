@@ -53,6 +53,11 @@ export interface LeadInsightResult {
   facebookUrl: string;
   instagramHandle: string;
   youtubeUrl: string;
+  // Best contact
+  bestContactName: string;
+  bestContactTitle: string;
+  bestContactEmail: string;
+  emailPattern: string;
 }
 
 function buildAnalysisPrompt(lead: LeadForAnalysis): string {
@@ -106,7 +111,11 @@ function buildAnalysisPrompt(lead: LeadForAnalysis): string {
   "twitterHandle": "string — company Twitter/X handle with @ e.g. '@stripe'. 'Unknown' if not findable.",
   "facebookUrl": "string — company Facebook page URL e.g. 'https://facebook.com/stripe'. 'Unknown' if not findable.",
   "instagramHandle": "string — company Instagram handle with @ e.g. '@stripe'. 'Unknown' if not findable.",
-  "youtubeUrl": "string — company YouTube channel URL e.g. 'https://youtube.com/@stripe'. 'Unknown' if not findable."
+  "youtubeUrl": "string — company YouTube channel URL e.g. 'https://youtube.com/@stripe'. 'Unknown' if not findable.",
+  "bestContactName": "string — full name of the best person to contact for a B2B sale (not necessarily CEO — prefer VP Sales, Head of Procurement, CTO, or relevant decision-maker). 'Unknown' if not findable.",
+  "bestContactTitle": "string — their exact title e.g. 'VP of Sales', 'Chief Procurement Officer', 'Head of Engineering'. 'Unknown' if not findable.",
+  "bestContactEmail": "string — inferred likely email using company domain and name (e.g. 'john.smith@stripe.com'). Format: apply the most common pattern for this company. If pattern unknown, use firstname.lastname@domain. 'Unknown' if domain unavailable.",
+  "emailPattern": "string — the company's email pattern e.g. '{first}.{last}@domain.com', '{first}@domain.com', '{first}{last}@domain.com'. 'Unknown' if not inferrable."
 }`,
     "",
     "IMPORTANT GUIDANCE:",
@@ -115,6 +124,8 @@ function buildAnalysisPrompt(lead: LeadForAnalysis): string {
     "- For market value: use funding rounds, ARR estimates, or public market cap if known.",
     "- For headquarters: use the company's known registered address or primary office.",
     "- For social media: use known/verified handles. For LinkedIn, construct from company slug if known. For Twitter/Instagram use the official @handle.",
+    "- For bestContactName/Title: identify the most relevant B2B decision-maker (not always CEO). For tech, prefer CTO/VP Engineering. For procurement, prefer CPO/VP Ops. For general, prefer VP Sales or COO.",
+    "- For bestContactEmail: apply the company's known email pattern to the contact's name and domain. If you know the company uses 'first@domain.com', use that. Default to 'firstname.lastname@domain.com'.",
     "- NEVER leave a field as empty string — use 'Unknown' as fallback.",
     "- Buyer classification guidance:",
     "  · high_potential: senior decision-maker at growing company, clear fit, aiScoreBoost 25-40",
@@ -178,6 +189,10 @@ export async function analyzeLeadWithAI(leadId: number): Promise<{ insights: Lea
     facebookUrl: parsed.facebookUrl ?? "Unknown",
     instagramHandle: parsed.instagramHandle ?? "Unknown",
     youtubeUrl: parsed.youtubeUrl ?? "Unknown",
+    bestContactName: parsed.bestContactName ?? "Unknown",
+    bestContactTitle: parsed.bestContactTitle ?? "Unknown",
+    bestContactEmail: parsed.bestContactEmail ?? "Unknown",
+    emailPattern: parsed.emailPattern ?? "Unknown",
   };
 
   const ruleScore = computeLeadScore({
@@ -233,6 +248,10 @@ export async function analyzeLeadWithAI(leadId: number): Promise<{ insights: Lea
     facebookUrl: insights.facebookUrl,
     instagramHandle: insights.instagramHandle,
     youtubeUrl: insights.youtubeUrl,
+    bestContactName: insights.bestContactName,
+    bestContactTitle: insights.bestContactTitle,
+    bestContactEmail: insights.bestContactEmail,
+    emailPattern: insights.emailPattern,
   }).onConflictDoUpdate({
     target: leadInsightsTable.leadId,
     set: {
@@ -265,6 +284,10 @@ export async function analyzeLeadWithAI(leadId: number): Promise<{ insights: Lea
       facebookUrl: insights.facebookUrl,
       instagramHandle: insights.instagramHandle,
       youtubeUrl: insights.youtubeUrl,
+      bestContactName: insights.bestContactName,
+      bestContactTitle: insights.bestContactTitle,
+      bestContactEmail: insights.bestContactEmail,
+      emailPattern: insights.emailPattern,
       createdAt: new Date(),
     },
   });

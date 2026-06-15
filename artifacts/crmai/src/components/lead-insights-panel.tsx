@@ -11,6 +11,7 @@ import {
   ChevronRight, AlertTriangle, CheckCircle2, ArrowRightLeft,
   MapPin, Calendar, DollarSign, Trophy, User, ExternalLink,
   Swords, Twitter, Youtube, Facebook, Instagram, Linkedin,
+  Mail, Search, Copy, Check,
 } from "lucide-react";
 
 interface LeadInsights {
@@ -47,6 +48,11 @@ interface LeadInsights {
   facebookUrl: string | null;
   instagramHandle: string | null;
   youtubeUrl: string | null;
+  // Best contact
+  bestContactName: string | null;
+  bestContactTitle: string | null;
+  bestContactEmail: string | null;
+  emailPattern: string | null;
   createdAt: string;
 }
 
@@ -131,12 +137,31 @@ function InfoChip({ icon: Icon, label, value, href }: {
   );
 }
 
+interface HunterEmail {
+  value: string;
+  first_name: string;
+  last_name: string;
+  position: string;
+  confidence: number;
+  linkedin_url?: string;
+}
+
+interface HunterResult {
+  domain: string;
+  organization: string | null;
+  pattern: string | null;
+  emails: HunterEmail[];
+}
+
 export function LeadInsightsPanel({
   leadId, currentScore, buyerClassification, insightsGeneratedAt, onConvertClick, isConverted,
 }: LeadInsightsPanelProps) {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [analyzing, setAnalyzing] = useState(false);
+  const [hunterResult, setHunterResult] = useState<HunterResult | null>(null);
+  const [hunterLooking, setHunterLooking] = useState(false);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
 
   const score = currentScore ?? 0;
   const scoreMeta = SCORE_META(score);
@@ -175,6 +200,41 @@ export function LeadInsightsPanel({
     },
     onSettled: () => setAnalyzing(false),
   });
+
+  const handleHunterLookup = async () => {
+    setHunterLooking(true);
+    setHunterResult(null);
+    try {
+      const r = await fetch(`/api/leads/${leadId}/hunter`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await r.json() as HunterResult & { error?: string };
+      if (!r.ok) throw new Error(data.error ?? "Lookup failed");
+      setHunterResult(data);
+      if (data.emails.length === 0) {
+        toast({ title: "No contacts found", description: `Hunter.io found no email addresses for ${data.domain}.` });
+      } else {
+        toast({ title: `Found ${data.emails.length} contact${data.emails.length > 1 ? "s" : ""}`, description: `Real verified emails from Hunter.io for ${data.domain}.` });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Hunter.io lookup failed";
+      if (msg.includes("HUNTER_API_KEY")) {
+        toast({ title: "Hunter.io not configured", description: "Add your HUNTER_API_KEY to environment secrets to enable real email lookup.", variant: "destructive" });
+      } else {
+        toast({ title: "Lookup failed", description: msg, variant: "destructive" });
+      }
+    } finally {
+      setHunterLooking(false);
+    }
+  };
+
+  const copyEmail = (email: string) => {
+    void navigator.clipboard.writeText(email);
+    setCopiedEmail(email);
+    setTimeout(() => setCopiedEmail(null), 2000);
+  };
 
   const insights = insightsData?.insights ?? null;
   const hasInsights = !!insights;
@@ -339,6 +399,118 @@ export function LeadInsightsPanel({
                         LinkedIn Profile
                         <ExternalLink className="w-2.5 h-2.5" />
                       </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Best Contact to Reach */}
+            {insights.bestContactName && insights.bestContactName !== "Unknown" && (
+              <div>
+                <SectionLabel>Best Contact to Reach</SectionLabel>
+                <div className="p-3 rounded-xl border border-border bg-muted/20 space-y-2.5">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
+                      <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-foreground">{insights.bestContactName}</div>
+                      {insights.bestContactTitle && insights.bestContactTitle !== "Unknown" && (
+                        <div className="text-xs text-muted-foreground">{insights.bestContactTitle}</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {insights.bestContactEmail && insights.bestContactEmail !== "Unknown" && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-background border border-border">
+                      <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[10px] text-muted-foreground mb-0.5">AI-inferred email</div>
+                        <div className="text-xs font-mono text-foreground truncate">{insights.bestContactEmail}</div>
+                      </div>
+                      <button
+                        onClick={() => copyEmail(insights.bestContactEmail!)}
+                        className="flex-shrink-0 p-1 rounded hover:bg-muted transition-colors"
+                        title="Copy email"
+                      >
+                        {copiedEmail === insights.bestContactEmail
+                          ? <Check className="w-3.5 h-3.5 text-green-500" />
+                          : <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                        }
+                      </button>
+                    </div>
+                  )}
+
+                  {insights.emailPattern && insights.emailPattern !== "Unknown" && (
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <span className="font-medium">Email pattern:</span>
+                      <code className="bg-muted px-1 py-0.5 rounded">{insights.emailPattern}</code>
+                    </div>
+                  )}
+
+                  <div className="pt-1 border-t border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-[10px] text-muted-foreground font-medium">Verified contacts via Hunter.io</div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 text-xs gap-1 px-2"
+                        onClick={() => { void handleHunterLookup(); }}
+                        disabled={hunterLooking}
+                      >
+                        {hunterLooking
+                          ? <RefreshCw className="w-3 h-3 animate-spin" />
+                          : <Search className="w-3 h-3" />
+                        }
+                        {hunterLooking ? "Looking up…" : "Lookup Real Emails"}
+                      </Button>
+                    </div>
+
+                    {hunterResult && (
+                      <div className="space-y-1.5">
+                        {hunterResult.pattern && (
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <span className="font-medium">Confirmed pattern:</span>
+                            <code className="bg-muted px-1 py-0.5 rounded">{hunterResult.pattern}</code>
+                          </div>
+                        )}
+                        {hunterResult.emails.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic">No public contacts found for this domain.</p>
+                        ) : (
+                          hunterResult.emails.map((em, i) => (
+                            <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
+                              <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold text-foreground truncate">
+                                  {em.first_name} {em.last_name}
+                                  {em.position && <span className="font-normal text-muted-foreground ml-1">· {em.position}</span>}
+                                </div>
+                                <div className="text-xs font-mono text-emerald-700 dark:text-emerald-400 truncate">{em.value}</div>
+                                <div className="text-[10px] text-muted-foreground">{em.confidence}% confidence</div>
+                              </div>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {em.linkedin_url && (
+                                  <a href={em.linkedin_url} target="_blank" rel="noopener noreferrer"
+                                    className="p-1 rounded hover:bg-muted transition-colors">
+                                    <Linkedin className="w-3 h-3 text-[#0077B5]" />
+                                  </a>
+                                )}
+                                <button
+                                  onClick={() => copyEmail(em.value)}
+                                  className="p-1 rounded hover:bg-muted transition-colors"
+                                  title="Copy email"
+                                >
+                                  {copiedEmail === em.value
+                                    ? <Check className="w-3 h-3 text-green-500" />
+                                    : <Copy className="w-3 h-3 text-muted-foreground" />
+                                  }
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
