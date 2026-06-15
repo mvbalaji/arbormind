@@ -2669,6 +2669,9 @@ components:
         phone:
           type: string
           nullable: true
+        website:
+          type: string
+          nullable: true
         company:
           type: string
           nullable: true
@@ -2760,6 +2763,9 @@ components:
         phone:
           type: string
           nullable: true
+        website:
+          type: string
+          nullable: true
         company:
           type: string
           nullable: true
@@ -2806,6 +2812,9 @@ components:
           type: string
           nullable: true
         phone:
+          type: string
+          nullable: true
+        website:
           type: string
           nullable: true
         company:

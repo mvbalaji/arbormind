@@ -185,6 +185,7 @@ export const ListLeadsResponse = zod.object({
       lastName: zod.string(),
       email: zod.string().nullish(),
       phone: zod.string().nullish(),
+      website: zod.string().nullish(),
       company: zod.string().nullish(),
       title: zod.string().nullish(),
       status: zod.enum([
@@ -225,6 +226,7 @@ export const CreateLeadBody = zod.object({
   lastName: zod.string(),
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
+  website: zod.string().nullish(),
   company: zod.string().nullish(),
   title: zod.string().nullish(),
   status: zod
@@ -252,6 +254,7 @@ export const GetLeadResponse = zod.object({
   lastName: zod.string(),
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
+  website: zod.string().nullish(),
   company: zod.string().nullish(),
   title: zod.string().nullish(),
   status: zod.enum([
@@ -289,6 +292,7 @@ export const UpdateLeadBody = zod.object({
   lastName: zod.string().optional(),
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
+  website: zod.string().nullish(),
   company: zod.string().nullish(),
   title: zod.string().nullish(),
   status: zod
@@ -309,6 +313,7 @@ export const UpdateLeadResponse = zod.object({
   lastName: zod.string(),
   email: zod.string().nullish(),
   phone: zod.string().nullish(),
+  website: zod.string().nullish(),
   company: zod.string().nullish(),
   title: zod.string().nullish(),
   status: zod.enum([
@@ -2715,6 +2720,7 @@ export const GetDashboardStatsResponse = zod.object({
       lastName: zod.string(),
       email: zod.string().nullish(),
       phone: zod.string().nullish(),
+      website: zod.string().nullish(),
       company: zod.string().nullish(),
       title: zod.string().nullish(),
       status: zod.enum([

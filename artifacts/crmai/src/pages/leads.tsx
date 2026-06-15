@@ -99,7 +99,7 @@ const defaultFormData: LeadFormData = {
   industry: "", employees: "", annualRevenue: "", description: "",
 };
 
-type LeadColKey = "select" | "name" | "company" | "phone" | "email" | "status" | "score" | "createdAt" | "owner" | "actions";
+type LeadColKey = "select" | "name" | "company" | "phone" | "email" | "website" | "status" | "score" | "createdAt" | "owner" | "actions";
 
 const LEAD_COL_DEFAULTS: Record<LeadColKey, number> = {
   select: 40,
@@ -107,6 +107,7 @@ const LEAD_COL_DEFAULTS: Record<LeadColKey, number> = {
   company: 180,
   phone: 160,
   email: 220,
+  website: 200,
   status: 150,
   score: 90,
   createdAt: 140,
@@ -114,17 +115,18 @@ const LEAD_COL_DEFAULTS: Record<LeadColKey, number> = {
   actions: 160,
 };
 
-const LEAD_COL_ORDER: LeadColKey[] = ["select", "name", "company", "phone", "email", "status", "score", "createdAt", "owner", "actions"];
-const LEAD_COL_RESIZABLE: ReadonlySet<LeadColKey> = new Set<LeadColKey>(["name", "company", "phone", "email", "status", "score", "createdAt", "owner", "actions"]);
+const LEAD_COL_ORDER: LeadColKey[] = ["select", "name", "company", "phone", "email", "website", "status", "score", "createdAt", "owner", "actions"];
+const LEAD_COL_RESIZABLE: ReadonlySet<LeadColKey> = new Set<LeadColKey>(["name", "company", "phone", "email", "website", "status", "score", "createdAt", "owner", "actions"]);
 const LEAD_COL_MIN = 60;
-const LEAD_COL_STORAGE_KEY = "col-widths:leads:v1";
+const LEAD_COL_STORAGE_KEY = "col-widths:leads:v2";
 
-type LeadToggleableCol = "name" | "company" | "phone" | "email" | "status" | "score" | "createdAt" | "owner";
+type LeadToggleableCol = "name" | "company" | "phone" | "email" | "website" | "status" | "score" | "createdAt" | "owner";
 const LEAD_TOGGLEABLE_COLS: { key: LeadToggleableCol; label: string }[] = [
   { key: "name", label: "Name" },
   { key: "company", label: "Company" },
   { key: "phone", label: "Phone" },
   { key: "email", label: "Email" },
+  { key: "website", label: "Website" },
   { key: "status", label: "Lead Status" },
   { key: "score", label: "Score" },
   { key: "createdAt", label: "Created Date" },
@@ -546,6 +548,7 @@ export default function Leads() {
                   {isColVisible("company") && <th className="relative px-2 py-1 text-left"><SortHeader field="company">Company</SortHeader><ColResizeHandle onMouseDown={startColResize("company")} /></th>}
                   {isColVisible("phone") && <th className="relative px-2 py-1 text-left"><SortHeader field="phone">Phone</SortHeader><ColResizeHandle onMouseDown={startColResize("phone")} /></th>}
                   {isColVisible("email") && <th className="relative px-2 py-1 text-left"><SortHeader field="email">Email</SortHeader><ColResizeHandle onMouseDown={startColResize("email")} /></th>}
+                  {isColVisible("website") && <th className="relative px-2 py-1 text-left"><SortHeader field="website">Website</SortHeader><ColResizeHandle onMouseDown={startColResize("website")} /></th>}
                   {isColVisible("status") && <th className="relative px-2 py-1 text-left"><SortHeader field="status">Lead Status</SortHeader><ColResizeHandle onMouseDown={startColResize("status")} /></th>}
                   {isColVisible("score") && <th className="relative px-2 py-1 text-center"><SortHeader field="score" align="center">Score</SortHeader><ColResizeHandle onMouseDown={startColResize("score")} /></th>}
                   {isColVisible("createdAt") && <th className="relative px-2 py-1 text-left"><SortHeader field="createdAt">Created Date</SortHeader><ColResizeHandle onMouseDown={startColResize("createdAt")} /></th>}
@@ -600,6 +603,13 @@ export default function Leads() {
                       )}
                       {isColVisible("email") && (
                         <td className="px-3 py-1 text-sm text-foreground">{lead.email ?? <span className="text-muted-foreground">—</span>}</td>
+                      )}
+                      {isColVisible("website") && (
+                        <td className="px-3 py-1 text-sm text-foreground">
+                          {(lead as any).website
+                            ? <a href={(lead as any).website} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline truncate block max-w-[200px]">{(lead as any).website}</a>
+                            : <span className="text-muted-foreground">—</span>}
+                        </td>
                       )}
                       {isColVisible("status") && (
                         <td className="px-3 py-1">

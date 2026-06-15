@@ -12,6 +12,7 @@ export interface CreateLeadInput {
   lastName: string;
   email?: string | null;
   phone?: string | null;
+  website?: string | null;
   company?: string | null;
   title?: string | null;
   status?: CreateLeadInputStatus;
