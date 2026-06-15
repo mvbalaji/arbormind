@@ -4,6 +4,7 @@ import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitie
 import { eq, sql, and, desc, gte, lte } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
+import { recalculateLeadScore } from "../lib/lead-scoring";
 
 const router: IRouter = Router();
 router.use("/activities", requireScreenAccess("activities"));
@@ -88,6 +89,10 @@ router.post("/activities", async (req, res) => {
       if (typeof body[k] === "string") body[k] = new Date(body[k] as string);
     }
     const [activity] = await db.insert(activitiesTable).values(body as typeof activitiesTable.$inferInsert).returning();
+    // Trigger lead score recalculation when a completed activity is logged
+    if (activity.leadId && (activity.status === "completed" || activity.type === "note")) {
+      void recalculateLeadScore(activity.leadId).catch(() => {});
+    }
     res.status(201).json({ ...activity, contactName: null, opportunityName: null, accountName: null, assignedToName: null });
   } catch (err) {
     req.log.error(err);
@@ -126,6 +131,10 @@ router.put("/activities/:id", async (req, res) => {
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
     } else {
+      // Trigger lead score recalculation if activity is completed and linked to a lead
+      if (activity.leadId && (activity.status === "completed" || req.body?.status === "completed")) {
+        void recalculateLeadScore(activity.leadId).catch(() => {});
+      }
       res.json({ ...activity, contactName: null, opportunityName: null, accountName: null, assignedToName: null });
     }
   } catch (err) {

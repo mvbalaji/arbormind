@@ -238,6 +238,21 @@ export default function LeadDetail() {
     staleTime: 0,
   });
 
+  const { data: scoreBreakdown } = useQuery<{
+    score: number;
+    milestone: { id: number; label: string; color: string; minScore: number; maxScore: number } | null;
+    rules: { ruleId: number; ruleType: string; label: string; earned: boolean; earnedPoints: number }[];
+    breakdown: { activity: number; field: number; qualification: number; companySize: number; revenue: number; total: number };
+  } | null>({
+    queryKey: ["lead-score-breakdown", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/leads/${id}/score-breakdown`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
   const { data: linkedContactsData } = useQuery<{ data: ConvertedContact[] }>({
     queryKey: ["lead-contacts", lead?.id],
     queryFn: async () => {
@@ -829,20 +844,57 @@ export default function LeadDetail() {
                       <div className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
                         <Star className="w-3 h-3" /> Lead Score
                       </div>
-                      <div className="flex items-center gap-2">
+                      {/* Score bar */}
+                      <div className="flex items-center gap-2 mb-1.5">
                         <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
                           <div
-                            className={cn("h-full rounded-full", lead.score >= 70 ? "bg-green-500" : lead.score >= 40 ? "bg-yellow-500" : "bg-red-500")}
+                            className={cn("h-full rounded-full transition-all",
+                              lead.score >= 76 ? "bg-green-500" : lead.score >= 51 ? "bg-orange-500" : lead.score >= 26 ? "bg-yellow-500" : "bg-blue-400"
+                            )}
                             style={{ width: `${lead.score}%` }}
                           />
                         </div>
                         <span className={cn(
-                          "text-sm font-bold",
-                          lead.score >= 70 ? "text-green-600" : lead.score >= 40 ? "text-yellow-600" : "text-red-600"
+                          "text-sm font-bold tabular-nums",
+                          lead.score >= 76 ? "text-green-600" : lead.score >= 51 ? "text-orange-600" : lead.score >= 26 ? "text-yellow-600" : "text-blue-500"
                         )}>
                           {lead.score}
                         </span>
                       </div>
+                      {/* Milestone badge */}
+                      {scoreBreakdown?.milestone && (() => {
+                        const milestoneColorMap: Record<string, string> = {
+                          blue:   "bg-blue-50 text-blue-700 border-blue-200",
+                          yellow: "bg-yellow-50 text-yellow-700 border-yellow-200",
+                          orange: "bg-orange-50 text-orange-700 border-orange-200",
+                          green:  "bg-green-50 text-green-700 border-green-200",
+                          red:    "bg-red-50 text-red-700 border-red-200",
+                          purple: "bg-purple-50 text-purple-700 border-purple-200",
+                          gray:   "bg-gray-50 text-gray-600 border-gray-200",
+                        };
+                        const cls = milestoneColorMap[scoreBreakdown.milestone.color] ?? milestoneColorMap.gray;
+                        return (
+                          <span className={cn("inline-block text-xs px-2 py-0.5 rounded-full border font-medium mb-1.5", cls)}>
+                            {scoreBreakdown.milestone.label}
+                          </span>
+                        );
+                      })()}
+                      {/* Score breakdown by category */}
+                      {scoreBreakdown?.breakdown && (
+                        <div className="grid grid-cols-2 gap-1">
+                          {[
+                            { label: "Activities", val: scoreBreakdown.breakdown.activity },
+                            { label: "Profile",    val: scoreBreakdown.breakdown.field },
+                            { label: "Signals",    val: scoreBreakdown.breakdown.qualification },
+                            { label: "Company/Rev", val: (scoreBreakdown.breakdown.companySize ?? 0) + (scoreBreakdown.breakdown.revenue ?? 0) },
+                          ].filter(x => x.val > 0).map(x => (
+                            <div key={x.label} className="flex items-center justify-between px-2 py-0.5 rounded bg-muted/50 text-xs">
+                              <span className="text-muted-foreground">{x.label}</span>
+                              <span className="font-semibold text-foreground">+{x.val}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                   {lead.description && (

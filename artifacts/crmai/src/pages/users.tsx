@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import {
   Settings, Shield, UserPlus, Trash2, Loader2, Users as UsersIcon, Upload,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff, Clock, Play, UserCog, ShieldCheck,
-  Pencil, Crown,
+  Pencil, Crown, Star,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { AccessControlInline } from "./access-control";
 import { ApprovalConfigInline } from "@/components/approval-config-inline";
 import { AppManagementInline } from "./app-management";
+import { LeadScoringAdmin } from "@/components/lead-scoring-admin";
 
 interface AppUser {
   id: number;
@@ -120,7 +121,7 @@ export default function Users() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("sales_rep");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail" | "apps">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail" | "apps" | "scoring">("team");
 
   // Edit dialog state
   const [editName, setEditName] = useState("");
@@ -334,6 +335,7 @@ export default function Users() {
             { id: "apps", label: "App Management", icon: Settings },
             { id: "access", label: "Access Control", icon: Shield },
             { id: "approvals", label: "Approval Config", icon: ShieldCheck },
+            { id: "scoring", label: "Lead Scoring", icon: Star },
             { id: "import", label: "Data Import", icon: Upload },
             { id: "mail", label: "Mail Settings", icon: Mail },
           ] as const).map((tab) => (
@@ -361,6 +363,9 @@ export default function Users() {
 
         {/* Approval Config Tab */}
         {activeTab === "approvals" && <ApprovalConfigInline />}
+
+        {/* Lead Scoring Tab */}
+        {activeTab === "scoring" && <LeadScoringAdmin />}
 
         {/* Data Import Tab */}
         {activeTab === "import" && <DataImport />}

@@ -31,3 +31,5 @@ export * from "./app-modules";
 export * from "./lead-insights";
 export * from "./campaign-engagements";
 export * from "./campaign-members";
+export * from "./lead-scoring-rules";
+export * from "./lead-score-milestones";

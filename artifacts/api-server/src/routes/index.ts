@@ -33,10 +33,12 @@ import appModulesRouter from "./app-modules";
 import webhooksRouter from "./webhooks";
 import campaignEngagementsRouter from "./campaign-engagements";
 import campaignMembersRouter from "./campaign-members";
+import leadScoringAdminRouter from "./lead-scoring-admin";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 import { seedStandardPricing } from "../lib/pricing";
 import { seedAppModules } from "../lib/app-modules";
+import { seedDefaultScoringRules } from "../lib/lead-scoring";
 
 const router: IRouter = Router();
 
@@ -74,6 +76,7 @@ router.use(appModulesRouter);
 router.use(webhooksRouter);
 router.use(campaignEngagementsRouter);
 router.use(campaignMembersRouter);
+router.use(leadScoringAdminRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
 // access on startup.
@@ -81,5 +84,6 @@ void seedAccessControl();
 void seedRecordAccess();
 void seedStandardPricing();
 void seedAppModules();
+void seedDefaultScoringRules();
 
 export default router;
