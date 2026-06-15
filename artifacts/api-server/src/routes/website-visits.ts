@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, websiteVisitsTable, insertWebsiteVisitSchema } from "@workspace/db";
-import { ilike, or, sql, and } from "drizzle-orm";
+import { ilike, or, sql, and, isNotNull } from "drizzle-orm";
 import { requireScreenAccess } from "../lib/access-control";
 
 const router: IRouter = Router();
@@ -51,6 +51,58 @@ router.get("/website-visits/stats", async (req, res) => {
       unique: Number(row?.unique ?? 0),
       today: Number(row?.today ?? 0),
     });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /website-visits/by-session — one row per unique session with aggregated page list
+router.get("/website-visits/by-session", async (req, res) => {
+  try {
+    const rows = await db
+      .select({
+        sessionId: websiteVisitsTable.sessionId,
+        visitCount: sql<number>`count(*)::int`,
+        firstSeen: sql<string>`min(visited_at)`,
+        lastSeen: sql<string>`max(visited_at)`,
+        ipAddress: sql<string>`max(ip_address)`,
+        userAgent: sql<string>`max(user_agent)`,
+        referrer: sql<string>`max(referrer)`,
+        paths: sql<string[]>`array_agg(path order by visited_at)`,
+      })
+      .from(websiteVisitsTable)
+      .where(isNotNull(websiteVisitsTable.sessionId))
+      .groupBy(websiteVisitsTable.sessionId)
+      .orderBy(sql`max(visited_at) desc`)
+      .limit(300);
+    res.json(rows);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET /website-visits/by-ip — one row per unique IP address with aggregated stats
+router.get("/website-visits/by-ip", async (req, res) => {
+  try {
+    const rows = await db
+      .select({
+        ipAddress: websiteVisitsTable.ipAddress,
+        visitCount: sql<number>`count(*)::int`,
+        sessionCount: sql<number>`count(distinct session_id)::int`,
+        firstSeen: sql<string>`min(visited_at)`,
+        lastSeen: sql<string>`max(visited_at)`,
+        referrer: sql<string>`max(referrer)`,
+        userAgent: sql<string>`max(user_agent)`,
+        paths: sql<string[]>`array_agg(distinct path)`,
+      })
+      .from(websiteVisitsTable)
+      .where(isNotNull(websiteVisitsTable.ipAddress))
+      .groupBy(websiteVisitsTable.ipAddress)
+      .orderBy(sql`max(visited_at) desc`)
+      .limit(300);
+    res.json(rows);
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
