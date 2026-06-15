@@ -10,7 +10,7 @@ import {
   Building2, Globe, Users, Smile, Frown, Meh, Zap, Target,
   ChevronRight, AlertTriangle, CheckCircle2, ArrowRightLeft,
   MapPin, Calendar, DollarSign, Trophy, User, ExternalLink,
-  Swords, Star,
+  Swords, Twitter, Youtube, Facebook, Instagram, Linkedin,
 } from "lucide-react";
 
 interface LeadInsights {
@@ -41,6 +41,12 @@ interface LeadInsights {
   fundingStage: string | null;
   keyCompetitors: string[] | null;
   recentAchievements: string[] | null;
+  // Social media
+  linkedinUrl: string | null;
+  twitterHandle: string | null;
+  facebookUrl: string | null;
+  instagramHandle: string | null;
+  youtubeUrl: string | null;
   createdAt: string;
 }
 
@@ -335,6 +341,51 @@ export function LeadInsightsPanel({
                       </a>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Company Social Media */}
+            {(insights.linkedinUrl || insights.twitterHandle || insights.facebookUrl || insights.instagramHandle || insights.youtubeUrl) &&
+              [insights.linkedinUrl, insights.twitterHandle, insights.facebookUrl, insights.instagramHandle, insights.youtubeUrl].some(v => v && v !== "Unknown") && (
+              <div>
+                <SectionLabel>Company Social Media</SectionLabel>
+                <div className="flex flex-wrap gap-2">
+                  {insights.linkedinUrl && insights.linkedinUrl !== "Unknown" && (
+                    <a href={insights.linkedinUrl} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0077B5]/10 border border-[#0077B5]/30 text-[#0077B5] dark:text-blue-400 text-xs font-medium hover:bg-[#0077B5]/20 transition-colors">
+                      <Linkedin className="w-3.5 h-3.5" />
+                      LinkedIn
+                    </a>
+                  )}
+                  {insights.twitterHandle && insights.twitterHandle !== "Unknown" && (
+                    <a href={`https://x.com/${insights.twitterHandle.replace("@", "")}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/5 border border-black/20 text-foreground dark:bg-white/5 dark:border-white/20 text-xs font-medium hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+                      <Twitter className="w-3.5 h-3.5" />
+                      {insights.twitterHandle}
+                    </a>
+                  )}
+                  {insights.instagramHandle && insights.instagramHandle !== "Unknown" && (
+                    <a href={`https://instagram.com/${insights.instagramHandle.replace("@", "")}`} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-50 border border-pink-200 text-pink-600 dark:bg-pink-950/20 dark:border-pink-800 dark:text-pink-400 text-xs font-medium hover:bg-pink-100 dark:hover:bg-pink-950/40 transition-colors">
+                      <Instagram className="w-3.5 h-3.5" />
+                      {insights.instagramHandle}
+                    </a>
+                  )}
+                  {insights.facebookUrl && insights.facebookUrl !== "Unknown" && (
+                    <a href={insights.facebookUrl} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1877F2]/10 border border-[#1877F2]/30 text-[#1877F2] dark:text-blue-400 text-xs font-medium hover:bg-[#1877F2]/20 transition-colors">
+                      <Facebook className="w-3.5 h-3.5" />
+                      Facebook
+                    </a>
+                  )}
+                  {insights.youtubeUrl && insights.youtubeUrl !== "Unknown" && (
+                    <a href={insights.youtubeUrl} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 dark:bg-red-950/20 dark:border-red-800 dark:text-red-400 text-xs font-medium hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors">
+                      <Youtube className="w-3.5 h-3.5" />
+                      YouTube
+                    </a>
+                  )}
                 </div>
               </div>
             )}

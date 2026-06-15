@@ -47,6 +47,12 @@ export interface LeadInsightResult {
   fundingStage: string;
   keyCompetitors: string[];
   recentAchievements: string[];
+  // Company social media
+  linkedinUrl: string;
+  twitterHandle: string;
+  facebookUrl: string;
+  instagramHandle: string;
+  youtubeUrl: string;
 }
 
 function buildAnalysisPrompt(lead: LeadForAnalysis): string {
@@ -95,7 +101,12 @@ function buildAnalysisPrompt(lead: LeadForAnalysis): string {
   "estimatedMarketValue": "string — estimated valuation, market cap, or revenue range e.g. '$50M–$100M ARR', 'Series B (~$120M valuation)', 'Publicly traded (BSE: XXXX)', '$2B market cap'. Use 'Unknown' if not findable.",
   "fundingStage": "string — e.g. 'Bootstrapped', 'Seed', 'Series A', 'Series B', 'Series C+', 'Publicly listed', 'Private equity-backed', 'Unknown'",
   "keyCompetitors": ["2-4 known direct competitors by name"],
-  "recentAchievements": ["2-4 notable recent milestones, awards, partnerships, or product launches"]
+  "recentAchievements": ["2-4 notable recent milestones, awards, partnerships, or product launches"],
+  "linkedinUrl": "string — company LinkedIn page URL e.g. 'https://linkedin.com/company/stripe'. 'Unknown' if not findable.",
+  "twitterHandle": "string — company Twitter/X handle with @ e.g. '@stripe'. 'Unknown' if not findable.",
+  "facebookUrl": "string — company Facebook page URL e.g. 'https://facebook.com/stripe'. 'Unknown' if not findable.",
+  "instagramHandle": "string — company Instagram handle with @ e.g. '@stripe'. 'Unknown' if not findable.",
+  "youtubeUrl": "string — company YouTube channel URL e.g. 'https://youtube.com/@stripe'. 'Unknown' if not findable."
 }`,
     "",
     "IMPORTANT GUIDANCE:",
@@ -103,6 +114,7 @@ function buildAnalysisPrompt(lead: LeadForAnalysis): string {
     "- For CEO/leadership: search your knowledge — many company founders and executives are publicly documented.",
     "- For market value: use funding rounds, ARR estimates, or public market cap if known.",
     "- For headquarters: use the company's known registered address or primary office.",
+    "- For social media: use known/verified handles. For LinkedIn, construct from company slug if known. For Twitter/Instagram use the official @handle.",
     "- NEVER leave a field as empty string — use 'Unknown' as fallback.",
     "- Buyer classification guidance:",
     "  · high_potential: senior decision-maker at growing company, clear fit, aiScoreBoost 25-40",
@@ -161,6 +173,11 @@ export async function analyzeLeadWithAI(leadId: number): Promise<{ insights: Lea
     fundingStage: parsed.fundingStage ?? "Unknown",
     keyCompetitors: Array.isArray(parsed.keyCompetitors) ? parsed.keyCompetitors : [],
     recentAchievements: Array.isArray(parsed.recentAchievements) ? parsed.recentAchievements : [],
+    linkedinUrl: parsed.linkedinUrl ?? "Unknown",
+    twitterHandle: parsed.twitterHandle ?? "Unknown",
+    facebookUrl: parsed.facebookUrl ?? "Unknown",
+    instagramHandle: parsed.instagramHandle ?? "Unknown",
+    youtubeUrl: parsed.youtubeUrl ?? "Unknown",
   };
 
   const ruleScore = computeLeadScore({
@@ -211,6 +228,11 @@ export async function analyzeLeadWithAI(leadId: number): Promise<{ insights: Lea
     fundingStage: insights.fundingStage,
     keyCompetitors: insights.keyCompetitors,
     recentAchievements: insights.recentAchievements,
+    linkedinUrl: insights.linkedinUrl,
+    twitterHandle: insights.twitterHandle,
+    facebookUrl: insights.facebookUrl,
+    instagramHandle: insights.instagramHandle,
+    youtubeUrl: insights.youtubeUrl,
   }).onConflictDoUpdate({
     target: leadInsightsTable.leadId,
     set: {
@@ -238,6 +260,11 @@ export async function analyzeLeadWithAI(leadId: number): Promise<{ insights: Lea
       fundingStage: insights.fundingStage,
       keyCompetitors: insights.keyCompetitors,
       recentAchievements: insights.recentAchievements,
+      linkedinUrl: insights.linkedinUrl,
+      twitterHandle: insights.twitterHandle,
+      facebookUrl: insights.facebookUrl,
+      instagramHandle: insights.instagramHandle,
+      youtubeUrl: insights.youtubeUrl,
       createdAt: new Date(),
     },
   });

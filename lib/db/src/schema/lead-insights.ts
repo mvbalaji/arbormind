@@ -30,6 +30,12 @@ export const leadInsightsTable = pgTable("lead_insights", {
   fundingStage: text("funding_stage"),
   keyCompetitors: text("key_competitors").array(),
   recentAchievements: text("recent_achievements").array(),
+  // Company social media
+  linkedinUrl: text("linkedin_url"),
+  twitterHandle: text("twitter_handle"),
+  facebookUrl: text("facebook_url"),
+  instagramHandle: text("instagram_handle"),
+  youtubeUrl: text("youtube_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
