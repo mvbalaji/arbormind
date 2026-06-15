@@ -19,6 +19,17 @@ export const leadInsightsTable = pgTable("lead_insights", {
   confidence: text("confidence").notNull().default("low"),
   rawInsights: jsonb("raw_insights"),
   analysisSummary: text("analysis_summary"),
+  // Leadership
+  ceoName: text("ceo_name"),
+  ceoTitle: text("ceo_title"),
+  ceoLinkedin: text("ceo_linkedin"),
+  // Market intelligence
+  headquarters: text("headquarters"),
+  foundedYear: text("founded_year"),
+  estimatedMarketValue: text("estimated_market_value"),
+  fundingStage: text("funding_stage"),
+  keyCompetitors: text("key_competitors").array(),
+  recentAchievements: text("recent_achievements").array(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

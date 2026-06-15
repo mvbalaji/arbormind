@@ -9,6 +9,8 @@ import {
   Brain, TrendingUp, TrendingDown, Minus, RefreshCw, Sparkles,
   Building2, Globe, Users, Smile, Frown, Meh, Zap, Target,
   ChevronRight, AlertTriangle, CheckCircle2, ArrowRightLeft,
+  MapPin, Calendar, DollarSign, Trophy, User, ExternalLink,
+  Swords, Star,
 } from "lucide-react";
 
 interface LeadInsights {
@@ -28,6 +30,17 @@ interface LeadInsights {
   buyerClassification: string;
   confidence: string;
   analysisSummary: string | null;
+  // Leadership
+  ceoName: string | null;
+  ceoTitle: string | null;
+  ceoLinkedin: string | null;
+  // Market intelligence
+  headquarters: string | null;
+  foundedYear: string | null;
+  estimatedMarketValue: string | null;
+  fundingStage: string | null;
+  keyCompetitors: string[] | null;
+  recentAchievements: string[] | null;
   createdAt: string;
 }
 
@@ -77,6 +90,39 @@ function SentimentIcon({ sentiment }: { sentiment: string | null }) {
   if (sentiment === "positive") return <Smile className="w-3.5 h-3.5 text-green-500" />;
   if (sentiment === "negative") return <Frown className="w-3.5 h-3.5 text-red-500" />;
   return <Meh className="w-3.5 h-3.5 text-muted-foreground" />;
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+      {children}
+    </div>
+  );
+}
+
+function InfoChip({ icon: Icon, label, value, href }: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  href?: string;
+}) {
+  return (
+    <div className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 border border-border">
+      <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+      <div className="min-w-0">
+        <div className="text-[10px] text-muted-foreground">{label}</div>
+        {href && href !== "Unknown" ? (
+          <a href={href} target="_blank" rel="noopener noreferrer"
+            className="text-xs font-medium text-blue-500 hover:underline flex items-center gap-0.5 truncate">
+            {value}
+            <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
+          </a>
+        ) : (
+          <div className="text-xs font-medium text-foreground truncate">{value}</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function LeadInsightsPanel({
@@ -163,7 +209,6 @@ export function LeadInsightsPanel({
       <div className="p-4 space-y-4">
         {/* Score + Classification Row */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Lead Score */}
           <div className={cn("rounded-xl p-3 border border-border", scoreMeta.bg)}>
             <div className="text-xs text-muted-foreground mb-1.5 font-medium">Lead Score</div>
             <div className="flex items-baseline gap-1.5 mb-2">
@@ -187,7 +232,6 @@ export function LeadInsightsPanel({
             )}
           </div>
 
-          {/* Buyer Classification */}
           <div className="rounded-xl p-3 border border-border bg-muted/20">
             <div className="text-xs text-muted-foreground mb-1.5 font-medium">Buyer Classification</div>
             {classMeta ? (
@@ -232,7 +276,7 @@ export function LeadInsightsPanel({
         {/* Insights Loading */}
         {insightsLoading && (
           <div className="space-y-2">
-            {[0, 1, 2].map((i) => (
+            {[0, 1, 2, 3].map((i) => (
               <div key={i} className="h-8 bg-muted/40 rounded-lg animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />
             ))}
           </div>
@@ -246,14 +290,15 @@ export function LeadInsightsPanel({
             </div>
             <p className="text-sm font-medium text-muted-foreground mb-1">No AI insights yet</p>
             <p className="text-xs text-muted-foreground/70">
-              Click "Analyse with AI" to automatically extract company insights and improve the lead score.
+              Click "Analyse with AI" to extract company insights, leadership details, market value, and buying intent signals.
             </p>
           </div>
         )}
 
         {/* Insights Content */}
         {hasInsights && insights && (
-          <div className="space-y-3">
+          <div className="space-y-4">
+
             {/* Analysis Summary */}
             {insights.analysisSummary && (
               <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
@@ -264,86 +309,123 @@ export function LeadInsightsPanel({
               </div>
             )}
 
-            {/* Company Profile */}
-            <div>
-              <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Company Profile
+            {/* Leadership */}
+            {(insights.ceoName && insights.ceoName !== "Unknown") && (
+              <div>
+                <SectionLabel>Leadership</SectionLabel>
+                <div className="p-3 rounded-xl border border-border bg-muted/20 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <User className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-foreground">{insights.ceoName}</div>
+                    {insights.ceoTitle && insights.ceoTitle !== "Unknown" && (
+                      <div className="text-xs text-muted-foreground">{insights.ceoTitle}</div>
+                    )}
+                    {insights.ceoLinkedin && insights.ceoLinkedin !== "Unknown" && (
+                      <a
+                        href={insights.ceoLinkedin}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-1 text-[10px] text-blue-500 hover:underline"
+                      >
+                        <Globe className="w-2.5 h-2.5" />
+                        LinkedIn Profile
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
               </div>
+            )}
+
+            {/* Market Intelligence */}
+            <div>
+              <SectionLabel>Market Intelligence</SectionLabel>
               <div className="grid grid-cols-2 gap-2">
-                {insights.companySize && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
-                    <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                    <div>
-                      <div className="text-[10px] text-muted-foreground">Size</div>
-                      <div className="text-xs font-medium text-foreground">{insights.companySize}</div>
-                    </div>
-                  </div>
+                {insights.estimatedMarketValue && insights.estimatedMarketValue !== "Unknown" && (
+                  <InfoChip icon={DollarSign} label="Market Value / Valuation" value={insights.estimatedMarketValue} />
                 )}
-                {insights.industrySegment && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
-                    <Target className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                    <div>
-                      <div className="text-[10px] text-muted-foreground">Segment</div>
-                      <div className="text-xs font-medium text-foreground truncate">{insights.industrySegment}</div>
-                    </div>
-                  </div>
+                {insights.fundingStage && insights.fundingStage !== "Unknown" && (
+                  <InfoChip icon={TrendingUp} label="Funding Stage" value={insights.fundingStage} />
                 )}
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
-                  <HiringTrendIcon trend={insights.hiringTrend} />
-                  <div>
-                    <div className="text-[10px] text-muted-foreground">Hiring Trend</div>
-                    <div className="text-xs font-medium text-foreground capitalize">{insights.hiringTrend ?? "Unknown"}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
-                  <SentimentIcon sentiment={insights.sentiment} />
-                  <div>
-                    <div className="text-[10px] text-muted-foreground">Sentiment</div>
-                    <div className="text-xs font-medium text-foreground capitalize">{insights.sentiment ?? "Neutral"}</div>
-                  </div>
-                </div>
-                {insights.socialPresence && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
-                    <Globe className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                    <div>
-                      <div className="text-[10px] text-muted-foreground">Social Presence</div>
-                      <div className="text-xs font-medium text-foreground capitalize">{insights.socialPresence}</div>
-                    </div>
-                  </div>
+                {insights.headquarters && insights.headquarters !== "Unknown" && (
+                  <InfoChip icon={MapPin} label="Headquarters" value={insights.headquarters} />
                 )}
-                {insights.techStack && insights.techStack !== "Unknown" && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
-                    <Zap className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                    <div>
-                      <div className="text-[10px] text-muted-foreground">Tech Stack</div>
-                      <div className="text-xs font-medium text-foreground truncate">{insights.techStack}</div>
-                    </div>
-                  </div>
+                {insights.foundedYear && insights.foundedYear !== "Unknown" && (
+                  <InfoChip icon={Calendar} label="Founded" value={insights.foundedYear} />
                 )}
               </div>
             </div>
 
-            {/* Product Summary */}
+            {/* Company Profile */}
+            <div>
+              <SectionLabel>Company Profile</SectionLabel>
+              <div className="grid grid-cols-2 gap-2">
+                {insights.companySize && (
+                  <InfoChip icon={Building2} label="Size" value={insights.companySize} />
+                )}
+                {insights.industrySegment && (
+                  <InfoChip icon={Target} label="Segment" value={insights.industrySegment} />
+                )}
+                <InfoChip icon={TrendingUp} label="Hiring Trend" value={insights.hiringTrend ? insights.hiringTrend.charAt(0).toUpperCase() + insights.hiringTrend.slice(1) : "Unknown"} />
+                <InfoChip icon={Smile} label="Sentiment" value={insights.sentiment ? insights.sentiment.charAt(0).toUpperCase() + insights.sentiment.slice(1) : "Neutral"} />
+                {insights.socialPresence && (
+                  <InfoChip icon={Globe} label="Social Presence" value={insights.socialPresence.charAt(0).toUpperCase() + insights.socialPresence.slice(1)} />
+                )}
+                {insights.techStack && insights.techStack !== "Unknown" && (
+                  <InfoChip icon={Zap} label="Tech Stack" value={insights.techStack} />
+                )}
+              </div>
+            </div>
+
+            {/* What They Do */}
             {insights.productSummary && (
               <div>
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                  What They Do
-                </div>
+                <SectionLabel>What They Do</SectionLabel>
                 <p className="text-xs text-foreground leading-relaxed bg-muted/30 rounded-lg p-2.5 border border-border">
                   {insights.productSummary}
                 </p>
               </div>
             )}
 
-            {/* Recent News */}
-            {insights.recentNews && insights.recentNews !== "No public signals detected" && (
+            {/* Recent News / Signals */}
+            {insights.recentNews && insights.recentNews !== "No recent public signals" && insights.recentNews !== "No public signals detected" && (
               <div>
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                  Recent Signals
-                </div>
-                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/30 border border-border">
+                <SectionLabel>Recent Signals</SectionLabel>
+                <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-foreground leading-relaxed">{insights.recentNews}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Recent Achievements */}
+            {insights.recentAchievements && insights.recentAchievements.length > 0 && (
+              <div>
+                <SectionLabel>Recent Achievements</SectionLabel>
+                <ul className="space-y-1">
+                  {insights.recentAchievements.map((a, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                      <Trophy className="w-3 h-3 text-amber-500 flex-shrink-0 mt-0.5" />
+                      {a}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Key Competitors */}
+            {insights.keyCompetitors && insights.keyCompetitors.length > 0 && (
+              <div>
+                <SectionLabel>Key Competitors</SectionLabel>
+                <div className="flex flex-wrap gap-1.5">
+                  {insights.keyCompetitors.map((c, i) => (
+                    <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border text-xs text-muted-foreground">
+                      <Swords className="w-2.5 h-2.5" />
+                      {c}
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
@@ -351,13 +433,11 @@ export function LeadInsightsPanel({
             {/* Growth Indicators */}
             {insights.growthIndicators && insights.growthIndicators.length > 0 && (
               <div>
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                  Growth Indicators
-                </div>
+                <SectionLabel>Growth Indicators</SectionLabel>
                 <ul className="space-y-1">
                   {insights.growthIndicators.map((gi, i) => (
-                    <li key={i} className="flex items-center gap-2 text-xs text-foreground">
-                      <CheckCircle2 className="w-3 h-3 text-green-500 flex-shrink-0" />
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                      <CheckCircle2 className="w-3 h-3 text-green-500 flex-shrink-0 mt-0.5" />
                       {gi}
                     </li>
                   ))}
@@ -368,13 +448,11 @@ export function LeadInsightsPanel({
             {/* Buying Intent Signals */}
             {insights.buyingIntentSignals && insights.buyingIntentSignals.length > 0 && (
               <div>
-                <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
-                  Buying Intent Signals
-                </div>
+                <SectionLabel>Buying Intent Signals</SectionLabel>
                 <ul className="space-y-1">
                   {insights.buyingIntentSignals.map((sig, i) => (
-                    <li key={i} className="flex items-center gap-2 text-xs text-foreground">
-                      <ChevronRight className="w-3 h-3 text-primary flex-shrink-0" />
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                      <ChevronRight className="w-3 h-3 text-primary flex-shrink-0 mt-0.5" />
                       {sig}
                     </li>
                   ))}
