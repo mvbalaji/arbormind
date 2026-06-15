@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -15,6 +15,14 @@ export const websiteVisitsTable = pgTable(
     referrer: text("referrer"),
     userAgent: text("user_agent"),
     ipAddress: text("ip_address"),
+    // UTM attribution — passed via query string from campaign links.
+    utmSource: text("utm_source"),
+    utmMedium: text("utm_medium"),
+    utmCampaign: text("utm_campaign"),
+    utmContent: text("utm_content"),
+    utmTerm: text("utm_term"),
+    // Optional FK to the campaign that drove this visit.
+    campaignId: integer("campaign_id"),
     visitedAt: timestamp("visited_at").notNull().defaultNow(),
   },
   (table) => ({

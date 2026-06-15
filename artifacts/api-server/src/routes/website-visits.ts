@@ -19,12 +19,28 @@ router.post("/website-visits", async (req, res) => {
   try {
     const parsed = insertWebsiteVisitSchema.parse(req.body ?? {});
     const userAgent = (req.headers["user-agent"] as string | undefined) ?? null;
+
+    // Capture UTM parameters sent from the tracking pixel
+    const body = req.body as Record<string, string | undefined>;
+    const utmSource = body.utm_source ?? body.utmSource ?? null;
+    const utmMedium = body.utm_medium ?? body.utmMedium ?? null;
+    const utmCampaign = body.utm_campaign ?? body.utmCampaign ?? null;
+    const utmContent = body.utm_content ?? body.utmContent ?? null;
+    const utmTerm = body.utm_term ?? body.utmTerm ?? null;
+    const campaignId = body.campaign_id ? parseInt(body.campaign_id) : null;
+
     const [visit] = await db
       .insert(websiteVisitsTable)
       .values({
         ...parsed,
         userAgent,
         ipAddress: clientIp(req),
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmContent,
+        utmTerm,
+        campaignId: campaignId || null,
       })
       .returning();
     res.status(201).json({ success: true, id: visit.id });

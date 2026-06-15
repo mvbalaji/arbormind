@@ -29,3 +29,4 @@ export * from "./email-attachments";
 export * from "./website-visits";
 export * from "./app-modules";
 export * from "./lead-insights";
+export * from "./campaign-engagements";

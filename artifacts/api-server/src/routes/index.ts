@@ -30,6 +30,8 @@ import emailSendRouter from "./email-send";
 import exchangeRatesRouter from "./exchange-rates";
 import websiteVisitsRouter from "./website-visits";
 import appModulesRouter from "./app-modules";
+import webhooksRouter from "./webhooks";
+import campaignEngagementsRouter from "./campaign-engagements";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 import { seedStandardPricing } from "../lib/pricing";
@@ -68,6 +70,8 @@ router.use(emailSendRouter);
 router.use(exchangeRatesRouter);
 router.use(websiteVisitsRouter);
 router.use(appModulesRouter);
+router.use(webhooksRouter);
+router.use(campaignEngagementsRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
 // access on startup.

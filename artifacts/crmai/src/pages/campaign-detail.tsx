@@ -18,6 +18,7 @@ import {
   Users, Pencil, Play, Pause, CheckCircle2, BarChart2, Clock,
   Mail, Globe, Layers, Copy, Trash2, Image, FileText, MousePointerClick,
   UserCheck, MapPin, Smartphone, Laptop, Monitor, Tag, Flag,
+  Radio, Link2, Webhook, Flame, Activity, Send, MessageSquare,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useCurrency } from "@/context/currency";
@@ -93,7 +94,7 @@ const CREATIVE_ICONS: Record<string, React.ElementType> = {
   image: Image, email: Mail, text: FileText, video: BarChart2,
 };
 
-type Tab = "overview" | "performance" | "audience" | "creatives" | "team";
+type Tab = "overview" | "performance" | "audience" | "creatives" | "team" | "tracking";
 
 export default function CampaignDetail() {
   const params = useParams<{ id: string }>();
@@ -179,6 +180,39 @@ export default function CampaignDetail() {
     onError: () => toast({ title: "Error", description: "Could not delete.", variant: "destructive" }),
   });
 
+  // Engagement tracking data — fetched lazily when Tracking tab is visible
+  const engStatsQuery = useQuery({
+    queryKey: ["campaign-engagements", "stats", id],
+    queryFn: async () => {
+      const r = await fetch(`/api/campaign-engagements/stats?campaignId=${id}`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed");
+      return r.json() as Promise<{
+        totals: { totalEvents: number; totalScore: number; identifiedLeads: number; uniquePlatforms: number };
+        byPlatform: Array<{ platform: string; count: number; totalScore: number }>;
+        byCategory: Array<{ category: string; count: number }>;
+        byEventType: Array<{ eventType: string; count: number; totalScore: number }>;
+        dailyTrend: Array<{ day: string; count: number; score: number }>;
+      }>;
+    },
+    enabled: !!id && activeTab === "tracking",
+  });
+
+  const engListQuery = useQuery({
+    queryKey: ["campaign-engagements", "list", id],
+    queryFn: async () => {
+      const r = await fetch(`/api/campaign-engagements?campaignId=${id}&limit=30`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed");
+      return r.json() as Promise<{
+        data: Array<{
+          id: number; platform: string; eventType: string; engagementScore: number;
+          interestCategory: string; platformUserName: string | null; platformUserEmail: string | null;
+          leadId: number | null; occurredAt: string; utmSource: string | null; utmCampaign: string | null;
+        }>;
+      }>;
+    },
+    enabled: !!id && activeTab === "tracking",
+  });
+
   if (isLoading) {
     return (
       <Layout>
@@ -229,6 +263,7 @@ export default function CampaignDetail() {
     { id: "audience", label: "Audience & Targeting" },
     { id: "creatives", label: "Creatives / Assets" },
     { id: "team", label: "Campaign Team" },
+    { id: "tracking", label: "📡 Tracking & Channels" },
   ];
 
   return (
@@ -647,6 +682,277 @@ export default function CampaignDetail() {
             </CardContent>
           </Card>
         )}
+
+        {/* Tracking & Channels Tab */}
+        {activeTab === "tracking" && (() => {
+          const campaignSlug = campaign.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+          const baseUrl = "https://arbormind.in";
+          const apiOrigin = window.location.origin;
+
+          const PLATFORMS = [
+            { id: "linkedin",  label: "LinkedIn",  color: "bg-blue-600", medium: "social",
+              webhook: `${apiOrigin}/api/webhooks/linkedin`,
+              steps: ["Go to LinkedIn Campaign Manager → Settings → Webhooks.", "Add this URL as your webhook endpoint.", "Select events: Share, Comment, Reaction, Lead Gen Form Submit.", "Save and verify — LinkedIn sends a challenge GET request automatically."] },
+            { id: "instagram", label: "Instagram", color: "bg-pink-600", medium: "social",
+              webhook: `${apiOrigin}/api/webhooks/meta`,
+              steps: ["Open Meta Business Suite → Settings → Webhooks → Instagram.", "Add this URL. Verify token: arbormind_meta_verify.", "Subscribe to: messages, story_insights, comments, mentions.", "Use Meta Lead Ads to capture form fills automatically."] },
+            { id: "facebook",  label: "Facebook",  color: "bg-sky-600",  medium: "paid_social",
+              webhook: `${apiOrigin}/api/webhooks/meta`,
+              steps: ["Open Meta for Developers → your App → Webhooks → Page.", "Add this URL. Verify token: arbormind_meta_verify.", "Subscribe to: messages, feed, leadgen.", "For Lead Ads: subscribe to leadgen field — instant notifications on form fills."] },
+            { id: "telegram",  label: "Telegram",  color: "bg-cyan-500", medium: "messaging",
+              webhook: `${apiOrigin}/api/webhooks/telegram`,
+              steps: ["Create a bot via @BotFather and get the bot token.", `Call: https://api.telegram.org/bot<TOKEN>/setWebhook?url=${encodeURIComponent(apiOrigin + "/api/webhooks/telegram")}`, "Every message sent to your bot is now captured as an engagement.", "No secret token needed — Telegram uses the URL for security."] },
+            { id: "whatsapp",  label: "WhatsApp",  color: "bg-green-600", medium: "messaging",
+              webhook: `${apiOrigin}/api/webhooks/whatsapp`,
+              steps: ["Open Meta for Developers → your App → WhatsApp → Configuration.", "Add this URL as Webhook URL. Verify token: arbormind_wa_verify.", "Subscribe to: messages.", "Every inbound WhatsApp message to your business number is captured."] },
+          ];
+
+          const copyToClipboard = (text: string) => {
+            navigator.clipboard.writeText(text).then(() => toast({ title: "Copied to clipboard" }));
+          };
+
+          const stats = engStatsQuery.data;
+          const events = engListQuery.data?.data ?? [];
+
+          const CATEGORY_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
+            hot:  { label: "Hot Prospect",  color: "text-rose-600 bg-rose-500/10 border-rose-200",   icon: Flame },
+            warm: { label: "Warm Engager",  color: "text-amber-600 bg-amber-500/10 border-amber-200", icon: Activity },
+            cold: { label: "Cold Viewer",   color: "text-sky-600 bg-sky-500/10 border-sky-200",       icon: Radio },
+          };
+
+          const EVENT_ICONS: Record<string, React.ElementType> = {
+            message: MessageSquare, form_submit: Send, link_click: Link2, comment: MessageSquare,
+            share: Activity, reaction: Activity, view: Radio, ad_impression: Radio,
+            button_click: MousePointerClick, page_view: Globe, story_view: Radio, profile_visit: Users,
+          };
+
+          const PLATFORM_DOT: Record<string, string> = {
+            linkedin: "bg-blue-500", instagram: "bg-pink-500", facebook: "bg-sky-500",
+            telegram: "bg-cyan-500", whatsapp: "bg-green-500", website: "bg-purple-500",
+          };
+
+          return (
+            <div className="flex flex-col gap-5">
+
+              {/* ── Engagement KPIs ── */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Total Events", value: stats?.totals.totalEvents ?? 0, icon: Activity, color: "text-purple-600 bg-purple-500/10" },
+                  { label: "Engagement Score", value: stats?.totals.totalScore ?? 0, icon: Flame, color: "text-rose-600 bg-rose-500/10" },
+                  { label: "Identified Leads", value: stats?.totals.identifiedLeads ?? 0, icon: Users, color: "text-emerald-600 bg-emerald-500/10" },
+                  { label: "Active Channels", value: stats?.totals.uniquePlatforms ?? 0, icon: Radio, color: "text-sky-600 bg-sky-500/10" },
+                ].map((kpi) => {
+                  const KIcon = kpi.icon;
+                  return (
+                    <Card key={kpi.label} className="glass-panel border-border p-4">
+                      <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center mb-2", kpi.color)}>
+                        <KIcon className="w-4 h-4" />
+                      </div>
+                      <p className="text-2xl font-bold text-foreground">{engStatsQuery.isLoading ? "…" : kpi.value.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{kpi.label}</p>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                {/* ── Channel Breakdown ── */}
+                <Card className="glass-panel border-border">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <BarChart2 className="w-4 h-4 text-primary" /> Engagement by Channel
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {engStatsQuery.isLoading ? (
+                      <div className="space-y-2">{Array.from({length: 4}).map((_,i) => <div key={i} className="h-8 bg-muted/50 rounded animate-pulse" />)}</div>
+                    ) : (stats?.byPlatform ?? []).length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-4 text-center">No engagement events captured yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {(stats?.byPlatform ?? []).map((p) => {
+                          const max = Math.max(...(stats?.byPlatform ?? []).map(x => x.count), 1);
+                          return (
+                            <div key={p.platform}>
+                              <div className="flex justify-between text-xs mb-1">
+                                <span className="capitalize font-medium text-foreground">{p.platform}</span>
+                                <span className="text-muted-foreground">{p.count} events · score {p.totalScore}</span>
+                              </div>
+                              <div className="w-full bg-muted/50 rounded-full h-2">
+                                <div
+                                  className={cn("h-2 rounded-full", PLATFORM_DOT[p.platform]?.replace("bg-", "bg-") ?? "bg-primary")}
+                                  style={{ width: `${(p.count / max) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* ── Interest Distribution ── */}
+                <Card className="glass-panel border-border">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <Flame className="w-4 h-4 text-primary" /> Interest Classification
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {(["hot", "warm", "cold"] as const).map((cat) => {
+                        const cfg = CATEGORY_CONFIG[cat];
+                        const CIcon = cfg.icon;
+                        const found = stats?.byCategory.find(c => c.category === cat);
+                        const count = found?.count ?? 0;
+                        const total = stats?.totals.totalEvents ?? 1;
+                        return (
+                          <div key={cat} className={cn("flex items-center gap-3 p-3 rounded-xl border text-sm", cfg.color)}>
+                            <CIcon className="w-4 h-4 shrink-0" />
+                            <div className="flex-1">
+                              <div className="font-medium">{cfg.label}</div>
+                              <div className="text-xs opacity-70">{count} {count === 1 ? "event" : "events"} · score threshold: {cat === "hot" ? "≥15" : cat === "warm" ? "5–14" : "1–4"}</div>
+                            </div>
+                            <div className="font-bold text-lg">{engStatsQuery.isLoading ? "…" : count}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-4 leading-relaxed">
+                      Interest scores are calculated from engagement type: message (15), form submit (20), link click (5), reaction (4), comment (8), view (2).
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* ── UTM Link Generator ── */}
+              <Card className="glass-panel border-border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Link2 className="w-4 h-4 text-primary" /> Campaign Tracking Links (UTM)
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use these links in your posts, ads, and bio. Every click is automatically attributed to this campaign and captured in the CRM.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {PLATFORMS.map((p) => {
+                      const link = `${baseUrl}/?utm_source=${p.id}&utm_medium=${p.medium}&utm_campaign=${campaignSlug}&utm_content=post`;
+                      return (
+                        <div key={p.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border border-border">
+                          <div className={cn("w-2 h-2 rounded-full shrink-0", p.color)} />
+                          <span className="text-xs font-medium text-foreground w-20 shrink-0">{p.label}</span>
+                          <code className="flex-1 text-xs text-muted-foreground font-mono truncate">{link}</code>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={() => copyToClipboard(link)} title="Copy link">
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
+                    <strong className="text-foreground">How it works:</strong> When someone clicks your campaign link, the UTM parameters are captured by the website pixel and stored against the visit. The CRM shows you which campaign, platform, and ad content drove each website visit.
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ── Webhook Configuration ── */}
+              <Card className="glass-panel border-border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Webhook className="w-4 h-4 text-primary" /> Webhook Endpoints
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Configure these webhook URLs in each platform to capture direct interactions (messages, reactions, lead form fills) — even when users don't visit your website.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {PLATFORMS.map((p) => (
+                      <div key={p.id} className="rounded-xl border border-border overflow-hidden">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border">
+                          <div className={cn("w-2 h-2 rounded-full", p.color)} />
+                          <span className="text-sm font-semibold text-foreground">{p.label}</span>
+                        </div>
+                        <div className="p-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 text-xs font-mono text-muted-foreground bg-muted/50 px-2 py-1.5 rounded truncate">{p.webhook}</code>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={() => copyToClipboard(p.webhook)} title="Copy URL">
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                          <ol className="space-y-1">
+                            {p.steps.map((step, si) => (
+                              <li key={si} className="flex gap-2 text-xs text-muted-foreground">
+                                <span className="text-primary font-medium shrink-0">{si + 1}.</span>
+                                <span>{step}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 p-3 rounded-lg bg-amber-500/5 border border-amber-200/50 text-xs text-muted-foreground">
+                    <strong className="text-foreground">Privacy note:</strong> Platform webhooks only deliver identifiable signals when the user takes an action (sends a message, fills a form, clicks a link). Anonymous post views and ad impressions are not identified — they appear as aggregated counts only.
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* ── Live Engagement Feed ── */}
+              <Card className="glass-panel border-border">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-primary" /> Recent Engagement Events
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {engListQuery.isLoading ? (
+                    <div className="space-y-2">{Array.from({length:5}).map((_,i) => <div key={i} className="h-10 bg-muted/50 rounded animate-pulse"/>)}</div>
+                  ) : events.length === 0 ? (
+                    <div className="py-10 text-center text-muted-foreground">
+                      <Radio className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No engagement events captured yet.</p>
+                      <p className="text-xs mt-1">Set up your webhook endpoints and UTM links above to start tracking.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {events.map((ev) => {
+                        const cfg = CATEGORY_CONFIG[ev.interestCategory] ?? CATEGORY_CONFIG.cold;
+                        const CIcon = cfg.icon;
+                        const EIcon = EVENT_ICONS[ev.eventType] ?? Activity;
+                        const dot = PLATFORM_DOT[ev.platform] ?? "bg-muted-foreground";
+                        const identity = ev.platformUserName ?? ev.platformUserEmail ?? (ev.leadId ? `Lead #${ev.leadId}` : "Anonymous");
+                        return (
+                          <div key={ev.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/40 border border-border hover:bg-muted/60 transition-colors">
+                            <div className={cn("w-2 h-2 rounded-full shrink-0", dot)} title={ev.platform} />
+                            <EIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-medium text-foreground capitalize">{ev.eventType.replace(/_/g, " ")}</span>
+                              <span className="text-xs text-muted-foreground ml-2 capitalize">{ev.platform}</span>
+                              {identity !== "Anonymous" && <span className="text-xs text-muted-foreground ml-2">· {identity}</span>}
+                            </div>
+                            <span className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium shrink-0", cfg.color)}>
+                              <CIcon className="w-3 h-3" />
+                              {cfg.label.split(" ")[0]}
+                            </span>
+                            <span className="text-xs text-muted-foreground shrink-0 tabular-nums w-24 text-right">
+                              {format(new Date(ev.occurredAt), "d MMM, HH:mm")}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+            </div>
+          );
+        })()}
 
         {/* Edit Dialog */}
         <CampaignEditDialog
