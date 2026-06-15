@@ -36,6 +36,7 @@ interface LeadDetail {
   lastName: string;
   email: string | null;
   phone: string | null;
+  website: string | null;
   company: string | null;
   title: string | null;
   status: string;
@@ -182,6 +183,7 @@ export default function LeadDetail() {
   const [editLastName, setEditLastName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editWebsite, setEditWebsite] = useState("");
   const [editCompany, setEditCompany] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editSource, setEditSource] = useState("");
@@ -292,6 +294,7 @@ export default function LeadDetail() {
       setEditLastName(lead.lastName);
       setEditEmail(lead.email ?? "");
       setEditPhone(lead.phone ?? "");
+      setEditWebsite(lead.website ?? "");
       setEditCompany(lead.company ?? "");
       setEditTitle(lead.title ?? "");
     } else {
@@ -315,6 +318,7 @@ export default function LeadDetail() {
       lastName: editingSection === "contact" ? editLastName : lead.lastName,
       email: editingSection === "contact" ? (editEmail || undefined) : (lead.email ?? undefined),
       phone: editingSection === "contact" ? (editPhone || undefined) : (lead.phone ?? undefined),
+      website: editingSection === "contact" ? (editWebsite || undefined) : (lead.website ?? undefined),
       company: editingSection === "contact" ? (editCompany || undefined) : (lead.company ?? undefined),
       title: editingSection === "contact" ? (editTitle || undefined) : (lead.title ?? undefined),
       status: lead.status as "new" | "contacted" | "qualified" | "unqualified" | "converted",
@@ -374,6 +378,7 @@ export default function LeadDetail() {
         lastName: lead.lastName,
         email: lead.email,
         phone: lead.phone,
+        website: lead.website,
         company: lead.company,
         title: lead.title,
         source: lead.source,
@@ -736,6 +741,10 @@ export default function LeadDetail() {
                     <label className="text-xs font-medium text-muted-foreground">Phone</label>
                     <input className={inputCls} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+91 9876543210" />
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Website</label>
+                    <input className={inputCls} type="url" value={editWebsite} onChange={(e) => setEditWebsite(e.target.value)} placeholder="https://example.com" />
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <label className="text-xs font-medium text-muted-foreground">Company</label>
@@ -759,9 +768,10 @@ export default function LeadDetail() {
                 <>
                   <FieldRow label="Email" value={lead.email} icon={Mail} />
                   <FieldRow label="Phone" value={lead.phone} icon={Phone} />
+                  <FieldRow label="Website" value={lead.website} icon={Globe} />
                   <FieldRow label="Company" value={lead.company} icon={Building2} />
                   <FieldRow label="Title" value={lead.title} icon={User} />
-                  {!lead.email && !lead.phone && !lead.company && !lead.title && (
+                  {!lead.email && !lead.phone && !lead.website && !lead.company && !lead.title && (
                     <p className="text-xs text-muted-foreground py-2">No contact details yet.</p>
                   )}
                 </>

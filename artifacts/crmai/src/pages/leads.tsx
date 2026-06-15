@@ -80,6 +80,7 @@ interface LeadFormData {
   lastName: string;
   email: string;
   phone: string;
+  website: string;
   company: string;
   title: string;
   source: string;
@@ -93,7 +94,7 @@ interface LeadFormData {
 }
 
 const defaultFormData: LeadFormData = {
-  firstName: "", lastName: "", email: "", phone: "", company: "", title: "",
+  firstName: "", lastName: "", email: "", phone: "", website: "", company: "", title: "",
   source: "", status: "new", assignedTo: "", score: "",
   industry: "", employees: "", annualRevenue: "", description: "",
 };
@@ -657,6 +658,7 @@ export default function Leads() {
                               lastName: lead.lastName,
                               email: lead.email ?? "",
                               phone: lead.phone ?? "",
+                              website: (lead as any).website ?? "",
                               company: lead.company ?? "",
                               title: lead.title ?? "",
                               source: lead.source ?? "",
@@ -1057,6 +1059,10 @@ function LeadFormDialog({
               <Label className="text-xs font-medium">Phone</Label>
               <Input value={formData.phone} onChange={f("phone")} className="h-8 text-sm" />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Website</Label>
+            <Input type="url" value={formData.website} onChange={f("website")} placeholder="https://example.com" className="h-8 text-sm" />
           </div>
 
           {/* Lead Details section */}

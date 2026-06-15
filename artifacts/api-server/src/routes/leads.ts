@@ -14,6 +14,7 @@ const leadFields = {
   lastName: leadsTable.lastName,
   email: leadsTable.email,
   phone: leadsTable.phone,
+  website: leadsTable.website,
   company: leadsTable.company,
   title: leadsTable.title,
   status: leadsTable.status,
@@ -124,7 +125,7 @@ router.get("/leads/:id", async (req, res) => {
 router.put("/leads/:id", async (req, res) => {
   try {
     const allowedFields = [
-      "firstName", "lastName", "email", "phone", "company", "title",
+      "firstName", "lastName", "email", "phone", "website", "company", "title",
       "status", "source", "score", "assignedTo",
       "industry", "employees", "annualRevenue", "description",
     ] as const;
