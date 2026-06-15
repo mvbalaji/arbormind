@@ -335,8 +335,9 @@ router.delete("/campaigns/:id/members/:memberId", async (req, res) => {
   }
 });
 
-/* ── GET /contacts/search (used by Add From Contacts modal) ── */
-router.get("/contacts/search-quick", async (req, res) => {
+/* ── GET /campaigns/contacts-search ─────────────────── */
+/* Scoped under /campaigns/ to avoid conflict with /contacts/:id  */
+router.get("/campaigns/contacts-search", async (req, res) => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
@@ -363,8 +364,8 @@ router.get("/contacts/search-quick", async (req, res) => {
   }
 });
 
-/* ── GET /leads/search-quick ─────────────────────────── */
-router.get("/leads/search-quick", async (req, res) => {
+/* ── GET /campaigns/leads-search ─────────────────────── */
+router.get("/campaigns/leads-search", async (req, res) => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {

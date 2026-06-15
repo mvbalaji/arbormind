@@ -256,6 +256,70 @@ export default function CampaignDetail() {
   const [memberSearch, setMemberSearch] = useState("");
   const [memberStatusFilter, setMemberStatusFilter] = useState("");
 
+  // ── Inline section editing ────────────────────────────
+  const [editingSection, setEditingSection] = useState<null | "info" | "budget" | "audience" | "team">(null);
+  const [sectionForm, setSectionForm] = useState<Record<string, string>>({});
+
+  const startEdit = (section: "info" | "budget" | "audience" | "team") => {
+    setEditingSection(section);
+    if (section === "info") setSectionForm({
+      name: campaign?.name ?? "", type: campaign?.type ?? "", status: campaign?.status ?? "",
+      startDate: campaign?.startDate?.slice(0, 10) ?? "", endDate: campaign?.endDate?.slice(0, 10) ?? "",
+      goals: campaign?.goals ?? "", description: campaign?.description ?? "",
+    });
+    else if (section === "budget") setSectionForm({
+      budget: campaign?.budget?.toString() ?? "",
+      actualCost: campaign?.actualCost?.toString() ?? "",
+      expectedRevenue: campaign?.expectedRevenue?.toString() ?? "",
+    });
+    else if (section === "audience") setSectionForm({
+      targetAudience: campaign?.targetAudience ?? "",
+      channels: campaign?.channels ?? "",
+    });
+    else if (section === "team") setSectionForm({
+      teamMembers: campaign?.teamMembers ?? "",
+    });
+  };
+
+  const saveSectionMutation = useMutation({
+    mutationFn: async (fields: Record<string, unknown>) => {
+      const res = await fetch(`/api/campaigns/${id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Changes saved" });
+      queryClient.invalidateQueries({ queryKey: ["campaign", id] });
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      setEditingSection(null);
+    },
+    onError: () => toast({ title: "Error", description: "Could not save", variant: "destructive" }),
+  });
+
+  const saveSection = () => {
+    if (!editingSection) return;
+    const f = sectionForm;
+    let fields: Record<string, unknown> = { ...f };
+    if (editingSection === "budget") {
+      fields = {
+        budget: f.budget ? parseFloat(f.budget) : null,
+        actualCost: f.actualCost ? parseFloat(f.actualCost) : null,
+        expectedRevenue: f.expectedRevenue ? parseFloat(f.expectedRevenue) : null,
+      };
+    }
+    if (editingSection === "info") {
+      fields.startDate = f.startDate || null;
+      fields.endDate = f.endDate || null;
+    }
+    saveSectionMutation.mutate(fields);
+  };
+
+  const isc = "w-full h-9 px-3 rounded-md bg-muted border border-border text-foreground text-sm outline-none focus:ring-1 focus:ring-primary/50";
+  const isLocked = ["active", "completed"].includes(campaign?.status ?? "");
+
   interface CampaignMemberRow {
     id: number; campaignId: number; contactId: number | null; leadId: number | null;
     firstName: string; lastName: string; email: string; companyName: string | null;
@@ -456,7 +520,7 @@ export default function CampaignDetail() {
                         <CheckCircle2 className="w-3.5 h-3.5" /> Mark Complete
                       </Button>
                     )}
-                    <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => setIsEditOpen(true)}>
+                    <Button size="sm" variant="outline" className="gap-1.5 border-border" onClick={() => { setActiveTab("overview"); startEdit("info"); }}>
                       <Pencil className="w-3.5 h-3.5" /> Edit
                     </Button>
                     <Button size="sm" variant="outline" className="gap-1.5 border-border text-muted-foreground hover:text-foreground" onClick={() => duplicateMutation.mutate()} disabled={duplicateMutation.isPending}>
@@ -536,33 +600,168 @@ export default function CampaignDetail() {
           <div className="flex flex-col gap-4">
             <AISummary entityType="campaign" entityData={campaign as unknown as Record<string, unknown>} />
 
-            {/* Campaign Summary */}
+            {/* Campaign Information — inline editable */}
             <Card className="glass-panel border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-primary" /> Campaign Information / Summary
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Tag className="w-4 h-4 text-primary" /> Campaign Information
+                  </CardTitle>
+                  {editingSection !== "info" && (
+                    <button onClick={() => startEdit("info")} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent hover:border-border transition-all">
+                      <Pencil className="w-3 h-3" /> Edit
+                    </button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
-                  {[
-                    { label: "Campaign Name", value: campaign.name },
-                    { label: "Type", value: campaign.type, capitalize: true },
-                    { label: "Status", value: campaign.status, capitalize: true },
-                    { label: "Duration", value: campaign.startDate && campaign.endDate ? `${format(new Date(campaign.startDate), "MMM d")} → ${format(new Date(campaign.endDate), "MMM d, yyyy")}` : "Not set" },
-                    { label: "Goals", value: campaign.goals ?? "Not specified" },
-                    { label: "Created", value: format(new Date(campaign.createdAt), "MMM d, yyyy") },
-                  ].map(({ label, value, capitalize }) => (
-                    <div key={label}>
-                      <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
-                      <dd className={cn("text-sm text-foreground", capitalize && "capitalize")}>{value}</dd>
+                {editingSection === "info" ? (
+                  <div className="flex flex-col gap-3">
+                    {isLocked && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        Some fields are locked because this campaign is {campaign.status}. Type and start date cannot be changed.
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2 flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">Campaign Name <span className="text-red-400">*</span></label>
+                        <input className={isc} value={sectionForm.name} onChange={e => setSectionForm(f => ({ ...f, name: e.target.value }))} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground flex items-center gap-1">
+                          Type {isLocked && <span className="text-amber-400 text-[10px]">🔒 locked</span>}
+                        </label>
+                        <select className={isc} value={sectionForm.type} disabled={isLocked} onChange={e => setSectionForm(f => ({ ...f, type: e.target.value }))}>
+                          {["email","social","event","webinar","content","paid","sms","whatsapp"].map(t => (
+                            <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">Status</label>
+                        <select className={isc} value={sectionForm.status} onChange={e => setSectionForm(f => ({ ...f, status: e.target.value }))}>
+                          {["planning","active","paused","completed","cancelled"].map(s => (
+                            <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground flex items-center gap-1">
+                          Start Date {isLocked && <span className="text-amber-400 text-[10px]">🔒 locked</span>}
+                        </label>
+                        <input type="date" className={isc} value={sectionForm.startDate} disabled={isLocked} onChange={e => setSectionForm(f => ({ ...f, startDate: e.target.value }))} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">End Date</label>
+                        <input type="date" className={isc} value={sectionForm.endDate} onChange={e => setSectionForm(f => ({ ...f, endDate: e.target.value }))} />
+                      </div>
+                      <div className="col-span-2 flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">Goals</label>
+                        <input className={isc} placeholder="e.g. Generate 500 qualified leads" value={sectionForm.goals} onChange={e => setSectionForm(f => ({ ...f, goals: e.target.value }))} />
+                      </div>
+                      <div className="col-span-2 flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">Description</label>
+                        <textarea className="w-full px-3 py-2 rounded-md bg-muted border border-border text-foreground text-sm outline-none focus:ring-1 focus:ring-primary/50 resize-none" rows={3} value={sectionForm.description} onChange={e => setSectionForm(f => ({ ...f, description: e.target.value }))} />
+                      </div>
                     </div>
-                  ))}
-                </dl>
-                {campaign.description && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Description</dt>
-                    <dd className="text-sm text-muted-foreground leading-relaxed">{campaign.description}</dd>
+                    <div className="flex gap-2 pt-1 border-t border-border/40">
+                      <button onClick={saveSection} disabled={saveSectionMutation.isPending || !sectionForm.name?.trim()} className="px-4 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                        {saveSectionMutation.isPending ? "Saving…" : "Save Changes"}
+                      </button>
+                      <button onClick={() => setEditingSection(null)} disabled={saveSectionMutation.isPending} className="px-4 py-1.5 rounded-md bg-muted border border-border text-foreground text-sm hover:bg-muted/70 transition-colors">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                      {[
+                        { label: "Campaign Name", value: campaign.name },
+                        { label: "Type", value: campaign.type, capitalize: true },
+                        { label: "Status", value: campaign.status, capitalize: true },
+                        { label: "Duration", value: campaign.startDate && campaign.endDate ? `${format(new Date(campaign.startDate), "MMM d")} → ${format(new Date(campaign.endDate), "MMM d, yyyy")}` : "Not set" },
+                        { label: "Goals", value: campaign.goals ?? "Not specified" },
+                        { label: "Created", value: format(new Date(campaign.createdAt), "MMM d, yyyy") },
+                      ].map(({ label, value, capitalize }) => (
+                        <div key={label}>
+                          <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
+                          <dd className={cn("text-sm text-foreground", capitalize && "capitalize")}>{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                    {campaign.description && (
+                      <div className="mt-4 pt-4 border-t border-border">
+                        <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Description</dt>
+                        <dd className="text-sm text-muted-foreground leading-relaxed">{campaign.description}</dd>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Budget & Revenue — inline editable */}
+            <Card className="glass-panel border-border">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-primary" /> Budget & Revenue
+                  </CardTitle>
+                  {editingSection !== "budget" && (
+                    <button onClick={() => startEdit("budget")} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent hover:border-border transition-all">
+                      <Pencil className="w-3 h-3" /> Edit
+                    </button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {editingSection === "budget" ? (
+                  <div className="flex flex-col gap-3">
+                    {isLocked && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        Budget is locked for active campaigns. You can still update Actual Cost and Expected Revenue.
+                      </div>
+                    )}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground flex items-center gap-1">
+                          Budget {isLocked && <span className="text-amber-400 text-[10px]">🔒</span>}
+                        </label>
+                        <input type="number" className={isc} value={sectionForm.budget} disabled={isLocked} placeholder="0" onChange={e => setSectionForm(f => ({ ...f, budget: e.target.value }))} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">Actual Cost</label>
+                        <input type="number" className={isc} value={sectionForm.actualCost} placeholder="0" onChange={e => setSectionForm(f => ({ ...f, actualCost: e.target.value }))} />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs text-muted-foreground">Expected Revenue</label>
+                        <input type="number" className={isc} value={sectionForm.expectedRevenue} placeholder="0" onChange={e => setSectionForm(f => ({ ...f, expectedRevenue: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-1 border-t border-border/40">
+                      <button onClick={saveSection} disabled={saveSectionMutation.isPending} className="px-4 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+                        {saveSectionMutation.isPending ? "Saving…" : "Save Changes"}
+                      </button>
+                      <button onClick={() => setEditingSection(null)} disabled={saveSectionMutation.isPending} className="px-4 py-1.5 rounded-md bg-muted border border-border text-foreground text-sm hover:bg-muted/70">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-4">
+                    {[
+                      { label: "Budget", value: campaign.budget ? fmtMoney(campaign.budget) : "—" },
+                      { label: "Actual Cost", value: campaign.actualCost ? fmtMoney(campaign.actualCost) : "—" },
+                      { label: "Expected Revenue", value: campaign.expectedRevenue ? fmtMoney(campaign.expectedRevenue) : "—" },
+                    ].map(f => (
+                      <div key={f.label} className="p-3 rounded-xl bg-muted/50 border border-border">
+                        <p className="text-xs text-muted-foreground mb-1">{f.label}</p>
+                        <p className="text-lg font-bold text-foreground">{f.value}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -619,69 +818,120 @@ export default function CampaignDetail() {
           <div className="flex flex-col gap-4">
             <Card className="glass-panel border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" /> Audience & Targeting
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" /> Audience & Targeting
+                  </CardTitle>
+                  {editingSection !== "audience" && (
+                    <button onClick={() => startEdit("audience")} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent hover:border-border transition-all">
+                      <Pencil className="w-3 h-3" /> Edit
+                    </button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent className="space-y-5">
-                {/* Target Segment */}
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Target Audience Segment</p>
-                  <p className="text-sm text-foreground leading-relaxed">
-                    {campaign.targetAudience ?? "B2B decision-makers in SaaS / Technology companies with 50–500 employees. Primarily VPs and Directors of Sales and Revenue Operations."}
-                  </p>
-                </div>
-
-                {/* Demographics */}
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Demographic Profile</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[
-                      { label: "Industry", value: "SaaS / Tech" },
-                      { label: "Company Size", value: "50–500 employees" },
-                      { label: "Job Level", value: "VP / Director" },
-                      { label: "Region", value: "North America" },
-                    ].map((d) => (
-                      <div key={d.label} className="p-3 rounded-xl bg-muted/50 border border-border">
-                        <p className="text-xs text-muted-foreground mb-1">{d.label}</p>
-                        <p className="text-sm font-medium text-foreground">{d.value}</p>
+                {editingSection === "audience" ? (
+                  <div className="flex flex-col gap-3">
+                    {isLocked && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-xs text-amber-600">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        Channels are locked for active campaigns. You can still update the Target Audience description.
                       </div>
-                    ))}
+                    )}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-muted-foreground">Target Audience Description</label>
+                      <textarea
+                        className="w-full px-3 py-2 rounded-md bg-muted border border-border text-foreground text-sm outline-none focus:ring-1 focus:ring-primary/50 resize-none"
+                        rows={4}
+                        placeholder="Describe your target audience segment…"
+                        value={sectionForm.targetAudience}
+                        onChange={e => setSectionForm(f => ({ ...f, targetAudience: e.target.value }))}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-muted-foreground flex items-center gap-1">
+                        Channels {isLocked && <span className="text-amber-400 text-[10px]">🔒 locked</span>}
+                      </label>
+                      <input
+                        className={isc}
+                        placeholder="Email, LinkedIn, Facebook, SMS…"
+                        value={sectionForm.channels}
+                        disabled={isLocked}
+                        onChange={e => setSectionForm(f => ({ ...f, channels: e.target.value }))}
+                      />
+                      <p className="text-[11px] text-muted-foreground">Comma-separated list of channels</p>
+                    </div>
+                    <div className="flex gap-2 pt-1 border-t border-border/40">
+                      <button onClick={saveSection} disabled={saveSectionMutation.isPending} className="px-4 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+                        {saveSectionMutation.isPending ? "Saving…" : "Save Changes"}
+                      </button>
+                      <button onClick={() => setEditingSection(null)} disabled={saveSectionMutation.isPending} className="px-4 py-1.5 rounded-md bg-muted border border-border text-foreground text-sm hover:bg-muted/70">
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <>
+                    {/* Target Segment */}
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Target Audience Segment</p>
+                      <p className="text-sm text-foreground leading-relaxed">
+                        {campaign.targetAudience ?? "B2B decision-makers in SaaS / Technology companies with 50–500 employees. Primarily VPs and Directors of Sales and Revenue Operations."}
+                      </p>
+                    </div>
 
-                {/* Channels */}
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Channels Being Used</p>
-                  <div className="flex flex-wrap gap-2">
-                    {channels.map((ch) => {
-                      const CIcon = CHANNEL_ICONS[ch.toLowerCase()] ?? Globe;
-                      return (
-                        <div key={ch} className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
-                          <CIcon className="w-3.5 h-3.5 text-primary" />
-                          <span className="text-sm text-primary font-medium">{ch}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Audience Size Estimate */}
-                <div className="pt-4 border-t border-border">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Estimated Reach</p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { label: "Addressable Audience", value: "42,500" },
-                      { label: "Active Subscribers", value: "18,200" },
-                      { label: "Lookalike Size", value: "95,000" },
-                    ].map((r) => (
-                      <div key={r.label} className="p-3 rounded-xl bg-muted/50 border border-border text-center">
-                        <p className="text-xs text-muted-foreground mb-1">{r.label}</p>
-                        <p className="text-xl font-bold text-foreground">{r.value}</p>
+                    {/* Channels */}
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Channels Being Used</p>
+                      <div className="flex flex-wrap gap-2">
+                        {channels.map((ch) => {
+                          const CIcon = CHANNEL_ICONS[ch.toLowerCase()] ?? Globe;
+                          return (
+                            <div key={ch} className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+                              <CIcon className="w-3.5 h-3.5 text-primary" />
+                              <span className="text-sm text-primary font-medium">{ch}</span>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+
+                    {/* Demographics */}
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Demographic Profile</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[
+                          { label: "Industry", value: "SaaS / Tech" },
+                          { label: "Company Size", value: "50–500 employees" },
+                          { label: "Job Level", value: "VP / Director" },
+                          { label: "Region", value: "North America" },
+                        ].map((d) => (
+                          <div key={d.label} className="p-3 rounded-xl bg-muted/50 border border-border">
+                            <p className="text-xs text-muted-foreground mb-1">{d.label}</p>
+                            <p className="text-sm font-medium text-foreground">{d.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Audience Size Estimate */}
+                    <div className="pt-4 border-t border-border">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Estimated Reach</p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: "Addressable Audience", value: "42,500" },
+                          { label: "Active Subscribers", value: "18,200" },
+                          { label: "Lookalike Size", value: "95,000" },
+                        ].map((r) => (
+                          <div key={r.label} className="p-3 rounded-xl bg-muted/50 border border-border text-center">
+                            <p className="text-xs text-muted-foreground mb-1">{r.label}</p>
+                            <p className="text-xl font-bold text-foreground">{r.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -751,53 +1001,80 @@ export default function CampaignDetail() {
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" /> Campaign Team
                 </CardTitle>
-                <Button size="sm" variant="outline" className="border-border text-xs gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5" /> Add Member
-                </Button>
+                {editingSection !== "team" && (
+                  <button onClick={() => startEdit("team")} className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-transparent hover:border-border transition-all">
+                    <Pencil className="w-3 h-3" /> Edit
+                  </button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
-              {teamList.length === 0 ? (
-                <div className="py-8 text-center">
-                  <Users className="w-10 h-8 mx-auto text-muted-foreground/30 mb-3" />
-                  <p className="text-muted-foreground text-sm">No team members assigned yet.</p>
-                  <p className="text-xs text-muted-foreground mt-1">Edit the campaign to add team members.</p>
+              {editingSection === "team" ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-muted-foreground">Team Members</label>
+                    <textarea
+                      className="w-full px-3 py-2 rounded-md bg-muted border border-border text-foreground text-sm outline-none focus:ring-1 focus:ring-primary/50 resize-none"
+                      rows={4}
+                      placeholder="Sarah Chen, John Doe, Priya Nair…"
+                      value={sectionForm.teamMembers}
+                      onChange={e => setSectionForm(f => ({ ...f, teamMembers: e.target.value }))}
+                    />
+                    <p className="text-[11px] text-muted-foreground">Enter names separated by commas. Each name becomes a team member card.</p>
+                  </div>
+                  <div className="flex gap-2 pt-1 border-t border-border/40">
+                    <button onClick={saveSection} disabled={saveSectionMutation.isPending} className="px-4 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+                      {saveSectionMutation.isPending ? "Saving…" : "Save Changes"}
+                    </button>
+                    <button onClick={() => setEditingSection(null)} disabled={saveSectionMutation.isPending} className="px-4 py-1.5 rounded-md bg-muted border border-border text-foreground text-sm hover:bg-muted/70">
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {teamList.map((member, i) => {
-                    const initials = member.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
-                    return (
-                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
-                        <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-semibold text-primary">
-                          {initials}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-foreground">{member}</p>
-                          <p className="text-xs text-muted-foreground">Campaign Team Member</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="mt-5 pt-5 border-t border-border">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Responsibilities</p>
-                <div className="space-y-2">
-                  {[
-                    { role: "Campaign Manager", desc: "Overall strategy and execution" },
-                    { role: "Content Writer", desc: "Ad copy, emails, landing pages" },
-                    { role: "Design Lead", desc: "Visual assets and branding" },
-                    { role: "Analytics Lead", desc: "Tracking, reporting, optimisation" },
-                  ].map((r) => (
-                    <div key={r.role} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50 border border-border">
-                      <p className="text-sm font-medium text-foreground">{r.role}</p>
-                      <p className="text-xs text-muted-foreground">{r.desc}</p>
+                <>
+                  {teamList.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <Users className="w-10 h-8 mx-auto text-muted-foreground/30 mb-3" />
+                      <p className="text-muted-foreground text-sm">No team members assigned yet.</p>
+                      <button onClick={() => startEdit("team")} className="mt-2 text-xs text-primary hover:underline">+ Add team members</button>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {teamList.map((member, i) => {
+                        const initials = member.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+                        return (
+                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
+                            <div className="w-9 h-9 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-sm font-semibold text-primary">
+                              {initials}
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-foreground">{member}</p>
+                              <p className="text-xs text-muted-foreground">Campaign Team Member</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="mt-5 pt-5 border-t border-border">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3">Responsibilities</p>
+                    <div className="space-y-2">
+                      {[
+                        { role: "Campaign Manager", desc: "Overall strategy and execution" },
+                        { role: "Content Writer", desc: "Ad copy, emails, landing pages" },
+                        { role: "Design Lead", desc: "Visual assets and branding" },
+                        { role: "Analytics Lead", desc: "Tracking, reporting, optimisation" },
+                      ].map((r) => (
+                        <div key={r.role} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50 border border-border">
+                          <p className="text-sm font-medium text-foreground">{r.role}</p>
+                          <p className="text-xs text-muted-foreground">{r.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}
@@ -1743,7 +2020,7 @@ function AddFromContactsDialog({ open, onOpenChange, onAdd, isPending }: {
   const { data: contacts = [], isLoading } = useQuery<Array<{ id: number; firstName: string; lastName: string; email: string | null; title: string | null }>>({
     queryKey: ["contacts-quick", search],
     queryFn: async () => {
-      const r = await fetch(`/api/contacts/search-quick?q=${encodeURIComponent(search)}`, { credentials: "include" });
+      const r = await fetch(`/api/campaigns/contacts-search?q=${encodeURIComponent(search)}`, { credentials: "include" });
       if (!r.ok) throw new Error("Failed");
       return r.json();
     },
@@ -1816,7 +2093,7 @@ function AddFromLeadsDialog({ open, onOpenChange, onAdd, isPending }: {
   const { data: leads = [], isLoading } = useQuery<Array<{ id: number; firstName: string; lastName: string; email: string | null; company: string | null; title: string | null }>>({
     queryKey: ["leads-quick", search],
     queryFn: async () => {
-      const r = await fetch(`/api/leads/search-quick?q=${encodeURIComponent(search)}`, { credentials: "include" });
+      const r = await fetch(`/api/campaigns/leads-search?q=${encodeURIComponent(search)}`, { credentials: "include" });
       if (!r.ok) throw new Error("Failed");
       return r.json();
     },
