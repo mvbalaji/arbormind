@@ -768,7 +768,15 @@ export default function LeadDetail() {
                 <>
                   <FieldRow label="Email" value={lead.email} icon={Mail} />
                   <FieldRow label="Phone" value={lead.phone} icon={Phone} />
-                  <FieldRow label="Website" value={lead.website} icon={Globe} />
+                  {lead.website && (
+                    <div className="py-2 flex items-start gap-3 border-b border-border/50 last:border-0">
+                      <Globe className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-xs text-muted-foreground mb-0.5">Website</div>
+                        <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-blue-500 hover:underline break-all">{lead.website}</a>
+                      </div>
+                    </div>
+                  )}
                   <FieldRow label="Company" value={lead.company} icon={Building2} />
                   <FieldRow label="Title" value={lead.title} icon={User} />
                   {!lead.email && !lead.phone && !lead.website && !lead.company && !lead.title && (
