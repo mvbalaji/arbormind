@@ -40,6 +40,7 @@ interface Campaign {
   channels: string | null;
   teamMembers: string | null;
   goals: string | null;
+  launchedAt: string | null;
   createdAt: string;
 }
 
@@ -105,6 +106,7 @@ export default function CampaignDetail() {
   const { format: fmtMoney } = useCurrency();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isLaunchOpen, setIsLaunchOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
 
   const { data: campaign, isLoading } = useQuery<Campaign>({
@@ -134,6 +136,37 @@ export default function CampaignDetail() {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
     },
     onError: () => toast({ title: "Error", description: "Could not update status.", variant: "destructive" }),
+  });
+
+  const launchMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/campaigns/${id}/launch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? "Failed to launch");
+      }
+      return res.json() as Promise<{
+        campaign: Campaign;
+        launchedAt: string;
+        notifiedCount: number;
+        emailResults: Array<{ name: string; email: string; status: string }>;
+        smtpConfigured: boolean;
+      }>;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["campaign", id] });
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      setIsLaunchOpen(false);
+      const notifMsg = data.smtpConfigured
+        ? data.notifiedCount > 0 ? `${data.notifiedCount} team member${data.notifiedCount !== 1 ? "s" : ""} notified by email.` : "No team members found to notify."
+        : "SMTP not configured — team not emailed.";
+      toast({ title: "🚀 Campaign is live!", description: notifMsg });
+    },
+    onError: (err) => toast({ title: "Launch failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" }),
   });
 
   const duplicateMutation = useMutation({
@@ -318,7 +351,7 @@ export default function CampaignDetail() {
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-2 mt-4">
                     {campaign.status === "planning" && (
-                      <Button size="sm" className="gap-1.5 bg-green-600 hover:bg-green-700 text-foreground" onClick={() => statusMutation.mutate("active")}>
+                      <Button size="sm" className="gap-1.5 bg-green-600 hover:bg-green-700 text-foreground" onClick={() => setIsLaunchOpen(true)}>
                         <Play className="w-3.5 h-3.5" /> Launch Campaign
                       </Button>
                     )}
@@ -954,6 +987,15 @@ export default function CampaignDetail() {
           );
         })()}
 
+        {/* Launch Dialog */}
+        <LaunchCampaignDialog
+          open={isLaunchOpen}
+          onOpenChange={setIsLaunchOpen}
+          campaign={campaign}
+          onConfirm={() => launchMutation.mutate()}
+          isPending={launchMutation.isPending}
+        />
+
         {/* Edit Dialog */}
         <CampaignEditDialog
           open={isEditOpen}
@@ -1049,6 +1091,7 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
   const f = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm({ ...form, [field]: e.target.value });
   const sc = "w-full h-9 px-3 rounded-md bg-muted border border-border text-foreground text-sm";
+  const isLocked = ["active", "completed"].includes(campaign.status);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1056,6 +1099,14 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Edit Campaign</DialogTitle>
         </DialogHeader>
+
+        {isLocked && (
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-amber-500/8 border border-amber-200/50 text-xs text-amber-700 mb-1">
+            <Flag className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span><strong>Campaign is {campaign.status}.</strong> Core fields (type, budget, dates, channels) are locked. You can still edit goals, description, audience, and team.</span>
+          </div>
+        )}
+
         <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(form); }} className="space-y-4 py-2">
           {/* Basic Info */}
           <div className="space-y-1.5">
@@ -1063,8 +1114,8 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
             <Input required className="bg-muted border-border h-9" value={form.name} onChange={f("name")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Type</Label>
-              <select className={sc} value={form.type} onChange={f("type")}>
+            <div className="space-y-1.5"><Label className="text-xs">Type {isLocked && <span className="text-amber-600 ml-1">🔒</span>}</Label>
+              <select className={cn(sc, isLocked && "opacity-50 cursor-not-allowed")} value={form.type} onChange={f("type")} disabled={isLocked}>
                 {["email","social","webinar","event","content","ppc","other"].map(t => <option key={t} value={t} className="bg-card capitalize">{t}</option>)}
               </select>
             </div>
@@ -1075,11 +1126,11 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Start Date</Label><Input type="date" className="bg-muted border-border h-9" value={form.startDate} onChange={f("startDate")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Start Date {isLocked && <span className="text-amber-600 ml-1">🔒</span>}</Label><Input type="date" className="bg-muted border-border h-9 disabled:opacity-50 disabled:cursor-not-allowed" value={form.startDate} onChange={f("startDate")} disabled={isLocked} /></div>
             <div className="space-y-1.5"><Label className="text-xs">End Date</Label><Input type="date" className="bg-muted border-border h-9" value={form.endDate} onChange={f("endDate")} /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Budget (£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.budget} onChange={f("budget")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Budget (£) {isLocked && <span className="text-amber-600 ml-1">🔒</span>}</Label><Input type="number" className="bg-muted border-border h-9 disabled:opacity-50 disabled:cursor-not-allowed" value={form.budget} onChange={f("budget")} disabled={isLocked} /></div>
             <div className="space-y-1.5"><Label className="text-xs">Actual Cost (£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.actualCost} onChange={f("actualCost")} /></div>
             <div className="space-y-1.5"><Label className="text-xs">Expected Rev. (£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.expectedRevenue} onChange={f("expectedRevenue")} /></div>
           </div>
@@ -1101,8 +1152,8 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
           </div>
 
           {/* Channels */}
-          <div className="space-y-1.5"><Label className="text-xs">Channels (comma-separated)</Label>
-            <Input className="bg-muted border-border h-9" placeholder="e.g. Email, LinkedIn, Google Ads" value={form.channels} onChange={f("channels")} />
+          <div className="space-y-1.5"><Label className="text-xs">Channels (comma-separated) {isLocked && <span className="text-amber-600 ml-1">🔒</span>}</Label>
+            <Input className="bg-muted border-border h-9 disabled:opacity-50 disabled:cursor-not-allowed" placeholder="e.g. Email, LinkedIn, Google Ads" value={form.channels} onChange={f("channels")} disabled={isLocked} />
           </div>
 
           {/* Team Members */}
@@ -1117,6 +1168,162 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
             </Button>
           </DialogFooter>
         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ============================================================
+ * LaunchCampaignDialog — pre-flight checklist + confirm launch
+ * ========================================================== */
+function LaunchCampaignDialog({
+  open, onOpenChange, campaign, onConfirm, isPending,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  campaign: Campaign;
+  onConfirm: () => void;
+  isPending: boolean;
+}) {
+  const teamList = (campaign.teamMembers ?? "")
+    .split(",").map((n) => n.trim()).filter(Boolean);
+  const channels = (campaign.channels ?? "")
+    .split(",").map((c) => c.trim()).filter(Boolean);
+
+  const checks: Array<{ label: string; ok: boolean; warn?: string }> = [
+    { label: "Campaign name set", ok: !!campaign.name },
+    { label: "Campaign type defined", ok: !!campaign.type },
+    { label: "Budget configured", ok: !!campaign.budget, warn: "No budget set — campaign may overspend without a limit." },
+    { label: "Start date set", ok: !!campaign.startDate, warn: "No start date — tracking reports won't have a baseline." },
+    { label: "Channels specified", ok: channels.length > 0, warn: "No channels defined — add them in Edit before launching." },
+    { label: "Goals defined", ok: !!campaign.goals, warn: "No goals set — success will be hard to measure." },
+    { label: "Team members assigned", ok: teamList.length > 0, warn: "No team assigned — notifications won't go out to anyone." },
+  ];
+
+  const allOk = checks.every((c) => c.ok);
+  const warnings = checks.filter((c) => !c.ok && c.warn);
+
+  const fmtDate = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl flex items-center gap-2">
+            <Play className="w-5 h-5 text-green-500" /> Launch Campaign
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-5 py-2">
+
+          {/* Campaign Summary */}
+          <div className="rounded-xl bg-muted/50 border border-border p-4 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Campaign Summary</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              {[
+                ["Name", campaign.name],
+                ["Type", campaign.type.charAt(0).toUpperCase() + campaign.type.slice(1)],
+                ["Budget", campaign.budget ? `£${Number(campaign.budget).toLocaleString()}` : "Not set"],
+                ["Start Date", fmtDate(campaign.startDate)],
+                ["End Date", fmtDate(campaign.endDate)],
+                ["Channels", channels.length > 0 ? channels.join(", ") : "—"],
+              ].map(([k, v]) => (
+                <div key={k}>
+                  <p className="text-xs text-muted-foreground">{k}</p>
+                  <p className="font-medium text-foreground truncate">{v}</p>
+                </div>
+              ))}
+            </div>
+            {campaign.goals && (
+              <div>
+                <p className="text-xs text-muted-foreground">Goals</p>
+                <p className="text-sm text-foreground">{campaign.goals}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Pre-flight Checklist */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Pre-flight Checklist</p>
+            <div className="space-y-1.5">
+              {checks.map((c) => (
+                <div key={c.label} className={cn(
+                  "flex items-start gap-2 px-3 py-2 rounded-lg text-sm",
+                  c.ok ? "bg-green-500/5 border border-green-200/40" : "bg-amber-500/5 border border-amber-200/50",
+                )}>
+                  {c.ok
+                    ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                    : <Flag className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />}
+                  <div>
+                    <span className={c.ok ? "text-foreground" : "text-amber-700 font-medium"}>{c.label}</span>
+                    {!c.ok && c.warn && <p className="text-xs text-muted-foreground mt-0.5">{c.warn}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Team notification */}
+          <div className={cn(
+            "rounded-xl p-3 border text-sm",
+            teamList.length > 0
+              ? "bg-blue-500/5 border-blue-200/40"
+              : "bg-muted/50 border-border",
+          )}>
+            <div className="flex items-center gap-2 font-medium text-foreground mb-1">
+              <Mail className="w-4 h-4 text-blue-500" />
+              Team Notifications
+            </div>
+            {teamList.length > 0 ? (
+              <>
+                <p className="text-xs text-muted-foreground mb-2">
+                  The following team members will receive a launch notification email:
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {teamList.map((m) => (
+                    <span key={m} className="inline-flex items-center gap-1 text-xs bg-blue-500/10 border border-blue-200/40 text-blue-700 px-2 py-0.5 rounded-full">
+                      <Users className="w-3 h-3" />{m}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">No team members assigned — no emails will be sent.</p>
+            )}
+          </div>
+
+          {/* Webhook reminder */}
+          <div className="rounded-xl p-3 border border-amber-200/40 bg-amber-500/5 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 font-medium text-amber-700 mb-1">
+              <Webhook className="w-3.5 h-3.5" /> Webhook Setup
+            </div>
+            Once live, go to the <strong className="text-foreground">📡 Tracking &amp; Channels</strong> tab to copy your webhook URLs and configure each platform. Engagements won't be tracked until webhooks are connected.
+          </div>
+
+          {/* Lock notice */}
+          <div className="text-xs text-muted-foreground flex items-start gap-2 px-2">
+            <Flag className="w-3.5 h-3.5 shrink-0 mt-0.5 text-muted-foreground" />
+            After launch, core fields (type, budget, start date, channels) will be locked in the Edit dialog to protect data integrity.
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border" disabled={isPending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={isPending}
+            className="bg-green-600 hover:bg-green-700 text-white gap-2"
+          >
+            {isPending ? (
+              <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full" /> Launching…</>
+            ) : (
+              <><Play className="w-3.5 h-3.5" /> {warnings.length > 0 ? "Launch Anyway" : "Launch Campaign"}</>
+            )}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -17,6 +17,7 @@ export const campaignsTable = pgTable("campaigns", {
   channels: text("channels"),
   teamMembers: text("team_members"),
   goals: text("goals"),
+  launchedAt: timestamp("launched_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
