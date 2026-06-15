@@ -32,6 +32,7 @@ import websiteVisitsRouter from "./website-visits";
 import appModulesRouter from "./app-modules";
 import webhooksRouter from "./webhooks";
 import campaignEngagementsRouter from "./campaign-engagements";
+import campaignMembersRouter from "./campaign-members";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 import { seedStandardPricing } from "../lib/pricing";
@@ -72,6 +73,7 @@ router.use(websiteVisitsRouter);
 router.use(appModulesRouter);
 router.use(webhooksRouter);
 router.use(campaignEngagementsRouter);
+router.use(campaignMembersRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
 // access on startup.

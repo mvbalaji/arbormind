@@ -19,6 +19,8 @@ import {
   Mail, Globe, Layers, Copy, Trash2, Image, FileText, MousePointerClick,
   UserCheck, MapPin, Smartphone, Laptop, Monitor, Tag, Flag,
   Radio, Link2, Webhook, Flame, Activity, Send, MessageSquare,
+  Upload, UserPlus, Search, XCircle, Filter, Download, RefreshCw,
+  Database, ChevronDown, AlertTriangle, Plus, Trash,
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { useCurrency } from "@/context/currency";
@@ -95,7 +97,7 @@ const CREATIVE_ICONS: Record<string, React.ElementType> = {
   image: Image, email: Mail, text: FileText, video: BarChart2,
 };
 
-type Tab = "overview" | "performance" | "audience" | "creatives" | "team" | "tracking";
+type Tab = "overview" | "performance" | "audience" | "creatives" | "team" | "tracking" | "members";
 
 export default function CampaignDetail() {
   const params = useParams<{ id: string }>();
@@ -246,6 +248,89 @@ export default function CampaignDetail() {
     enabled: !!id && activeTab === "tracking",
   });
 
+  // ── Members tab state ────────────────────────────────
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isImportCSVOpen, setIsImportCSVOpen] = useState(false);
+  const [isAddContactOpen, setIsAddContactOpen] = useState(false);
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberStatusFilter, setMemberStatusFilter] = useState("");
+
+  interface CampaignMemberRow {
+    id: number; campaignId: number; contactId: number | null; leadId: number | null;
+    firstName: string; lastName: string; email: string; companyName: string | null;
+    role: string | null; status: string; source: string;
+    sentAt: string | null; openedAt: string | null; clickedAt: string | null;
+    bouncedAt: string | null; unsubscribedAt: string | null; createdAt: string;
+  }
+  interface MembersResponse {
+    data: CampaignMemberRow[];
+    total: number;
+    stats: { total: number; pending: number; sent: number; opened: number; clicked: number; bounced: number; unsubscribed: number };
+  }
+
+  const membersQuery = useQuery<MembersResponse>({
+    queryKey: ["campaign-members", id, memberSearch, memberStatusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (memberSearch) params.set("search", memberSearch);
+      if (memberStatusFilter) params.set("status", memberStatusFilter);
+      const r = await fetch(`/api/campaigns/${id}/members?${params}`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed to load members");
+      return r.json() as Promise<MembersResponse>;
+    },
+    enabled: !!id && activeTab === "members",
+  });
+
+  const addMemberMutation = useMutation({
+    mutationFn: async (payload: Record<string, unknown>) => {
+      const r = await fetch(`/api/campaigns/${id}/members`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        credentials: "include", body: JSON.stringify(payload),
+      });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error((e as { error?: string }).error ?? "Failed"); }
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Member added" });
+      queryClient.invalidateQueries({ queryKey: ["campaign-members", id] });
+      setIsAddMemberOpen(false);
+      setIsAddContactOpen(false);
+      setIsAddLeadOpen(false);
+    },
+    onError: (e) => toast({ title: "Error", description: e instanceof Error ? e.message : "Could not add member", variant: "destructive" }),
+  });
+
+  const importMembersMutation = useMutation({
+    mutationFn: async (csv: string) => {
+      const r = await fetch(`/api/campaigns/${id}/members/import`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        credentials: "include", body: JSON.stringify({ csv }),
+      });
+      if (!r.ok) throw new Error("Import failed");
+      return r.json() as Promise<{ imported: number; skipped: number; errors: string[] }>;
+    },
+    onSuccess: (data) => {
+      toast({ title: `Imported ${data.imported} member${data.imported !== 1 ? "s" : ""}`, description: data.skipped ? `${data.skipped} rows skipped` : undefined });
+      queryClient.invalidateQueries({ queryKey: ["campaign-members", id] });
+      setIsImportCSVOpen(false);
+    },
+    onError: (e) => toast({ title: "Import failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" }),
+  });
+
+  const removeMemberMutation = useMutation({
+    mutationFn: async (memberId: number) => {
+      const r = await fetch(`/api/campaigns/${id}/members/${memberId}`, { method: "DELETE", credentials: "include" });
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Member removed" });
+      queryClient.invalidateQueries({ queryKey: ["campaign-members", id] });
+    },
+    onError: () => toast({ title: "Error", description: "Could not remove member", variant: "destructive" }),
+  });
+
   if (isLoading) {
     return (
       <Layout>
@@ -297,6 +382,7 @@ export default function CampaignDetail() {
     { id: "creatives", label: "Creatives / Assets" },
     { id: "team", label: "Campaign Team" },
     { id: "tracking", label: "📡 Tracking & Channels" },
+    { id: "members", label: "👥 Members" },
   ];
 
   return (
@@ -987,6 +1073,259 @@ export default function CampaignDetail() {
           );
         })()}
 
+        {/* ── Members tab ─────────────────────────────────── */}
+        {activeTab === "members" && (() => {
+          const members = membersQuery.data?.data ?? [];
+          const stats = membersQuery.data?.stats ?? { total: 0, pending: 0, sent: 0, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0 };
+
+          const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
+            pending:     { label: "Pending",     color: "text-amber-400",  bg: "bg-amber-400/10" },
+            sent:        { label: "Sent",         color: "text-blue-400",   bg: "bg-blue-400/10" },
+            opened:      { label: "Opened",       color: "text-emerald-400",bg: "bg-emerald-400/10" },
+            clicked:     { label: "Clicked",      color: "text-violet-400", bg: "bg-violet-400/10" },
+            bounced:     { label: "Bounced",      color: "text-red-400",    bg: "bg-red-400/10" },
+            unsubscribed:{ label: "Unsubscribed", color: "text-zinc-400",   bg: "bg-zinc-400/10" },
+          };
+
+          const sourceLabel: Record<string, string> = {
+            manual: "Manual", csv_import: "CSV", contact_search: "Contact", lead_search: "Lead",
+          };
+
+          // Segmentation summaries
+          const byCompany = Object.entries(
+            members.reduce<Record<string, number>>((acc, m) => {
+              const k = m.companyName || "—";
+              acc[k] = (acc[k] ?? 0) + 1;
+              return acc;
+            }, {})
+          ).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+          const byRole = Object.entries(
+            members.reduce<Record<string, number>>((acc, m) => {
+              const k = m.role || "—";
+              acc[k] = (acc[k] ?? 0) + 1;
+              return acc;
+            }, {})
+          ).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+          const statCards = [
+            { label: "Total", value: stats.total, color: "text-foreground",   dot: "bg-foreground/40" },
+            { label: "Pending",  value: stats.pending,  color: "text-amber-400",  dot: "bg-amber-400" },
+            { label: "Sent",     value: stats.sent,     color: "text-blue-400",   dot: "bg-blue-400" },
+            { label: "Opened",   value: stats.opened,   color: "text-emerald-400",dot: "bg-emerald-400" },
+            { label: "Clicked",  value: stats.clicked,  color: "text-violet-400", dot: "bg-violet-400" },
+            { label: "Bounced",  value: stats.bounced,  color: "text-red-400",    dot: "bg-red-400" },
+            { label: "Unsub.",   value: stats.unsubscribed, color: "text-zinc-400", dot: "bg-zinc-400" },
+          ];
+
+          return (
+            <div className="flex flex-col gap-5">
+              {/* Stats row */}
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                {statCards.map(s => (
+                  <Card key={s.label} className="bg-card/60 border-border/60 p-3 flex flex-col items-center gap-0.5">
+                    <div className={`text-2xl font-bold tabular-nums ${s.color}`}>{s.value}</div>
+                    <div className="flex items-center gap-1">
+                      <div className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                      <span className="text-[11px] text-muted-foreground">{s.label}</span>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Action bar */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setIsAddMemberOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" /> Add Manually
+                </button>
+                <button
+                  onClick={() => setIsAddContactOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted border border-border text-foreground text-sm hover:bg-muted/70 transition-colors"
+                >
+                  <Users className="w-3.5 h-3.5" /> Add from Contacts
+                </button>
+                <button
+                  onClick={() => setIsAddLeadOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted border border-border text-foreground text-sm hover:bg-muted/70 transition-colors"
+                >
+                  <Target className="w-3.5 h-3.5" /> Add from Leads
+                </button>
+                <button
+                  onClick={() => setIsImportCSVOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted border border-border text-foreground text-sm hover:bg-muted/70 transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5" /> Import CSV
+                </button>
+                <div className="ml-auto flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      value={memberSearch}
+                      onChange={e => setMemberSearch(e.target.value)}
+                      placeholder="Search members…"
+                      className="pl-8 pr-3 py-1.5 rounded-md bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-primary/50 w-48"
+                    />
+                  </div>
+                  <select
+                    value={memberStatusFilter}
+                    onChange={e => setMemberStatusFilter(e.target.value)}
+                    className="px-2 py-1.5 rounded-md bg-muted border border-border text-sm text-foreground outline-none"
+                  >
+                    <option value="">All Statuses</option>
+                    {Object.entries(statusConfig).map(([v, c]) => (
+                      <option key={v} value={v}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Segmentation */}
+              {members.length > 0 && (
+                <Card className="bg-card/60 border-border/60">
+                  <CardContent className="p-4 flex flex-col gap-3">
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Segmentation</div>
+                    <div className="flex flex-wrap gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[11px] text-muted-foreground font-medium">By Company</span>
+                        <div className="flex flex-wrap gap-1">
+                          {byCompany.map(([name, count]) => (
+                            <span key={name} className="px-2 py-0.5 rounded-full bg-muted border border-border/60 text-xs text-foreground">
+                              {name} <span className="text-muted-foreground">({count})</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[11px] text-muted-foreground font-medium">By Role</span>
+                        <div className="flex flex-wrap gap-1">
+                          {byRole.map(([name, count]) => (
+                            <span key={name} className="px-2 py-0.5 rounded-full bg-muted border border-border/60 text-xs text-foreground">
+                              {name} <span className="text-muted-foreground">({count})</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Members table */}
+              <Card className="bg-card/60 border-border/60">
+                <CardContent className="p-0">
+                  {membersQuery.isLoading ? (
+                    <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">Loading members…</div>
+                  ) : members.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                        <Users className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-foreground">No members yet</div>
+                        <div className="text-sm text-muted-foreground mt-0.5">Add contacts, leads, or import a CSV to populate your campaign audience</div>
+                      </div>
+                      <div className="flex gap-2 mt-1">
+                        <button onClick={() => setIsAddMemberOpen(true)} className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90">+ Add Manually</button>
+                        <button onClick={() => setIsImportCSVOpen(true)} className="px-3 py-1.5 rounded-md bg-muted border border-border text-sm text-foreground hover:bg-muted/70">Import CSV</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border/60 bg-muted/30">
+                            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
+                            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Email</th>
+                            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Company</th>
+                            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</th>
+                            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Source</th>
+                            <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                            <th className="px-4 py-2.5" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                          {members.map(m => {
+                            const initials = `${m.firstName[0] ?? ""}${m.lastName[0] ?? ""}`.toUpperCase();
+                            const sc = statusConfig[m.status] ?? { label: m.status, color: "text-muted-foreground", bg: "bg-muted" };
+                            return (
+                              <tr key={m.id} className="hover:bg-muted/20 transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                      <span className="text-[10px] font-bold text-primary">{initials}</span>
+                                    </div>
+                                    <span className="font-medium text-foreground">{m.firstName} {m.lastName}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.email}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{m.companyName || <span className="text-muted-foreground/50">—</span>}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{m.role || <span className="text-muted-foreground/50">—</span>}</td>
+                                <td className="px-4 py-3">
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted border border-border/60 text-muted-foreground">
+                                    {sourceLabel[m.source] ?? m.source}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${sc.color} ${sc.bg}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${sc.color.replace("text-", "bg-")}`} />
+                                    {sc.label}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <button
+                                    onClick={() => removeMemberMutation.mutate(m.id)}
+                                    disabled={removeMemberMutation.isPending}
+                                    className="p-1.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors"
+                                    title="Remove member"
+                                  >
+                                    <Trash className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      <div className="px-4 py-2.5 border-t border-border/40 text-xs text-muted-foreground">
+                        {stats.total} member{stats.total !== 1 ? "s" : ""} total
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Dialogs */}
+              <AddMemberManuallyDialog
+                open={isAddMemberOpen}
+                onOpenChange={setIsAddMemberOpen}
+                onAdd={(payload) => addMemberMutation.mutate(payload)}
+                isPending={addMemberMutation.isPending}
+              />
+              <AddFromContactsDialog
+                open={isAddContactOpen}
+                onOpenChange={setIsAddContactOpen}
+                onAdd={(contactId) => addMemberMutation.mutate({ contactId })}
+                isPending={addMemberMutation.isPending}
+              />
+              <AddFromLeadsDialog
+                open={isAddLeadOpen}
+                onOpenChange={setIsAddLeadOpen}
+                onAdd={(leadId) => addMemberMutation.mutate({ leadId })}
+                isPending={addMemberMutation.isPending}
+              />
+              <ImportCSVDialog
+                open={isImportCSVOpen}
+                onOpenChange={setIsImportCSVOpen}
+                onImport={(csv) => importMembersMutation.mutate(csv)}
+                isPending={importMembersMutation.isPending}
+              />
+            </div>
+          );
+        })()}
+
         {/* Launch Dialog */}
         <LaunchCampaignDialog
           open={isLaunchOpen}
@@ -1322,6 +1661,335 @@ function LaunchCampaignDialog({
             ) : (
               <><Play className="w-3.5 h-3.5" /> {warnings.length > 0 ? "Launch Anyway" : "Launch Campaign"}</>
             )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   CAMPAIGN MEMBERS DIALOGS
+══════════════════════════════════════════════════════════ */
+
+function AddMemberManuallyDialog({ open, onOpenChange, onAdd, isPending }: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  onAdd: (payload: Record<string, unknown>) => void;
+  isPending: boolean;
+}) {
+  const [form, setForm] = React.useState({ firstName: "", lastName: "", email: "", companyName: "", role: "" });
+  React.useEffect(() => { if (open) setForm({ firstName: "", lastName: "", email: "", companyName: "", role: "" }); }, [open]);
+
+  const inp = "w-full h-9 px-3 rounded-md bg-muted border border-border text-foreground text-sm outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground";
+  const valid = form.firstName.trim() && form.lastName.trim() && form.email.trim();
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle className="font-display text-lg">Add Member Manually</DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">
+            Enter contact details. If the email already exists in your CRM, it will be linked automatically.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 py-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">First Name <span className="text-red-400">*</span></label>
+              <input className={inp} placeholder="Jane" value={form.firstName} onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Last Name <span className="text-red-400">*</span></label>
+              <input className={inp} placeholder="Smith" value={form.lastName} onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))} />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Email ID <span className="text-red-400">*</span></label>
+            <input className={inp} type="email" placeholder="jane@company.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Company Name</label>
+            <input className={inp} placeholder="Acme Corp" value={form.companyName} onChange={e => setForm(f => ({ ...f, companyName: e.target.value }))} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Role / Designation</label>
+            <input className={inp} placeholder="VP of Sales" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} />
+          </div>
+          <div className="text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2 flex items-start gap-2">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-400" />
+            If this email doesn't exist in Contacts or Leads, a new Contact record will be created automatically.
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border" disabled={isPending}>Cancel</Button>
+          <Button onClick={() => valid && onAdd(form)} disabled={!valid || isPending} className="gap-2">
+            {isPending ? <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full" /> Adding…</> : <><Plus className="w-3.5 h-3.5" /> Add Member</>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddFromContactsDialog({ open, onOpenChange, onAdd, isPending }: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  onAdd: (contactId: number) => void;
+  isPending: boolean;
+}) {
+  const [search, setSearch] = React.useState("");
+  const [selected, setSelected] = React.useState<number | null>(null);
+  React.useEffect(() => { if (open) { setSearch(""); setSelected(null); } }, [open]);
+
+  const { data: contacts = [], isLoading } = useQuery<Array<{ id: number; firstName: string; lastName: string; email: string | null; title: string | null }>>({
+    queryKey: ["contacts-quick", search],
+    queryFn: async () => {
+      const r = await fetch(`/api/contacts/search-quick?q=${encodeURIComponent(search)}`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    enabled: open,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle className="font-display text-lg">Add from Contacts</DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">Search your existing contacts and select one to add.</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 py-2">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              className="w-full pl-8 pr-3 h-9 rounded-md bg-muted border border-border text-foreground text-sm outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground"
+              placeholder="Search by name or email…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto flex flex-col divide-y divide-border/40 rounded-md border border-border/60">
+            {isLoading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+            ) : contacts.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">No contacts found</div>
+            ) : contacts.map(c => (
+              <button
+                key={c.id}
+                onClick={() => setSelected(c.id)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors text-sm",
+                  selected === c.id && "bg-primary/10 border-l-2 border-primary"
+                )}
+              >
+                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-bold text-primary">{(c.firstName[0] ?? "") + (c.lastName[0] ?? "")}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-foreground truncate">{c.firstName} {c.lastName}</div>
+                  <div className="text-xs text-muted-foreground truncate">{c.email ?? "—"}{c.title ? ` · ${c.title}` : ""}</div>
+                </div>
+                {selected === c.id && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
+              </button>
+            ))}
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border" disabled={isPending}>Cancel</Button>
+          <Button onClick={() => selected !== null && onAdd(selected)} disabled={selected === null || isPending} className="gap-2">
+            {isPending ? <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full" /> Adding…</> : <><UserPlus className="w-3.5 h-3.5" /> Add Contact</>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddFromLeadsDialog({ open, onOpenChange, onAdd, isPending }: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  onAdd: (leadId: number) => void;
+  isPending: boolean;
+}) {
+  const [search, setSearch] = React.useState("");
+  const [selected, setSelected] = React.useState<number | null>(null);
+  React.useEffect(() => { if (open) { setSearch(""); setSelected(null); } }, [open]);
+
+  const { data: leads = [], isLoading } = useQuery<Array<{ id: number; firstName: string; lastName: string; email: string | null; company: string | null; title: string | null }>>({
+    queryKey: ["leads-quick", search],
+    queryFn: async () => {
+      const r = await fetch(`/api/leads/search-quick?q=${encodeURIComponent(search)}`, { credentials: "include" });
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    enabled: open,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle className="font-display text-lg">Add from Leads</DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">Search your existing leads and select one to add.</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3 py-2">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              className="w-full pl-8 pr-3 h-9 rounded-md bg-muted border border-border text-foreground text-sm outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground"
+              placeholder="Search by name, email, or company…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto flex flex-col divide-y divide-border/40 rounded-md border border-border/60">
+            {isLoading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+            ) : leads.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">No leads found</div>
+            ) : leads.map(l => (
+              <button
+                key={l.id}
+                onClick={() => setSelected(l.id)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors text-sm",
+                  selected === l.id && "bg-primary/10 border-l-2 border-primary"
+                )}
+              >
+                <div className="w-7 h-7 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-bold text-amber-500">{(l.firstName[0] ?? "") + (l.lastName[0] ?? "")}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-foreground truncate">{l.firstName} {l.lastName}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {l.email ?? "—"}{l.company ? ` · ${l.company}` : ""}{l.title ? ` · ${l.title}` : ""}
+                  </div>
+                </div>
+                {selected === l.id && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
+              </button>
+            ))}
+          </div>
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border" disabled={isPending}>Cancel</Button>
+          <Button onClick={() => selected !== null && onAdd(selected)} disabled={selected === null || isPending} className="gap-2">
+            {isPending ? <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full" /> Adding…</> : <><UserPlus className="w-3.5 h-3.5" /> Add Lead</>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ImportCSVDialog({ open, onOpenChange, onImport, isPending }: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  onImport: (csv: string) => void;
+  isPending: boolean;
+}) {
+  const [csvText, setCsvText] = React.useState("");
+  const [fileName, setFileName] = React.useState("");
+  const [preview, setPreview] = React.useState<string[][]>([]);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => { if (open) { setCsvText(""); setFileName(""); setPreview([]); } }, [open]);
+
+  const handleFile = (file: File) => {
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = e.target?.result as string;
+      setCsvText(text);
+      // Preview first 5 rows
+      const lines = text.replace(/\r\n/g, "\n").split("\n").filter(l => l.trim()).slice(0, 6);
+      setPreview(lines.map(l => l.split(",").map(v => v.trim().replace(/^"|"$/g, ""))));
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-card border-border text-foreground sm:max-w-[580px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display text-lg">Import Members from CSV</DialogTitle>
+          <DialogDescription className="text-muted-foreground text-sm">
+            Upload a CSV file with member details. Existing emails in this campaign will be updated, not duplicated.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-4 py-2">
+          {/* Format guide */}
+          <div className="bg-muted/50 rounded-md border border-border/60 p-3 text-xs">
+            <div className="font-semibold text-foreground mb-1.5">Required CSV columns</div>
+            <div className="grid grid-cols-3 gap-1 text-muted-foreground">
+              <span className="font-mono bg-muted px-1.5 py-0.5 rounded">first_name <span className="text-red-400">*</span></span>
+              <span className="font-mono bg-muted px-1.5 py-0.5 rounded">last_name <span className="text-red-400">*</span></span>
+              <span className="font-mono bg-muted px-1.5 py-0.5 rounded">email <span className="text-red-400">*</span></span>
+              <span className="font-mono bg-muted px-1.5 py-0.5 rounded">company_name</span>
+              <span className="font-mono bg-muted px-1.5 py-0.5 rounded">role</span>
+            </div>
+          </div>
+
+          {/* Drop zone */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={e => e.preventDefault()}
+            onClick={() => fileRef.current?.click()}
+            className="border-2 border-dashed border-border/60 rounded-lg p-8 flex flex-col items-center gap-2 cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
+          >
+            <Upload className="w-8 h-8 text-muted-foreground" />
+            {fileName ? (
+              <div className="text-sm text-foreground font-medium">{fileName}</div>
+            ) : (
+              <>
+                <div className="text-sm font-medium text-foreground">Drop CSV file here or click to browse</div>
+                <div className="text-xs text-muted-foreground">Supports .csv files, UTF-8 encoded</div>
+              </>
+            )}
+            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+          </div>
+
+          {/* Or paste */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Or paste CSV content</label>
+            <textarea
+              value={csvText}
+              onChange={e => {
+                setCsvText(e.target.value);
+                const lines = e.target.value.replace(/\r\n/g, "\n").split("\n").filter(l => l.trim()).slice(0, 6);
+                setPreview(lines.map(l => l.split(",").map(v => v.trim().replace(/^"|"$/g, ""))));
+                setFileName("");
+              }}
+              placeholder={"first_name,last_name,email,company_name,role\nJane,Smith,jane@acme.com,Acme Corp,VP Sales"}
+              rows={4}
+              className="w-full px-3 py-2 rounded-md bg-muted border border-border text-foreground text-xs font-mono outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground resize-none"
+            />
+          </div>
+
+          {/* Preview */}
+          {preview.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <div className="text-xs font-medium text-muted-foreground">Preview (first {Math.min(preview.length, 5)} rows)</div>
+              <div className="overflow-x-auto rounded-md border border-border/60">
+                <table className="w-full text-xs">
+                  {preview.slice(0, 6).map((row, i) => (
+                    <tr key={i} className={i === 0 ? "bg-muted/50 font-semibold" : "border-t border-border/40 hover:bg-muted/20"}>
+                      {row.map((cell, j) => (
+                        <td key={j} className="px-2.5 py-1.5 text-foreground whitespace-nowrap max-w-[120px] truncate">{cell || <span className="text-muted-foreground/50">—</span>}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-border" disabled={isPending}>Cancel</Button>
+          <Button onClick={() => csvText.trim() && onImport(csvText)} disabled={!csvText.trim() || isPending} className="gap-2">
+            {isPending ? <><span className="animate-spin inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full" /> Importing…</> : <><Upload className="w-3.5 h-3.5" /> Import</>}
           </Button>
         </DialogFooter>
       </DialogContent>
