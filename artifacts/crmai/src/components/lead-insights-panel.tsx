@@ -544,9 +544,67 @@ export function LeadInsightsPanel({
                     </div>
                   )}
                   {foundContacts.length === 0 ? (
-                    <div className="p-3 rounded-lg border border-dashed border-border text-center">
-                      <p className="text-xs text-muted-foreground">No team members found on the website.</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">The site may require login or use JavaScript rendering.</p>
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-lg border border-dashed border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 text-center">
+                        <p className="text-xs text-muted-foreground">No team members found on the public website pages.</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">The site may use JavaScript rendering or require login.</p>
+                      </div>
+                      {/* Fallback: offer the AI-suggested contact to add */}
+                      {insights.bestContactName && insights.bestContactName !== "Unknown" && (() => {
+                        const nameParts = insights.bestContactName!.trim().split(/\s+/);
+                        const firstName = nameParts[0] ?? "";
+                        const lastName = nameParts.slice(1).join(" ") || "";
+                        const fallbackContact: FoundContact = {
+                          firstName,
+                          lastName,
+                          title: (insights.bestContactTitle && insights.bestContactTitle !== "Unknown") ? insights.bestContactTitle : "",
+                          email: null,
+                          phone: null,
+                          linkedinUrl: null,
+                          source: "AI suggestion",
+                          confidence: "low",
+                        };
+                        const key = `${firstName}-${lastName}`;
+                        const isAdded = addedContacts.has(key);
+                        const isAdding = addingContact === key;
+                        return (
+                          <div>
+                            <div className="text-[10px] text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
+                              <span className="w-3 h-px bg-border inline-block" />
+                              AI-suggested — add to start the conversation
+                              <span className="w-3 h-px bg-border inline-block" />
+                            </div>
+                            <div className={cn(
+                              "flex items-start gap-2 p-2.5 rounded-lg border transition-colors",
+                              isAdded
+                                ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+                                : "bg-background border-border"
+                            )}>
+                              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-primary">
+                                {firstName[0]}{lastName[0]}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold text-foreground">{insights.bestContactName}</div>
+                                {fallbackContact.title && <div className="text-[10px] text-muted-foreground">{fallbackContact.title}</div>}
+                                <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 italic">AI-suggested · no email found yet</div>
+                              </div>
+                              <button
+                                onClick={() => { void handleAddContact(fallbackContact); }}
+                                disabled={isAdded || isAdding}
+                                className={cn(
+                                  "flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition-colors",
+                                  isAdded
+                                    ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 cursor-default"
+                                    : "bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer"
+                                )}
+                              >
+                                {isAdding ? <RefreshCw className="w-3 h-3 animate-spin" /> : isAdded ? <Check className="w-3 h-3" /> : <Users className="w-3 h-3" />}
+                                {isAdding ? "Adding…" : isAdded ? "Added" : "Add"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : (
                     foundContacts.map((c, i) => {
