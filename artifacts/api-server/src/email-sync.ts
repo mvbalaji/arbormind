@@ -2,6 +2,7 @@ import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, co
 import { eq, ilike, desc } from "drizzle-orm";
 import { simpleParser } from "mailparser";
 import { maybeAutoReply } from "./auto-reply";
+import { generateEmailTaskTitle } from "./lib/ai-task-title";
 
 // Normalises a Message-ID for header comparison: trims whitespace, removes angle brackets,
 // and lowercases the domain. Returns null for empty input. Equivalent values from different

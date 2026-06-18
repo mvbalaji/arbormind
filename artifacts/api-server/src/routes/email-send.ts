@@ -101,15 +101,41 @@ router.post("/email/send", async (req, res) => {
     }
   }
 
-  const host = process.env.SMTP_HOST || process.env.IMAP_HOST || "mail.spacemail.com";
-  const port = Number(process.env.SMTP_PORT ?? 465);
-  const secure = process.env.SMTP_SECURE !== "false";
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
-  const fromName = process.env.SMTP_FROM_NAME || "ArborMind CRM";
+  // Prefer admin-configured DB credentials (Email Settings page), fall back to env vars.
+  const emailSettings = await (async () => {
+    try {
+      const { emailSettingsTable } = await import("@workspace/db");
+      const rows = await db.select().from(emailSettingsTable).limit(1);
+      return rows[0] ?? null;
+    } catch { return null; }
+  })();
+
+  const host =
+    (emailSettings?.smtpHost as string | undefined) ||
+    process.env.SMTP_HOST || process.env.IMAP_HOST || "mail.spacemail.com";
+  const port = Number(
+    (emailSettings?.smtpPort as number | undefined) ??
+    process.env.SMTP_PORT ??
+    465,
+  );
+  const secure =
+    typeof (emailSettings?.smtpSecure) === "boolean"
+      ? (emailSettings?.smtpSecure as boolean)
+      : process.env.SMTP_SECURE !== "false";
+  const smtpUser =
+    (emailSettings?.smtpUser as string | undefined) ||
+    process.env.SMTP_USER;
+  const smtpPass =
+    (emailSettings?.smtpPassword as string | undefined) ||
+    process.env.SMTP_PASS ||
+    process.env.SMTP_PASSWORD;
+  const fromName =
+    (emailSettings?.smtpFromName as string | undefined) ||
+    process.env.SMTP_FROM_NAME ||
+    "ArborMind CRM";
 
   if (!smtpUser || !smtpPass) {
-    res.status(503).json({ error: "SMTP not configured (SMTP_USER / SMTP_PASS missing)" });
+    res.status(503).json({ error: "SMTP not configured. Go to Admin → Email Settings to add your SMTP credentials." });
     return;
   }
 
