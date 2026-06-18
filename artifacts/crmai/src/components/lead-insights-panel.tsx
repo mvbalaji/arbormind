@@ -11,7 +11,7 @@ import {
   ChevronRight, AlertTriangle, CheckCircle2, ArrowRightLeft,
   MapPin, Calendar, DollarSign, Trophy, User, ExternalLink,
   Swords, Twitter, Youtube, Facebook, Instagram, Linkedin,
-  Mail, Search, Copy, Check,
+  Mail, Search, Copy, Check, BookOpen,
 } from "lucide-react";
 
 interface LeadInsights {
@@ -48,6 +48,8 @@ interface LeadInsights {
   facebookUrl: string | null;
   instagramHandle: string | null;
   youtubeUrl: string | null;
+  // Blog
+  blogUrl: string | null;
   // Best contact
   bestContactName: string | null;
   bestContactTitle: string | null;
@@ -518,8 +520,8 @@ export function LeadInsightsPanel({
             )}
 
             {/* Company Social Media */}
-            {(insights.linkedinUrl || insights.twitterHandle || insights.facebookUrl || insights.instagramHandle || insights.youtubeUrl) &&
-              [insights.linkedinUrl, insights.twitterHandle, insights.facebookUrl, insights.instagramHandle, insights.youtubeUrl].some(v => v && v !== "Unknown") && (
+            {(insights.linkedinUrl || insights.twitterHandle || insights.facebookUrl || insights.instagramHandle || insights.youtubeUrl || insights.blogUrl) &&
+              [insights.linkedinUrl, insights.twitterHandle, insights.facebookUrl, insights.instagramHandle, insights.youtubeUrl, insights.blogUrl].some(v => v && v !== "Unknown") && (
               <div>
                 <SectionLabel>Company Social Media</SectionLabel>
                 <div className="flex flex-wrap gap-2">
@@ -556,6 +558,13 @@ export function LeadInsightsPanel({
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 dark:bg-red-950/20 dark:border-red-800 dark:text-red-400 text-xs font-medium hover:bg-red-100 dark:hover:bg-red-950/40 transition-colors">
                       <Youtube className="w-3.5 h-3.5" />
                       YouTube
+                    </a>
+                  )}
+                  {insights.blogUrl && insights.blogUrl !== "Unknown" && (
+                    <a href={insights.blogUrl} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-50 border border-violet-200 text-violet-600 dark:bg-violet-950/20 dark:border-violet-800 dark:text-violet-400 text-xs font-medium hover:bg-violet-100 dark:hover:bg-violet-950/40 transition-colors">
+                      <BookOpen className="w-3.5 h-3.5" />
+                      Blog
                     </a>
                   )}
                 </div>

@@ -41,6 +41,8 @@ export const leadInsightsTable = pgTable("lead_insights", {
   bestContactTitle: text("best_contact_title"),
   bestContactEmail: text("best_contact_email"),
   emailPattern: text("email_pattern"),
+  // Blog / resources
+  blogUrl: text("blog_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
