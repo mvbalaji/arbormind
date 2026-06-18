@@ -139,6 +139,17 @@ function InfoChip({ icon: Icon, label, value, href }: {
   );
 }
 
+interface FoundContact {
+  firstName: string;
+  lastName: string;
+  title: string;
+  email: string | null;
+  phone: string | null;
+  linkedinUrl: string | null;
+  source: string;
+  confidence: "high" | "medium" | "low";
+}
+
 interface HunterEmail {
   value: string;
   first_name: string;
@@ -164,6 +175,11 @@ export function LeadInsightsPanel({
   const [hunterResult, setHunterResult] = useState<HunterResult | null>(null);
   const [hunterLooking, setHunterLooking] = useState(false);
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [findingContacts, setFindingContacts] = useState(false);
+  const [foundContacts, setFoundContacts] = useState<FoundContact[] | null>(null);
+  const [pagesScraped, setPagesScraped] = useState<string[]>([]);
+  const [addingContact, setAddingContact] = useState<string | null>(null);
+  const [addedContacts, setAddedContacts] = useState<Set<string>>(new Set());
 
   const score = currentScore ?? 0;
   const scoreMeta = SCORE_META(score);
@@ -236,6 +252,64 @@ export function LeadInsightsPanel({
     void navigator.clipboard.writeText(email);
     setCopiedEmail(email);
     setTimeout(() => setCopiedEmail(null), 2000);
+  };
+
+  const handleFindContacts = async () => {
+    setFindingContacts(true);
+    setFoundContacts(null);
+    setPagesScraped([]);
+    try {
+      const r = await fetch(`/api/leads/${leadId}/find-contacts`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await r.json() as { contacts: FoundContact[]; pagesScraped: string[]; error?: string };
+      if (!r.ok) throw new Error(data.error ?? "Search failed");
+      setFoundContacts(data.contacts);
+      setPagesScraped(data.pagesScraped ?? []);
+      if (data.contacts.length === 0) {
+        toast({ title: "No contacts found", description: "No team members found on the company website. Try adding the website URL to this lead." });
+      } else {
+        toast({ title: `Found ${data.contacts.length} contact${data.contacts.length > 1 ? "s" : ""}`, description: "Real people from the company website. Add them to the lead." });
+      }
+    } catch (err) {
+      toast({ title: "Search failed", description: err instanceof Error ? err.message : "Could not search website", variant: "destructive" });
+    } finally {
+      setFindingContacts(false);
+    }
+  };
+
+  const handleAddContact = async (contact: FoundContact) => {
+    const key = `${contact.firstName}-${contact.lastName}`;
+    setAddingContact(key);
+    try {
+      const r = await fetch(`/api/leads/${leadId}/add-found-contact`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+          title: contact.title || undefined,
+          email: contact.email || undefined,
+          phone: contact.phone || undefined,
+          linkedinUrl: contact.linkedinUrl || undefined,
+        }),
+      });
+      const data = await r.json() as { contact?: { id: number }; alreadyExisted?: boolean; error?: string };
+      if (!r.ok) throw new Error(data.error ?? "Failed to add");
+      setAddedContacts(prev => new Set(prev).add(key));
+      void qc.invalidateQueries({ queryKey: ["lead-contacts", leadId] });
+      toast({
+        title: data.alreadyExisted ? "Contact already exists" : "Contact added",
+        description: `${contact.firstName} ${contact.lastName} ${data.alreadyExisted ? "was already in CRM and linked" : "added as a CRM contact and linked to this lead"}.`,
+      });
+    } catch (err) {
+      toast({ title: "Failed to add contact", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setAddingContact(null);
+    }
   };
 
   const insights = insightsData?.insights ?? null;
@@ -407,117 +481,189 @@ export function LeadInsightsPanel({
               </div>
             )}
 
-            {/* Best Contact to Reach */}
+            {/* Best Contact to Reach (AI-suggested role — no fabricated email) */}
             {insights.bestContactName && insights.bestContactName !== "Unknown" && (
               <div>
-                <SectionLabel>Best Contact to Reach</SectionLabel>
-                <div className="p-3 rounded-xl border border-border bg-muted/20 space-y-2.5">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
-                      <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-foreground">{insights.bestContactName}</div>
-                      {insights.bestContactTitle && insights.bestContactTitle !== "Unknown" && (
-                        <div className="text-xs text-muted-foreground">{insights.bestContactTitle}</div>
-                      )}
-                    </div>
+                <SectionLabel>AI-Suggested Decision Maker</SectionLabel>
+                <div className="flex items-start gap-3 p-3 rounded-xl border border-border bg-muted/20">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center flex-shrink-0">
+                    <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   </div>
-
-                  {insights.bestContactEmail && insights.bestContactEmail !== "Unknown" && (
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-background border border-border">
-                      <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[10px] text-muted-foreground mb-0.5">AI-inferred email</div>
-                        <div className="text-xs font-mono text-foreground truncate">{insights.bestContactEmail}</div>
-                      </div>
-                      <button
-                        onClick={() => copyEmail(insights.bestContactEmail!)}
-                        className="flex-shrink-0 p-1 rounded hover:bg-muted transition-colors"
-                        title="Copy email"
-                      >
-                        {copiedEmail === insights.bestContactEmail
-                          ? <Check className="w-3.5 h-3.5 text-green-500" />
-                          : <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                        }
-                      </button>
-                    </div>
-                  )}
-
-                  {insights.emailPattern && insights.emailPattern !== "Unknown" && (
-                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <span className="font-medium">Email pattern:</span>
-                      <code className="bg-muted px-1 py-0.5 rounded">{insights.emailPattern}</code>
-                    </div>
-                  )}
-
-                  <div className="pt-1 border-t border-border">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-[10px] text-muted-foreground font-medium">Verified contacts via Hunter.io</div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 text-xs gap-1 px-2"
-                        onClick={() => { void handleHunterLookup(); }}
-                        disabled={hunterLooking}
-                      >
-                        {hunterLooking
-                          ? <RefreshCw className="w-3 h-3 animate-spin" />
-                          : <Search className="w-3 h-3" />
-                        }
-                        {hunterLooking ? "Looking up…" : "Lookup Real Emails"}
-                      </Button>
-                    </div>
-
-                    {hunterResult && (
-                      <div className="space-y-1.5">
-                        {hunterResult.pattern && (
-                          <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <span className="font-medium">Confirmed pattern:</span>
-                            <code className="bg-muted px-1 py-0.5 rounded">{hunterResult.pattern}</code>
-                          </div>
-                        )}
-                        {hunterResult.emails.length === 0 ? (
-                          <p className="text-xs text-muted-foreground italic">No public contacts found for this domain.</p>
-                        ) : (
-                          hunterResult.emails.map((em, i) => (
-                            <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
-                              <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-xs font-semibold text-foreground truncate">
-                                  {em.first_name} {em.last_name}
-                                  {em.position && <span className="font-normal text-muted-foreground ml-1">· {em.position}</span>}
-                                </div>
-                                <div className="text-xs font-mono text-emerald-700 dark:text-emerald-400 truncate">{em.value}</div>
-                                <div className="text-[10px] text-muted-foreground">{em.confidence}% confidence</div>
-                              </div>
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                {em.linkedin_url && (
-                                  <a href={em.linkedin_url} target="_blank" rel="noopener noreferrer"
-                                    className="p-1 rounded hover:bg-muted transition-colors">
-                                    <Linkedin className="w-3 h-3 text-[#0077B5]" />
-                                  </a>
-                                )}
-                                <button
-                                  onClick={() => copyEmail(em.value)}
-                                  className="p-1 rounded hover:bg-muted transition-colors"
-                                  title="Copy email"
-                                >
-                                  {copiedEmail === em.value
-                                    ? <Check className="w-3 h-3 text-green-500" />
-                                    : <Copy className="w-3 h-3 text-muted-foreground" />
-                                  }
-                                </button>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold text-foreground">{insights.bestContactName}</div>
+                    {insights.bestContactTitle && insights.bestContactTitle !== "Unknown" && (
+                      <div className="text-xs text-muted-foreground">{insights.bestContactTitle}</div>
                     )}
+                    <div className="text-[10px] text-muted-foreground/60 mt-1 italic">Suggested by AI — verify contact details below</div>
                   </div>
                 </div>
               </div>
             )}
+
+            {/* Find Real Contacts from Website */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <SectionLabel>Real Contacts from Website</SectionLabel>
+                <div className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-xs gap-1 px-2"
+                    onClick={() => { void handleFindContacts(); }}
+                    disabled={findingContacts}
+                  >
+                    {findingContacts
+                      ? <RefreshCw className="w-3 h-3 animate-spin" />
+                      : <Search className="w-3 h-3" />
+                    }
+                    {findingContacts ? "Searching…" : "Search Website"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-xs gap-1 px-2"
+                    onClick={() => { void handleHunterLookup(); }}
+                    disabled={hunterLooking}
+                    title="Lookup via Hunter.io (requires API key)"
+                  >
+                    {hunterLooking
+                      ? <RefreshCw className="w-3 h-3 animate-spin" />
+                      : <Mail className="w-3 h-3" />
+                    }
+                    {hunterLooking ? "Hunter…" : "Hunter.io"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Found contacts from website scraping */}
+              {foundContacts !== null && (
+                <div className="space-y-2">
+                  {pagesScraped.length > 0 && (
+                    <div className="text-[10px] text-muted-foreground">
+                      Searched: {pagesScraped.join(", ")}
+                    </div>
+                  )}
+                  {foundContacts.length === 0 ? (
+                    <div className="p-3 rounded-lg border border-dashed border-border text-center">
+                      <p className="text-xs text-muted-foreground">No team members found on the website.</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">The site may require login or use JavaScript rendering.</p>
+                    </div>
+                  ) : (
+                    foundContacts.map((c, i) => {
+                      const key = `${c.firstName}-${c.lastName}`;
+                      const isAdded = addedContacts.has(key);
+                      const isAdding = addingContact === key;
+                      return (
+                        <div key={i} className={cn(
+                          "flex items-start gap-2 p-2.5 rounded-lg border transition-colors",
+                          isAdded
+                            ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800"
+                            : "bg-background border-border"
+                        )}>
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-[10px] font-bold text-primary">
+                            {c.firstName[0]}{c.lastName[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold text-foreground truncate">{c.firstName} {c.lastName}</div>
+                                {c.title && <div className="text-[10px] text-muted-foreground truncate">{c.title}</div>}
+                              </div>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <span className={cn(
+                                  "text-[9px] px-1.5 py-0.5 rounded-full font-medium",
+                                  c.confidence === "high" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
+                                    : c.confidence === "medium" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400"
+                                    : "bg-muted text-muted-foreground"
+                                )}>
+                                  {c.confidence}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {c.email && (
+                                <div className="flex items-center gap-1 min-w-0">
+                                  <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                                  <span className="text-[10px] font-mono text-foreground truncate">{c.email}</span>
+                                  <button onClick={() => copyEmail(c.email!)} className="p-0.5 rounded hover:bg-muted transition-colors flex-shrink-0">
+                                    {copiedEmail === c.email ? <Check className="w-2.5 h-2.5 text-green-500" /> : <Copy className="w-2.5 h-2.5 text-muted-foreground" />}
+                                  </button>
+                                </div>
+                              )}
+                              {c.linkedinUrl && (
+                                <a href={c.linkedinUrl} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-[10px] text-[#0077B5] hover:underline">
+                                  <Linkedin className="w-3 h-3" />
+                                  LinkedIn
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => { void handleAddContact(c); }}
+                            disabled={isAdded || isAdding}
+                            className={cn(
+                              "flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-medium transition-colors",
+                              isAdded
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 cursor-default"
+                                : "bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer"
+                            )}
+                          >
+                            {isAdding ? <RefreshCw className="w-3 h-3 animate-spin" /> : isAdded ? <Check className="w-3 h-3" /> : <Users className="w-3 h-3" />}
+                            {isAdding ? "Adding…" : isAdded ? "Added" : "Add"}
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* Hunter.io results */}
+              {hunterResult && (
+                <div className={cn("space-y-1.5", foundContacts !== null ? "mt-3 pt-3 border-t border-border" : "")}>
+                  <div className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                    Hunter.io results for <code className="bg-muted px-1 py-0.5 rounded">{hunterResult.domain}</code>
+                    {hunterResult.pattern && <span>· pattern: <code className="bg-muted px-1 py-0.5 rounded">{hunterResult.pattern}</code></span>}
+                  </div>
+                  {hunterResult.emails.length === 0 ? (
+                    <p className="text-xs text-muted-foreground italic">No public contacts found for this domain.</p>
+                  ) : (
+                    hunterResult.emails.map((em, i) => (
+                      <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800">
+                        <Mail className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-foreground truncate">
+                            {em.first_name} {em.last_name}
+                            {em.position && <span className="font-normal text-muted-foreground ml-1">· {em.position}</span>}
+                          </div>
+                          <div className="text-xs font-mono text-emerald-700 dark:text-emerald-400 truncate">{em.value}</div>
+                          <div className="text-[10px] text-muted-foreground">{em.confidence}% confidence</div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {em.linkedin_url && (
+                            <a href={em.linkedin_url} target="_blank" rel="noopener noreferrer" className="p-1 rounded hover:bg-muted transition-colors">
+                              <Linkedin className="w-3 h-3 text-[#0077B5]" />
+                            </a>
+                          )}
+                          <button onClick={() => copyEmail(em.value)} className="p-1 rounded hover:bg-muted transition-colors" title="Copy email">
+                            {copiedEmail === em.value ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {foundContacts === null && !hunterResult && (
+                <div className="p-3 rounded-lg border border-dashed border-border text-center">
+                  <Users className="w-5 h-5 text-muted-foreground/40 mx-auto mb-1.5" />
+                  <p className="text-xs text-muted-foreground">Click "Search Website" to find real team members from the company site.</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">Or use Hunter.io for verified email addresses.</p>
+                </div>
+              )}
+            </div>
 
             {/* Company Social Media */}
             {(insights.linkedinUrl || insights.twitterHandle || insights.facebookUrl || insights.instagramHandle || insights.youtubeUrl || insights.blogUrl) &&

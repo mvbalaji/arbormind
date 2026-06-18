@@ -390,6 +390,84 @@ router.get("/leads/:id/contacts", async (req, res) => {
   }
 });
 
+// POST /leads/:id/find-contacts — scrape website + GPT-4o to extract real contacts
+router.post("/leads/:id/find-contacts", async (req, res) => {
+  try {
+    const leadId = parseInt(req.params.id);
+    const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
+    if (!lead) return res.status(404).json({ error: "Lead not found" });
+
+    const website = lead.website ?? null;
+    const domain = website
+      ? website.replace(/^https?:\/\//, "").split("/")[0]
+      : lead.email?.includes("@") ? lead.email.split("@")[1] : null;
+
+    if (!website && !domain) {
+      return res.status(400).json({ error: "No website or email domain available. Add a website to this lead first." });
+    }
+
+    const { findContactsFromWebsite } = await import("../lib/contact-finder");
+    const result = await findContactsFromWebsite({
+      websiteUrl: website ?? `https://${domain}`,
+      companyName: lead.company ?? domain ?? "Unknown",
+      domain: domain ?? "",
+    });
+
+    res.json(result);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Contact search failed" });
+  }
+});
+
+// POST /leads/:id/add-found-contact — create a CRM contact and link it to the lead
+router.post("/leads/:id/add-found-contact", async (req, res) => {
+  try {
+    const leadId = parseInt(req.params.id);
+    const { firstName, lastName, title, email, phone, linkedinUrl } = req.body as {
+      firstName: string; lastName: string; title?: string;
+      email?: string; phone?: string; linkedinUrl?: string;
+    };
+
+    if (!firstName || !lastName) return res.status(400).json({ error: "firstName and lastName are required" });
+
+    const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
+    if (!lead) return res.status(404).json({ error: "Lead not found" });
+
+    // Check if contact with this email already linked
+    if (email) {
+      const existing = await db.select({ id: contactsTable.id })
+        .from(contactsTable)
+        .where(eq(contactsTable.email, email))
+        .limit(1);
+      if (existing.length > 0) {
+        const contactId = existing[0].id;
+        // Link if not already linked
+        await db.insert(leadContactsTable).values({ leadId, contactId }).onConflictDoNothing();
+        const [contact] = await db.select().from(contactsTable).where(eq(contactsTable.id, contactId));
+        return res.status(200).json({ contact, linked: true, alreadyExisted: true });
+      }
+    }
+
+    const [contact] = await db.insert(contactsTable).values({
+      firstName,
+      lastName,
+      title: title ?? null,
+      email: email ?? null,
+      phone: phone ?? null,
+      description: linkedinUrl ? `LinkedIn: ${linkedinUrl}` : null,
+      leadSource: "website",
+    }).returning();
+
+    await db.insert(leadContactsTable).values({ leadId, contactId: contact.id });
+
+    res.status(201).json({ contact, linked: true, alreadyExisted: false });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Failed to add contact" });
+  }
+});
+
 // POST /leads/:id/hunter — look up contacts via Hunter.io domain search
 router.post("/leads/:id/hunter", async (req, res) => {
   try {
