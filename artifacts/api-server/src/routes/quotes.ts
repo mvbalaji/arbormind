@@ -9,6 +9,8 @@ import { Writable } from "stream";
 
 import { requireScreenAccess } from "../lib/access-control";
 import { evaluateApprovalsForEntity } from "../lib/approvals-engine";
+import { getEmailSettingsRow, resolveSmtpConfig } from "../lib/smtp-config";
+import { getOrgId } from "../lib/org-context";
 
 function actorFromReq(req: any) {
   const u = req.session?.user ?? req.user ?? null;
@@ -260,6 +262,7 @@ async function isLatestVersion(quoteId: number, parentQuoteId: number | null): P
 
 router.get("/quotes", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const { opportunityId, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -272,10 +275,11 @@ router.get("/quotes", async (req, res) => {
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id));
 
-    const rawData = await (opportunityId
-      ? baseQuery.where(eq(quotesTable.opportunityId, parseInt(opportunityId)))
-      : baseQuery
-    ).orderBy(desc(quotesTable.createdAt)).limit(limitNum).offset(offset);
+    const listWhere = opportunityId
+      ? and(eq(quotesTable.orgId, orgId), eq(quotesTable.opportunityId, parseInt(opportunityId)))
+      : eq(quotesTable.orgId, orgId);
+
+    const rawData = await baseQuery.where(listWhere).orderBy(desc(quotesTable.createdAt)).limit(limitNum).offset(offset);
 
     const quoteIds = rawData.map(q => q.id);
     const allItems = quoteIds.length > 0
@@ -313,8 +317,7 @@ router.get("/quotes", async (req, res) => {
       if (row.version > current) maxVersionByRoot.set(root, row.version);
     }
 
-    const quoteWhere = opportunityId ? eq(quotesTable.opportunityId, parseInt(opportunityId)) : undefined;
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(quotesTable).where(quoteWhere);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(quotesTable).where(listWhere);
     res.json({
       data: rawData.map(q => {
         const src = q.clonedFromQuoteId ? sourceById.get(q.clonedFromQuoteId) : null;
@@ -338,10 +341,26 @@ router.get("/quotes", async (req, res) => {
 
 router.post("/quotes", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     let { items = [], ...quoteData } = req.body as {
       items?: Array<{ productId?: number; priceBookEntryId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
       [key: string]: unknown;
     };
+
+    // Verify any referenced opportunity/contact/account actually belongs to this org —
+    // otherwise a crafted request could pull another org's line items or attach this
+    // quote to another org's records.
+    for (const [field, table] of [
+      ["opportunityId", opportunitiesTable],
+      ["contactId", contactsTable],
+      ["accountId", accountsTable],
+    ] as const) {
+      const refId = quoteData[field];
+      if (refId != null) {
+        const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, refId as number), eq(table.orgId, orgId)));
+        if (!row) { res.status(400).json({ error: `Invalid ${field}` }); return; }
+      }
+    }
 
     if (items.length === 0 && quoteData.opportunityId) {
       const oppItems = await db.select().from(opportunityItemsTable)
@@ -358,8 +377,8 @@ router.post("/quotes", async (req, res) => {
       }
     }
 
-    const [maxQuote] = await db.select({ maxNum: sql<string>`max(quote_number)` }).from(quotesTable);
-    const nextNum = maxQuote?.maxNum ? parseInt(maxQuote.maxNum.replace("QT-", "")) + 1 : 1001;
+    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable);
+    const nextNum = (maxQuote?.maxNum && maxQuote.maxNum > 0) ? maxQuote.maxNum + 1 : 1001;
     const quoteNumber = `QT-${nextNum}`;
 
     let subtotal = 0;
@@ -371,6 +390,7 @@ router.post("/quotes", async (req, res) => {
     const total = subtotal * (1 - discountPct / 100) * (1 + taxPct / 100);
 
     const insertData = {
+      orgId,
       name: (quoteData.name as string) ?? "",
       opportunityId: (quoteData.opportunityId as number | null) ?? null,
       contactId: (quoteData.contactId as number | null) ?? null,
@@ -386,7 +406,7 @@ router.post("/quotes", async (req, res) => {
       total: total.toString(),
       version: 1,
       parentQuoteId: null,
-      createdByUserId: (req.session as any)?.user?.id ?? (req as any).user?.id ?? null,
+      createdByUserId: (() => { const uid = (req.session as any)?.user?.id ?? (req as any).user?.id; return (typeof uid === 'number' && uid > 0) ? uid : null; })(),
       createdByName: (req.session as any)?.user?.name ?? (req as any).user?.name ?? null,
       createdByEmail: (req.session as any)?.user?.email ?? (req as any).user?.email ?? null,
     };
@@ -407,14 +427,15 @@ router.post("/quotes", async (req, res) => {
 
     triggerQuoteApprovals(req, quote);
     res.status(201).json(formatQuote(quote, []));
-  } catch (err) {
+  } catch (err: any) {
     req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", detail: err?.message ?? String(err) });
   }
 });
 
 router.get("/quotes/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
     const [quote] = await db
@@ -423,7 +444,7 @@ router.get("/quotes/:id", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
-      .where(eq(quotesTable.id, id));
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
 
     if (!quote) {
       res.status(404).json({ error: "Quote not found" });
@@ -475,6 +496,7 @@ const VALID_QUOTE_STATUSES = new Set(["draft", "sent", "accepted", "rejected", "
 
 router.put("/quotes/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
 
@@ -483,7 +505,7 @@ router.put("/quotes/:id", async (req, res) => {
       return;
     }
 
-    const [existing] = await db.select().from(quotesTable).where(eq(quotesTable.id, id));
+    const [existing] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Quote not found" }); return; }
 
     const isLatest = await isLatestVersion(id, existing.parentQuoteId);
@@ -496,6 +518,18 @@ router.put("/quotes/:id", async (req, res) => {
       items?: Array<{ productId?: number | null; priceBookEntryId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
       [key: string]: unknown;
     };
+
+    for (const [field, table] of [
+      ["opportunityId", opportunitiesTable],
+      ["contactId", contactsTable],
+      ["accountId", accountsTable],
+    ] as const) {
+      const refId = req.body[field];
+      if (refId != null) {
+        const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, refId as number), eq(table.orgId, orgId)));
+        if (!row) { res.status(400).json({ error: `Invalid ${field}` }); return; }
+      }
+    }
 
     const allowedFields = ["name", "status", "validUntil", "discount", "tax", "notes", "opportunityId", "contactId", "accountId", "priceBookId"];
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
@@ -545,7 +579,7 @@ router.put("/quotes/:id", async (req, res) => {
 
     const [quote] = await db.update(quotesTable)
       .set(updateData)
-      .where(eq(quotesTable.id, id))
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)))
       .returning();
     if (!quote) {
       res.status(404).json({ error: "Quote not found" });
@@ -562,10 +596,11 @@ router.put("/quotes/:id", async (req, res) => {
 
 router.post("/quotes/:id/version", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
 
-    const [original] = await db.select().from(quotesTable).where(eq(quotesTable.id, id));
+    const [original] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
     if (!original) { res.status(404).json({ error: "Quote not found" }); return; }
 
     const rootId = original.parentQuoteId ?? original.id;
@@ -576,11 +611,12 @@ router.post("/quotes/:id/version", async (req, res) => {
       .where(sql`${quotesTable.parentQuoteId} = ${rootId} OR ${quotesTable.id} = ${rootId}`);
     const nextVersion = (maxVersionRow?.maxVer ?? 1) + 1;
 
-    const [maxQuote] = await db.select({ maxNum: sql<string>`max(quote_number)` }).from(quotesTable);
-    const nextNum = maxQuote?.maxNum ? parseInt(maxQuote.maxNum.replace("QT-", "")) + 1 : 1001;
+    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable);
+    const nextNum = (maxQuote?.maxNum && maxQuote.maxNum > 0) ? maxQuote.maxNum + 1 : 1001;
     const quoteNumber = `QT-${nextNum}`;
 
     const [newQuote] = await db.insert(quotesTable).values({
+      orgId,
       quoteNumber,
       name: original.name,
       version: nextVersion,
@@ -596,7 +632,7 @@ router.post("/quotes/:id/version", async (req, res) => {
       tax: original.tax,
       total: original.total,
       notes: original.notes,
-      createdByUserId: (req.session as any)?.user?.id ?? (req as any).user?.id ?? null,
+      createdByUserId: (() => { const uid = (req.session as any)?.user?.id ?? (req as any).user?.id; return (typeof uid === 'number' && uid > 0) ? uid : null; })(),
       createdByName: (req.session as any)?.user?.name ?? (req as any).user?.name ?? null,
       createdByEmail: (req.session as any)?.user?.email ?? (req as any).user?.email ?? null,
     }).returning();
@@ -625,6 +661,7 @@ router.post("/quotes/:id/version", async (req, res) => {
 // Clone a quote to a different account; copies items and auto-populates contact from the new account
 router.post("/quotes/:id/clone", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
     const { accountId, name: nameInput } = req.body as { accountId?: number; name?: string };
@@ -636,10 +673,10 @@ router.post("/quotes/:id/clone", async (req, res) => {
     const customName = typeof nameInput === "string" ? nameInput.trim() : "";
 
     const result = await db.transaction(async (tx) => {
-      const [original] = await tx.select().from(quotesTable).where(eq(quotesTable.id, id));
+      const [original] = await tx.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
       if (!original) return { error: "Quote not found", status: 404 as const };
 
-      const [account] = await tx.select().from(accountsTable).where(eq(accountsTable.id, newAccountId));
+      const [account] = await tx.select().from(accountsTable).where(and(eq(accountsTable.id, newAccountId), eq(accountsTable.orgId, orgId)));
       if (!account) return { error: "Target account not found", status: 400 as const };
 
       // Pick first contact of target account (deterministic: oldest contact wins)
@@ -652,17 +689,19 @@ router.post("/quotes/:id/clone", async (req, res) => {
       // Try up to 3 times to allocate a unique quote number (handles concurrent clones)
       let inserted: typeof original | null = null;
       for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
-        const [maxQuote] = await tx.select({ maxNum: sql<string>`max(quote_number)` }).from(quotesTable);
-        const nextNum = maxQuote?.maxNum ? parseInt(maxQuote.maxNum.replace("QT-", "")) + 1 + attempt : 1001 + attempt;
+        const [maxQuote] = await tx.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable);
+        const baseNum = (maxQuote?.maxNum && maxQuote.maxNum > 0) ? maxQuote.maxNum : 1000;
+        const nextNum = baseNum + 1 + attempt;
         const quoteNumber = `QT-${nextNum}`;
         try {
           const [row] = await tx.insert(quotesTable).values({
+            orgId,
             quoteNumber,
             name: customName || `${original.name} (Copy)`,
             version: 1,
             parentQuoteId: null,
             clonedFromQuoteId: original.id,
-            createdByUserId: (req.session as any)?.user?.id ?? (req as any).user?.id ?? null,
+            createdByUserId: (() => { const uid = (req.session as any)?.user?.id ?? (req as any).user?.id; return (typeof uid === 'number' && uid > 0) ? uid : null; })(),
             createdByName: (req.session as any)?.user?.name ?? (req as any).user?.name ?? null,
             createdByEmail: (req.session as any)?.user?.email ?? (req as any).user?.email ?? null,
             opportunityId: null,
@@ -714,6 +753,7 @@ router.post("/quotes/:id/clone", async (req, res) => {
 
 router.get("/quotes/:id/pdf", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
 
@@ -723,7 +763,7 @@ router.get("/quotes/:id/pdf", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
-      .where(eq(quotesTable.id, id));
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
 
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
 
@@ -742,6 +782,7 @@ router.get("/quotes/:id/pdf", async (req, res) => {
 
 router.post("/quotes/:id/send", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
 
@@ -751,11 +792,11 @@ router.post("/quotes/:id/send", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
-      .where(eq(quotesTable.id, id));
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
 
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
 
-    const [rawQuote] = await db.select().from(quotesTable).where(eq(quotesTable.id, id));
+    const [rawQuote] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
     const isLatest = await isLatestVersion(id, rawQuote?.parentQuoteId ?? null);
     if (!isLatest) {
       res.status(403).json({ error: "Only the latest version of a quote can be sent. Create a new version instead." });
@@ -785,25 +826,23 @@ router.post("/quotes/:id/send", async (req, res) => {
     }
 
     try {
-        const smtpHost = process.env.SMTP_HOST ?? "mail.spacemail.com";
-        const smtpPort = parseInt(process.env.SMTP_PORT ?? "465");
-        const smtpUser = process.env.SMTP_USER ?? "";
-        const smtpPass = process.env.SMTP_PASS ?? "";
+        const emailSettings = await getEmailSettingsRow();
+        const smtp = resolveSmtpConfig(emailSettings, { defaultFromName: "arbormind.in" });
 
-        if (!smtpUser || !smtpPass) {
-          res.status(500).json({ success: false, error: "SMTP credentials not configured." });
+        if (!smtp) {
+          res.status(500).json({ success: false, error: "SMTP not configured. Go to Admin → Email Settings to add your SMTP credentials." });
           return;
         }
 
         const transporter = nodemailer.createTransport({
-          host: smtpHost,
-          port: smtpPort,
-          secure: smtpPort === 465,
-          auth: { user: smtpUser, pass: smtpPass },
+          host: smtp.host,
+          port: smtp.port,
+          secure: smtp.secure,
+          auth: { user: smtp.user, pass: smtp.pass },
         });
 
         await transporter.sendMail({
-          from: '"arbormind.in" <support@arbormind.in>',
+          from: `"${smtp.fromName}" <${smtp.user}>`,
           to: contactEmail,
           subject: `Quotation ${quote.quoteNumber} - ${quote.name}`,
           html: `
@@ -859,8 +898,11 @@ router.post("/quotes/:id/send", async (req, res) => {
 
 router.delete("/quotes/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const [existing] = await db.select({ id: quotesTable.id }).from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
+    if (!existing) { res.status(404).json({ error: "Quote not found" }); return; }
     await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
     await db.delete(quotesTable).where(eq(quotesTable.id, id));
     res.json({ success: true, id });

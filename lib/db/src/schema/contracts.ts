@@ -7,6 +7,7 @@ import { contactsTable } from "./contacts";
 import { opportunitiesTable } from "./opportunities";
 import { priceBooksTable } from "./price-books";
 import { productsTable } from "./products";
+import { organizationsTable } from "./organizations";
 
 export const CONTRACT_STATUSES = [
   "draft",
@@ -20,6 +21,7 @@ export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
 
 export const contractsTable = pgTable("contracts", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id),
   contractNumber: text("contract_number").notNull().unique(),
   name: text("name").notNull(),
   accountId: integer("account_id").references(() => accountsTable.id),
@@ -71,6 +73,7 @@ export const contractDocumentsTable = pgTable("contract_documents", {
   content: text("content").notNull(),
   changeSummary: text("change_summary"),
   createdByUserId: integer("created_by_user_id").references(() => usersTable.id),
+  isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
   contractVersionUnique: uniqueIndex("contract_documents_contract_version_unique").on(t.contractId, t.version),

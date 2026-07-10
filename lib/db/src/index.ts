@@ -10,7 +10,20 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  max: 10,
+});
+
+// Idle clients emit 'error' on connection loss (e.g. a transient DNS blip). Without
+// a listener here, that's an unhandled event and Node crashes the whole process —
+// a single flaky network moment shouldn't take down the server.
+pool.on("error", (err) => {
+  console.error("[DB] Idle client error (connection will be replaced):", err.message);
+});
+
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

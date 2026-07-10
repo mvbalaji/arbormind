@@ -6,6 +6,7 @@ import {
   useListOpportunities, useListContacts, useListAccounts,
   useListPriceBooks, useListActivePriceBookEntries,
   useGetActiveContractPricing, useListContracts,
+  useCreateContract,
   getGetQuoteQueryKey, getListQuotesQueryKey, getListActivePriceBookEntriesQueryKey, getListContractsQueryKey,
   getGetActiveContractPricingQueryKey,
   CreateQuoteInputStatus, UpdateQuoteInputStatus,
@@ -14,7 +15,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useQueryClient } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { StagePipeline } from "@/components/stage-pipeline";
 import {
   ArrowLeft, Download, Send, Copy, CheckCircle, XCircle, Clock, Check,
-  FileText, FileSignature, Calendar, Package, Building2, User, History, Pencil, Plus, X, Save, Trash2,
+  FileText, FileSignature, Calendar, Package, Building2, User, History, Pencil, Plus, X, Save, Trash2, FilePlus, Layers,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
@@ -60,6 +62,7 @@ export default function QuoteDetail() {
   const versionMutation = useCreateQuoteVersion();
   const sendMutation = useSendQuote();
   const deleteMutation = useDeleteQuote();
+  const createContractMutation = useCreateContract();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { data: productsData } = useListProducts({ limit: 200 });
   const products = productsData?.data ?? [];
@@ -96,6 +99,8 @@ export default function QuoteDetail() {
   const [editContactId, setEditContactId] = useState<number | null>(null);
   const [editAccountId, setEditAccountId] = useState<number | null>(null);
   const [editPriceBookId, setEditPriceBookId] = useState<number | null>(null);
+  const [bundlePickerOpen, setBundlePickerOpen] = useState(false);
+  const { data: bundlesData = [] } = useQuery<any[]>({ queryKey: ["product-bundles"], queryFn: () => fetch("/api/product-bundles").then((r) => r.json()) });
 
   const { data: priceBooksData } = useListPriceBooks();
   const priceBooks = (priceBooksData?.data ?? []).filter(pb => pb.isActive);
@@ -178,8 +183,10 @@ export default function QuoteDetail() {
       toast({ title: "Quote updated" });
       setEditingSection(null);
       invalidate();
-    } catch {
-      toast({ title: "Error", description: "Could not save quote. Only the latest version can be edited.", variant: "destructive" });
+    } catch (err: any) {
+      console.error("Quote save error:", err);
+      const msg = err?.data?.error ?? err?.message ?? "Could not save quote.";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -204,6 +211,37 @@ export default function QuoteDetail() {
     }
   };
 
+  const handleCreateContract = async () => {
+    try {
+      const items = (quote.items ?? []).map((it: any) => ({
+        productId: (it.productId as number | null) ?? null,
+        productName: it.productName as string,
+        quantity: Number(it.quantity) || 1,
+        unitPrice: Number(it.unitPrice) || 0,
+        discount: Number(it.discount) || 0,
+        listPrice: Number(it.listPrice ?? it.unitPrice) || 0,
+      }));
+      const contract = await createContractMutation.mutateAsync({ data: {
+        name: `Contract – ${quote.name}`,
+        accountId: quote.accountId ?? null,
+        contactId: quote.contactId ?? null,
+        opportunityId: quote.opportunityId ?? null,
+        priceBookId: quote.priceBookId ?? null,
+        status: "draft" as const,
+        endDate: quote.validUntil ? String(quote.validUntil).slice(0, 10) : null,
+        description: quote.notes ?? null,
+        discount: 0,
+        tax: 0,
+        autoRenew: false,
+        items,
+      } });
+      toast({ title: "Contract created", description: `${contract.contractNumber} created from quote. Add more details below.` });
+      navigate(`/contracts/${contract.id}`);
+    } catch {
+      toast({ title: "Error", description: "Could not create contract from quote.", variant: "destructive" });
+    }
+  };
+
   const handleDownloadPdf = () => {
     const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, "");
     window.open(`${baseUrl}/api/quotes/${quoteId}/pdf`, "_blank");
@@ -216,6 +254,25 @@ export default function QuoteDetail() {
   const editTotal = editSubtotal - editDiscountAmt + editTaxAmt;
 
   const addItem = () => setEditItems(prev => [...prev, { productId: null, priceBookEntryId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 }]);
+
+  const addBundle = (bundle: any) => {
+    const newItems = (bundle.items ?? []).map((it: any) => {
+      const effectivePrice = it.unit_price_override != null ? Number(it.unit_price_override) : Number(it.default_unit_price ?? 0);
+      const itemDisc = Math.max(0, Number(it.discount_pct) || 0);
+      const bundleDisc = Math.max(0, Number(bundle.bundle_discount_pct) || 0);
+      const combinedDisc = Math.min(99.99, itemDisc + bundleDisc);
+      return {
+        productId: Number(it.product_id) || null,
+        priceBookEntryId: null,
+        productName: String(it.product_name || ""),
+        quantity: Number(it.quantity) || 1,
+        unitPrice: isFinite(effectivePrice) ? effectivePrice : 0,
+        discount: combinedDisc,
+      };
+    });
+    setEditItems(prev => [...prev, ...newItems]);
+    setBundlePickerOpen(false);
+  };
   const removeItem = (idx: number) => setEditItems(prev => prev.filter((_, i) => i !== idx));
   const updateItem = (idx: number, changes: Partial<EditableItem>) =>
     setEditItems(prev => prev.map((item, i) => i === idx ? { ...item, ...changes } : item));
@@ -356,9 +413,20 @@ export default function QuoteDetail() {
             </Button>
           )}
           {quote.status === "accepted" && (
-            <Button size="sm" onClick={() => navigate(`/orders?fromQuote=${quoteId}`)} className="bg-primary hover:bg-primary/90 text-foreground">
-              <Package className="w-4 h-4 mr-2" /> Convert to Order
-            </Button>
+            <>
+              <Button size="sm" onClick={() => navigate(`/orders?fromQuote=${quoteId}`)} className="bg-primary hover:bg-primary/90 text-foreground">
+                <Package className="w-4 h-4 mr-2" /> Convert to Order
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleCreateContract}
+                disabled={createContractMutation.isPending}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <FilePlus className="w-4 h-4 mr-2" />
+                {createContractMutation.isPending ? "Creating…" : "Create Contract"}
+              </Button>
+            </>
           )}
           <Button
             variant="outline"
@@ -438,6 +506,20 @@ export default function QuoteDetail() {
 
         {activeTab === "contracts" && (
           <div className="flex flex-col gap-3">
+            {quote.opportunityId && quote.status === "accepted" && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Contracts generated from this accepted quote</p>
+                <Button
+                  size="sm"
+                  onClick={handleCreateContract}
+                  disabled={createContractMutation.isPending}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <FilePlus className="w-4 h-4 mr-2" />
+                  {createContractMutation.isPending ? "Creating…" : "New Contract"}
+                </Button>
+              </div>
+            )}
             {!quote.opportunityId ? (
               <div className="text-center py-12 text-muted-foreground">
                 <FileSignature className="w-10 h-8 mx-auto mb-3 opacity-30" />
@@ -447,6 +529,19 @@ export default function QuoteDetail() {
               <div className="text-center py-12 text-muted-foreground">
                 <FileSignature className="w-10 h-8 mx-auto mb-3 opacity-30" />
                 No contracts for this deal yet.
+                {quote.status === "accepted" && (
+                  <div className="mt-4">
+                    <Button
+                      size="sm"
+                      onClick={handleCreateContract}
+                      disabled={createContractMutation.isPending}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <FilePlus className="w-4 h-4 mr-2" />
+                      {createContractMutation.isPending ? "Creating…" : "Create Contract from this Quote"}
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               quoteContracts.map((c) => (
@@ -642,11 +737,14 @@ export default function QuoteDetail() {
           <div className="p-4 border-b border-border flex items-center justify-between">
             <h3 className="font-semibold text-foreground">Line Items & Totals</h3>
             <div className="flex items-center gap-2">
-              {editingSection === "items" && (
+              {editingSection === "items" && (<>
                 <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-border text-xs">
                   <Plus className="w-3 h-3 mr-1" /> Add Item
                 </Button>
-              )}
+                <Button type="button" variant="outline" size="sm" onClick={() => setBundlePickerOpen(true)} className="border-primary/40 text-primary text-xs hover:bg-primary/5">
+                  <Layers className="w-3 h-3 mr-1" /> Add Bundle
+                </Button>
+              </>)}
               {editingSection === "items" ? (
                 <>
                   <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending} className="bg-primary hover:bg-primary/90 text-foreground h-8">
@@ -882,6 +980,55 @@ export default function QuoteDetail() {
         )}
         </>)}
       </div>
+
+      {/* Bundle Picker Dialog */}
+      <Dialog open={bundlePickerOpen} onOpenChange={setBundlePickerOpen}>
+        <DialogContent className="bg-card border-border max-w-lg max-h-[80vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-4 border-b border-border">
+            <DialogTitle>Add Product Bundle</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">Select a bundle to add all its products as line items</p>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 p-3 space-y-2">
+            {bundlesData.filter((b: any) => b.is_active).length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground text-sm">
+                <Layers className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                No active bundles. Create bundles in Product Bundles page.
+              </div>
+            ) : bundlesData.filter((b: any) => b.is_active).map((bundle: any) => (
+              <button
+                key={bundle.id}
+                onClick={() => addBundle(bundle)}
+                className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5 transition-colors group"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center shrink-0">
+                      <Package className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground">{bundle.name}</p>
+                      {bundle.description && <p className="text-xs text-muted-foreground truncate">{bundle.description}</p>}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(bundle.items ?? []).map((it: any) => (
+                          <span key={it.id} className="text-[10px] bg-muted border border-border px-1.5 py-0.5 rounded text-muted-foreground">
+                            {it.product_name} ×{it.quantity}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {Number(bundle.bundle_discount_pct) > 0 && (
+                      <span className="text-[10px] text-green-600 font-medium">{bundle.bundle_discount_pct}% off</span>
+                    )}
+                    <p className="text-xs text-primary font-semibold mt-0.5 group-hover:underline">Add →</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { activitiesTable, emailTrackingTable, emailAttachmentsTable } from "@workspace/db";
 import { eq, sql, and, ilike } from "drizzle-orm";
 import { generateEmailTaskTitle } from "../lib/ai-task-title";
+import { getEmailSettingsRow, resolveSmtpConfig } from "../lib/smtp-config";
 
 const router: IRouter = Router();
 
@@ -62,6 +63,11 @@ router.post("/email/send", async (req, res) => {
     return;
   }
 
+  // Dry-run mode: compose the email and report what would be sent, without touching
+  // SMTP or writing any activity/tracking rows. Lets admins sanity-check a send
+  // (recipients, attachments) without needing SMTP configured or risking a real send.
+  const dryRun = req.query.dryRun === "true" || (req.body as { dryRun?: boolean }).dryRun === true;
+
   // Validate + decode attachments (base64). Reject early on size/count to keep SMTP happy.
   const decodedAttachments: { filename: string; content: Buffer; contentType?: string }[] = [];
   if (Array.isArray(attachments) && attachments.length > 0) {
@@ -101,40 +107,29 @@ router.post("/email/send", async (req, res) => {
     }
   }
 
+  if (dryRun) {
+    res.json({
+      ok: true,
+      dryRun: true,
+      to,
+      cc: cc || null,
+      subject,
+      text: body,
+      attachmentCount: decodedAttachments.length,
+      attachments: decodedAttachments.map((a) => ({
+        filename: a.filename,
+        contentType: a.contentType ?? null,
+        sizeBytes: a.content.length,
+      })),
+    });
+    return;
+  }
+
   // Prefer admin-configured DB credentials (Email Settings page), fall back to env vars.
-  const emailSettings = await (async () => {
-    try {
-      const { emailSettingsTable } = await import("@workspace/db");
-      const rows = await db.select().from(emailSettingsTable).limit(1);
-      return rows[0] ?? null;
-    } catch { return null; }
-  })();
+  const emailSettings = await getEmailSettingsRow();
+  const smtp = resolveSmtpConfig(emailSettings, { defaultFromName: "ArborMind CRM" });
 
-  const host =
-    (emailSettings?.smtpHost as string | undefined) ||
-    process.env.SMTP_HOST || process.env.IMAP_HOST || "mail.spacemail.com";
-  const port = Number(
-    (emailSettings?.smtpPort as number | undefined) ??
-    process.env.SMTP_PORT ??
-    465,
-  );
-  const secure =
-    typeof (emailSettings?.smtpSecure) === "boolean"
-      ? (emailSettings?.smtpSecure as boolean)
-      : process.env.SMTP_SECURE !== "false";
-  const smtpUser =
-    (emailSettings?.smtpUser as string | undefined) ||
-    process.env.SMTP_USER;
-  const smtpPass =
-    (emailSettings?.smtpPassword as string | undefined) ||
-    process.env.SMTP_PASS ||
-    process.env.SMTP_PASSWORD;
-  const fromName =
-    (emailSettings?.smtpFromName as string | undefined) ||
-    process.env.SMTP_FROM_NAME ||
-    "ArborMind CRM";
-
-  if (!smtpUser || !smtpPass) {
+  if (!smtp) {
     res.status(503).json({ error: "SMTP not configured. Go to Admin → Email Settings to add your SMTP credentials." });
     return;
   }
@@ -205,11 +200,11 @@ router.post("/email/send", async (req, res) => {
 
     const nodemailer = await import("nodemailer");
     const transporter = nodemailer.createTransport({
-      host, port, secure,
-      auth: { user: smtpUser, pass: smtpPass },
+      host: smtp.host, port: smtp.port, secure: smtp.secure,
+      auth: { user: smtp.user, pass: smtp.pass },
     });
     const info = await transporter.sendMail({
-      from: `"${fromName}" <${smtpUser}>`,
+      from: `"${smtp.fromName}" <${smtp.user}>`,
       to,
       cc: cc || undefined,
       subject,

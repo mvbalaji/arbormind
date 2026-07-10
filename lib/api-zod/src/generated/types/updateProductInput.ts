@@ -13,5 +13,6 @@ export interface UpdateProductInput {
   unitPrice?: number;
   currency?: string;
   category?: string | null;
+  quantityUnitOfMeasure?: string | null;
   isActive?: boolean;
 }

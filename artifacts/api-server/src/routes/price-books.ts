@@ -88,6 +88,7 @@ router.get("/price-books/:id", async (req, res) => {
         productId: priceBookEntriesTable.productId,
         listPrice: priceBookEntriesTable.listPrice,
         currency: priceBookEntriesTable.currency,
+        useStandardPrice: priceBookEntriesTable.useStandardPrice,
         isActive: priceBookEntriesTable.isActive,
         createdAt: priceBookEntriesTable.createdAt,
         updatedAt: priceBookEntriesTable.updatedAt,
@@ -170,11 +171,12 @@ router.post("/price-books/:id/entries", async (req, res) => {
     const [book] = await db.select().from(priceBooksTable).where(eq(priceBooksTable.id, priceBookId));
     if (!book) { res.status(404).json({ error: "Price book not found" }); return; }
 
-    const { productId, listPrice, currency, isActive } = req.body as {
+    const { productId, listPrice, currency, isActive, useStandardPrice } = req.body as {
       productId?: number;
       listPrice?: number | string;
       currency?: string;
       isActive?: boolean;
+      useStandardPrice?: boolean;
     };
     if (!productId || !Number.isFinite(productId)) {
       res.status(400).json({ error: "productId is required" });
@@ -229,6 +231,7 @@ router.post("/price-books/:id/entries", async (req, res) => {
         productId,
         listPrice: Number(listPrice).toString(),
         currency: "GBP",
+        useStandardPrice: useStandardPrice ?? false,
         isActive: isActive ?? true,
       })
       .returning();
@@ -327,6 +330,7 @@ router.get("/price-books/by-product/:productId", async (req, res) => {
         productId: priceBookEntriesTable.productId,
         listPrice: priceBookEntriesTable.listPrice,
         currency: priceBookEntriesTable.currency,
+        useStandardPrice: priceBookEntriesTable.useStandardPrice,
         isActive: priceBookEntriesTable.isActive,
         priceBookName: priceBooksTable.name,
         isStandard: priceBooksTable.isStandard,

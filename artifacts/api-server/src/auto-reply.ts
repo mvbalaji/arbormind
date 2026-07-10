@@ -3,6 +3,7 @@ import { promises as fs } from "node:fs";
 import { db, emailsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { resolveSmtpConfig, type SmtpConfig } from "./lib/smtp-config";
 
 const CATALOGUE_FILENAME = "RTindall_Fire_Protection_Catalogue_with_Pricing.pdf";
 
@@ -150,51 +151,6 @@ ${catalogue}
   }
 }
 
-interface SmtpConfig {
-  host: string;
-  port: number;
-  secure: boolean;
-  user: string;
-  pass: string;
-  fromName: string;
-}
-
-function getSmtpConfig(
-  settings: Record<string, unknown> | null,
-  imapUser: string,
-  imapPass: string,
-): SmtpConfig | null {
-  // Prefer admin-configured SMTP creds in DB, then env, then fall back to IMAP creds (same Spacemail mailbox).
-  const host =
-    (settings?.smtpHost as string | undefined) ||
-    process.env.SMTP_HOST ||
-    process.env.IMAP_HOST ||
-    "mail.spacemail.com";
-  const port = Number(
-    (settings?.smtpPort as number | undefined) ??
-      process.env.SMTP_PORT ??
-      465,
-  );
-  const secureRaw =
-    (settings?.smtpSecure as boolean | undefined) ??
-    (process.env.SMTP_SECURE !== "false");
-  const user =
-    (settings?.smtpUser as string | undefined) ||
-    process.env.SMTP_USER ||
-    imapUser;
-  const pass =
-    (settings?.smtpPassword as string | undefined) ||
-    process.env.SMTP_PASSWORD ||
-    imapPass;
-  const fromName =
-    (settings?.smtpFromName as string | undefined) ||
-    process.env.SMTP_FROM_NAME ||
-    "RTindall Fire Protection Support";
-
-  if (!user || !pass) return null;
-  return { host, port, secure: secureRaw !== false, user, pass, fromName };
-}
-
 async function sendEmail(
   smtp: SmtpConfig,
   to: string,
@@ -292,7 +248,11 @@ export async function maybeAutoReply(opts: {
     return;
   }
 
-  const smtp = getSmtpConfig(emailSettings, imapUser, imapPass);
+  const smtp = resolveSmtpConfig(emailSettings, {
+    defaultFromName: "RTindall Fire Protection Support",
+    fallbackUser: imapUser,
+    fallbackPass: imapPass,
+  });
   if (!smtp) {
     console.warn(`[AutoReply] No SMTP credentials available — cannot send reply for email ${emailId}`);
     return;

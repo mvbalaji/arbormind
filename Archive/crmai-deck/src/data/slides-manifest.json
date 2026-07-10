@@ -1,0 +1,86 @@
+[
+  {
+    "id": "title",
+    "position": 1,
+    "filepath": "src/pages/slides/Title.tsx",
+    "title": "ArborMind CRM",
+    "description": "Cover slide introducing the ArborMind CRM overview deck (v1.0, May 2026)."
+  },
+  {
+    "id": "overview",
+    "position": 2,
+    "filepath": "src/pages/slides/Overview.tsx",
+    "title": "What ArborMind does",
+    "description": "Five-point summary of what the CRM captures, tracks, centralizes, and automates, plus an at-a-glance stat block."
+  },
+  {
+    "id": "core-modules",
+    "position": 3,
+    "filepath": "src/pages/slides/CoreModules.tsx",
+    "title": "Core modules",
+    "description": "Six modules: Leads, Accounts & Contacts, Opportunities, Quotes, Orders, Activities."
+  },
+  {
+    "id": "quotes-orders",
+    "position": 4,
+    "filepath": "src/pages/slides/QuotesOrders.tsx",
+    "title": "Quotes & orders",
+    "description": "Quote features (line items, versions, PDF, send-track, status) and Order features (auto-created on accept, fulfilment, invoicing)."
+  },
+  {
+    "id": "approval-workflow",
+    "position": 5,
+    "filepath": "src/pages/slides/ApprovalWorkflow.tsx",
+    "title": "Approval workflow",
+    "description": "Threshold-based governance for quotes, discounts, and orders with tiered approvers and full audit trail."
+  },
+  {
+    "id": "email-tracking",
+    "position": 6,
+    "filepath": "src/pages/slides/EmailTracking.tsx",
+    "title": "Email & tracking",
+    "description": "Outbound SMTP send with 1x1 open-tracking pixel and inbound IMAP polling that threads replies to records."
+  },
+  {
+    "id": "ai-assistant",
+    "position": 7,
+    "filepath": "src/pages/slides/AIAssistant.tsx",
+    "title": "AI assistant",
+    "description": "Next-best-action assistant with seven first-class mutation tools across tasks, calls, stages, owners, email, notes, meetings."
+  },
+  {
+    "id": "architecture",
+    "position": 8,
+    "filepath": "src/pages/slides/Architecture.tsx",
+    "title": "System architecture",
+    "description": "Monorepo, React+Vite frontend, Express API, Postgres+Drizzle, nodemailer SMTP, imapflow IMAP poller."
+  },
+  {
+    "id": "data-model",
+    "position": 9,
+    "filepath": "src/pages/slides/DataModel.tsx",
+    "title": "Data model",
+    "description": "Entity diagram covering Lead, Account, Contact, Opportunity, Quote, Order, Approval, Activity, and EmailTracking."
+  },
+  {
+    "id": "end-to-end-flow",
+    "position": 10,
+    "filepath": "src/pages/slides/EndToEndFlow.tsx",
+    "title": "End-to-end flow",
+    "description": "Ten-step horizontal flow from lead capture through quote, approval, send, accept, order, and close."
+  },
+  {
+    "id": "process-flow-detail",
+    "position": 11,
+    "filepath": "src/pages/slides/ProcessFlowDetail.tsx",
+    "title": "Process flow — in detail",
+    "description": "Three-phase breakdown (Pre-sales, Active deal, Fulfilment) with 14 numbered substeps covering actor, action, and system result."
+  },
+  {
+    "id": "closing",
+    "position": 12,
+    "filepath": "src/pages/slides/Closing.tsx",
+    "title": "Built for arbormind.in",
+    "description": "Closing slide with live-today scope, what's next, and stack summary."
+  }
+]

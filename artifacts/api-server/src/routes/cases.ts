@@ -4,6 +4,7 @@ import { casesTable, usersTable, contactsTable, accountsTable } from "@workspace
 import { eq, ilike, sql, and } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
+import { getOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 router.use("/cases", requireScreenAccess("cases"));
@@ -40,6 +41,7 @@ function formatCase(c: { contactFirstName: string | null; contactLastName: strin
 
 router.get("/cases", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const { search, status, priority, contactId, accountId, assignedTo, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -52,7 +54,7 @@ router.get("/cases", async (req, res) => {
       .leftJoin(contactsTable, eq(casesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(casesTable.accountId, accountsTable.id));
 
-    const conditions = [];
+    const conditions = [eq(casesTable.orgId, orgId)];
     if (search) conditions.push(ilike(casesTable.subject, `%${search}%`));
     if (status) conditions.push(eq(casesTable.status, status));
     if (priority) conditions.push(eq(casesTable.priority, priority));
@@ -60,12 +62,8 @@ router.get("/cases", async (req, res) => {
     if (accountId) conditions.push(eq(casesTable.accountId, parseInt(accountId)));
     if (assignedTo) conditions.push(eq(casesTable.assignedTo, parseInt(assignedTo)));
 
-    const data = await (conditions.length > 0
-      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
-      : baseQuery
-    ).limit(limitNum).offset(offset);
-
-    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const whereClause = and(...conditions);
+    const data = await baseQuery.where(whereClause).limit(limitNum).offset(offset);
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(casesTable).where(whereClause);
     res.json({ data: data.map(formatCase), total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
@@ -76,11 +74,28 @@ router.get("/cases", async (req, res) => {
 
 router.post("/cases", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
+
+    if (req.body.contactId != null) {
+      const [row] = await db.select({ id: contactsTable.id }).from(contactsTable).where(and(eq(contactsTable.id, req.body.contactId), eq(contactsTable.orgId, orgId)));
+      if (!row) {
+        res.status(400).json({ error: "Invalid contactId" });
+        return;
+      }
+    }
+    if (req.body.accountId != null) {
+      const [row] = await db.select({ id: accountsTable.id }).from(accountsTable).where(and(eq(accountsTable.id, req.body.accountId), eq(accountsTable.orgId, orgId)));
+      if (!row) {
+        res.status(400).json({ error: "Invalid accountId" });
+        return;
+      }
+    }
+
     const [maxCase] = await db.select({ maxNum: sql<string>`max(case_number)` }).from(casesTable);
     const nextNum = maxCase?.maxNum ? parseInt(maxCase.maxNum.replace("CASE-", "")) + 1 : 1001;
     const caseNumber = `CASE-${nextNum}`;
 
-    const [caseRecord] = await db.insert(casesTable).values({ ...req.body, caseNumber }).returning();
+    const [caseRecord] = await db.insert(casesTable).values({ ...req.body, orgId, caseNumber }).returning();
     res.status(201).json({
       ...caseRecord,
       contactName: null,
@@ -95,13 +110,14 @@ router.post("/cases", async (req, res) => {
 
 router.get("/cases/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const [caseRecord] = await db
       .select(caseFields)
       .from(casesTable)
       .leftJoin(usersTable, eq(casesTable.assignedTo, usersTable.id))
       .leftJoin(contactsTable, eq(casesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(casesTable.accountId, accountsTable.id))
-      .where(eq(casesTable.id, parseInt(req.params.id)));
+      .where(and(eq(casesTable.id, parseInt(req.params.id)), eq(casesTable.orgId, orgId)));
 
     if (!caseRecord) {
       res.status(404).json({ error: "Case not found" });
@@ -116,9 +132,26 @@ router.get("/cases/:id", async (req, res) => {
 
 router.put("/cases/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
+
+    if (req.body.contactId != null) {
+      const [row] = await db.select({ id: contactsTable.id }).from(contactsTable).where(and(eq(contactsTable.id, req.body.contactId), eq(contactsTable.orgId, orgId)));
+      if (!row) {
+        res.status(400).json({ error: "Invalid contactId" });
+        return;
+      }
+    }
+    if (req.body.accountId != null) {
+      const [row] = await db.select({ id: accountsTable.id }).from(accountsTable).where(and(eq(accountsTable.id, req.body.accountId), eq(accountsTable.orgId, orgId)));
+      if (!row) {
+        res.status(400).json({ error: "Invalid accountId" });
+        return;
+      }
+    }
+
     const [caseRecord] = await db.update(casesTable)
       .set({ ...req.body, updatedAt: new Date() })
-      .where(eq(casesTable.id, parseInt(req.params.id)))
+      .where(and(eq(casesTable.id, parseInt(req.params.id)), eq(casesTable.orgId, orgId)))
       .returning();
     if (!caseRecord) {
       res.status(404).json({ error: "Case not found" });
@@ -133,8 +166,14 @@ router.put("/cases/:id", async (req, res) => {
 
 router.delete("/cases/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
-    await db.delete(casesTable).where(eq(casesTable.id, id));
+    const [existing] = await db.select({ id: casesTable.id }).from(casesTable).where(and(eq(casesTable.id, id), eq(casesTable.orgId, orgId)));
+    if (!existing) {
+      res.status(404).json({ error: "Case not found" });
+      return;
+    }
+    await db.delete(casesTable).where(and(eq(casesTable.id, id), eq(casesTable.orgId, orgId)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

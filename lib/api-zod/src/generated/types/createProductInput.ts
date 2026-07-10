@@ -13,5 +13,6 @@ export interface CreateProductInput {
   unitPrice: number;
   currency?: string;
   category?: string | null;
+  quantityUnitOfMeasure?: string | null;
   isActive?: boolean;
 }

@@ -1,7 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Bot, X, Send, Trash2, Sparkles } from "lucide-react";
+import { Bot, X, Send, Trash2, Sparkles, Mic, MicOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+// Web Speech API types
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
 
 interface Message {
   role: "user" | "assistant";
@@ -31,8 +39,108 @@ export function AIChatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [interimText, setInterimText] = useState("");
+  const [voiceError, setVoiceError] = useState("");
+  const voiceSupported = typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const isListeningRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const stopListening = useCallback(() => {
+    isListeningRef.current = false;
+    if (recognitionRef.current) {
+      recognitionRef.current.onresult = null;
+      recognitionRef.current.onerror = null;
+      recognitionRef.current.onend = null;
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+    setInterimText("");
+  }, []);
+
+  const createAndStartRecognition = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR || !isListeningRef.current) return;
+
+    const recognition = new SR();
+    recognition.lang = "en-US";
+    recognition.continuous = false;   // single-shot avoids persistent cloud connection errors
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
+      let interim = "";
+      let final = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) final += t;
+        else interim += t;
+      }
+      if (final) {
+        setInput(prev => (prev ? prev + " " + final.trim() : final.trim()));
+        setInterimText("");
+      } else {
+        setInterimText(interim);
+      }
+    };
+
+    recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
+      if (e.error === "not-allowed") {
+        setVoiceError("Microphone access denied. Allow mic permission in your browser.");
+        isListeningRef.current = false;
+        setIsListening(false);
+        setInterimText("");
+      } else if (e.error === "no-speech" || e.error === "aborted") {
+        // non-fatal — will restart via onend
+      } else {
+        setVoiceError(`Voice error: ${e.error}`);
+        isListeningRef.current = false;
+        setIsListening(false);
+        setInterimText("");
+      }
+    };
+
+    // Single-shot mode: when recognition ends, restart immediately if still listening
+    recognition.onend = () => {
+      setInterimText("");
+      if (isListeningRef.current) {
+        // Small delay prevents rapid cycling that causes network errors
+        setTimeout(() => createAndStartRecognition(), 150);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    try {
+      recognition.start();
+    } catch {
+      // already started elsewhere, ignore
+    }
+  }, []);
+
+  const toggleVoice = useCallback(() => {
+    if (isListening) {
+      isListeningRef.current = false;
+      stopListening();
+      return;
+    }
+    setVoiceError("");
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      setVoiceError("Voice not supported in this browser. Use Chrome or Edge.");
+      return;
+    }
+    isListeningRef.current = true;
+    setIsListening(true);
+    createAndStartRecognition();
+  }, [isListening, stopListening, createAndStartRecognition]);
+
+  // Stop listening when chat closes
+  useEffect(() => {
+    if (!isOpen) stopListening();
+  }, [isOpen, stopListening]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -194,16 +302,43 @@ export function AIChatbot() {
 
           <div className="p-3 border-t border-border bg-card">
             <div className="flex items-center gap-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask about your CRM..."
-                className="flex-1 h-9 px-3 rounded-xl bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-                disabled={isLoading}
-              />
+              <div className="relative flex-1">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={e => { setInput(e.target.value); setVoiceError(""); }}
+                  onKeyDown={handleKeyDown}
+                  placeholder={isListening ? "Listening… speak now" : "Ask about your CRM..."}
+                  className={cn(
+                    "w-full h-9 px-3 rounded-xl bg-muted border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 transition-colors",
+                    isListening ? "border-red-400 ring-1 ring-red-400/40 placeholder:text-red-400/70" : "border-border focus:ring-primary/50"
+                  )}
+                  disabled={isLoading}
+                />
+                {isListening && interimText && (
+                  <div className="absolute left-3 right-3 top-9 mt-1 text-[11px] text-muted-foreground italic truncate pointer-events-none">
+                    {interimText}
+                  </div>
+                )}
+              </div>
+              {voiceSupported && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className={cn(
+                    "h-8 w-8 rounded-xl shrink-0 transition-all",
+                    isListening
+                      ? "bg-red-500 text-white hover:bg-red-600 animate-pulse"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                  onClick={toggleVoice}
+                  disabled={isLoading}
+                  title={isListening ? "Stop listening" : "Voice input"}
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </Button>
+              )}
               <Button
                 size="icon"
                 className="h-8 w-8 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shrink-0"
@@ -213,6 +348,23 @@ export function AIChatbot() {
                 <Send className="w-4 h-4" />
               </Button>
             </div>
+            {isListening && (
+              <p className="text-[10px] text-red-500 mt-1.5 flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                Recording — click the mic button to stop and send
+              </p>
+            )}
+            {voiceError && (
+              <div className="flex items-start justify-between gap-2 mt-1.5">
+                <p className="text-[10px] text-destructive leading-tight">{voiceError}</p>
+                <button
+                  onClick={() => { setVoiceError(""); toggleVoice(); }}
+                  className="text-[10px] text-primary underline shrink-0"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

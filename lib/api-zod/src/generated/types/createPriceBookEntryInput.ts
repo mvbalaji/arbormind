@@ -10,5 +10,6 @@ export interface CreatePriceBookEntryInput {
   productId: number;
   listPrice: number;
   currency?: string;
+  useStandardPrice?: boolean;
   isActive?: boolean;
 }

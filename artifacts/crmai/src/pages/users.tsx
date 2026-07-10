@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import {
   Settings, Shield, UserPlus, Trash2, Loader2, Users as UsersIcon, Upload,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff, Clock, Play, UserCog, ShieldCheck,
-  Pencil, Crown, Star,
+  Pencil, Crown, Star, Building2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,6 +24,8 @@ import { AccessControlInline } from "./access-control";
 import { ApprovalConfigInline } from "@/components/approval-config-inline";
 import { AppManagementInline } from "./app-management";
 import { LeadScoringAdmin } from "@/components/lead-scoring-admin";
+import { ProductRulesAdmin } from "@/components/product-rules-admin";
+import { OrganizationSettingsInline } from "@/components/organization-settings-inline";
 
 interface AppUser {
   id: number;
@@ -121,7 +123,7 @@ export default function Users() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("sales_rep");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail" | "apps" | "scoring">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail" | "apps" | "scoring" | "product-rules" | "organization">("team");
 
   // Edit dialog state
   const [editName, setEditName] = useState("");
@@ -332,10 +334,12 @@ export default function Users() {
         <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit border border-border flex-wrap">
           {([
             { id: "team", label: "Team Settings", icon: UsersIcon },
+            { id: "organization", label: "Organization", icon: Building2 },
             { id: "apps", label: "App Management", icon: Settings },
             { id: "access", label: "Access Control", icon: Shield },
             { id: "approvals", label: "Approval Config", icon: ShieldCheck },
             { id: "scoring", label: "Lead Scoring", icon: Star },
+            { id: "product-rules", label: "Product Rules", icon: ShieldCheck },
             { id: "import", label: "Data Import", icon: Upload },
             { id: "mail", label: "Mail Settings", icon: Mail },
           ] as const).map((tab) => (
@@ -355,6 +359,9 @@ export default function Users() {
           ))}
         </div>
 
+        {/* Organization Tab */}
+        {activeTab === "organization" && <OrganizationSettingsInline />}
+
         {/* App Management Tab */}
         {activeTab === "apps" && <AppManagementInline />}
 
@@ -366,6 +373,9 @@ export default function Users() {
 
         {/* Lead Scoring Tab */}
         {activeTab === "scoring" && <LeadScoringAdmin />}
+
+        {/* Product Rules Tab */}
+        {activeTab === "product-rules" && <ProductRulesAdmin />}
 
         {/* Data Import Tab */}
         {activeTab === "import" && <DataImport />}

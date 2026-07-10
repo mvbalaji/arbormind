@@ -164,11 +164,11 @@ export default function PriceBooks() {
             <table className="w-full text-sm text-left [&_tbody_td]:whitespace-nowrap">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">Name</th>
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">Description</th>
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white text-right">Products</th>
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">Status</th>
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white text-right">Actions</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Name</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Description</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Products</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

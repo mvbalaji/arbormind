@@ -12,6 +12,7 @@ export interface PriceBookEntry {
   productId: number;
   listPrice: number;
   currency: string;
+  useStandardPrice?: boolean;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

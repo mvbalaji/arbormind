@@ -9,6 +9,7 @@ export interface AuthUser {
   role: string;
   avatarUrl?: string | null;
   username?: string;
+  organizationName?: string | null;
   screenAccess?: Record<string, ScreenAccessLevel>;
   enabledModules?: Record<string, boolean>;
   isImpersonating?: boolean;
@@ -69,7 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             prev.id === data.user.id &&
             prev.email === data.user.email &&
             prev.role === data.user.role &&
-            prev.name === data.user.name
+            prev.name === data.user.name &&
+            prev.organizationName === data.user.organizationName
           ) {
             return prev;
           }

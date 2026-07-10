@@ -4,9 +4,11 @@ import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { contactsTable } from "./contacts";
 import { accountsTable } from "./accounts";
+import { organizationsTable } from "./organizations";
 
 export const leadsTable = pgTable("leads", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email"),

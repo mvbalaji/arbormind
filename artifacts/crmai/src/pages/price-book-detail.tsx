@@ -22,7 +22,7 @@ import { ArrowLeft, BookText, Lock, Plus, Trash2, Package, Check, X } from "luci
 import { useToast } from "@/hooks/use-toast";
 
 function AddEntryDialog({
-  open, onOpenChange, bookId, isStandard, existingProductIds, standardEntryProductIds,
+  open, onOpenChange, bookId, isStandard, existingProductIds, standardEntryProductIds, standardPriceMap,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -30,9 +30,11 @@ function AddEntryDialog({
   isStandard: boolean;
   existingProductIds: Set<number>;
   standardEntryProductIds: Set<number>;
+  standardPriceMap: Map<number, number>;
 }) {
   const [productId, setProductId] = useState<string>("");
   const [listPrice, setListPrice] = useState<string>("");
+  const [useStandardPrice, setUseStandardPrice] = useState(false);
   const { data: productsData } = useListProducts({ limit: 500 });
   const products = productsData?.data ?? [];
   const addMutation = useAddPriceBookEntry();
@@ -41,19 +43,34 @@ function AddEntryDialog({
 
   const eligibleProducts = useMemo(() => products.filter(p => {
     if (existingProductIds.has(p.id)) return false;
-    // Custom books require the product to have a Standard Price entry first.
     if (!isStandard && !standardEntryProductIds.has(p.id)) return false;
     return true;
   }), [products, existingProductIds, standardEntryProductIds, isStandard]);
 
   React.useEffect(() => {
-    if (open) { setProductId(""); setListPrice(""); }
+    if (open) { setProductId(""); setListPrice(""); setUseStandardPrice(false); }
   }, [open]);
 
   const onPickProduct = (val: string) => {
     setProductId(val);
     const prod = products.find(p => p.id === parseInt(val));
-    if (prod && !listPrice) setListPrice(prod.unitPrice.toString());
+    if (prod) {
+      if (useStandardPrice) {
+        const stdPrice = standardPriceMap.get(prod.id);
+        setListPrice(stdPrice !== undefined ? stdPrice.toString() : prod.unitPrice.toString());
+      } else if (!listPrice) {
+        setListPrice(prod.unitPrice.toString());
+      }
+    }
+  };
+
+  const onUseStandardChange = (checked: boolean) => {
+    setUseStandardPrice(checked);
+    if (checked && productId) {
+      const pid = parseInt(productId);
+      const stdPrice = standardPriceMap.get(pid);
+      if (stdPrice !== undefined) setListPrice(stdPrice.toString());
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +79,7 @@ function AddEntryDialog({
     try {
       await addMutation.mutateAsync({
         id: bookId,
-        data: { productId: parseInt(productId), listPrice: parseFloat(listPrice) },
+        data: { productId: parseInt(productId), listPrice: parseFloat(listPrice), useStandardPrice },
       });
       await queryClient.invalidateQueries({ queryKey: getGetPriceBookQueryKey(bookId) });
       await queryClient.invalidateQueries({ queryKey: getListPriceBooksQueryKey() });
@@ -103,10 +120,23 @@ function AddEntryDialog({
               </p>
             )}
           </div>
+          {!isStandard && (
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="pbe-use-std" checked={useStandardPrice}
+                onChange={e => onUseStandardChange(e.target.checked)}
+                className="w-4 h-4 rounded border-white/20 accent-primary" />
+              <Label htmlFor="pbe-use-std" className="cursor-pointer">Use Standard Price</Label>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="pbe-price">List Price *</Label>
-            <Input id="pbe-price" type="number" min="0" step="0.01" required className="bg-muted border-border"
+            <Input id="pbe-price" type="number" min="0" step="0.01" required
+              className={`bg-muted border-border ${useStandardPrice ? "opacity-60" : ""}`}
+              readOnly={useStandardPrice}
               value={listPrice} onChange={e => setListPrice(e.target.value)} />
+            {useStandardPrice && (
+              <p className="text-xs text-muted-foreground">Price is inherited from the Standard Price Book.</p>
+            )}
           </div>
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
@@ -135,6 +165,10 @@ export default function PriceBookDetail() {
   const { data: standardBook } = useGetPriceBook(standardBookId ?? 0);
   const standardEntryProductIds = useMemo(
     () => new Set((standardBook?.entries ?? []).map(e => e.productId)),
+    [standardBook],
+  );
+  const standardPriceMap = useMemo(
+    () => new Map((standardBook?.entries ?? []).map(e => [e.productId, e.listPrice])),
     [standardBook],
   );
 
@@ -175,6 +209,7 @@ export default function PriceBookDetail() {
   return (
     <Layout>
       <div className="flex flex-col gap-3">
+        {/* Header */}
         <div className="flex items-center gap-3">
           <Link href="/price-books">
             <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
@@ -214,23 +249,32 @@ export default function PriceBookDetail() {
             <table className="w-full text-sm text-left [&_tbody_td]:whitespace-nowrap">
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">Product</th>
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">Code</th>
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">Category</th>
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white text-right">List Price</th>
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white">Status</th>
-                  <th className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white text-right">Actions</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Product Name</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Product Code</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Product Family</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">List Price</th>
+                  {!isStandard && (
+                    <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-center">Use Standard Price</th>
+                  )}
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-center">Active</th>
+                  <th className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {entries.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                  <tr><td colSpan={isStandard ? 6 : 7} className="px-6 py-12 text-center text-muted-foreground">
                     <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     No products in this price book yet.
                   </td></tr>
                 ) : entries.map(entry => (
                   <React.Fragment key={entry.id}>
-                    <EntryRowWithRemove entry={entry} bookId={bookId} isStandard={isStandard} onRemove={() => setRemovingEntry(entry)} />
+                    <EntryRowWithRemove
+                      entry={entry}
+                      bookId={bookId}
+                      isStandard={isStandard}
+                      standardPrice={standardPriceMap.get(entry.productId)}
+                      onRemove={() => setRemovingEntry(entry)}
+                    />
                   </React.Fragment>
                 ))}
               </tbody>
@@ -246,6 +290,7 @@ export default function PriceBookDetail() {
         isStandard={isStandard}
         existingProductIds={existingProductIds}
         standardEntryProductIds={standardEntryProductIds}
+        standardPriceMap={standardPriceMap}
       />
 
       <AlertDialog open={removingEntry !== null} onOpenChange={(o) => { if (!o) setRemovingEntry(null); }}>
@@ -267,15 +312,17 @@ export default function PriceBookDetail() {
 }
 
 function EntryRowWithRemove({
-  entry, bookId, isStandard, onRemove,
+  entry, bookId, isStandard, standardPrice, onRemove,
 }: {
   entry: PriceBookEntryDetail;
   bookId: number;
   isStandard: boolean;
+  standardPrice?: number;
   onRemove: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [price, setPrice] = useState(entry.listPrice.toString());
+  const useStdPrice = (entry as any).useStandardPrice ?? false;
   const updateMutation = useUpdatePriceBookEntry();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -304,8 +351,8 @@ function EntryRowWithRemove({
           {entry.productName || `Product #${entry.productId}`}
         </div>
       </td>
-      <td className="px-3 py-1.5 text-muted-foreground">{entry.productCode || "-"}</td>
-      <td className="px-3 py-1.5 text-muted-foreground">{entry.productCategory || "-"}</td>
+      <td className="px-3 py-1.5 text-muted-foreground font-mono text-xs">{entry.productCode || "—"}</td>
+      <td className="px-3 py-1.5 text-muted-foreground">{entry.productCategory || "—"}</td>
       <td className="px-3 py-1.5 text-right">
         {editing ? (
           <div className="flex items-center justify-end gap-1">
@@ -320,15 +367,27 @@ function EntryRowWithRemove({
             </Button>
           </div>
         ) : (
-          <button className="font-semibold text-foreground hover:text-primary" onClick={() => setEditing(true)}>
+          <button className={`font-semibold text-foreground hover:text-primary ${useStdPrice ? "opacity-60 cursor-default" : ""}`}
+            onClick={() => !useStdPrice && setEditing(true)} disabled={useStdPrice}>
             {entry.listPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs text-muted-foreground">{entry.currency}</span>
           </button>
         )}
       </td>
-      <td className="px-3 py-1.5">
-        <Badge variant="outline" className={entry.isActive ? "border-green-500/30 text-green-600 bg-green-500/5" : "border-border text-muted-foreground"}>
-          {entry.isActive ? "Active" : "Inactive"}
-        </Badge>
+      {!isStandard && (
+        <td className="px-3 py-1.5 text-center">
+          {useStdPrice ? (
+            <span className="inline-block w-4 h-4 rounded-sm bg-green-500/20 border border-green-500/40 text-green-600 text-[10px] flex items-center justify-center">✓</span>
+          ) : (
+            <span className="inline-block w-4 h-4 rounded-sm border border-border" />
+          )}
+        </td>
+      )}
+      <td className="px-3 py-1.5 text-center">
+        {entry.isActive ? (
+          <span className="inline-block w-4 h-4 rounded-sm bg-green-500/20 border border-green-500/40 text-green-600 text-[10px] flex items-center justify-center">✓</span>
+        ) : (
+          <span className="inline-block w-4 h-4 rounded-sm border border-border" />
+        )}
       </td>
       <td className="px-3 py-1.5 text-right">
         {!isStandard && (

@@ -3239,6 +3239,9 @@ components:
         category:
           type: string
           nullable: true
+        quantityUnitOfMeasure:
+          type: string
+          nullable: true
         isActive:
           type: boolean
         createdAt:
@@ -3294,6 +3297,9 @@ components:
         category:
           type: string
           nullable: true
+        quantityUnitOfMeasure:
+          type: string
+          nullable: true
         isActive:
           type: boolean
           default: true
@@ -3317,6 +3323,9 @@ components:
         currency:
           type: string
         category:
+          type: string
+          nullable: true
+        quantityUnitOfMeasure:
           type: string
           nullable: true
         isActive:
@@ -3387,6 +3396,8 @@ components:
           type: number
         currency:
           type: string
+        useStandardPrice:
+          type: boolean
         isActive:
           type: boolean
         createdAt:

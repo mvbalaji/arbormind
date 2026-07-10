@@ -4,6 +4,7 @@ import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTabl
 import { eq, ilike, or, sql, and } from "drizzle-orm";
 import { computeLeadScore } from "../lib/lead-scoring";
 import { requireScreenAccess } from "../lib/access-control";
+import { getOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 router.use("/leads", requireScreenAccess("leads"));
@@ -42,6 +43,7 @@ function formatLead(l: { annualRevenue: string | null; [key: string]: unknown })
 
 router.get("/leads", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const { search, status, assignedTo, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -52,7 +54,7 @@ router.get("/leads", async (req, res) => {
       .from(leadsTable)
       .leftJoin(usersTable, eq(leadsTable.assignedTo, usersTable.id));
 
-    const conditions = [];
+    const conditions = [eq(leadsTable.orgId, orgId)];
     if (search) {
       conditions.push(or(
         ilike(leadsTable.firstName, `%${search}%`),
@@ -63,12 +65,8 @@ router.get("/leads", async (req, res) => {
     if (status) conditions.push(eq(leadsTable.status, status));
     if (assignedTo) conditions.push(eq(leadsTable.assignedTo, parseInt(assignedTo)));
 
-    const data = await (conditions.length > 0
-      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
-      : baseQuery
-    ).limit(limitNum).offset(offset);
-
-    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const whereClause = and(...conditions);
+    const data = await baseQuery.where(whereClause).limit(limitNum).offset(offset);
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(leadsTable).where(whereClause);
     res.json({ data: data.map(formatLead), total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
@@ -79,7 +77,8 @@ router.get("/leads", async (req, res) => {
 
 router.post("/leads", async (req, res) => {
   try {
-    const body = { ...req.body };
+    const orgId = getOrgId(req);
+    const body = { ...req.body, orgId };
     // Auto-compute lead score unless caller explicitly supplied one (manual override).
     if (body.score == null || body.score === "") {
       body.score = computeLeadScore({
@@ -105,11 +104,12 @@ router.post("/leads", async (req, res) => {
 
 router.get("/leads/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const [lead] = await db
       .select(leadFields)
       .from(leadsTable)
       .leftJoin(usersTable, eq(leadsTable.assignedTo, usersTable.id))
-      .where(eq(leadsTable.id, parseInt(req.params.id)));
+      .where(and(eq(leadsTable.id, parseInt(req.params.id)), eq(leadsTable.orgId, orgId)));
 
     if (!lead) {
       res.status(404).json({ error: "Lead not found" });
@@ -124,6 +124,7 @@ router.get("/leads/:id", async (req, res) => {
 
 router.put("/leads/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const allowedFields = [
       "firstName", "lastName", "email", "phone", "website", "company", "title",
       "status", "source", "score", "assignedTo",
@@ -149,7 +150,7 @@ router.put("/leads/:id", async (req, res) => {
       const id = parseInt(req.params.id);
       const [current] = await db.select(leadFields).from(leadsTable)
         .leftJoin(usersTable, eq(leadsTable.assignedTo, usersTable.id))
-        .where(eq(leadsTable.id, id));
+        .where(and(eq(leadsTable.id, id), eq(leadsTable.orgId, orgId)));
       if (current) {
         const merged = { ...formatLead(current), ...req.body };
         updateData.score = computeLeadScore({
@@ -169,7 +170,7 @@ router.put("/leads/:id", async (req, res) => {
 
     const [lead] = await db.update(leadsTable)
       .set(updateData)
-      .where(eq(leadsTable.id, parseInt(req.params.id)))
+      .where(and(eq(leadsTable.id, parseInt(req.params.id)), eq(leadsTable.orgId, orgId)))
       .returning();
     if (!lead) {
       res.status(404).json({ error: "Lead not found" });
@@ -184,7 +185,13 @@ router.put("/leads/:id", async (req, res) => {
 
 router.delete("/leads/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
+    const [existing] = await db.select({ id: leadsTable.id }).from(leadsTable).where(and(eq(leadsTable.id, id), eq(leadsTable.orgId, orgId)));
+    if (!existing) {
+      res.status(404).json({ error: "Lead not found" });
+      return;
+    }
     await db.transaction(async (tx) => {
       // Detach activities (nullable FK) so history is preserved.
       await tx.update(activitiesTable).set({ leadId: null }).where(eq(activitiesTable.leadId, id));
@@ -201,6 +208,7 @@ router.delete("/leads/:id", async (req, res) => {
 
 router.post("/leads/:id/convert", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const leadId = parseInt(req.params.id);
     const {
       createContact, createAccount, createOpportunity,
@@ -209,7 +217,7 @@ router.post("/leads/:id/convert", async (req, res) => {
       existingContactIds,
     } = req.body;
 
-    const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
+    const [lead] = await db.select().from(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.orgId, orgId)));
     if (!lead) {
       res.status(404).json({ error: "Lead not found" });
       return;
@@ -226,7 +234,7 @@ router.post("/leads/:id/convert", async (req, res) => {
     }
 
     if (existingAccountId) {
-      const [acct] = await db.select({ id: accountsTable.id }).from(accountsTable).where(eq(accountsTable.id, existingAccountId));
+      const [acct] = await db.select({ id: accountsTable.id }).from(accountsTable).where(and(eq(accountsTable.id, existingAccountId), eq(accountsTable.orgId, orgId)));
       if (!acct) {
         res.status(400).json({ error: "Selected account does not exist" });
         return;
@@ -238,7 +246,7 @@ router.post("/leads/:id/convert", async (req, res) => {
       : existingContactId ? [existingContactId] : [];
 
     for (const cId of allContactIds) {
-      const [ct] = await db.select({ id: contactsTable.id }).from(contactsTable).where(eq(contactsTable.id, cId));
+      const [ct] = await db.select({ id: contactsTable.id }).from(contactsTable).where(and(eq(contactsTable.id, cId), eq(contactsTable.orgId, orgId)));
       if (!ct) {
         res.status(400).json({ error: `Contact ID ${cId} does not exist` });
         return;
@@ -257,12 +265,13 @@ router.post("/leads/:id/convert", async (req, res) => {
         const [existingByName] = await tx
           .select({ id: accountsTable.id })
           .from(accountsTable)
-          .where(ilike(accountsTable.name, lead.company))
+          .where(and(ilike(accountsTable.name, lead.company), eq(accountsTable.orgId, orgId)))
           .limit(1);
         if (existingByName) {
           accountId = existingByName.id;
         } else {
           const [account] = await tx.insert(accountsTable).values({
+            orgId,
             name: lead.company,
             industry: lead.industry ?? null,
             employees: lead.employees ?? null,
@@ -284,6 +293,7 @@ router.post("/leads/:id/convert", async (req, res) => {
         }
       } else if (createContact) {
         const [contact] = await tx.insert(contactsTable).values({
+          orgId,
           firstName: lead.firstName,
           lastName: lead.lastName,
           email: lead.email ?? null,
@@ -302,6 +312,7 @@ router.post("/leads/:id/convert", async (req, res) => {
 
       if (createOpportunity && accountId) {
         const [opportunity] = await tx.insert(opportunitiesTable).values({
+          orgId,
           name: opportunityName || `${lead.firstName} ${lead.lastName} Opportunity`,
           accountId: accountId,
           contactId: contactId,
@@ -345,7 +356,10 @@ router.post("/leads/:id/convert", async (req, res) => {
 // POST /leads/:id/analyze — trigger AI insight analysis
 router.post("/leads/:id/analyze", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const leadId = parseInt(req.params.id);
+    const [lead] = await db.select({ id: leadsTable.id }).from(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.orgId, orgId)));
+    if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
     const { analyzeLeadWithAI } = await import("../lib/lead-analyzer");
     const result = await analyzeLeadWithAI(leadId);
     res.json({ success: true, ...result });
@@ -358,9 +372,13 @@ router.post("/leads/:id/analyze", async (req, res) => {
 // GET /leads/:id/insights — fetch stored insights
 router.get("/leads/:id/insights", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const leadId = parseInt(req.params.id);
-    const [insights] = await db.select().from(leadInsightsTable).where(eq(leadInsightsTable.leadId, leadId));
-    res.json({ insights: insights ?? null });
+    const [insights] = await db.select({ insight: leadInsightsTable })
+      .from(leadInsightsTable)
+      .innerJoin(leadsTable, and(eq(leadsTable.id, leadInsightsTable.leadId), eq(leadsTable.orgId, orgId)))
+      .where(eq(leadInsightsTable.leadId, leadId));
+    res.json({ insights: insights?.insight ?? null });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Failed to fetch insights" });
@@ -369,7 +387,10 @@ router.get("/leads/:id/insights", async (req, res) => {
 
 router.get("/leads/:id/contacts", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const leadId = parseInt(req.params.id);
+    const [lead] = await db.select({ id: leadsTable.id }).from(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.orgId, orgId)));
+    if (!lead) { res.status(404).json({ error: "Lead not found" }); return; }
     const rows = await db
       .select({
         id: contactsTable.id,
@@ -393,8 +414,9 @@ router.get("/leads/:id/contacts", async (req, res) => {
 // POST /leads/:id/find-contacts — scrape website + GPT-4o to extract real contacts
 router.post("/leads/:id/find-contacts", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const leadId = parseInt(req.params.id);
-    const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
+    const [lead] = await db.select().from(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.orgId, orgId)));
     if (!lead) return res.status(404).json({ error: "Lead not found" });
 
     const website = lead.website ?? null;
@@ -423,6 +445,7 @@ router.post("/leads/:id/find-contacts", async (req, res) => {
 // POST /leads/:id/add-found-contact — create a CRM contact and link it to the lead
 router.post("/leads/:id/add-found-contact", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const leadId = parseInt(req.params.id);
     const { firstName, lastName, title, email, phone, linkedinUrl } = req.body as {
       firstName: string; lastName: string; title?: string;
@@ -431,14 +454,14 @@ router.post("/leads/:id/add-found-contact", async (req, res) => {
 
     if (!firstName || !lastName) return res.status(400).json({ error: "firstName and lastName are required" });
 
-    const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
+    const [lead] = await db.select().from(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.orgId, orgId)));
     if (!lead) return res.status(404).json({ error: "Lead not found" });
 
     // Check if contact with this email already linked
     if (email) {
       const existing = await db.select({ id: contactsTable.id })
         .from(contactsTable)
-        .where(eq(contactsTable.email, email))
+        .where(and(eq(contactsTable.email, email), eq(contactsTable.orgId, orgId)))
         .limit(1);
       if (existing.length > 0) {
         const contactId = existing[0].id;
@@ -450,6 +473,7 @@ router.post("/leads/:id/add-found-contact", async (req, res) => {
     }
 
     const [contact] = await db.insert(contactsTable).values({
+      orgId,
       firstName,
       lastName,
       title: title ?? null,
@@ -471,8 +495,9 @@ router.post("/leads/:id/add-found-contact", async (req, res) => {
 // POST /leads/:id/hunter — look up contacts via Hunter.io domain search
 router.post("/leads/:id/hunter", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const leadId = parseInt(req.params.id);
-    const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
+    const [lead] = await db.select().from(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.orgId, orgId)));
     if (!lead) return res.status(404).json({ error: "Lead not found" });
 
     const apiKey = process.env.HUNTER_API_KEY;

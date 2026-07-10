@@ -6,9 +6,11 @@ import { contactsTable } from "./contacts";
 import { accountsTable } from "./accounts";
 import { opportunitiesTable } from "./opportunities";
 import { leadsTable } from "./leads";
+import { organizationsTable } from "./organizations";
 
 export const activitiesTable = pgTable("activities", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id),
   type: text("type").notNull(),
   subject: text("subject").notNull(),
   description: text("description"),

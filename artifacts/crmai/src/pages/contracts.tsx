@@ -449,7 +449,7 @@ export default function Contracts() {
     <button
       onClick={() => toggleSort(field)}
       aria-sort={sortField === field ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-      className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-white hover:text-white/80 transition-colors whitespace-nowrap"
     >
       {children}
       <ArrowUpDown className={cn("w-3 h-3", sortField === field ? "opacity-100" : "opacity-40")} />
@@ -501,7 +501,7 @@ export default function Contracts() {
     }
   };
 
-  const thClass = "relative text-left px-3 py-1.5";
+  const thClass = "relative text-left px-2 py-1 [&_*]:!whitespace-nowrap";
 
   return (
     <Layout>
@@ -684,8 +684,8 @@ export default function Contracts() {
                         <ColResizeHandle onMouseDown={startColResize("status")} />
                       </th>
                     )}
-                    <th className="relative text-center px-3 py-1.5">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</span>
+                    <th className="relative text-center px-2 py-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap leading-tight">Actions</span>
                       <ColResizeHandle onMouseDown={startColResize("actions")} />
                     </th>
                   </tr>

@@ -27,19 +27,32 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Package, Plus, MoreHorizontal, Pencil, Trash2, Search, DollarSign } from "lucide-react";
+import { Package, Plus, MoreHorizontal, Pencil, Trash2, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useColumnVisibility } from "@/hooks/use-column-visibility";
 import { ColumnsMenu } from "@/components/columns-menu";
 import { usePagination } from "@/hooks/use-pagination";
 import { TablePagination } from "@/components/table-pagination";
 
-type ProductColKey = "name" | "category" | "price" | "status";
+// Salesforce Product Family picklist values
+const PRODUCT_FAMILY_OPTIONS = [
+  "Consulting", "Education", "Hardware", "Installation",
+  "Other", "Services", "Software", "Training",
+];
+
+// Salesforce Quantity Unit of Measure picklist values
+const UOM_OPTIONS = [
+  "Each", "Hour", "Day", "Week", "Month", "Year",
+  "Seat", "License", "GB", "TB",
+];
+
+type ProductColKey = "name" | "productFamily" | "uom" | "price" | "status";
 const PRODUCT_TOGGLEABLE_COLS = [
   { key: "name" as const, label: "Name / Code" },
-  { key: "category" as const, label: "Category" },
+  { key: "productFamily" as const, label: "Product Family" },
+  { key: "uom" as const, label: "Unit of Measure" },
   { key: "price" as const, label: "Standard Price" },
-  { key: "status" as const, label: "Status" },
+  { key: "status" as const, label: "Active" },
 ];
 
 interface ProductFormData {
@@ -49,11 +62,13 @@ interface ProductFormData {
   unitPrice: string;
   currency: string;
   category: string;
+  quantityUnitOfMeasure: string;
   isActive: boolean;
 }
 
 const defaultForm: ProductFormData = {
-  name: "", code: "", description: "", unitPrice: "", currency: BASE_CURRENCY, category: "", isActive: true,
+  name: "", code: "", description: "", unitPrice: "", currency: BASE_CURRENCY,
+  category: "", quantityUnitOfMeasure: "", isActive: true,
 };
 
 interface ProductFormDialogProps {
@@ -86,6 +101,7 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
       unitPrice: parseFloat(formData.unitPrice),
       currency: BASE_CURRENCY,
       category: formData.category || null,
+      quantityUnitOfMeasure: formData.quantityUnitOfMeasure || null,
       isActive: formData.isActive,
     };
 
@@ -108,7 +124,7 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border text-foreground max-w-lg">
         <DialogHeader>
-          <DialogTitle>{mode === "create" ? "Add Product" : "Edit Product"}</DialogTitle>
+          <DialogTitle>{mode === "create" ? "New Product" : "Edit Product"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-2">
@@ -123,19 +139,35 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
                 value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="p-category">Category</Label>
-              <Input id="p-category" className="bg-muted border-border"
-                value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
+              <Label htmlFor="p-family">Product Family</Label>
+              <select id="p-family" className="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm"
+                value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+                <option value="" className="bg-card">--None--</option>
+                {PRODUCT_FAMILY_OPTIONS.map(f => (
+                  <option key={f} value={f} className="bg-card">{f}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="p-price">Standard Price ({BASE_CURRENCY}) *</Label>
+              <Input id="p-price" type="number" min="0" step="0.01" required className="bg-muted border-border"
+                value={formData.unitPrice} onChange={e => setFormData({ ...formData, unitPrice: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="p-uom">Quantity Unit of Measure</Label>
+              <select id="p-uom" className="w-full h-9 px-3 rounded-md bg-muted border border-border text-sm"
+                value={formData.quantityUnitOfMeasure} onChange={e => setFormData({ ...formData, quantityUnitOfMeasure: e.target.value })}>
+                <option value="" className="bg-card">--None--</option>
+                {UOM_OPTIONS.map(u => (
+                  <option key={u} value={u} className="bg-card">{u}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="p-price">Unit Price ({BASE_CURRENCY}) *</Label>
-            <Input id="p-price" type="number" min="0" step="0.01" required className="bg-muted border-border"
-              value={formData.unitPrice} onChange={e => setFormData({ ...formData, unitPrice: e.target.value })} />
-            <p className="text-xs text-muted-foreground">Entered in the base currency ({BASE_CURRENCY}); other currencies are converted automatically.</p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="p-desc">Description</Label>
+            <Label htmlFor="p-desc">Product Description</Label>
             <Input id="p-desc" className="bg-muted border-border"
               value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
           </div>
@@ -143,12 +175,12 @@ function ProductFormDialog({ open, onOpenChange, mode, initialData }: ProductFor
             <input type="checkbox" id="p-active" checked={formData.isActive}
               onChange={e => setFormData({ ...formData, isActive: e.target.checked })}
               className="w-4 h-4 rounded border-white/20 accent-primary" />
-            <Label htmlFor="p-active" className="cursor-pointer">Active (available for quoting)</Label>
+            <Label htmlFor="p-active" className="cursor-pointer">Active</Label>
           </div>
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="border-border">Cancel</Button>
             <Button type="submit" disabled={isPending} className="bg-primary hover:bg-primary/90 text-foreground">
-              {isPending ? "Saving..." : mode === "create" ? "Add Product" : "Save Changes"}
+              {isPending ? "Saving..." : mode === "create" ? "Save" : "Save"}
             </Button>
           </DialogFooter>
         </form>
@@ -195,8 +227,8 @@ function ManageProductPricingDialog({
   );
 }
 
-const PRODUCTS_COL_KEYS = ["name","category","price","stock","status","actions"] as const;
-const PRODUCTS_COL_DEFAULTS: Record<typeof PRODUCTS_COL_KEYS[number], number> = {"name":240,"category":140,"price":120,"stock":100,"status":120,"actions":120};
+const PRODUCTS_COL_KEYS = ["name","productFamily","uom","price","status","actions"] as const;
+const PRODUCTS_COL_DEFAULTS: Record<typeof PRODUCTS_COL_KEYS[number], number> = {"name":240,"productFamily":140,"uom":130,"price":130,"status":80,"actions":120};
 
 const VIEW_OPTIONS = [
   { label: "All Products", value: "all", pinned: true },
@@ -206,7 +238,7 @@ const VIEW_OPTIONS = [
 
 export default function Products() {
   const { format } = useCurrency();
-  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:products:v1", PRODUCTS_COL_KEYS, PRODUCTS_COL_DEFAULTS);
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:products:v2", PRODUCTS_COL_KEYS, PRODUCTS_COL_DEFAULTS);
   const [search, setSearch] = useState("");
   const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -221,7 +253,7 @@ export default function Products() {
     return true;
   });
   const productsPagination = usePagination("products", products);
-  const colVis = useColumnVisibility<ProductColKey>("col-visibility:products:v1", PRODUCT_TOGGLEABLE_COLS);
+  const colVis = useColumnVisibility<ProductColKey>("col-visibility:products:v2", PRODUCT_TOGGLEABLE_COLS);
   const productColSpan = colVis.visible.size + 1;
   const deleteMutation = useDeleteProduct();
   const queryClient = useQueryClient();
@@ -253,7 +285,7 @@ export default function Products() {
           search={{ value: search, onChange: setSearch, placeholder: "Search products..." }}
           aiEntityType="products"
           onNew={() => setIsCreateOpen(true)}
-          newLabel="Add Product"
+          newLabel="New"
         />
 
         <Card className="glass-panel border-0 overflow-hidden">
@@ -275,17 +307,19 @@ export default function Products() {
             <table className="w-full text-sm text-left [&_tbody_td]:whitespace-nowrap">
               <colgroup>
                 {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}
-                {colVis.isVisible("category") && <col data-col="category" style={{ width: `${colWidths.category}px` }} />}
+                {colVis.isVisible("productFamily") && <col data-col="productFamily" style={{ width: `${colWidths.productFamily}px` }} />}
+                {colVis.isVisible("uom") && <col data-col="uom" style={{ width: `${colWidths.uom}px` }} />}
                 {colVis.isVisible("price") && <col data-col="price" style={{ width: `${colWidths.price}px` }} />}
                 {colVis.isVisible("status") && <col data-col="status" style={{ width: `${colWidths.status}px` }} />}
                 <col data-col="actions" style={{ width: `${colWidths.actions}px` }} />
               </colgroup>
               <thead className="sticky top-0 z-10">
                 <tr className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 divide-x divide-blue-500/40">
-                  {colVis.isVisible("name") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Name / Code<ColResizeHandle onMouseDown={startColResize("name")} /></th>}
-                  {colVis.isVisible("category") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Category<ColResizeHandle onMouseDown={startColResize("category")} /></th>}
+                  {colVis.isVisible("name") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Product Name<ColResizeHandle onMouseDown={startColResize("name")} /></th>}
+                  {colVis.isVisible("productFamily") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Product Family<ColResizeHandle onMouseDown={startColResize("productFamily")} /></th>}
+                  {colVis.isVisible("uom") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Unit of Measure<ColResizeHandle onMouseDown={startColResize("uom")} /></th>}
                   {colVis.isVisible("price") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Standard Price<ColResizeHandle onMouseDown={startColResize("price")} /></th>}
-                  {colVis.isVisible("status") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap">Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                  {colVis.isVisible("status") && <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-center">Active<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
                   <th className="relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight whitespace-nowrap text-right">Actions<ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                 </tr>
               </thead>
@@ -295,7 +329,7 @@ export default function Products() {
                 ) : products.length === 0 ? (
                   <tr><td colSpan={productColSpan} className="px-6 py-12 text-center text-muted-foreground">
                     <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    No products found. Add your first product to start quoting.
+                    No products found. Click <strong>New</strong> to add your first product.
                   </td></tr>
                 ) : productsPagination.paged.map(prod => (
                   <tr key={prod.id} className="hover:bg-muted/50 transition-colors group">
@@ -305,12 +339,18 @@ export default function Products() {
                           <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
                             <Package className="w-4 h-4 text-primary" />
                           </div>
-                          <span className="hover:underline">{prod.name}</span>
+                          <div className="min-w-0">
+                            <div className="hover:underline">{prod.name}</div>
+                            {prod.code && <div className="text-xs text-muted-foreground font-normal">{prod.code}</div>}
+                          </div>
                         </Link>
                       </td>
                     )}
-                    {colVis.isVisible("category") && (
+                    {colVis.isVisible("productFamily") && (
                       <td className="px-3 py-1 text-muted-foreground">{prod.category || "-"}</td>
+                    )}
+                    {colVis.isVisible("uom") && (
+                      <td className="px-3 py-1 text-muted-foreground">{prod.quantityUnitOfMeasure || "-"}</td>
                     )}
                     {colVis.isVisible("price") && (
                       <td className="px-3 py-1 text-right font-semibold text-foreground">
@@ -318,10 +358,12 @@ export default function Products() {
                       </td>
                     )}
                     {colVis.isVisible("status") && (
-                      <td className="px-3 py-1">
-                        <Badge variant="outline" className={prod.isActive ? "border-green-500/30 text-green-600 bg-green-500/5" : "border-border text-muted-foreground"}>
-                          {prod.isActive ? "Active" : "Inactive"}
-                        </Badge>
+                      <td className="px-3 py-1 text-center">
+                        {prod.isActive ? (
+                          <span className="inline-block w-4 h-4 rounded-sm bg-green-500/20 border border-green-500/40 text-green-600 text-[10px] flex items-center justify-center">✓</span>
+                        ) : (
+                          <span className="inline-block w-4 h-4 rounded-sm border border-border" />
+                        )}
                       </td>
                     )}
                     <td className="px-3 py-1 text-right">
@@ -341,6 +383,7 @@ export default function Products() {
                               unitPrice: prod.unitPrice.toString(),
                               currency: prod.currency,
                               category: prod.category ?? "",
+                              quantityUnitOfMeasure: prod.quantityUnitOfMeasure ?? "",
                               isActive: prod.isActive,
                             })}
                             className="cursor-pointer hover:bg-muted"
@@ -372,7 +415,8 @@ export default function Products() {
                 ))}
               </tbody>
             </table>
-          </div>        </Card>
+          </div>
+        </Card>
       </div>
 
       <ProductFormDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} mode="create" />

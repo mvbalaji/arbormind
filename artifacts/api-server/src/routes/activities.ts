@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitiesTable, emailTrackingTable, emailAttachmentsTable, emailsTable } from "@workspace/db";
+import { activitiesTable, usersTable, contactsTable, accountsTable, opportunitiesTable, emailTrackingTable, emailAttachmentsTable, emailsTable, leadsTable } from "@workspace/db";
 import { eq, sql, and, desc, gte, lte } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
 import { recalculateLeadScore } from "../lib/lead-scoring";
+import { getOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 router.use("/activities", requireScreenAccess("activities"));
@@ -46,12 +47,13 @@ function formatActivity(a: { contactFirstName: string | null; contactLastName: s
 
 router.get("/activities", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const { leadId, contactId, opportunityId, accountId, type, assignedTo, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [];
+    const conditions = [eq(activitiesTable.orgId, orgId)];
     if (leadId) conditions.push(eq(activitiesTable.leadId, parseInt(leadId)));
     if (contactId) conditions.push(eq(activitiesTable.contactId, parseInt(contactId)));
     if (opportunityId) conditions.push(eq(activitiesTable.opportunityId, parseInt(opportunityId)));
@@ -67,12 +69,9 @@ router.get("/activities", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(emailTrackingTable, eq(emailTrackingTable.activityId, activitiesTable.id));
 
-    const data = await (conditions.length > 0
-      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
-      : baseQuery
-    ).orderBy(activitiesTable.createdAt).limit(limitNum).offset(offset);
+    const whereClause = and(...conditions);
+    const data = await baseQuery.where(whereClause).orderBy(activitiesTable.createdAt).limit(limitNum).offset(offset);
 
-    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(activitiesTable).where(whereClause);
     res.json({ data: data.map(formatActivity), total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
@@ -83,11 +82,30 @@ router.get("/activities", async (req, res) => {
 
 router.post("/activities", async (req, res) => {
   try {
-    const body = { ...req.body } as Record<string, unknown>;
+    const orgId = getOrgId(req);
+    const body = { ...req.body, orgId } as Record<string, unknown>;
     // Coerce ISO strings to Date for timestamp columns
     for (const k of ["dueDate", "completedAt"] as const) {
       if (typeof body[k] === "string") body[k] = new Date(body[k] as string);
     }
+
+    if (body.leadId != null) {
+      const [row] = await db.select({ id: leadsTable.id }).from(leadsTable).where(and(eq(leadsTable.id, body.leadId as number), eq(leadsTable.orgId, orgId)));
+      if (!row) { res.status(400).json({ error: "Invalid leadId" }); return; }
+    }
+    if (body.contactId != null) {
+      const [row] = await db.select({ id: contactsTable.id }).from(contactsTable).where(and(eq(contactsTable.id, body.contactId as number), eq(contactsTable.orgId, orgId)));
+      if (!row) { res.status(400).json({ error: "Invalid contactId" }); return; }
+    }
+    if (body.opportunityId != null) {
+      const [row] = await db.select({ id: opportunitiesTable.id }).from(opportunitiesTable).where(and(eq(opportunitiesTable.id, body.opportunityId as number), eq(opportunitiesTable.orgId, orgId)));
+      if (!row) { res.status(400).json({ error: "Invalid opportunityId" }); return; }
+    }
+    if (body.accountId != null) {
+      const [row] = await db.select({ id: accountsTable.id }).from(accountsTable).where(and(eq(accountsTable.id, body.accountId as number), eq(accountsTable.orgId, orgId)));
+      if (!row) { res.status(400).json({ error: "Invalid accountId" }); return; }
+    }
+
     const [activity] = await db.insert(activitiesTable).values(body as typeof activitiesTable.$inferInsert).returning();
     // Trigger lead score recalculation when a completed activity is logged
     if (activity.leadId && (activity.status === "completed" || activity.type === "note")) {
@@ -102,6 +120,7 @@ router.post("/activities", async (req, res) => {
 
 router.get("/activities/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const [activity] = await db
       .select(activityFields)
       .from(activitiesTable)
@@ -109,7 +128,7 @@ router.get("/activities/:id", async (req, res) => {
       .leftJoin(contactsTable, eq(activitiesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(activitiesTable.accountId, accountsTable.id))
       .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id))
-      .where(eq(activitiesTable.id, parseInt(req.params.id)));
+      .where(and(eq(activitiesTable.id, parseInt(req.params.id)), eq(activitiesTable.orgId, orgId)));
 
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
@@ -124,9 +143,28 @@ router.get("/activities/:id", async (req, res) => {
 
 router.put("/activities/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
+
+    if (req.body?.leadId != null) {
+      const [row] = await db.select({ id: leadsTable.id }).from(leadsTable).where(and(eq(leadsTable.id, req.body.leadId), eq(leadsTable.orgId, orgId)));
+      if (!row) { res.status(400).json({ error: "Invalid leadId" }); return; }
+    }
+    if (req.body?.contactId != null) {
+      const [row] = await db.select({ id: contactsTable.id }).from(contactsTable).where(and(eq(contactsTable.id, req.body.contactId), eq(contactsTable.orgId, orgId)));
+      if (!row) { res.status(400).json({ error: "Invalid contactId" }); return; }
+    }
+    if (req.body?.opportunityId != null) {
+      const [row] = await db.select({ id: opportunitiesTable.id }).from(opportunitiesTable).where(and(eq(opportunitiesTable.id, req.body.opportunityId), eq(opportunitiesTable.orgId, orgId)));
+      if (!row) { res.status(400).json({ error: "Invalid opportunityId" }); return; }
+    }
+    if (req.body?.accountId != null) {
+      const [row] = await db.select({ id: accountsTable.id }).from(accountsTable).where(and(eq(accountsTable.id, req.body.accountId), eq(accountsTable.orgId, orgId)));
+      if (!row) { res.status(400).json({ error: "Invalid accountId" }); return; }
+    }
+
     const [activity] = await db.update(activitiesTable)
       .set({ ...req.body, updatedAt: new Date() })
-      .where(eq(activitiesTable.id, parseInt(req.params.id)))
+      .where(and(eq(activitiesTable.id, parseInt(req.params.id)), eq(activitiesTable.orgId, orgId)))
       .returning();
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
@@ -149,6 +187,7 @@ router.put("/activities/:id", async (req, res) => {
 // from email_tracking (outbound) or emails (inbound) and returns HTML where available.
 router.get("/activities/:id/email-body", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
     if (Number.isNaN(id)) {
       res.status(400).json({ error: "Invalid id" });
@@ -158,7 +197,7 @@ router.get("/activities/:id/email-body", async (req, res) => {
     const [activity] = await db
       .select()
       .from(activitiesTable)
-      .where(eq(activitiesTable.id, id));
+      .where(and(eq(activitiesTable.id, id), eq(activitiesTable.orgId, orgId)));
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
       return;
@@ -274,8 +313,14 @@ router.get("/activities/:id/email-body", async (req, res) => {
 
 router.delete("/activities/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
-    await db.delete(activitiesTable).where(eq(activitiesTable.id, id));
+    const [existing] = await db.select({ id: activitiesTable.id }).from(activitiesTable).where(and(eq(activitiesTable.id, id), eq(activitiesTable.orgId, orgId)));
+    if (!existing) {
+      res.status(404).json({ error: "Activity not found" });
+      return;
+    }
+    await db.delete(activitiesTable).where(and(eq(activitiesTable.id, id), eq(activitiesTable.orgId, orgId)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

@@ -29,6 +29,16 @@ import {
   Moon,
   ShieldCheck,
   UserCog,
+  Sliders,
+  RefreshCw,
+  Library,
+  Zap,
+  Bell,
+  Target,
+  TrendingUp,
+  DollarSign,
+  Crown,
+  Settings2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AIChatbot } from "@/components/ai-chatbot";
@@ -58,16 +68,27 @@ const NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: str
   { label: "Website Visitors", href: "/website-visitors", icon: Globe, screenKey: "website-visits" },
   { label: "Activities", href: "/activities", icon: Activity, screenKey: "activities" },
   { label: "Products", href: "/products", icon: Package, screenKey: "products" },
+  { label: "Product Bundles", href: "/product-bundles", icon: Package, screenKey: "products" },
   { label: "Price Books", href: "/price-books", icon: BookText, screenKey: "price-books" },
   { label: "Quotes", href: "/quotes", icon: FileText, screenKey: "quotes", moduleKey: "quotes" },
   { label: "Orders", href: "/orders", icon: ShoppingCart, screenKey: "orders", moduleKey: "orders" },
   { label: "Contracts", href: "/contracts", icon: FileSignature, screenKey: "contracts", moduleKey: "contracts" },
+  { label: "CLM Templates", href: "/clm/templates", icon: Library, screenKey: "contracts", moduleKey: "contracts" },
+  { label: "CLM Renewals", href: "/clm/renewals", icon: RefreshCw, screenKey: "contracts", moduleKey: "contracts" },
+  { label: "CLM Workflow", href: "/clm/workflow", icon: Zap, screenKey: "contracts", adminOnly: true },
+  { label: "CLM Alerts", href: "/clm/notifications", icon: Bell, screenKey: "contracts", adminOnly: true },
   { label: "Cases", href: "/cases", icon: LifeBuoy, screenKey: "cases" },
   { label: "Reports", href: "/reports", icon: BarChart3, screenKey: "reports" },
   { label: "AI Assistant", href: "/ai-assistant", icon: Bot, screenKey: "ai-assistant" },
   { label: "Approvals", href: "/approvals", icon: ShieldCheck, screenKey: "approvals" },
   { label: "Support", href: "/support", icon: Mail, screenKey: "support" },
+  { label: "Product Rules", href: "/admin/product-rules", icon: Sliders, screenKey: "products", adminOnly: true },
   { label: "System Admin", href: "/users", icon: Settings, screenKey: "users" },
+  { label: "Sales Performance", href: "/stims/dashboard", icon: BarChart3 },
+  { label: "Target Cycles", href: "/stims/target-cycles", icon: Target },
+  { label: "Incentive Plans", href: "/stims/incentive-plans", icon: TrendingUp },
+  { label: "Calc Runs & Payouts", href: "/stims/calc-runs", icon: DollarSign },
+  { label: "Comp Admin", href: "/stims/admin", icon: Settings2, adminOnly: true },
 ];
 
 // 4 pinned tabs for the mobile bottom bar; "More" is the 5th slot
@@ -255,7 +276,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* Top Header */}
           <header className="h-14 border-b border-sidebar-border bg-card flex items-center justify-between px-4 lg:px-6 z-20 flex-shrink-0 shadow-sm">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <span className="text-sm font-bold text-primary">arbormind<span className="text-muted-foreground font-normal">.in</span></span>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-sm font-bold text-primary whitespace-nowrap">arbormind<span className="text-muted-foreground font-normal">.in</span></span>
+                {user?.organizationName && (
+                  <>
+                    <span className="text-border">/</span>
+                    <span className="text-sm text-muted-foreground truncate max-w-[160px]" title={user.organizationName}>
+                      {user.organizationName}
+                    </span>
+                  </>
+                )}
+              </div>
 
               <GlobalSearch />
             </div>
@@ -356,6 +387,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       <Link href="/admin/approvals" className="flex items-center gap-2">
                         <ShieldCheck className="w-4 h-4" />
                         Approval Configuration
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {user?.role === "super_admin" && (
+                    <DropdownMenuItem className="cursor-pointer" asChild>
+                      <Link href="/admin/organizations" className="flex items-center gap-2">
+                        <Crown className="w-4 h-4" />
+                        Organizations
                       </Link>
                     </DropdownMenuItem>
                   )}

@@ -10,6 +10,7 @@ export const priceBookEntriesTable = pgTable("price_book_entries", {
   productId: integer("product_id").notNull().references(() => productsTable.id),
   listPrice: numeric("list_price", { precision: 15, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("GBP"),
+  useStandardPrice: boolean("use_standard_price").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

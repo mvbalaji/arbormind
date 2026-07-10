@@ -8,9 +8,11 @@ import { opportunitiesTable } from "./opportunities";
 import { productsTable } from "./products";
 import { priceBooksTable } from "./price-books";
 import { priceBookEntriesTable } from "./price-book-entries";
+import { organizationsTable } from "./organizations";
 
 export const quotesTable = pgTable("quotes", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id),
   quoteNumber: text("quote_number").notNull().unique(),
   name: text("name").notNull(),
   version: integer("version").notNull().default(1),

@@ -271,7 +271,10 @@ export async function analyzeLeadWithAI(leadId: number): Promise<{ insights: Lea
   const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
   if (!lead) throw new Error("Lead not found");
 
-  const { openai } = await import("@workspace/integrations-openai-ai-server");
+  const { openai, openaiConfigured } = await import("@workspace/integrations-openai-ai-server");
+  if (!openaiConfigured) {
+    throw new Error("AI lead insights not configured. Set AI_INTEGRATIONS_OPENAI_API_KEY to enable this feature.");
+  }
 
   // Scrape the company website first (if available)
   const websiteUrl = lead.website ?? null;

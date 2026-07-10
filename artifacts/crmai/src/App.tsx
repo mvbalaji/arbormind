@@ -38,7 +38,19 @@ import CampaignDetail from "./pages/campaign-detail";
 import Approvals from "./pages/approvals";
 import ApprovalsList from "./pages/approvals-list";
 import AccessControl from "./pages/access-control";
+import Organizations from "./pages/organizations";
 import WebsiteVisitors from "./pages/website-visitors";
+import ProductRulesAdmin from "./pages/product-rules";
+import ProductBundles from "./pages/product-bundles";
+import ClmTemplates from "./pages/clm-templates";
+import ClmRenewals from "./pages/clm-renewals";
+import ClmWorkflow from "./pages/clm-workflow";
+import ClmNotifications from "./pages/clm-notifications";
+import StimsDashboard from "./pages/stims-dashboard";
+import StimsTargetCycles from "./pages/stims-target-cycles";
+import StimsIncentivePlans from "./pages/stims-incentive-plans";
+import StimsCalcRuns from "./pages/stims-calc-runs";
+import StimsAdmin from "./pages/stims-admin";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,6 +80,7 @@ function CRMRoutes() {
       <Route path="/website-visitors" component={WebsiteVisitors} />
       <Route path="/products" component={Products} />
       <Route path="/products/:id" component={ProductDetail} />
+      <Route path="/product-bundles" component={ProductBundles} />
       <Route path="/price-books" component={PriceBooks} />
       <Route path="/price-books/:id" component={PriceBookDetail} />
       <Route path="/cases" component={Cases} />
@@ -82,7 +95,18 @@ function CRMRoutes() {
       <Route path="/ai-assistant" component={AIAssistant} />
       <Route path="/admin/approvals" component={Approvals} />
       <Route path="/admin/access-control" component={AccessControl} />
+      <Route path="/admin/organizations" component={Organizations} />
+      <Route path="/admin/product-rules" component={ProductRulesAdmin} />
+      <Route path="/clm/templates" component={ClmTemplates} />
+      <Route path="/clm/renewals" component={ClmRenewals} />
+      <Route path="/clm/workflow" component={ClmWorkflow} />
+      <Route path="/clm/notifications" component={ClmNotifications} />
       <Route path="/approvals" component={ApprovalsList} />
+      <Route path="/stims/dashboard" component={StimsDashboard} />
+      <Route path="/stims/target-cycles" component={StimsTargetCycles} />
+      <Route path="/stims/incentive-plans" component={StimsIncentivePlans} />
+      <Route path="/stims/calc-runs" component={StimsCalcRuns} />
+      <Route path="/stims/admin" component={StimsAdmin} />
       <Route component={NotFound} />
     </Switch>
   );

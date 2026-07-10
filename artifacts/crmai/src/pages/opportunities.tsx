@@ -405,7 +405,7 @@ export default function Opportunities() {
     <button
       onClick={() => toggleSort(field)}
       aria-sort={sortField === field ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-      className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-white hover:text-white/80 transition-colors whitespace-nowrap"
     >
       {children}
       <ArrowUpDown className={cn("w-3 h-3", sortField === field ? "opacity-100" : "opacity-40")} />
@@ -635,14 +635,14 @@ export default function Opportunities() {
                         className="border-white/70 data-[state=checked]:bg-white data-[state=checked]:text-blue-700"
                       />
                     </th>
-                    {colVis.isVisible("name") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="name">Opportunity</SortHeader><ColResizeHandle onMouseDown={startColResize("name")} /></th>}
-                    {colVis.isVisible("account") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="account">Account</SortHeader><ColResizeHandle onMouseDown={startColResize("account")} /></th>}
-                    {colVis.isVisible("stage") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="stage">Stage</SortHeader><ColResizeHandle onMouseDown={startColResize("stage")} /></th>}
-                    {colVis.isVisible("amount") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="amount">Value</SortHeader><ColResizeHandle onMouseDown={startColResize("amount")} /></th>}
-                    {colVis.isVisible("closeDate") && <th className="relative text-left px-3 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold"><SortHeader field="closeDate">Close Date</SortHeader><ColResizeHandle onMouseDown={startColResize("closeDate")} /></th>}
-                    {colVis.isVisible("owner") && <th className="relative text-left px-3 py-1"><span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Owner</span><ColResizeHandle onMouseDown={startColResize("owner")} /></th>}
-                    {colVis.isVisible("status") && <th className="relative text-left px-3 py-1"><span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Status</span><ColResizeHandle onMouseDown={startColResize("status")} /></th>}
-                    <th className="relative text-center px-3 py-1"><span className="text-xs font-semibold uppercase tracking-wide text-white whitespace-nowrap">Actions</span><ColResizeHandle onMouseDown={startColResize("actions")} /></th>
+                    {colVis.isVisible("name") && <th className="relative text-left px-2 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold [&_*]:!whitespace-nowrap"><SortHeader field="name">Opportunity</SortHeader><ColResizeHandle onMouseDown={startColResize("name")} /></th>}
+                    {colVis.isVisible("account") && <th className="relative text-left px-2 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold [&_*]:!whitespace-nowrap"><SortHeader field="account">Account</SortHeader><ColResizeHandle onMouseDown={startColResize("account")} /></th>}
+                    {colVis.isVisible("stage") && <th className="relative text-left px-2 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold [&_*]:!whitespace-nowrap"><SortHeader field="stage">Stage</SortHeader><ColResizeHandle onMouseDown={startColResize("stage")} /></th>}
+                    {colVis.isVisible("amount") && <th className="relative text-left px-2 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold [&_*]:!whitespace-nowrap"><SortHeader field="amount">Value</SortHeader><ColResizeHandle onMouseDown={startColResize("amount")} /></th>}
+                    {colVis.isVisible("closeDate") && <th className="relative text-left px-2 py-1 [&_*]:!text-white [&_*]:!uppercase [&_*]:!tracking-wide [&_*]:!font-semibold [&_*]:!whitespace-nowrap"><SortHeader field="closeDate">Close Date</SortHeader><ColResizeHandle onMouseDown={startColResize("closeDate")} /></th>}
+                    {colVis.isVisible("owner") && <th className="relative text-left px-2 py-1"><span className="text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap leading-tight">Owner</span><ColResizeHandle onMouseDown={startColResize("owner")} /></th>}
+                    {colVis.isVisible("status") && <th className="relative text-left px-2 py-1"><span className="text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap leading-tight">Status</span><ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                    <th className="relative text-center px-2 py-1"><span className="text-[11px] font-semibold uppercase tracking-wide text-white whitespace-nowrap leading-tight">Actions</span><ColResizeHandle onMouseDown={startColResize("actions")} /></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border bg-card">

@@ -15,6 +15,7 @@ import { eq, and, sql, inArray, desc } from "drizzle-orm";
 import { requireScreenAccess } from "../lib/access-control";
 import { computeEndDate, getActiveContractPricing, expireElapsedContracts } from "../lib/contracts";
 import { generateContractDocument } from "../lib/contract-document";
+import { getOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 router.use("/contracts", requireScreenAccess("contracts"));
@@ -137,7 +138,8 @@ async function nextContractNumber(): Promise<string> {
 }
 
 function sessionUserId(req: any): number | null {
-  return req.session?.user?.id ?? req.user?.id ?? null;
+  const id = req.session?.user?.id ?? req.user?.id ?? null;
+  return id != null && Number(id) > 0 ? Number(id) : null;
 }
 
 // Allocate the next version and insert a contract document revision. A composite
@@ -155,6 +157,10 @@ async function insertContractDocumentVersion(
       .where(eq(contractDocumentsTable.contractId, contractId));
     const version = (Number(maxRow?.maxVer) || 0) + 1;
     try {
+      // Deactivate all previous documents for this contract
+      await db.update(contractDocumentsTable)
+        .set({ isActive: false })
+        .where(eq(contractDocumentsTable.contractId, contractId));
       [doc] = await db.insert(contractDocumentsTable).values({
         contractId,
         version,
@@ -162,6 +168,7 @@ async function insertContractDocumentVersion(
         content: values.content,
         changeSummary: values.changeSummary,
         createdByUserId: values.createdByUserId,
+        isActive: true,
       }).returning();
     } catch (e) {
       if ((e as { code?: string })?.code === "23505") continue; // unique violation: retry
@@ -171,57 +178,149 @@ async function insertContractDocumentVersion(
   return doc;
 }
 
-// Builds the contract document text from the contract's current data.
+// Builds the contract document text from the contract's current data (including all CLM fields).
 // Returns "not_found" if the contract is missing, otherwise the title/content.
 async function buildContractDocumentContent(
   contractId: number,
 ): Promise<"not_found" | { title: string; content: string }> {
-  const [row] = await db
-    .select(contractFields)
-    .from(contractsTable)
-    .leftJoin(accountsTable, eq(contractsTable.accountId, accountsTable.id))
-    .leftJoin(contactsTable, eq(contractsTable.contactId, contactsTable.id))
-    .leftJoin(opportunitiesTable, eq(contractsTable.opportunityId, opportunitiesTable.id))
-    .leftJoin(usersTable, eq(contractsTable.ownerId, usersTable.id))
-    .where(eq(contractsTable.id, contractId));
+  // Fetch base fields + all CLM-specific columns in one query
+  const clmRows = await db.execute(sql`
+    SELECT c.*,
+           a.name AS account_name,
+           con.first_name AS contact_first_name, con.last_name AS contact_last_name,
+           opp.name AS opportunity_name,
+           u.name AS owner_name
+    FROM contracts c
+    LEFT JOIN accounts a ON a.id = c.account_id
+    LEFT JOIN contacts con ON con.id = c.contact_id
+    LEFT JOIN opportunities opp ON opp.id = c.opportunity_id
+    LEFT JOIN users u ON u.id = c.owner_id
+    WHERE c.id = ${contractId}
+  `);
+  const row = clmRows.rows[0] as Record<string, unknown> | undefined;
   if (!row) return "not_found";
 
   const items = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, contractId));
 
   let companySignerName: string | null = null;
-  if (row.companySignedById) {
-    const [u] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.companySignedById));
+  if (row.company_signed_by_id) {
+    const [u] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, row.company_signed_by_id as number));
     companySignerName = u?.name ?? null;
   }
   let customerSignerName: string | null = null;
-  if (row.customerSignedByContactId) {
+  if (row.customer_signed_by_contact_id) {
     const [c] = await db
       .select({ firstName: contactsTable.firstName, lastName: contactsTable.lastName })
-      .from(contactsTable).where(eq(contactsTable.id, row.customerSignedByContactId));
+      .from(contactsTable).where(eq(contactsTable.id, row.customer_signed_by_contact_id as number));
     customerSignerName = c ? `${c.firstName} ${c.lastName ?? ""}`.trim() : null;
   }
 
-  const contactName = row.contactFirstName ? `${row.contactFirstName} ${row.contactLastName ?? ""}`.trim() : null;
+  // Fetch active CLM templates for the contract's type (if set) to include standard clauses
+  let templateClauses: string | null = null;
+  if (row.template_id) {
+    const tplRows = await db.execute(sql`SELECT content FROM clm_templates WHERE id = ${row.template_id as number} AND active = true`);
+    if (tplRows.rows[0]) templateClauses = (tplRows.rows[0] as Record<string, unknown>).content as string | null;
+  } else if (row.contract_type) {
+    const tplRows = await db.execute(sql`SELECT content FROM clm_templates WHERE category = ${row.contract_type as string} AND active = true ORDER BY id LIMIT 1`);
+    if (tplRows.rows[0]) templateClauses = (tplRows.rows[0] as Record<string, unknown>).content as string | null;
+  }
+
+  const contactName = row.contact_first_name ? `${row.contact_first_name} ${row.contact_last_name ?? ""}`.trim() : null;
+
+  // Fetch CLM reviews, signers, and notes for the document
+  const [reviewRows, signerRows, noteRows] = await Promise.all([
+    db.execute(sql`
+      SELECT r.stage, r.status, r.due_date, r.completed_date, r.notes, u.name AS reviewer_name
+      FROM clm_reviews r LEFT JOIN users u ON u.id = r.reviewer_id
+      WHERE r.contract_id = ${contractId} ORDER BY r.created_at ASC
+    `),
+    db.execute(sql`
+      SELECT s.name, s.email, s.role, s.status, s.signed_at
+      FROM clm_signers s WHERE s.contract_id = ${contractId} ORDER BY s.signing_order ASC
+    `),
+    db.execute(sql`
+      SELECT body, created_by_name, created_at, attachment_name, attachment_url
+      FROM entity_notes WHERE entity_type = 'contract' AND entity_id = ${contractId}
+      ORDER BY created_at ASC
+    `),
+  ]);
+
   return generateContractDocument({
-    contractNumber: row.contractNumber as string,
+    contractNumber: row.contract_number as string,
     name: row.name as string,
-    accountName: row.accountName as string | null,
+    status: row.status as string | null,
+    accountName: row.account_name as string | null,
     contactName,
-    ownerName: row.ownerName as string | null,
-    startDate: row.startDate as Date | null,
-    endDate: row.endDate as Date | null,
-    contractTermMonths: row.contractTermMonths as number | null,
-    autoRenew: row.autoRenew as boolean | null,
-    renewalTermMonths: row.renewalTermMonths as number | null,
-    specialTerms: row.specialTerms as string | null,
+    ownerName: row.owner_name as string | null,
+    opportunityName: row.opportunity_name as string | null,
+    startDate: row.start_date as Date | null,
+    endDate: row.end_date as Date | null,
+    contractTermMonths: row.contract_term_months as number | null,
+    autoRenew: row.auto_renew as boolean | null,
+    renewalTermMonths: row.renewal_term_months as number | null,
+    specialTerms: row.special_terms as string | null,
     description: row.description as string | null,
     total: Number(row.total),
+    subtotal: Number(row.subtotal),
+    discount: Number(row.discount),
+    tax: Number(row.tax),
     companySignerName,
     customerSignerName,
+    // CLM authoring fields
+    contractType: row.contract_type as string | null,
+    territory: row.territory as string | null,
+    businessUnit: row.business_unit as string | null,
+    priority: row.priority as string | null,
+    governingLaw: row.governing_law as string | null,
+    paymentTerms: row.payment_terms as string | null,
+    liabilityCapMultiplier: row.liability_cap_multiplier as number | null,
+    confidentialityPeriodYears: row.confidentiality_period_years as number | null,
+    ipOwnership: row.ip_ownership as string | null,
+    terminationNoticeDays: row.termination_notice_days as number | null,
+    counterpartyCompany: row.counterparty_company as string | null,
+    counterpartySignerName: row.counterparty_signer_name as string | null,
+    counterpartySignerEmail: row.counterparty_signer_email as string | null,
+    counterpartySignerTitle: row.counterparty_signer_title as string | null,
+    counterpartyAddress: row.counterparty_address as string | null,
+    signingProvider: row.signing_provider as string | null,
+    signingOrder: row.signing_order as string | null,
+    signingDeadline: row.signing_deadline as Date | null,
+    yearlyEscalationPct: row.yearly_escalation_pct as number | null,
+    minimumAnnualCommit: row.minimum_annual_commit as number | null,
+    renewalStatus: row.renewal_status as string | null,
+    renewalWindowDays: row.renewal_window_days as number | null,
+    arrAtRisk: row.arr_at_risk as number | null,
+    riskScore: row.risk_score as number | null,
+    redlineRound: row.redline_round as number | null,
+    templateClauses,
+    reviews: (reviewRows.rows as Record<string, unknown>[]).map((r) => ({
+      stage: r.stage as string,
+      reviewerName: r.reviewer_name as string | null,
+      status: r.status as string,
+      dueDate: r.due_date as Date | null,
+      completedDate: r.completed_date as Date | null,
+      notes: r.notes as string | null,
+    })),
+    signers: (signerRows.rows as Record<string, unknown>[]).map((s) => ({
+      name: s.name as string,
+      email: s.email as string | null,
+      role: s.role as string | null,
+      status: s.status as string | null,
+      signedAt: s.signed_at as Date | null,
+    })),
+    notes: (noteRows.rows as Record<string, unknown>[]).map((n) => ({
+      body: n.body as string,
+      createdByName: n.created_by_name as string | null,
+      createdAt: n.created_at as Date | null,
+      attachmentName: n.attachment_name as string | null,
+      attachmentUrl: n.attachment_url as string | null,
+    })),
     items: items.map((it) => ({
       productName: it.productName,
       quantity: Number(it.quantity),
       unitPrice: Number(it.unitPrice),
+      listPrice: Number((it as Record<string, unknown>).listPrice ?? it.unitPrice),
+      discount: Number((it as Record<string, unknown>).discount ?? 0),
       total: Number(it.total),
     })),
   });
@@ -269,9 +368,10 @@ async function syncDraftContractDocument(contractId: number): Promise<void> {
 // ----- Active contract pricing lookup for an account -----
 router.get("/contracts/active-pricing/:accountId", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const accountId = parseId(req.params.accountId);
     if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
-    const pricing = await getActiveContractPricing(accountId);
+    const pricing = await getActiveContractPricing(accountId, orgId);
     res.json({ accountId, pricing });
   } catch (err) {
     req.log.error(err);
@@ -282,19 +382,20 @@ router.get("/contracts/active-pricing/:accountId", async (req, res) => {
 // ----- List -----
 router.get("/contracts", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const { accountId, opportunityId, status, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
     // Keep lifecycle state current: expire any elapsed activated contracts.
-    await expireElapsedContracts(accountId ? parseInt(accountId) : undefined);
+    await expireElapsedContracts(accountId ? parseInt(accountId) : undefined, orgId);
 
-    const conditions = [];
+    const conditions = [eq(contractsTable.orgId, orgId)];
     if (accountId) conditions.push(eq(contractsTable.accountId, parseInt(accountId)));
     if (opportunityId) conditions.push(eq(contractsTable.opportunityId, parseInt(opportunityId)));
     if (status) conditions.push(eq(contractsTable.status, status));
-    const where = conditions.length > 0 ? sql.join(conditions, sql` AND `) : undefined;
+    const where = and(...conditions);
 
     const baseQuery = db
       .select(contractFields)
@@ -304,7 +405,8 @@ router.get("/contracts", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(contractsTable.opportunityId, opportunitiesTable.id))
       .leftJoin(usersTable, eq(contractsTable.ownerId, usersTable.id));
 
-    const rawData = await (where ? baseQuery.where(where) : baseQuery)
+    const rawData = await baseQuery
+      .where(where)
       .orderBy(desc(contractsTable.createdAt))
       .limit(limitNum)
       .offset(offset);
@@ -335,7 +437,24 @@ router.get("/contracts", async (req, res) => {
 // ----- Create -----
 router.post("/contracts", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const { items = [], ...data } = req.body as { items?: LineItemInput[]; [key: string]: unknown };
+
+    // Verify any referenced account/contact/opportunity/signer contact actually
+    // belongs to this org — otherwise a crafted request could attach this
+    // contract to another org's records.
+    for (const [field, table] of [
+      ["accountId", accountsTable],
+      ["contactId", contactsTable],
+      ["opportunityId", opportunitiesTable],
+      ["customerSignedByContactId", contactsTable],
+    ] as const) {
+      const refId = data[field];
+      if (refId != null) {
+        const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, refId as number), eq(table.orgId, orgId)));
+        if (!row) { res.status(400).json({ error: `Invalid ${field}` }); return; }
+      }
+    }
 
     const contractNumber = await nextContractNumber();
     const discountPct = Number(data.discount) || 0;
@@ -347,6 +466,7 @@ router.post("/contracts", async (req, res) => {
     const endDate = data.endDate ? new Date(data.endDate as string) : computeEndDate(startDate, termMonths);
 
     const [contract] = await db.insert(contractsTable).values({
+      orgId,
       contractNumber,
       name: (data.name as string) ?? `Contract ${contractNumber}`,
       accountId: (data.accountId as number | null) ?? null,
@@ -386,10 +506,11 @@ router.post("/contracts", async (req, res) => {
 // ----- Create from opportunity -----
 router.post("/contracts/from-opportunity/:opportunityId", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const opportunityId = parseId(req.params.opportunityId);
     if (!opportunityId) { res.status(400).json({ error: "Invalid opportunity ID" }); return; }
 
-    const [opp] = await db.select().from(opportunitiesTable).where(eq(opportunitiesTable.id, opportunityId));
+    const [opp] = await db.select().from(opportunitiesTable).where(and(eq(opportunitiesTable.id, opportunityId), eq(opportunitiesTable.orgId, orgId)));
     if (!opp) { res.status(404).json({ error: "Opportunity not found" }); return; }
 
     const oppItems = await db.select().from(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, opportunityId));
@@ -406,6 +527,7 @@ router.post("/contracts/from-opportunity/:opportunityId", async (req, res) => {
     const { subtotal, total } = computeTotals(items, 0, 0);
 
     const [contract] = await db.insert(contractsTable).values({
+      orgId,
       contractNumber,
       name: `Contract for ${opp.name}`,
       accountId: opp.accountId ?? null,
@@ -441,13 +563,17 @@ const documentFields = {
   changeSummary: contractDocumentsTable.changeSummary,
   createdByUserId: contractDocumentsTable.createdByUserId,
   createdByName: usersTable.name,
+  isActive: contractDocumentsTable.isActive,
   createdAt: contractDocumentsTable.createdAt,
 };
 
 router.get("/contracts/:id/documents", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const [contract] = await db.select({ id: contractsTable.id }).from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
+    if (!contract) { res.status(404).json({ error: "Contract not found" }); return; }
     const docs = await db
       .select(documentFields)
       .from(contractDocumentsTable)
@@ -463,9 +589,10 @@ router.get("/contracts/:id/documents", async (req, res) => {
 
 router.post("/contracts/:id/documents", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
-    const [contract] = await db.select({ id: contractsTable.id }).from(contractsTable).where(eq(contractsTable.id, id));
+    const [contract] = await db.select({ id: contractsTable.id }).from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!contract) { res.status(404).json({ error: "Contract not found" }); return; }
 
     const data = req.body ?? {};
@@ -495,22 +622,98 @@ router.post("/contracts/:id/documents", async (req, res) => {
 // ----- Get one -----
 router.get("/contracts/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
 
-    const [contract] = await db
-      .select(contractFields)
-      .from(contractsTable)
-      .leftJoin(accountsTable, eq(contractsTable.accountId, accountsTable.id))
-      .leftJoin(contactsTable, eq(contractsTable.contactId, contactsTable.id))
-      .leftJoin(opportunitiesTable, eq(contractsTable.opportunityId, opportunitiesTable.id))
-      .leftJoin(usersTable, eq(contractsTable.ownerId, usersTable.id))
-      .where(eq(contractsTable.id, id));
-
-    if (!contract) { res.status(404).json({ error: "Contract not found" }); return; }
+    // Use raw SQL to include CLM authoring columns not in the Drizzle schema mapping
+    const rows = await db.execute(sql`
+      SELECT c.*,
+             a.name                            AS account_name,
+             con.first_name                    AS contact_first_name,
+             con.last_name                     AS contact_last_name,
+             opp.name                          AS opportunity_name,
+             u.name                            AS owner_name
+      FROM contracts c
+      LEFT JOIN accounts a       ON a.id   = c.account_id
+      LEFT JOIN contacts con     ON con.id = c.contact_id
+      LEFT JOIN opportunities opp ON opp.id = c.opportunity_id
+      LEFT JOIN users u          ON u.id   = c.owner_id
+      WHERE c.id = ${id} AND c.org_id = ${orgId}
+    `);
+    const row = rows.rows[0] as Record<string, unknown> | undefined;
+    if (!row) { res.status(404).json({ error: "Contract not found" }); return; }
 
     const items = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
-    res.json(formatContract(contract, items.map(formatItem)));
+
+    const contactName = row.contact_first_name
+      ? `${row.contact_first_name} ${row.contact_last_name ?? ""}`.trim()
+      : null;
+
+    res.json({
+      id: row.id,
+      contractNumber: row.contract_number,
+      name: row.name,
+      status: row.status,
+      accountId: row.account_id,
+      accountName: row.account_name,
+      contactId: row.contact_id,
+      contactName,
+      opportunityId: row.opportunity_id,
+      opportunityName: row.opportunity_name,
+      priceBookId: row.price_book_id,
+      ownerId: row.owner_id,
+      ownerName: row.owner_name,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      contractTermMonths: row.contract_term_months,
+      signedDate: row.signed_date,
+      companySignedById: row.company_signed_by_id,
+      customerSignedByContactId: row.customer_signed_by_contact_id,
+      autoRenew: row.auto_renew,
+      renewalTermMonths: row.renewal_term_months,
+      specialTerms: row.special_terms,
+      description: row.description,
+      subtotal: Number(row.subtotal),
+      discount: Number(row.discount),
+      tax: Number(row.tax),
+      total: Number(row.total),
+      activatedAt: row.activated_at,
+      terminatedAt: row.terminated_at,
+      terminationReason: row.termination_reason,
+      createdByUserId: row.created_by_user_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      // CLM authoring fields
+      contractType: row.contract_type,
+      territory: row.territory,
+      businessUnit: row.business_unit,
+      priority: row.priority,
+      governingLaw: row.governing_law,
+      paymentTerms: row.payment_terms,
+      liabilityCapMultiplier: row.liability_cap_multiplier,
+      confidentialityPeriodYears: row.confidentiality_period_years,
+      ipOwnership: row.ip_ownership,
+      terminationNoticeDays: row.termination_notice_days,
+      counterpartyCompany: row.counterparty_company,
+      counterpartySignerName: row.counterparty_signer_name,
+      counterpartySignerEmail: row.counterparty_signer_email,
+      counterpartySignerTitle: row.counterparty_signer_title,
+      counterpartyAddress: row.counterparty_address,
+      signingProvider: row.signing_provider,
+      signingOrder: row.signing_order,
+      signingDeadline: row.signing_deadline,
+      renewalStatus: row.renewal_status,
+      renewalDecisionDate: row.renewal_decision_date,
+      renewalWindowDays: row.renewal_window_days,
+      arrAtRisk: row.arr_at_risk,
+      yearlyEscalationPct: row.yearly_escalation_pct,
+      minimumAnnualCommit: row.minimum_annual_commit,
+      riskScore: row.risk_score,
+      redlineRound: row.redline_round,
+      templateId: row.template_id,
+      items: items.map(formatItem),
+    });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });
@@ -520,13 +723,27 @@ router.get("/contracts/:id", async (req, res) => {
 // ----- Update -----
 router.put("/contracts/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
 
-    const [existing] = await db.select().from(contractsTable).where(eq(contractsTable.id, id));
+    const [existing] = await db.select().from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
 
     const { items, ...data } = req.body as { items?: LineItemInput[]; [key: string]: unknown };
+
+    for (const [field, table] of [
+      ["accountId", accountsTable],
+      ["contactId", contactsTable],
+      ["opportunityId", opportunitiesTable],
+      ["customerSignedByContactId", contactsTable],
+    ] as const) {
+      const refId = data[field];
+      if (refId != null) {
+        const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, refId as number), eq(table.orgId, orgId)));
+        if (!row) { res.status(400).json({ error: `Invalid ${field}` }); return; }
+      }
+    }
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     const directFields = ["name", "accountId", "contactId", "opportunityId", "priceBookId", "ownerId", "status",
@@ -570,7 +787,7 @@ router.put("/contracts/:id", async (req, res) => {
       updateData.total = (subtotal * (1 - discountPct / 100) * (1 + taxPct / 100)).toString();
     }
 
-    const [contract] = await db.update(contractsTable).set(updateData).where(eq(contractsTable.id, id)).returning();
+    const [contract] = await db.update(contractsTable).set(updateData).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId))).returning();
     const updatedItems = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
 
     // Keep a draft contract's existing document in sync with the edit so a
@@ -595,6 +812,7 @@ router.put("/contracts/:id", async (req, res) => {
 // ----- Lifecycle: submit for approval (auto-generates the contract document) -----
 router.post("/contracts/:id/submit-for-approval", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
 
@@ -602,10 +820,10 @@ router.post("/contracts/:id/submit-for-approval", async (req, res) => {
     // cannot both proceed and generate duplicate documents.
     const [claimed] = await db.update(contractsTable)
       .set({ status: "in_approval", updatedAt: new Date() })
-      .where(and(eq(contractsTable.id, id), eq(contractsTable.status, "draft")))
+      .where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId), eq(contractsTable.status, "draft")))
       .returning();
     if (!claimed) {
-      const [exists] = await db.select({ status: contractsTable.status }).from(contractsTable).where(eq(contractsTable.id, id));
+      const [exists] = await db.select({ status: contractsTable.status }).from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
       if (!exists) { res.status(404).json({ error: "Contract not found" }); return; }
       res.status(400).json({ error: `Only draft contracts can be submitted for approval (current status: ${exists.status})` });
       return;
@@ -616,7 +834,7 @@ router.post("/contracts/:id/submit-for-approval", async (req, res) => {
       // Generation failed after we claimed the transition; roll status back to draft.
       await db.update(contractsTable)
         .set({ status: "draft", updatedAt: new Date() })
-        .where(eq(contractsTable.id, id));
+        .where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
       res.status(409).json({ error: "Could not generate the contract document, please retry" });
       return;
     }
@@ -632,8 +850,12 @@ router.post("/contracts/:id/submit-for-approval", async (req, res) => {
 // ----- Generate the contract document from current data (no status change) -----
 router.post("/contracts/:id/generate-document", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+
+    const [contract] = await db.select({ id: contractsTable.id }).from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
+    if (!contract) { res.status(404).json({ error: "Contract not found" }); return; }
 
     const doc = await generateContractDocumentRevision(id, sessionUserId(req), "Generated from contract data");
     if (doc === "not_found") { res.status(404).json({ error: "Contract not found" }); return; }
@@ -649,10 +871,11 @@ router.post("/contracts/:id/generate-document", async (req, res) => {
 // ----- Lifecycle: activate -----
 router.post("/contracts/:id/activate", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
 
-    const [existing] = await db.select().from(contractsTable).where(eq(contractsTable.id, id));
+    const [existing] = await db.select().from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
     if (existing.status === "activated") { res.status(400).json({ error: "Contract is already activated" }); return; }
     if (["terminated", "cancelled", "expired"].includes(existing.status)) {
@@ -670,7 +893,7 @@ router.post("/contracts/:id/activate", async (req, res) => {
       startDate,
       endDate,
       updatedAt: now,
-    }).where(eq(contractsTable.id, id)).returning();
+    }).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId))).returning();
 
     res.json(formatContract(contract, []));
   } catch (err) {
@@ -682,10 +905,11 @@ router.post("/contracts/:id/activate", async (req, res) => {
 // ----- Lifecycle: terminate -----
 router.post("/contracts/:id/terminate", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
 
-    const [existing] = await db.select().from(contractsTable).where(eq(contractsTable.id, id));
+    const [existing] = await db.select().from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
     if (["terminated", "cancelled", "expired"].includes(existing.status)) {
       res.status(400).json({ error: `Contract is already ${existing.status}` });
@@ -698,7 +922,7 @@ router.post("/contracts/:id/terminate", async (req, res) => {
       terminatedAt: now,
       terminationReason: (req.body?.reason as string) ?? null,
       updatedAt: now,
-    }).where(eq(contractsTable.id, id)).returning();
+    }).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId))).returning();
 
     res.json(formatContract(contract, []));
   } catch (err) {
@@ -710,10 +934,11 @@ router.post("/contracts/:id/terminate", async (req, res) => {
 // ----- Lifecycle: renew (creates a new draft contract continuing the term) -----
 router.post("/contracts/:id/renew", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
 
-    const [existing] = await db.select().from(contractsTable).where(eq(contractsTable.id, id));
+    const [existing] = await db.select().from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
 
     const oldItems = await db.select().from(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
@@ -732,6 +957,7 @@ router.post("/contracts/:id/renew", async (req, res) => {
     const contractNumber = await nextContractNumber();
 
     const [contract] = await db.insert(contractsTable).values({
+      orgId,
       contractNumber,
       name: `${existing.name} (Renewal)`,
       accountId: existing.accountId,
@@ -768,11 +994,14 @@ router.post("/contracts/:id/renew", async (req, res) => {
 // ----- Delete -----
 router.delete("/contracts/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const [existing] = await db.select({ id: contractsTable.id }).from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
+    if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
     await db.delete(contractDocumentsTable).where(eq(contractDocumentsTable.contractId, id));
     await db.delete(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
-    await db.delete(contractsTable).where(eq(contractsTable.id, id));
+    await db.delete(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

@@ -7,9 +7,11 @@ import { contactsTable } from "./contacts";
 import { accountsTable } from "./accounts";
 import { productsTable } from "./products";
 import { usersTable } from "./users";
+import { organizationsTable } from "./organizations";
 
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().references(() => organizationsTable.id),
   orderNumber: text("order_number").notNull().unique(),
   quoteId: integer("quote_id").references(() => quotesTable.id),
   opportunityId: integer("opportunity_id").references(() => opportunitiesTable.id),

@@ -22,7 +22,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Plus, MoreHorizontal, Pencil, Trash2, X, Package, Download, ChevronUp, ChevronDown, Settings, RefreshCw, ArrowUpDown, Filter, Search, Copy, ChevronsUpDown, Check } from "lucide-react";
+import { FileText, Plus, MoreHorizontal, Pencil, Trash2, X, Package, Download, ChevronUp, ChevronDown, Settings, RefreshCw, ArrowUpDown, Filter, Search, Copy, ChevronsUpDown, Check, Layers } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { useListAccounts } from "@workspace/api-client-react";
@@ -99,6 +99,7 @@ interface QuoteFormDialogProps {
 
 function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDialogProps) {
   const [formData, setFormData] = useState<QuoteFormData>(initialData ?? DEFAULT_FORM);
+  const [bundlePickerOpen, setBundlePickerOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { format: fmtMoney } = useCurrency();
@@ -106,6 +107,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
   const updateMutation = useUpdateQuote();
   const { data: productsData } = useListProducts({ limit: 200 });
   const products = productsData?.data ?? [];
+  const { data: bundlesData = [] } = useQuery<any[]>({ queryKey: ["product-bundles"], queryFn: () => fetch("/api/product-bundles").then((r) => r.json()) });
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   React.useEffect(() => {
@@ -119,6 +121,23 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
   const total = subtotal - discountAmt + taxAmt;
 
   const addItem = () => setFormData(d => ({ ...d, items: [...d.items, { ...DEFAULT_ITEM }] }));
+
+  const addBundle = (bundle: any) => {
+    const newItems: QuoteItem[] = (bundle.items ?? []).map((it: any) => {
+      const effectivePrice = it.unit_price_override != null ? Number(it.unit_price_override) : Number(it.default_unit_price ?? 0);
+      const itemDisc = Math.max(0, Number(it.discount_pct) || 0);
+      const bundleDisc = Math.max(0, Number(bundle.bundle_discount_pct) || 0);
+      return {
+        productId: Number(it.product_id) || null,
+        productName: String(it.product_name || ""),
+        quantity: Number(it.quantity) || 1,
+        unitPrice: isFinite(effectivePrice) ? effectivePrice : 0,
+        discount: Math.min(99.99, itemDisc + bundleDisc),
+      };
+    });
+    setFormData(d => ({ ...d, items: [...d.items, ...newItems] }));
+    setBundlePickerOpen(false);
+  };
 
   const removeItem = (idx: number) =>
     setFormData(d => ({ ...d, items: d.items.filter((_, i) => i !== idx) }));
@@ -170,8 +189,10 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
       }
       await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
       onOpenChange(false);
-    } catch {
-      toast({ title: "Error", description: "Could not save quote.", variant: "destructive" });
+    } catch (err: any) {
+      console.error("Quote save error:", err);
+      const msg = err?.data?.error ?? err?.message ?? "Could not save quote.";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -213,9 +234,14 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
           <div>
             <div className="flex items-center justify-between mb-3">
               <Label className="text-sm font-semibold">Line Items</Label>
-              <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-border text-xs">
-                <Plus className="w-3 h-3 mr-1" /> Add Item
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setBundlePickerOpen(true)} className="border-primary/40 text-primary text-xs hover:bg-primary/5">
+                  <Layers className="w-3 h-3 mr-1" /> Add Bundle
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={addItem} className="border-border text-xs">
+                  <Plus className="w-3 h-3 mr-1" /> Add Item
+                </Button>
+              </div>
             </div>
 
             {formData.items.length === 0 ? (
@@ -353,6 +379,56 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Bundle Picker nested dialog */}
+      <Dialog open={bundlePickerOpen} onOpenChange={setBundlePickerOpen}>
+        <DialogContent className="bg-card border-border max-w-lg max-h-[80vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-4 border-b border-border">
+            <DialogTitle>Add Product Bundle</DialogTitle>
+            <p className="text-xs text-muted-foreground mt-0.5">Select a bundle to add all its products as line items</p>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1 p-3 space-y-2">
+            {(Array.isArray(bundlesData) ? bundlesData : []).filter((b: any) => b.is_active).length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground text-sm">
+                <Layers className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                No active bundles. Create bundles in the Product Bundles page.
+              </div>
+            ) : (Array.isArray(bundlesData) ? bundlesData : []).filter((b: any) => b.is_active).map((bundle: any) => (
+              <button
+                key={bundle.id}
+                type="button"
+                onClick={() => addBundle(bundle)}
+                className="w-full text-left p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-primary/5 transition-colors group"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center shrink-0">
+                      <Package className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground">{bundle.name}</p>
+                      {bundle.description && <p className="text-xs text-muted-foreground truncate">{bundle.description}</p>}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(bundle.items ?? []).map((it: any) => (
+                          <span key={it.id} className="text-[10px] bg-muted border border-border px-1.5 py-0.5 rounded text-muted-foreground">
+                            {it.product_name} ×{Number(it.quantity)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {Number(bundle.bundle_discount_pct) > 0 && (
+                      <span className="text-[10px] text-green-600 font-medium">{bundle.bundle_discount_pct}% off</span>
+                    )}
+                    <p className="text-xs text-primary font-semibold mt-0.5 group-hover:underline">Add →</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
@@ -716,7 +792,7 @@ export default function Quotes() {
   };
 
   const SortableHeader = ({ field, label, align = "left", resizeKey }: { field: SortField; label: string; align?: "left" | "right"; resizeKey?: typeof QUOTES_COL_KEYS[number] }) => (
-      <th className={`relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 last:border-r-0 ${align === "right" ? "text-right" : "text-left"}`}>
+      <th className={`relative px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-white leading-tight border-r border-blue-500/40 last:border-r-0 whitespace-nowrap ${align === "right" ? "text-right" : "text-left"}`}>
         <button
           onClick={() => toggleSort(field)}
           className={`inline-flex items-center gap-1 text-white hover:text-white/80 transition-colors ${align === "right" ? "flex-row-reverse" : ""}`}
@@ -819,13 +895,13 @@ export default function Quotes() {
                   </th>
                   {colVis.isVisible("quoteNumber") && <SortableHeader field="quoteNumber" label="#" resizeKey="quoteNumber" />}
                   {colVis.isVisible("name") && <SortableHeader field="name" label="Quote Name" resizeKey="name" />}
-                  {colVis.isVisible("status") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
+                  {colVis.isVisible("status") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 whitespace-nowrap">Status<ColResizeHandle onMouseDown={startColResize("status")} /></th>}
                   {colVis.isVisible("revision") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 text-center">Revision<ColResizeHandle onMouseDown={startColResize("revision")} /></th>}
-                  {colVis.isVisible("clonedFrom") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Cloned From<ColResizeHandle onMouseDown={startColResize("clonedFrom")} /></th>}
+                  {colVis.isVisible("clonedFrom") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 whitespace-nowrap">Cloned From<ColResizeHandle onMouseDown={startColResize("clonedFrom")} /></th>}
                   {colVis.isVisible("validUntil") && <SortableHeader field="validUntil" label="Expiration Date" resizeKey="validUntil" />}
                   {colVis.isVisible("subtotal") && <SortableHeader field="subtotal" label="Subtotal" align="right" resizeKey="subtotal" />}
                   {colVis.isVisible("total") && <SortableHeader field="total" label="Total Price" align="right" resizeKey="total" />}
-                  {colVis.isVisible("createdBy") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40">Created By<ColResizeHandle onMouseDown={startColResize("createdBy")} /></th>}
+                  {colVis.isVisible("createdBy") && <th className="relative px-3 py-1 font-semibold uppercase tracking-wide text-white border-r border-blue-500/40 whitespace-nowrap">Created By<ColResizeHandle onMouseDown={startColResize("createdBy")} /></th>}
                   <th className="w-10 px-2 py-1"></th>
                 </tr>
               </thead>

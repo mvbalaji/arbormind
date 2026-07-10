@@ -9,6 +9,7 @@ import {
 } from "@workspace/db";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import nodemailer from "nodemailer";
+import { getEmailSettingsRow, resolveSmtpConfig } from "./smtp-config";
 
 export type ApprovalEntity = "account" | "opportunity" | "quote" | "order";
 
@@ -73,17 +74,6 @@ export function evaluateCriterion(
   return compare(value, c.operator as Operator, c.threshold ?? c.thresholdText);
 }
 
-async function getSmtpTransporter() {
-  const host = process.env.SMTP_HOST ?? "mail.spacemail.com";
-  const port = parseInt(process.env.SMTP_PORT ?? "465", 10);
-  const user = process.env.SMTP_USER ?? "";
-  const pass = process.env.SMTP_PASS ?? "";
-  if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    host, port, secure: port === 465, auth: { user, pass },
-  });
-}
-
 /** Resolve emails of users who can act on this role: admins + managers + role-name matches. */
 async function resolveApproverEmails(roleId: number | null): Promise<{ emails: string[]; roleName: string | null }> {
   let roleName: string | null = null;
@@ -128,8 +118,13 @@ async function sendApprovalEmail(opts: {
   appUrl?: string;
 }) {
   if (opts.to.length === 0) return { sent: false, reason: "no recipients" };
-  const transporter = await getSmtpTransporter();
-  if (!transporter) return { sent: false, reason: "smtp not configured" };
+  const emailSettings = await getEmailSettingsRow();
+  const smtp = resolveSmtpConfig(emailSettings, { defaultFromName: "arbormind.in" });
+  if (!smtp) return { sent: false, reason: "smtp not configured" };
+  const transporter = nodemailer.createTransport({
+    host: smtp.host, port: smtp.port, secure: smtp.secure,
+    auth: { user: smtp.user, pass: smtp.pass },
+  });
   const subject = `${opts.isMultiLevelNext ? "Next-level " : ""}Approval needed — ${opts.summary.title} (L${opts.level})`;
   const detailRows = opts.summary.details
     .map(([k, v]) => `<tr><td style="padding:6px 10px;color:#666;border-bottom:1px solid #eee;">${k}</td><td style="padding:6px 10px;font-weight:600;border-bottom:1px solid #eee;">${v}</td></tr>`)
@@ -148,7 +143,7 @@ async function sendApprovalEmail(opts: {
     </div>`;
   try {
     await transporter.sendMail({
-      from: '"arbormind.in" <support@arbormind.in>',
+      from: `"${smtp.fromName}" <${smtp.user}>`,
       to: opts.to.join(","),
       subject,
       html,

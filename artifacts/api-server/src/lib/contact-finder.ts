@@ -134,13 +134,16 @@ export async function findContactsFromWebsite(params: {
 }): Promise<{ contacts: FoundContact[]; pagesScraped: string[] }> {
   const { websiteUrl, companyName, domain } = params;
 
+  const { openai, openaiConfigured } = await import("@workspace/integrations-openai-ai-server");
+  if (!openaiConfigured) {
+    throw new Error("AI contact finder not configured. Set AI_INTEGRATIONS_OPENAI_API_KEY to enable this feature.");
+  }
+
   const { text, linkedinProfiles, pagesFound } = await scrapeCompanyPages(websiteUrl);
 
   if (!text && linkedinProfiles.length === 0) {
     return { contacts: [], pagesScraped: [] };
   }
-
-  const { openai } = await import("@workspace/integrations-openai-ai-server");
 
   const linkedinSection = linkedinProfiles.length > 0
     ? `\n\nLinkedIn profile URLs found on the site:\n${linkedinProfiles.join("\n")}`

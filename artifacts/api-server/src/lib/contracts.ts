@@ -26,16 +26,16 @@ export function computeEndDate(startDate: Date | null, termMonths: number | null
  * at least one activated contract whose date window covers today. When multiple
  * active contracts price the same product, the most recently activated wins.
  */
-export async function getActiveContractPricing(accountId: number): Promise<Record<number, ContractPrice>> {
+export async function getActiveContractPricing(accountId: number, orgId: number): Promise<Record<number, ContractPrice>> {
   const [account] = await db
     .select({ clmEnabled: accountsTable.clmEnabled })
     .from(accountsTable)
-    .where(eq(accountsTable.id, accountId));
+    .where(and(eq(accountsTable.id, accountId), eq(accountsTable.orgId, orgId)));
   if (!account?.clmEnabled) return {};
 
   // Reconcile any elapsed contracts before reading pricing so status and the
   // date window stay consistent.
-  await expireElapsedContracts(accountId);
+  await expireElapsedContracts(accountId, orgId);
 
   const now = new Date();
   const contracts = await db
@@ -44,6 +44,7 @@ export async function getActiveContractPricing(accountId: number): Promise<Recor
     .where(
       and(
         eq(contractsTable.accountId, accountId),
+        eq(contractsTable.orgId, orgId),
         eq(contractsTable.status, "activated"),
         sql`(${contractsTable.startDate} IS NULL OR ${contractsTable.startDate} <= ${now})`,
         sql`(${contractsTable.endDate} IS NULL OR ${contractsTable.endDate} >= ${now})`,
@@ -88,7 +89,7 @@ export async function getActiveContractPricing(accountId: number): Promise<Recor
  * Idempotent; scope to a single account when provided, otherwise all accounts.
  * Returns the number of contracts expired.
  */
-export async function expireElapsedContracts(accountId?: number): Promise<number> {
+export async function expireElapsedContracts(accountId?: number, orgId?: number): Promise<number> {
   const now = new Date();
   const conditions = [
     eq(contractsTable.status, "activated"),
@@ -96,6 +97,7 @@ export async function expireElapsedContracts(accountId?: number): Promise<number
     lt(contractsTable.endDate, now),
   ];
   if (accountId != null) conditions.push(eq(contractsTable.accountId, accountId));
+  if (orgId != null) conditions.push(eq(contractsTable.orgId, orgId));
   const updated = await db
     .update(contractsTable)
     .set({ status: "expired", updatedAt: now })

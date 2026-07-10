@@ -1725,25 +1725,62 @@ export default function OpportunityDetail() {
               </div>
               {oppItems.length > 0 ? (
                 <div className="p-4 text-sm flex flex-col gap-2">
-                  {oppItems.slice(0, 4).map((it) => (
-                    <div key={it.id} className="flex items-center justify-between gap-2 text-sm">
-                      <span className="truncate text-foreground" title={it.productName}>
-                        {it.productId ? (
-                          <Link href={`/products/${it.productId}`}>
-                            <span className="text-primary hover:underline cursor-pointer">{it.productName}</span>
-                          </Link>
-                        ) : (
-                          it.productName
-                        )}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground shrink-0">
-                        {Number(it.quantity)} × {fmtMoney(Number(it.unitPrice))}
-                      </span>
-                    </div>
-                  ))}
+                  {oppItems.slice(0, 4).map((it) => {
+                    const disc = Number(it.discount) || 0;
+                    const lineAmt = Number(it.quantity) * Number(it.unitPrice) * (1 - disc / 100);
+                    return (
+                      <div key={it.id} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="truncate text-foreground" title={it.productName}>
+                          {it.productId ? (
+                            <Link href={`/products/${it.productId}`}>
+                              <span className="text-primary hover:underline cursor-pointer">{it.productName}</span>
+                            </Link>
+                          ) : (
+                            it.productName
+                          )}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground shrink-0 flex items-center gap-1.5">
+                          {Number(it.quantity)} × {fmtMoney(Number(it.unitPrice))}
+                          {disc > 0 && (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">−{disc}%</span>
+                          )}
+                          <span className="text-foreground font-medium">{fmtMoney(lineAmt)}</span>
+                        </span>
+                      </div>
+                    );
+                  })}
                   {oppItems.length > 4 ? (
                     <div className="text-[11px] text-muted-foreground pt-1">+ {oppItems.length - 4} more…</div>
                   ) : null}
+
+                  {/* Discount summary footer */}
+                  {(() => {
+                    const subtotal = oppItems.reduce((s, it) => s + Number(it.quantity) * Number(it.unitPrice), 0);
+                    const discounted = oppItems.reduce((s, it) => {
+                      const disc = Number(it.discount) || 0;
+                      return s + Number(it.quantity) * Number(it.unitPrice) * (1 - disc / 100);
+                    }, 0);
+                    const savedAmt = subtotal - discounted;
+                    const hasDiscount = oppItems.some(it => Number(it.discount) > 0);
+                    return (
+                      <div className="mt-1 pt-2 border-t border-border/50 space-y-0.5">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span className="text-foreground">{fmtMoney(subtotal)}</span>
+                        </div>
+                        {hasDiscount && (
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-emerald-600 dark:text-emerald-400">Discount savings</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">−{fmtMoney(savedAmt)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-[12px] font-semibold pt-0.5">
+                          <span className="text-foreground">Net Total</span>
+                          <span className="text-foreground">{fmtMoney(discounted)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="p-4 text-xs text-muted-foreground italic">No products on this opportunity yet.</div>

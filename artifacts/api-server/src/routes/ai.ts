@@ -5,7 +5,7 @@ import {
   activitiesTable, casesTable, quotesTable, ordersTable,
 } from "@workspace/db";
 import { sql, and, eq, or, ilike, gte, lte, desc, isNull } from "drizzle-orm";
-import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { anthropic, anthropicConfigured } from "@workspace/integrations-anthropic-ai";
 
 interface ChatCompletionsAPI {
   create(params: {
@@ -30,6 +30,7 @@ async function getOpenAI(): Promise<OpenAIClient | null> {
   if (_openai) return _openai;
   try {
     const mod = await import("@workspace/integrations-openai-ai-server");
+    if (!mod.openaiConfigured) return null;
     _openai = mod.openai;
     return _openai;
   } catch {
@@ -729,6 +730,11 @@ interface AnthropicMessage {
 router.post("/ai/chat", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const user = getSessionUser(req)!;
+
+  if (!anthropicConfigured) {
+    res.status(503).json({ error: "AI assistant not configured. Set AI_INTEGRATIONS_ANTHROPIC_API_KEY to enable it." });
+    return;
+  }
 
   try {
     const { messages } = req.body as { messages: ClientMessage[] };

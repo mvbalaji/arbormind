@@ -14,6 +14,7 @@ export interface Product {
   unitPrice: number;
   currency: string;
   category?: string | null;
+  quantityUnitOfMeasure?: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
