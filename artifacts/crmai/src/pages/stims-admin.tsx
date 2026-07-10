@@ -306,10 +306,13 @@ export default function StimsAdmin() {
           {/* Attainment */}
           <TabsContent value="attainment" className="space-y-3">
             <div className="flex items-center gap-3">
-              <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
+              <Select
+                value={selectedPeriodId === "" ? "all" : selectedPeriodId}
+                onValueChange={(v) => setSelectedPeriodId(v === "all" ? "" : v)}
+              >
                 <SelectTrigger className="w-52"><SelectValue placeholder="Filter by period" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All periods</SelectItem>
+                  <SelectItem value="all">All periods</SelectItem>
                   {periods.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
