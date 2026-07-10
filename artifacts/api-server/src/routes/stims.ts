@@ -346,13 +346,14 @@ router.post("/stims/incentive-plans/:id/simulate", async (req, res) => {
 router.get("/stims/attainment", async (req, res) => {
   try {
     const { period_id } = req.query;
+    const periodIdParam = period_id && period_id !== "" ? Number(period_id) : null;
     const r = await pool.query(`
       SELECT a.*, u.name AS user_name, u.email
       FROM stims_attainment a
       LEFT JOIN users u ON u.id = a.user_id
       WHERE ($1::int IS NULL OR a.fiscal_period_id = $1)
       ORDER BY u.name
-    `, [period_id ?? null]);
+    `, [periodIdParam]);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
