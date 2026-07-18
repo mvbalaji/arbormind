@@ -4,83 +4,103 @@
     "position": 1,
     "filepath": "src/pages/slides/Title.tsx",
     "title": "ArborMind CRM",
-    "description": "Cover slide introducing the ArborMind CRM overview deck (v1.0, May 2026)."
+    "description": "Cover slide introducing the ArborMind CRM overview deck (v1.0, May 2026).",
+    "speakerNotes": ""
   },
   {
     "id": "overview",
     "position": 2,
     "filepath": "src/pages/slides/Overview.tsx",
     "title": "What ArborMind does",
-    "description": "Five-point summary of what the CRM captures, tracks, centralizes, and automates, plus an at-a-glance stat block."
+    "description": "Five-point summary of what the CRM captures, tracks, centralizes, and automates, plus an at-a-glance stat block.",
+    "speakerNotes": ""
   },
   {
     "id": "core-modules",
     "position": 3,
     "filepath": "src/pages/slides/CoreModules.tsx",
     "title": "Core modules",
-    "description": "Six modules: Leads, Accounts & Contacts, Opportunities, Quotes, Orders, Activities."
+    "description": "Six modules: Leads, Accounts & Contacts, Opportunities, Quotes, Orders, Activities.",
+    "speakerNotes": ""
   },
   {
     "id": "quotes-orders",
     "position": 4,
     "filepath": "src/pages/slides/QuotesOrders.tsx",
     "title": "Quotes & orders",
-    "description": "Quote features (line items, versions, PDF, send-track, status) and Order features (auto-created on accept, fulfilment, invoicing)."
+    "description": "Quote features (line items, versions, PDF, send-track, status) and Order features (auto-created on accept, fulfilment, invoicing).",
+    "speakerNotes": ""
   },
   {
     "id": "approval-workflow",
     "position": 5,
     "filepath": "src/pages/slides/ApprovalWorkflow.tsx",
     "title": "Approval workflow",
-    "description": "Threshold-based governance for quotes, discounts, and orders with tiered approvers and full audit trail."
+    "description": "Threshold-based governance for quotes, discounts, and orders with tiered approvers and full audit trail.",
+    "speakerNotes": ""
   },
   {
     "id": "email-tracking",
     "position": 6,
     "filepath": "src/pages/slides/EmailTracking.tsx",
     "title": "Email & tracking",
-    "description": "Outbound SMTP send with 1x1 open-tracking pixel and inbound IMAP polling that threads replies to records."
+    "description": "Outbound SMTP send with 1x1 open-tracking pixel and inbound IMAP polling that threads replies to records.",
+    "speakerNotes": ""
   },
   {
     "id": "ai-assistant",
     "position": 7,
     "filepath": "src/pages/slides/AIAssistant.tsx",
     "title": "AI assistant",
-    "description": "Next-best-action assistant with seven first-class mutation tools across tasks, calls, stages, owners, email, notes, meetings."
+    "description": "Next-best-action assistant with seven first-class mutation tools across tasks, calls, stages, owners, email, notes, meetings.",
+    "speakerNotes": ""
   },
   {
     "id": "architecture",
     "position": 8,
     "filepath": "src/pages/slides/Architecture.tsx",
     "title": "System architecture",
-    "description": "Monorepo, React+Vite frontend, Express API, Postgres+Drizzle, nodemailer SMTP, imapflow IMAP poller."
+    "description": "Monorepo, React+Vite frontend, Express API, Postgres+Drizzle, nodemailer SMTP, imapflow IMAP poller.",
+    "speakerNotes": ""
   },
   {
     "id": "data-model",
     "position": 9,
     "filepath": "src/pages/slides/DataModel.tsx",
     "title": "Data model",
-    "description": "Entity diagram covering Lead, Account, Contact, Opportunity, Quote, Order, Approval, Activity, and EmailTracking."
+    "description": "Entity diagram covering Lead, Account, Contact, Opportunity, Quote, Order, Approval, Activity, and EmailTracking.",
+    "speakerNotes": ""
   },
   {
     "id": "end-to-end-flow",
     "position": 10,
     "filepath": "src/pages/slides/EndToEndFlow.tsx",
     "title": "End-to-end flow",
-    "description": "Ten-step horizontal flow from lead capture through quote, approval, send, accept, order, and close."
+    "description": "Ten-step horizontal flow from lead capture through quote, approval, send, accept, order, and close.",
+    "speakerNotes": ""
   },
   {
     "id": "process-flow-detail",
     "position": 11,
     "filepath": "src/pages/slides/ProcessFlowDetail.tsx",
     "title": "Process flow — in detail",
-    "description": "Three-phase breakdown (Pre-sales, Active deal, Fulfilment) with 14 numbered substeps covering actor, action, and system result."
+    "description": "Three-phase breakdown (Pre-sales, Active deal, Fulfilment) with 14 numbered substeps covering actor, action, and system result.",
+    "speakerNotes": ""
   },
   {
     "id": "closing",
     "position": 12,
     "filepath": "src/pages/slides/Closing.tsx",
     "title": "Built for arbormind.in",
-    "description": "Closing slide with live-today scope, what's next, and stack summary."
+    "description": "Closing slide with live-today scope, what's next, and stack summary.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "multitenant",
+    "position": 13,
+    "filepath": "src/pages/slides/Multitenant.tsx",
+    "title": "Multitenant architecture",
+    "description": "How ArborMind isolates data per organisation using org_id scoping across 12 tables, allowed_users access control, and a single shared Postgres database.",
+    "speakerNotes": ""
   }
 ]
