@@ -711,7 +711,7 @@ export default function Landing() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
                   type="button"
-                  onClick={handleDemoLogin}
+                  onClick={() => setLocation("/login")}
                   className="flex items-center gap-3 px-8 py-3.5 rounded-2xl font-semibold transition-all hover:-translate-y-1 hover:shadow-2xl cursor-pointer"
                   style={{
                     background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
