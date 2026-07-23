@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import {
   useGetProduct, useUpdateProduct, useDeleteProduct,
@@ -150,7 +150,7 @@ export default function ProductDetail() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-4 max-w-5xl mx-auto">
+      <div className="flex flex-col gap-4">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <Link href="/products" className="hover:text-foreground transition-colors">Products</Link>
@@ -216,7 +216,7 @@ export default function ProductDetail() {
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-xl font-bold text-foreground tabular-nums">{format(product.unitPrice)}</div>
-                  <div className="text-[11px] text-muted-foreground">Standard Price · {BASE_CURRENCY}</div>
+                  <div className="text-[11px] text-muted-foreground">Standard Price Â· {BASE_CURRENCY}</div>
                 </div>
               </div>
             </div>
@@ -341,3 +341,4 @@ export default function ProductDetail() {
     </Layout>
   );
 }
+

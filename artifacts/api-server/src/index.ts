@@ -1,6 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { startEmailPoller } from "./email-sync";
+import { startAllEmailPollers } from "./email-sync";
 
 const rawPort = process.env["PORT"];
 
@@ -24,8 +24,8 @@ app.listen(port, (err) => {
 
   logger.info({ port }, "Server listening");
 
-  // Start email poller if configured
-  startEmailPoller().catch((e) => {
+  // Start an email poller for every organization that has sync configured
+  startAllEmailPollers().catch((e) => {
     logger.warn({ err: e }, "[EmailPoller] Failed to start");
   });
 });

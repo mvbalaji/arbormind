@@ -2,8 +2,8 @@ import { Router } from "express";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { db } from "@workspace/db";
-import { allowedUsersTable, usersTable, organizationsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { allowedUsersTable, usersTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import type { SessionData } from "express-session";
 import { getDefaultOrgId } from "../lib/org-context";
 
@@ -17,7 +17,7 @@ declare module "express-session" {
       role: string;
       avatarUrl: string | null;
       username?: string;
-      orgId: number;
+      orgId?: number;
     };
     originalUser?: {
       id: number;
@@ -25,7 +25,7 @@ declare module "express-session" {
       name: string;
       role: string;
       avatarUrl: string | null;
-      orgId: number;
+      orgId?: number;
     };
   }
 }
@@ -225,6 +225,15 @@ router.get("/auth/me", async (req, res) => {
   let userData: { role?: string; [k: string]: unknown } | null = null;
   if ((isAuth && req.user) || req.session?.user) {
     userData = (req.user || req.session.user) as { role?: string; [k: string]: unknown };
+  } else if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    userData = {
+      id: 0,
+      email: "dev@crmai.local",
+      name: "Dev Admin",
+      role: "admin",
+      avatarUrl: null,
+      orgId: req.orgId,
+    };
   }
 
   if (!userData) {
@@ -247,16 +256,16 @@ router.get("/auth/me", async (req, res) => {
   try {
     const { getScreenAccessForRole } = await import("../lib/access-control");
     const { getEnabledModules } = await import("../lib/app-modules");
-    const orgIdForLookup = userData.orgId as number | undefined;
+    const { organizationsTable } = await import("@workspace/db");
+    const orgId = (userData.orgId as number | undefined) ?? req.orgId;
     const [screenAccess, enabledModules, orgRow] = await Promise.all([
-      getScreenAccessForRole(userData.role ?? ""),
-      getEnabledModules(),
-      orgIdForLookup
-        ? db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, orgIdForLookup))
-        : Promise.resolve([]),
+      getScreenAccessForRole(userData.role ?? "", orgId),
+      getEnabledModules(orgId),
+      orgId != null
+        ? db.select({ name: organizationsTable.name }).from(organizationsTable).where(eq(organizationsTable.id, orgId)).then((r) => r[0])
+        : Promise.resolve(undefined),
     ]);
-    const organizationName = orgRow[0]?.name ?? null;
-    res.json({ user: { ...userData, screenAccess, enabledModules, organizationName, ...impersonation } });
+    res.json({ user: { ...userData, orgId, organizationName: orgRow?.name ?? null, screenAccess, enabledModules, ...impersonation } });
   } catch {
     res.json({ user: { ...userData, ...impersonation } });
   }
@@ -268,7 +277,7 @@ router.get("/auth/me", async (req, res) => {
 
 router.post("/auth/impersonate", async (req, res) => {
   const actor = (req.session?.originalUser ?? req.session?.user ?? req.user) as
-    | { id: number; email: string; name: string; role: string; avatarUrl: string | null; orgId: number }
+    | { id: number; email: string; name: string; role: string; avatarUrl: string | null; orgId?: number }
     | undefined;
 
   if (!actor) {
@@ -307,13 +316,6 @@ router.post("/auth/impersonate", async (req, res) => {
       if (row) target = { id: row.id, email: row.email, name: row.name, role: row.role, avatarUrl: row.avatarUrl, isActive: row.isActive, orgId: row.orgId };
     }
 
-    // Impersonation must stay within the acting admin's own org — otherwise an admin
-    // could hop into another tenant's data by guessing a user id/email.
-    if (target && target.orgId !== actor.orgId) {
-      res.status(403).json({ error: "Cannot impersonate a user in a different organization." });
-      return;
-    }
-
     if (!target) {
       res.status(404).json({
         error: targetEmail
@@ -328,6 +330,12 @@ router.post("/auth/impersonate", async (req, res) => {
     }
     if (target.email === actor.email) {
       res.status(400).json({ error: "You are already this user" });
+      return;
+    }
+    // Only super_admin can reach across tenants; org admins may only
+    // impersonate someone inside their own organization.
+    if (actor.role !== "super_admin" && target.orgId !== actor.orgId) {
+      res.status(403).json({ error: "You can only impersonate users in your own organization" });
       return;
     }
 
@@ -416,40 +424,6 @@ router.post("/auth/login", async (req, res) => {
     });
     return;
   }
-
-  // Dev-only login: with Google OAuth not configured there is no way to sign in as a
-  // real allowed_users account otherwise. Gated to the same shared dev password as the
-  // demo account — this path does not exist once GOOGLE_CLIENT_ID/SECRET are set.
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    if (password === DEMO_PASSWORD && username) {
-      const [row] = await db
-        .select()
-        .from(allowedUsersTable)
-        .where(eq(allowedUsersTable.email, username.toLowerCase().trim()));
-      if (row && row.isActive) {
-        const user = {
-          id: row.id,
-          email: row.email,
-          name: row.name ?? row.email,
-          role: row.role,
-          avatarUrl: row.avatarUrl,
-          username: row.email,
-          orgId: row.orgId,
-        };
-        req.session.user = user;
-        (req as any).user = user;
-        req.session.save((err) => {
-          if (err) {
-            res.status(500).json({ error: "Login failed" });
-            return;
-          }
-          res.json({ user });
-        });
-        return;
-      }
-    }
-  }
-
   res.status(401).json({ error: "Invalid credentials" });
 });
 
@@ -470,16 +444,16 @@ router.get("/auth/users", async (req, res) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const u = req.user as { role?: string; orgId?: number } | undefined;
+  const u = req.user as { role?: string } | undefined;
   if (!FULL_ACCESS_ROLES.has(u?.role ?? "")) {
     res.status(403).json({ error: "Forbidden" });
     return;
   }
 
   try {
-    const users = u?.orgId
-      ? await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.orgId, u.orgId)).orderBy(allowedUsersTable.createdAt)
-      : await db.select().from(allowedUsersTable).orderBy(allowedUsersTable.createdAt);
+    const users = await db.select().from(allowedUsersTable)
+      .where(eq(allowedUsersTable.orgId, req.orgId as number))
+      .orderBy(allowedUsersTable.createdAt);
     res.json({ users });
   } catch {
     res.status(500).json({ error: "Failed to fetch users" });
@@ -491,7 +465,7 @@ router.post("/auth/users", async (req, res) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const u = req.user as { role?: string; email?: string; orgId?: number } | undefined;
+  const u = req.user as { role?: string; email?: string } | undefined;
   if (!FULL_ACCESS_ROLES.has(u?.role ?? "")) {
     res.status(403).json({ error: "Forbidden" });
     return;
@@ -510,8 +484,6 @@ router.post("/auth/users", async (req, res) => {
   }
 
   try {
-    // New users join the inviting admin's organization — there is no cross-org invite flow.
-    const orgId = u?.orgId ?? (await getDefaultOrgId());
     const [user] = await db
       .insert(allowedUsersTable)
       .values({
@@ -519,7 +491,7 @@ router.post("/auth/users", async (req, res) => {
         name: name || null,
         role: role || "sales",
         addedByEmail: u?.email ?? "admin",
-        orgId,
+        orgId: req.orgId as number,
       })
       .onConflictDoUpdate({
         target: allowedUsersTable.email,
@@ -538,7 +510,7 @@ router.put("/auth/users/:id", async (req, res) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const actor = req.user as { role?: string; email?: string; id?: number; orgId?: number } | undefined;
+  const actor = req.user as { role?: string; email?: string; id?: number } | undefined;
   if (!FULL_ACCESS_ROLES.has(actor?.role ?? "")) {
     res.status(403).json({ error: "Forbidden" });
     return;
@@ -551,15 +523,9 @@ router.put("/auth/users/:id", async (req, res) => {
   }
 
   try {
-    const [existing] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.id, id));
+    const [existing] = await db.select().from(allowedUsersTable)
+      .where(and(eq(allowedUsersTable.id, id), eq(allowedUsersTable.orgId, req.orgId as number)));
     if (!existing) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-
-    // Regular admins can only manage users in their own org — only super_admin
-    // can reach across org boundaries (they're the ones who maintain all orgs).
-    if (actor?.role !== "super_admin" && existing.orgId !== actor?.orgId) {
       res.status(404).json({ error: "User not found" });
       return;
     }
@@ -585,7 +551,7 @@ router.put("/auth/users/:id", async (req, res) => {
     const [updated] = await db
       .update(allowedUsersTable)
       .set(updates)
-      .where(eq(allowedUsersTable.id, id))
+      .where(and(eq(allowedUsersTable.id, id), eq(allowedUsersTable.orgId, req.orgId as number)))
       .returning();
 
     res.json({ user: updated });
@@ -599,7 +565,7 @@ router.delete("/auth/users/:id", async (req, res) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const actor = req.user as { role?: string; id?: number; orgId?: number } | undefined;
+  const actor = req.user as { role?: string; id?: number } | undefined;
   if (!FULL_ACCESS_ROLES.has(actor?.role ?? "")) {
     res.status(403).json({ error: "Forbidden" });
     return;
@@ -607,12 +573,9 @@ router.delete("/auth/users/:id", async (req, res) => {
 
   const id = parseInt(req.params.id);
   try {
-    const [existing] = await db.select().from(allowedUsersTable).where(eq(allowedUsersTable.id, id));
+    const [existing] = await db.select().from(allowedUsersTable)
+      .where(and(eq(allowedUsersTable.id, id), eq(allowedUsersTable.orgId, req.orgId as number)));
     if (!existing) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-    if (actor?.role !== "super_admin" && existing.orgId !== actor?.orgId) {
       res.status(404).json({ error: "User not found" });
       return;
     }
@@ -624,7 +587,7 @@ router.delete("/auth/users/:id", async (req, res) => {
     await db
       .update(allowedUsersTable)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(allowedUsersTable.id, id));
+      .where(and(eq(allowedUsersTable.id, id), eq(allowedUsersTable.orgId, req.orgId as number)));
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to remove user" });

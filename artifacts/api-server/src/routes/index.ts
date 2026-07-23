@@ -39,11 +39,15 @@ import productRulesRouter from "./product-rules";
 import clmRouter from "./clm";
 import stimsRouter from "./stims";
 import productBundlesRouter from "./product-bundles";
+import socialMessagesRouter from "./social-messages";
+import cpqSettingsRouter from "./cpq-settings";
+import quoteTeamRouter from "./quote-team";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 import { seedStandardPricing } from "../lib/pricing";
 import { seedAppModules } from "../lib/app-modules";
 import { seedDefaultScoringRules } from "../lib/lead-scoring";
+import { getDefaultOrgId } from "../lib/org-context";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
@@ -89,14 +93,76 @@ router.use(productRulesRouter);
 router.use(clmRouter);
 router.use(stimsRouter);
 router.use(productBundlesRouter);
+router.use(socialMessagesRouter);
+router.use(cpqSettingsRouter);
+router.use(quoteTeamRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
-// access on startup.
-void seedAccessControl();
-void seedRecordAccess();
-void seedStandardPricing();
-void seedAppModules();
-void seedDefaultScoringRules();
+// access on startup — scoped to the pre-multitenancy Default Organization.
+// New orgs are seeded on creation via seedOrgDefaults() in routes/organizations.ts.
+void (async () => {
+  try {
+    const defaultOrgId = await getDefaultOrgId();
+    await seedAccessControl(defaultOrgId);
+    await seedRecordAccess(defaultOrgId);
+    await seedStandardPricing(defaultOrgId);
+    await seedAppModules(defaultOrgId);
+    await seedDefaultScoringRules(defaultOrgId);
+  } catch (err) {
+    console.error("[Migrate] default-org seed:", err);
+  }
+})();
+
+// Add use_standard_price column to price_book_entries if missing
+void (async () => {
+  try {
+    await db.execute(sql`
+      ALTER TABLE price_book_entries ADD COLUMN IF NOT EXISTS use_standard_price BOOLEAN NOT NULL DEFAULT false
+    `);
+    console.log("[Migrate] price_book_entries.use_standard_price column ready");
+  } catch (err) {
+    console.error("[Migrate] price_book_entries use_standard_price:", err);
+  }
+})();
+
+// admin_settings table + CPQ seed (idempotent) — org-scoped: composite (org_id, key) PK
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS admin_settings (
+        org_id INTEGER NOT NULL DEFAULT 1,
+        key TEXT NOT NULL,
+        value TEXT NOT NULL DEFAULT '',
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (org_id, key)
+      )
+    `);
+    await db.execute(sql`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.table_constraints
+          WHERE table_name = 'admin_settings' AND constraint_type = 'PRIMARY KEY' AND constraint_name = 'admin_settings_pkey'
+        ) AND NOT EXISTS (
+          SELECT 1 FROM information_schema.key_column_usage
+          WHERE table_name = 'admin_settings' AND constraint_name = 'admin_settings_pkey' AND column_name = 'org_id'
+        ) THEN
+          ALTER TABLE admin_settings DROP CONSTRAINT admin_settings_pkey;
+          ALTER TABLE admin_settings ADD PRIMARY KEY (org_id, key);
+        END IF;
+      END $$
+    `);
+    const defaultOrgId = await getDefaultOrgId();
+    await db.execute(sql`
+      INSERT INTO admin_settings (org_id, key, value) VALUES (${defaultOrgId}, 'cpq_enabled', 'false')
+      ON CONFLICT (org_id, key) DO NOTHING
+    `);
+    console.log("[Migrate] admin_settings table ready");
+  } catch (err) {
+    console.error("[Migrate] admin_settings:", err);
+  }
+})();
 
 // Ensure product_rules table exists (idempotent migration)
 void (async () => {
@@ -214,6 +280,9 @@ void (async () => {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
+    for (const t of ["clm_templates", "clm_reviews", "clm_signers", "clm_redlines", "clm_workflow_rules", "clm_notification_rules"]) {
+      await db.execute(sql.raw(`ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`));
+    }
     // Extend contracts table with CLM fields (idempotent column additions)
     const clmColumns = [
       `ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_type TEXT`,
@@ -406,6 +475,13 @@ void (async () => {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
+    for (const t of [
+      "stims_fiscal_periods", "stims_target_cycles", "stims_quotas", "stims_incentive_plans",
+      "stims_plan_tiers", "stims_plan_assignments", "stims_attainment", "stims_calc_runs",
+      "stims_payout_lines", "stims_disputes", "stims_ramp_templates",
+    ]) {
+      await db.execute(sql.raw(`ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`));
+    }
     console.log("[Migrate] STIMS tables ready");
   } catch (err) {
     console.error("[Migrate] STIMS:", err);
@@ -438,9 +514,161 @@ void (async () => {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
+    await db.execute(sql`ALTER TABLE product_bundles ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
+    await db.execute(sql`ALTER TABLE product_bundle_items ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
     console.log("[Migrate] product_bundles tables ready");
   } catch (err) {
     console.error("[Migrate] product_bundles:", err);
+  }
+})();
+
+// Margin fields migration (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql.raw(`ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price NUMERIC`));
+    await db.execute(sql.raw(`ALTER TABLE products ADD COLUMN IF NOT EXISTS quantity_unit_of_measure TEXT`));
+    await db.execute(sql.raw(`ALTER TABLE quote_items ADD COLUMN IF NOT EXISTS cost_price NUMERIC`));
+    await db.execute(sql.raw(`ALTER TABLE quote_items ADD COLUMN IF NOT EXISTS margin_pct NUMERIC`));
+    console.log("[Migrate] margin fields ready");
+  } catch (err) {
+    console.error("[Migrate] margin fields:", err);
+  }
+})();
+
+// Social messages table migration (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS social_messages (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER REFERENCES leads(id) ON DELETE CASCADE,
+        contact_id INTEGER REFERENCES contacts(id) ON DELETE SET NULL,
+        sent_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        platform TEXT NOT NULL,
+        direction TEXT NOT NULL,
+        content TEXT NOT NULL,
+        media_url TEXT,
+        media_type TEXT,
+        sender_name TEXT,
+        sender_handle TEXT,
+        sender_avatar_url TEXT,
+        platform_message_id TEXT,
+        platform_thread_id TEXT,
+        platform_profile_url TEXT,
+        status TEXT NOT NULL DEFAULT 'sent',
+        is_read BOOLEAN NOT NULL DEFAULT false,
+        delivered_at TIMESTAMP,
+        read_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS sm_lead_id_idx ON social_messages(lead_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS sm_platform_idx ON social_messages(platform)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS sm_created_at_idx ON social_messages(created_at)`);
+    console.log("[Migrate] social_messages table ready");
+  } catch (err) {
+    console.error("[Migrate] social_messages:", err);
+  }
+})();
+
+// Quote attachments migration (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS quote_attachments (
+        id SERIAL PRIMARY KEY,
+        quote_id INTEGER NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+        file_name TEXT NOT NULL,
+        file_size INTEGER NOT NULL DEFAULT 0,
+        file_type TEXT NOT NULL DEFAULT '',
+        file_data TEXT NOT NULL,
+        uploaded_by_name TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS qa_quote_id_idx ON quote_attachments(quote_id)`);
+    await db.execute(sql`ALTER TABLE quote_attachments ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
+    console.log("[Migrate] quote_attachments table ready");
+  } catch (err) {
+    console.error("[Migrate] quote_attachments:", err);
+  }
+})();
+
+// Add bundle_id / bundle_name columns to quote_items (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql`ALTER TABLE quote_items ADD COLUMN IF NOT EXISTS bundle_id INTEGER`);
+    await db.execute(sql`ALTER TABLE quote_items ADD COLUMN IF NOT EXISTS bundle_name TEXT`);
+    console.log("[Migrate] quote_items bundle columns ready");
+  } catch (err) {
+    console.error("[Migrate] quote_items bundle columns:", err);
+  }
+})();
+
+// Lead attachments migration
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS lead_attachments (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+        file_name TEXT NOT NULL,
+        file_size INTEGER NOT NULL DEFAULT 0,
+        file_type TEXT NOT NULL DEFAULT '',
+        file_data TEXT NOT NULL,
+        uploaded_by_name TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS la_lead_id_idx ON lead_attachments(lead_id)`);
+    await db.execute(sql`ALTER TABLE lead_attachments ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
+    console.log("[Migrate] lead_attachments table ready");
+  } catch (err) {
+    console.error("[Migrate] lead_attachments:", err);
+  }
+})();
+
+// Quote team members migration (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS quote_team_members (
+        id SERIAL PRIMARY KEY,
+        quote_id INTEGER NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role TEXT NOT NULL DEFAULT 'Team Member',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE(quote_id, user_id)
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS qtm_quote_id_idx ON quote_team_members(quote_id)`);
+    console.log("[Migrate] quote_team_members table ready");
+  } catch (err) {
+    console.error("[Migrate] quote_team_members:", err);
+  }
+})();
+
+// Opportunity attachments migration
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS opportunity_attachments (
+        id SERIAL PRIMARY KEY,
+        opportunity_id INTEGER NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
+        file_name TEXT NOT NULL,
+        file_size INTEGER NOT NULL DEFAULT 0,
+        file_type TEXT NOT NULL DEFAULT '',
+        file_data TEXT NOT NULL,
+        uploaded_by_name TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS oa_opp_id_idx ON opportunity_attachments(opportunity_id)`);
+    await db.execute(sql`ALTER TABLE opportunity_attachments ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
+    console.log("[Migrate] opportunity_attachments table ready");
+  } catch (err) {
+    console.error("[Migrate] opportunity_attachments:", err);
   }
 })();
 

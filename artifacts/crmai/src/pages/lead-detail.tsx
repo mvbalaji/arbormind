@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useUpdateLead, useConvertLead, getListLeadsQueryKey, useListUsers, useListAccounts, useListContacts, useCreateActivity, useUpdateActivity, type ConvertLeadInput } from "@workspace/api-client-react";
@@ -23,8 +23,10 @@ import {
   CheckCircle2, Clock, ArrowRightLeft, Pencil, MapPin, DollarSign,
   Globe, Users, Briefcase, Star, Target, Send, ChevronDown, ChevronUp, ChevronRight,
   TrendingUp, ThumbsUp, ThumbsDown, MessageSquare, Plus, XCircle, CheckSquare, Save, X,
+  PhoneCall, ListTodo, CalendarPlus, RotateCw, Paperclip, Upload, Trash,
 } from "lucide-react";
 import { LeadInsightsPanel } from "@/components/lead-insights-panel";
+import { SocialInbox } from "@/components/social-inbox";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { useCurrency } from "@/context/currency";
 import { cn } from "@/lib/utils";
@@ -131,12 +133,10 @@ const ACTIVITY_ICONS: Record<string, React.ElementType> = {
 function FieldRow({ label, value, icon: Icon }: { label: string; value?: string | null; icon?: React.ElementType }) {
   if (!value) return null;
   return (
-    <div className="py-2 flex items-start gap-3 border-b border-border/50 last:border-0">
-      {Icon && <Icon className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />}
-      <div className="min-w-0">
-        <div className="text-xs text-muted-foreground mb-0.5">{label}</div>
-        <div className="text-sm text-foreground font-medium">{value}</div>
-      </div>
+    <div className="py-1 flex items-center gap-2 border-b border-border/40 last:border-0">
+      {Icon && <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
+      <span className="text-xs text-muted-foreground w-24 flex-shrink-0">{label}</span>
+      <span className="text-xs text-foreground font-medium truncate">{value}</span>
     </div>
   );
 }
@@ -197,7 +197,7 @@ export default function LeadDetail() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerActivityId, setViewerActivityId] = useState<number | null>(null);
   const [collapsedThreads, setCollapsedThreads] = useState<Set<number>>(new Set());
-  const [relatedTab, setRelatedTab] = useState<"activities" | "actions" | "contacts" | "accounts">("activities");
+  const [relatedTab, setRelatedTab] = useState<"activities" | "actions" | "contacts" | "accounts" | "social">("activities");
   const [newActionTitle, setNewActionTitle] = useState("");
   const [newActionDue, setNewActionDue] = useState("");
   const createActivity = useCreateActivity();
@@ -239,6 +239,40 @@ export default function LeadDetail() {
     refetchOnWindowFocus: true,
     staleTime: 0,
   });
+
+  // Attachment state
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [sideActivitySubTab, setSideActivitySubTab] = useState<"call" | "email" | "task" | "event">("call");
+  const [sideActivityText, setSideActivityText] = useState("");
+  const [isAddingSideActivity, setIsAddingSideActivity] = useState(false);
+  const { data: attachmentsData, refetch: refetchAttachments } = useQuery<{ data: any[] }>({
+    queryKey: ["lead-attachments", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/leads/${id}/attachments`, { credentials: "include" });
+      return res.ok ? res.json() : { data: [] };
+    },
+    enabled: !!id,
+  });
+  const leadAttachments = attachmentsData?.data ?? [];
+
+  const uploadLeadFile = async (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const fileData = (reader.result as string).split(",")[1];
+      await fetch(`/api/leads/${id}/attachments`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileSize: file.size, fileType: file.type, fileData }),
+      });
+      void refetchAttachments();
+    };
+    reader.readAsDataURL(file);
+  };
+  const deleteLeadAttachment = async (attId: number) => {
+    await fetch(`/api/leads/${id}/attachments/${attId}`, { method: "DELETE", credentials: "include" });
+    void refetchAttachments();
+  };
+  const formatFileSize = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 
   const { data: scoreBreakdown } = useQuery<{
     score: number;
@@ -498,7 +532,7 @@ export default function LeadDetail() {
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
           <Link href="/leads" className="hover:text-primary transition-colors">Leads</Link>
-          <span>›</span>
+          <span>â€º</span>
           <span className="text-foreground font-medium">{fullName}</span>
         </div>
 
@@ -514,7 +548,7 @@ export default function LeadDetail() {
                 <h1 className="text-base font-semibold text-foreground leading-tight">{fullName}</h1>
                 {lead.title || lead.company ? (
                   <div className="text-xs text-muted-foreground">
-                    {[lead.title, lead.company].filter(Boolean).join(" · ")}
+                    {[lead.title, lead.company].filter(Boolean).join(" Â· ")}
                   </div>
                 ) : null}
               </div>
@@ -821,7 +855,7 @@ export default function LeadDetail() {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">Score (0–100)</label>
+                      <label className="text-xs font-medium text-muted-foreground">Score (0â€“100)</label>
                       <input className={inputCls} type="number" min="0" max="100" value={editScore} onChange={(e) => setEditScore(e.target.value)} />
                     </div>
                     <div className="space-y-1">
@@ -950,19 +984,21 @@ export default function LeadDetail() {
           </div>
         </div>
 
-        {/* Related Tabs — top level, full width */}
+        {/* Two-column: activities tabs + right sidebar */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4">
         <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden">
           {/* Tab headers */}
           <div className="flex border-b border-border bg-muted/30">
             {[
               { key: "activities", label: "Activities", count: activities.length },
               { key: "actions", label: "Actions", count: activities.filter((a) => a.type === "task").length },
+              { key: "social", label: "Social", count: 0, badge: "NEW" },
               { key: "contacts", label: "Contacts", count: linkedContacts.length || (lead.convertedContactId ? 1 : 0) },
               { key: "accounts", label: "Accounts", count: lead.convertedAccountId ? 1 : 0 },
             ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setRelatedTab(tab.key as "activities" | "actions" | "contacts" | "accounts")}
+                onClick={() => setRelatedTab(tab.key as "activities" | "actions" | "contacts" | "accounts" | "social")}
                 className={cn(
                   "px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors flex items-center gap-1.5",
                   relatedTab === tab.key
@@ -971,9 +1007,11 @@ export default function LeadDetail() {
                 )}
               >
                 {tab.label}
-                {tab.count > 0 && (
+                {"badge" in tab && tab.badge ? (
+                  <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-bold">{tab.badge}</span>
+                ) : tab.count > 0 ? (
                   <span className="bg-primary/10 text-primary text-[10px] px-1.5 py-0.5 rounded-full font-bold">{tab.count}</span>
-                )}
+                ) : null}
               </button>
             ))}
             <div className="flex-1" />
@@ -1201,7 +1239,7 @@ export default function LeadDetail() {
                                   className="text-xs bg-blue-50 text-blue-700 border-blue-200"
                                   title={opensTitle}
                                 >
-                                  Opened {opens}{isGmailProxy ? "+" : ""}×
+                                  Opened {opens}{isGmailProxy ? "+" : ""}Ã—
                                 </Badge>
                               )}
                               {isEmail && opens === 0 && (act.status === "completed" || act.status === "sent") && (
@@ -1228,12 +1266,12 @@ export default function LeadDetail() {
                             <span className="text-xs text-muted-foreground capitalize">{act.type}</span>
                             {act.dueDate && (
                               <span className="text-xs text-muted-foreground">
-                                · {format(new Date(act.dueDate), "MMM d")}
+                                Â· {format(new Date(act.dueDate), "MMM d")}
                               </span>
                             )}
                             {isEmail && act.completedAt && (
                               <span className="text-xs text-muted-foreground">
-                                · sent {format(new Date(act.completedAt), "MMM d, HH:mm")}
+                                Â· sent {format(new Date(act.completedAt), "MMM d, HH:mm")}
                               </span>
                             )}
                           </div>
@@ -1425,6 +1463,11 @@ export default function LeadDetail() {
             </div>
           )}
 
+          {/* Social Inbox tab */}
+          {relatedTab === "social" && (
+            <SocialInbox leadId={lead.id} leadName={`${lead.firstName} ${lead.lastName}`} />
+          )}
+
           {/* Contacts tab */}
           {relatedTab === "contacts" && (
             <div className="p-4">
@@ -1515,6 +1558,102 @@ export default function LeadDetail() {
             </div>
           )}
         </div>
+
+        {/* Right sidebar: Activities quick-log + Attachments */}
+        <div className="flex flex-col gap-3">
+          {/* Activities quick-log */}
+          <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <Activity className="w-4 h-4 text-primary" /> Activities
+              </h3>
+              <button onClick={() => void refetchActivities()} className="p-1 rounded hover:bg-muted transition-colors">
+                <RotateCw className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="p-3 border-b border-border">
+              <div className="flex gap-1 mb-2">
+                {([{k:"call",i:PhoneCall},{k:"email",i:Mail},{k:"task",i:ListTodo},{k:"event",i:CalendarPlus}] as const).map(({k,i:Icon})=>(
+                  <button key={k} onClick={()=>setSideActivitySubTab(k as any)} className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${sideActivitySubTab===k?"bg-primary text-primary-foreground":"bg-muted/60 text-muted-foreground hover:bg-muted"}`}>
+                    <Icon className="w-3 h-3"/>{k.charAt(0).toUpperCase()+k.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 h-8 px-2 rounded-md bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground"
+                  placeholder={`Recap the ${sideActivitySubTab}...`}
+                  value={sideActivityText}
+                  onChange={e=>setSideActivityText(e.target.value)}
+                  onKeyDown={async e=>{
+                    if(e.key==="Enter"&&sideActivityText.trim()){
+                      setIsAddingSideActivity(true);
+                      await fetch("/api/activities",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:sideActivitySubTab,subject:sideActivityText.slice(0,80),notes:sideActivityText,status:"completed",leadId:lead.id})});
+                      setSideActivityText(""); void refetchActivities(); setIsAddingSideActivity(false);
+                    }
+                  }}
+                />
+                <Button size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 px-3" disabled={isAddingSideActivity||!sideActivityText.trim()} onClick={async()=>{
+                  setIsAddingSideActivity(true);
+                  await fetch("/api/activities",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:sideActivitySubTab,subject:sideActivityText.slice(0,80),notes:sideActivityText,status:"completed",leadId:lead.id})});
+                  setSideActivityText(""); void refetchActivities(); setIsAddingSideActivity(false);
+                }}>Add</Button>
+              </div>
+            </div>
+            <div className="divide-y divide-border max-h-72 overflow-y-auto">
+              {activities.length===0?(
+                <div className="py-6 text-center text-muted-foreground text-xs">No activities yet.</div>
+              ):activities.slice(0,8).map((a:any)=>{
+                const Icon = ACTIVITY_ICONS[a.type] ?? Activity;
+                return (
+                  <div key={a.id} className="px-3 py-2 flex gap-2 items-start">
+                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mt-0.5 shrink-0">
+                      <Icon className="w-3 h-3 text-primary"/>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-foreground truncate">{a.subject}</p>
+                      <p className="text-[10px] text-muted-foreground">{a.type} · {a.createdAt ? format(new Date(a.createdAt),"MMM d, h:mm a") : ""}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Attachments */}
+          <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
+              <Paperclip className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground flex-1">Attachments</h3>
+            </div>
+            <div className="p-3 space-y-2">
+              <div
+                className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDraggingFile?"border-primary bg-primary/5":"border-border hover:border-primary/40"}`}
+                onDragOver={e=>{e.preventDefault();setIsDraggingFile(true);}}
+                onDragLeave={()=>setIsDraggingFile(false)}
+                onDrop={e=>{e.preventDefault();setIsDraggingFile(false);Array.from(e.dataTransfer.files).forEach(uploadLeadFile);}}
+                onClick={()=>{ const inp=document.createElement("input"); inp.type="file"; inp.multiple=true; inp.onchange=()=>Array.from(inp.files??[]).forEach(uploadLeadFile); inp.click(); }}
+              >
+                <Upload className="w-5 h-5 mx-auto mb-1 text-muted-foreground opacity-50" />
+                <p className="text-xs text-muted-foreground">Drag &amp; drop or click to upload</p>
+                <p className="text-[10px] text-muted-foreground/60 mt-0.5">PDF, Word, Excel, images</p>
+              </div>
+              {leadAttachments.map((att:any)=>(
+                <div key={att.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/40 border border-border group">
+                  <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0"/>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{att.file_name}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatFileSize(att.file_size)}</p>
+                  </div>
+                  <button onClick={()=>void deleteLeadAttachment(att.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 transition-all">
+                    <Trash className="w-3 h-3 text-destructive"/>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        </div>{/* end two-column grid */}
       </div>
 
       {/* Email Compose */}
@@ -1782,4 +1921,5 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
     </Dialog>
   );
 }
+
 

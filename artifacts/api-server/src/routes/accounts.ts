@@ -5,7 +5,6 @@ import type { InsertAccount } from "@workspace/db";
 import { eq, ilike, sql, and, desc, inArray } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
-import { getOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 router.use("/accounts", requireScreenAccess("accounts"));
@@ -92,7 +91,7 @@ const ALLOWED_FIELDS = [
 
 router.get("/accounts", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
+    const orgId = req.orgId as number;
     const { search, industry, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -107,9 +106,11 @@ router.get("/accounts", async (req, res) => {
     if (search) conditions.push(ilike(accountsTable.name, `%${search}%`));
     if (industry) conditions.push(eq(accountsTable.industry, industry));
 
-    const whereClause = and(...conditions);
-    const data = await baseQuery.where(whereClause).limit(limitNum).offset(offset);
+    const data = await baseQuery
+      .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      .orderBy(desc(accountsTable.createdAt)).limit(limitNum).offset(offset);
 
+    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(accountsTable).where(whereClause);
     const enriched = await enrichAccounts(data, orgId);
 
@@ -122,16 +123,15 @@ router.get("/accounts", async (req, res) => {
 
 router.post("/accounts", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
-    const payload: Partial<InsertAccount> = { orgId } as Partial<InsertAccount>;
+    const payload: Partial<InsertAccount> = {};
     for (const key of ALLOWED_FIELDS) {
       if (req.body[key] !== undefined) {
         (payload as Record<string, unknown>)[key] = req.body[key];
       }
     }
+    payload.orgId = req.orgId as number;
     const sessionUser = req.session?.user as { id?: number; name?: string } | undefined;
-    // Only set createdBy/modifiedBy for real DB users (id > 1); demo user id=1 has no users table row
-    if (sessionUser?.id && sessionUser.id > 1) {
+    if (sessionUser?.id) {
       payload.createdBy = sessionUser.id;
       payload.modifiedBy = sessionUser.id;
     }
@@ -149,9 +149,9 @@ router.post("/accounts", async (req, res) => {
 
 router.get("/accounts/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid account ID" }); return; }
+    const orgId = req.orgId as number;
     const [account] = await db
       .select(accountFields)
       .from(accountsTable)
@@ -181,7 +181,6 @@ router.get("/accounts/:id", async (req, res) => {
 
 router.put("/accounts/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const payload: Partial<InsertAccount> & { updatedAt: Date } = { updatedAt: new Date() };
@@ -191,10 +190,10 @@ router.put("/accounts/:id", async (req, res) => {
       }
     }
     const sessionUser = req.session?.user as { id?: number; name?: string } | undefined;
-    if (sessionUser?.id && sessionUser.id > 1) payload.modifiedBy = sessionUser.id;
+    if (sessionUser?.id) payload.modifiedBy = sessionUser.id;
     const [account] = await db.update(accountsTable)
       .set(payload)
-      .where(and(eq(accountsTable.id, id), eq(accountsTable.orgId, orgId)))
+      .where(and(eq(accountsTable.id, id), eq(accountsTable.orgId, req.orgId as number)))
       .returning();
     if (!account) {
       res.status(404).json({ error: "Account not found" });
@@ -213,15 +212,9 @@ router.put("/accounts/:id", async (req, res) => {
 
 router.delete("/accounts/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid account ID" }); return; }
-    const [existing] = await db.select({ id: accountsTable.id }).from(accountsTable).where(and(eq(accountsTable.id, id), eq(accountsTable.orgId, orgId)));
-    if (!existing) {
-      res.status(404).json({ error: "Account not found" });
-      return;
-    }
-    await db.delete(accountsTable).where(and(eq(accountsTable.id, id), eq(accountsTable.orgId, orgId)));
+    await db.delete(accountsTable).where(and(eq(accountsTable.id, id), eq(accountsTable.orgId, req.orgId as number)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);
@@ -231,13 +224,12 @@ router.delete("/accounts/:id", async (req, res) => {
 
 router.get("/accounts/:id/contacts", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const accountId = parseId(req.params.id);
     if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const data = await db
       .select()
       .from(contactsTable)
-      .where(and(eq(contactsTable.accountId, accountId), eq(contactsTable.orgId, orgId)))
+      .where(and(eq(contactsTable.accountId, accountId), eq(contactsTable.orgId, req.orgId as number)))
       .orderBy(contactsTable.firstName);
     res.json({ data });
   } catch (err) {
@@ -248,13 +240,12 @@ router.get("/accounts/:id/contacts", async (req, res) => {
 
 router.get("/accounts/:id/opportunities", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const accountId = parseId(req.params.id);
     if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const data = await db
       .select()
       .from(opportunitiesTable)
-      .where(and(eq(opportunitiesTable.accountId, accountId), eq(opportunitiesTable.orgId, orgId)))
+      .where(and(eq(opportunitiesTable.accountId, accountId), eq(opportunitiesTable.orgId, req.orgId as number)))
       .orderBy(opportunitiesTable.closeDate);
     res.json({ data: data.map((o) => ({ ...o, amount: o.amount ? Number(o.amount) : null })) });
   } catch (err) {
@@ -265,13 +256,12 @@ router.get("/accounts/:id/opportunities", async (req, res) => {
 
 router.get("/accounts/:id/activities", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const accountId = parseId(req.params.id);
     if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const data = await db
       .select()
       .from(activitiesTable)
-      .where(and(eq(activitiesTable.accountId, accountId), eq(activitiesTable.orgId, orgId)))
+      .where(and(eq(activitiesTable.accountId, accountId), eq(activitiesTable.orgId, req.orgId as number)))
       .orderBy(desc(activitiesTable.createdAt));
     res.json({ data });
   } catch (err) {
@@ -282,13 +272,12 @@ router.get("/accounts/:id/activities", async (req, res) => {
 
 router.get("/accounts/:id/quotes", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const accountId = parseId(req.params.id);
     if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const data = await db
       .select()
       .from(quotesTable)
-      .where(and(eq(quotesTable.accountId, accountId), eq(quotesTable.orgId, orgId)))
+      .where(and(eq(quotesTable.accountId, accountId), eq(quotesTable.orgId, req.orgId as number)))
       .orderBy(desc(quotesTable.createdAt));
     res.json({
       data: data.map((q) => ({
@@ -307,13 +296,12 @@ router.get("/accounts/:id/quotes", async (req, res) => {
 
 router.get("/accounts/:id/cases", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const accountId = parseId(req.params.id);
     if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const data = await db
       .select()
       .from(casesTable)
-      .where(and(eq(casesTable.accountId, accountId), eq(casesTable.orgId, orgId)))
+      .where(and(eq(casesTable.accountId, accountId), eq(casesTable.orgId, req.orgId as number)))
       .orderBy(desc(casesTable.createdAt));
     res.json({ data });
   } catch (err) {

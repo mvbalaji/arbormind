@@ -6,6 +6,7 @@ import { productsTable } from "./products";
 
 export const priceBookEntriesTable = pgTable("price_book_entries", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
   priceBookId: integer("price_book_id").notNull().references(() => priceBooksTable.id),
   productId: integer("product_id").notNull().references(() => productsTable.id),
   listPrice: numeric("list_price", { precision: 15, scale: 2 }).notNull(),

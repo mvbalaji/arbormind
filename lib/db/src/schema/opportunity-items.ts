@@ -7,6 +7,7 @@ import { priceBookEntriesTable } from "./price-book-entries";
 
 export const opportunityItemsTable = pgTable("opportunity_items", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
   opportunityId: integer("opportunity_id").notNull().references(() => opportunitiesTable.id),
   productId: integer("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   priceBookEntryId: integer("price_book_entry_id").references(() => priceBookEntriesTable.id, { onDelete: "set null" }),

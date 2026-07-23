@@ -1,16 +1,20 @@
-import { pgTable, serial, text, integer, boolean, timestamp, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, jsonb, uniqueIndex, primaryKey, foreignKey } from "drizzle-orm/pg-core";
 
 export const recordTypesTable = pgTable("record_types", {
-  key: text("key").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
+  key: text("key").notNull(),
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(100),
-});
+}, (t) => ({
+  pk: primaryKey({ columns: [t.orgId, t.key] }),
+}));
 
 export const recordAccessTable = pgTable(
   "record_access",
   {
     id: serial("id").primaryKey(),
-    recordTypeKey: text("record_type_key").notNull().references(() => recordTypesTable.key, { onDelete: "cascade" }),
+    orgId: integer("org_id").notNull().default(1),
+    recordTypeKey: text("record_type_key").notNull(),
     roleKey: text("role_key").notNull(),
     canView: boolean("can_view").notNull().default(false),
     canReadOnly: boolean("can_read_only").notNull().default(false),
@@ -21,12 +25,18 @@ export const recordAccessTable = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
-    recordTypeRoleUnique: uniqueIndex("record_access_type_role_unique").on(t.recordTypeKey, t.roleKey),
+    recordTypeRoleUnique: uniqueIndex("record_access_type_role_unique").on(t.orgId, t.recordTypeKey, t.roleKey),
+    recordTypeFk: foreignKey({
+      columns: [t.orgId, t.recordTypeKey],
+      foreignColumns: [recordTypesTable.orgId, recordTypesTable.key],
+      name: "record_access_type_fk",
+    }).onDelete("cascade"),
   })
 );
 
 export const recordAccessAuditLogTable = pgTable("record_access_audit_log", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
   recordTypeKey: text("record_type_key").notNull(),
   roleKey: text("role_key").notNull(),
   previousPermissions: jsonb("previous_permissions"),

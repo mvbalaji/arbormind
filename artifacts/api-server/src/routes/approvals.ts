@@ -22,7 +22,13 @@ const isOperator = (s: unknown): s is (typeof OPERATORS)[number] =>
   typeof s === "string" && (OPERATORS as readonly string[]).includes(s);
 
 function getSessionUser(req: any) {
-  return req.session?.user ?? req.user ?? null;
+  if (req.session?.user) return req.session.user;
+  if (req.user) return req.user;
+  // Dev fallback: when no Google OAuth is configured, treat all requests as admin
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return { id: null, email: "dev@crmai.local", name: "Dev Admin", role: "admin", orgId: 1 };
+  }
+  return null;
 }
 
 function requireAuth(req: any, res: any): boolean {
@@ -63,15 +69,17 @@ const DEFAULT_ROLES = [
   { name: "Logistics_Lead", level: 1, description: "Logistics approval" },
 ];
 
-async function ensureSeed() {
-  const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(approvalRolesTable);
+async function ensureSeed(orgId: number) {
+  const [{ count }] = await db.select({ count: sql<number>`count(*)` }).from(approvalRolesTable)
+    .where(eq(approvalRolesTable.orgId, orgId));
   if (Number(count) === 0) {
-    await db.insert(approvalRolesTable).values(DEFAULT_ROLES);
+    await db.insert(approvalRolesTable).values(DEFAULT_ROLES.map((r) => ({ ...r, orgId })));
   }
   for (const entity of ENTITIES) {
-    const [existing] = await db.select().from(approvalConfigsTable).where(eq(approvalConfigsTable.entity, entity));
+    const [existing] = await db.select().from(approvalConfigsTable)
+      .where(and(eq(approvalConfigsTable.entity, entity), eq(approvalConfigsTable.orgId, orgId)));
     if (!existing) {
-      await db.insert(approvalConfigsTable).values({ entity, multiLevel: entity === "opportunity", enabled: true });
+      await db.insert(approvalConfigsTable).values({ orgId, entity, multiLevel: entity === "opportunity", enabled: true });
     }
   }
 }
@@ -92,8 +100,11 @@ function handleDbError(req: any, res: any, err: any) {
 router.get("/approvals/roles", async (req, res) => {
   if (!requireAuth(req, res)) return;
   try {
-    await ensureSeed();
-    const data = await db.select().from(approvalRolesTable).orderBy(approvalRolesTable.level, approvalRolesTable.name);
+    const orgId = req.orgId as number;
+    await ensureSeed(orgId);
+    const data = await db.select().from(approvalRolesTable)
+      .where(eq(approvalRolesTable.orgId, orgId))
+      .orderBy(approvalRolesTable.level, approvalRolesTable.name);
     res.json({ data });
   } catch (err) { handleDbError(req, res, err); }
 });
@@ -108,6 +119,7 @@ router.post("/approvals/roles", async (req, res) => {
     }
     const lvl = Number(level);
     const [role] = await db.insert(approvalRolesTable).values({
+      orgId: req.orgId as number,
       name: name.trim(),
       level: Number.isFinite(lvl) && lvl > 0 ? lvl : 1,
       description: description ?? null,
@@ -132,7 +144,9 @@ router.patch("/approvals/roles/:id", async (req, res) => {
       patch.level = lvl;
     }
     if (description !== undefined) patch.description = description;
-    const [role] = await db.update(approvalRolesTable).set(patch).where(eq(approvalRolesTable.id, id)).returning();
+    const [role] = await db.update(approvalRolesTable).set(patch)
+      .where(and(eq(approvalRolesTable.id, id), eq(approvalRolesTable.orgId, req.orgId as number)))
+      .returning();
     if (!role) { res.status(404).json({ error: "Role not found" }); return; }
     res.json(role);
   } catch (err) { handleDbError(req, res, err); }
@@ -142,7 +156,8 @@ router.delete("/approvals/roles/:id", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
     const id = parseId(req.params.id, res); if (id == null) return;
-    await db.delete(approvalRolesTable).where(eq(approvalRolesTable.id, id));
+    await db.delete(approvalRolesTable)
+      .where(and(eq(approvalRolesTable.id, id), eq(approvalRolesTable.orgId, req.orgId as number)));
     res.json({ success: true, id });
   } catch (err) { handleDbError(req, res, err); }
 });
@@ -151,8 +166,9 @@ router.delete("/approvals/roles/:id", async (req, res) => {
 router.get("/approvals/configs", async (req, res) => {
   if (!requireAuth(req, res)) return;
   try {
-    await ensureSeed();
-    const data = await db.select().from(approvalConfigsTable);
+    const orgId = req.orgId as number;
+    await ensureSeed(orgId);
+    const data = await db.select().from(approvalConfigsTable).where(eq(approvalConfigsTable.orgId, orgId));
     res.json({ data });
   } catch (err) { handleDbError(req, res, err); }
 });
@@ -160,6 +176,7 @@ router.get("/approvals/configs", async (req, res) => {
 router.put("/approvals/configs/:entity", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
+    const orgId = req.orgId as number;
     const entity = req.params.entity;
     if (!isEntity(entity)) { res.status(400).json({ error: "Invalid entity" }); return; }
     const { multiLevel, enabled } = req.body ?? {};
@@ -170,9 +187,12 @@ router.put("/approvals/configs/:entity", async (req, res) => {
     const patch: Record<string, unknown> = { updatedAt: new Date() };
     if (mlParsed !== undefined) patch.multiLevel = mlParsed;
     if (enParsed !== undefined) patch.enabled = enParsed;
-    const [config] = await db.update(approvalConfigsTable).set(patch).where(eq(approvalConfigsTable.entity, entity)).returning();
+    const [config] = await db.update(approvalConfigsTable).set(patch)
+      .where(and(eq(approvalConfigsTable.entity, entity), eq(approvalConfigsTable.orgId, orgId)))
+      .returning();
     if (!config) {
       const [created] = await db.insert(approvalConfigsTable).values({
+        orgId,
         entity,
         multiLevel: mlParsed ?? false,
         enabled: enParsed ?? true,
@@ -188,12 +208,13 @@ router.put("/approvals/configs/:entity", async (req, res) => {
 router.get("/approvals/criteria", async (req, res) => {
   if (!requireAuth(req, res)) return;
   try {
+    const orgId = req.orgId as number;
     const entity = req.query.entity as string | undefined;
     if (entity !== undefined && !isEntity(entity)) { res.status(400).json({ error: "Invalid entity" }); return; }
     const q = db.select().from(approvalCriteriaTable);
     const data = entity
-      ? await q.where(eq(approvalCriteriaTable.entity, entity)).orderBy(approvalCriteriaTable.level, approvalCriteriaTable.name)
-      : await q.orderBy(approvalCriteriaTable.entity, approvalCriteriaTable.level, approvalCriteriaTable.name);
+      ? await q.where(and(eq(approvalCriteriaTable.entity, entity), eq(approvalCriteriaTable.orgId, orgId))).orderBy(approvalCriteriaTable.level, approvalCriteriaTable.name)
+      : await q.where(eq(approvalCriteriaTable.orgId, orgId)).orderBy(approvalCriteriaTable.entity, approvalCriteriaTable.level, approvalCriteriaTable.name);
     res.json({ data: data.map(serializeCriterion) });
   } catch (err) { handleDbError(req, res, err); }
 });
@@ -204,13 +225,14 @@ router.get("/approvals/criteria", async (req, res) => {
 router.post("/approvals/preview", async (req, res) => {
   if (!requireAuth(req, res)) return;
   try {
+    const orgId = req.orgId as number;
     const { entity, snapshot } = req.body ?? {};
     if (!isEntity(entity)) { res.status(400).json({ error: "Invalid entity" }); return; }
     if (!snapshot || typeof snapshot !== "object") { res.status(400).json({ error: "snapshot required" }); return; }
-    const [config] = await db.select().from(approvalConfigsTable).where(eq(approvalConfigsTable.entity, entity));
+    const [config] = await db.select().from(approvalConfigsTable).where(and(eq(approvalConfigsTable.entity, entity), eq(approvalConfigsTable.orgId, orgId)));
     if (config && config.enabled === false) { res.json({ data: [] }); return; }
     const rows = await db.select().from(approvalCriteriaTable)
-      .where(and(eq(approvalCriteriaTable.entity, entity), eq(approvalCriteriaTable.active, true)));
+      .where(and(eq(approvalCriteriaTable.entity, entity), eq(approvalCriteriaTable.active, true), eq(approvalCriteriaTable.orgId, orgId)));
     const seen = new Set<string>();
     const matches: Array<{ name: string; field: string; operator: string; threshold: string | null; levels: number }> = [];
     for (const c of rows) {
@@ -242,6 +264,7 @@ router.post("/approvals/criteria", async (req, res) => {
     const activeParsed = active === undefined ? true : parseBool(active);
     if (activeParsed === undefined) { res.status(400).json({ error: "active must be boolean" }); return; }
     const [criterion] = await db.insert(approvalCriteriaTable).values({
+      orgId: req.orgId as number,
       entity,
       name: name.trim(),
       field,
@@ -287,7 +310,9 @@ router.patch("/approvals/criteria/:id", async (req, res) => {
       if (a === undefined) { res.status(400).json({ error: "active must be boolean" }); return; }
       patch.active = a;
     }
-    const [criterion] = await db.update(approvalCriteriaTable).set(patch).where(eq(approvalCriteriaTable.id, id)).returning();
+    const [criterion] = await db.update(approvalCriteriaTable).set(patch)
+      .where(and(eq(approvalCriteriaTable.id, id), eq(approvalCriteriaTable.orgId, req.orgId as number)))
+      .returning();
     if (!criterion) { res.status(404).json({ error: "Criterion not found" }); return; }
     res.json(serializeCriterion(criterion));
   } catch (err) { handleDbError(req, res, err); }
@@ -297,7 +322,8 @@ router.delete("/approvals/criteria/:id", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
     const id = parseId(req.params.id, res); if (id == null) return;
-    await db.delete(approvalCriteriaTable).where(eq(approvalCriteriaTable.id, id));
+    await db.delete(approvalCriteriaTable)
+      .where(and(eq(approvalCriteriaTable.id, id), eq(approvalCriteriaTable.orgId, req.orgId as number)));
     res.json({ success: true, id });
   } catch (err) { handleDbError(req, res, err); }
 });
@@ -309,7 +335,7 @@ type RequestStatus = (typeof REQUEST_STATUSES)[number];
 const isStatus = (s: unknown): s is RequestStatus =>
   typeof s === "string" && (REQUEST_STATUSES as readonly string[]).includes(s);
 
-async function loadRequestWithAudit(requestId: number) {
+async function loadRequestWithAudit(requestId: number, orgId: number) {
   const [request] = await db
     .select({
       id: approvalRequestsTable.id,
@@ -333,7 +359,7 @@ async function loadRequestWithAudit(requestId: number) {
     .leftJoin(approvalRolesTable, eq(approvalRolesTable.id, approvalRequestsTable.roleId))
     .leftJoin(sql`${usersTable} as req_user`, sql`req_user.id = ${approvalRequestsTable.requestedBy}`)
     .leftJoin(sql`${usersTable} as dec_user`, sql`dec_user.id = ${approvalRequestsTable.decidedBy}`)
-    .where(eq(approvalRequestsTable.id, requestId));
+    .where(and(eq(approvalRequestsTable.id, requestId), eq(approvalRequestsTable.orgId, orgId)));
 
   if (!request) return null;
 
@@ -347,7 +373,7 @@ async function loadRequestWithAudit(requestId: number) {
       createdAt: approvalAuditEventsTable.createdAt,
     })
     .from(approvalAuditEventsTable)
-    .where(eq(approvalAuditEventsTable.requestId, requestId))
+    .where(and(eq(approvalAuditEventsTable.requestId, requestId), eq(approvalAuditEventsTable.orgId, orgId)))
     .orderBy(approvalAuditEventsTable.createdAt, approvalAuditEventsTable.id);
 
   return { ...request, events };
@@ -357,11 +383,12 @@ async function loadRequestWithAudit(requestId: number) {
 router.get("/approvals/requests", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const sessionUser = getSessionUser(req);
+  const orgId = req.orgId as number;
   try {
     const { entity, entityId, status, scope } = req.query as Record<string, string | undefined>;
     const scopeVal = scope === "mine" || scope === "team" || scope === "all" ? scope : null;
 
-    const filters: any[] = [];
+    const filters: any[] = [eq(approvalRequestsTable.orgId, orgId)];
 
     if (scopeVal) {
       // List mode for the global Approvals page.
@@ -432,7 +459,7 @@ router.get("/approvals/requests", async (req, res) => {
         createdAt: approvalAuditEventsTable.createdAt,
       })
       .from(approvalAuditEventsTable)
-      .where(inArray(approvalAuditEventsTable.requestId, ids))
+      .where(and(inArray(approvalAuditEventsTable.requestId, ids), eq(approvalAuditEventsTable.orgId, orgId)))
       .orderBy(approvalAuditEventsTable.createdAt, approvalAuditEventsTable.id);
 
     const eventsByRequest = new Map<number, typeof allEvents>();
@@ -450,6 +477,7 @@ router.get("/approvals/requests", async (req, res) => {
 router.post("/approvals/requests", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const user = getSessionUser(req);
+  const orgId = req.orgId as number;
   try {
     const { entity, entityId, level, roleId, comment } = req.body ?? {};
     if (!isEntity(entity)) { res.status(400).json({ error: "Invalid entity" }); return; }
@@ -468,13 +496,14 @@ router.post("/approvals/requests", async (req, res) => {
       const [existingRole] = await db
         .select({ id: approvalRolesTable.id })
         .from(approvalRolesTable)
-        .where(eq(approvalRolesTable.name, DEFAULT_ROLE));
+        .where(and(eq(approvalRolesTable.name, DEFAULT_ROLE), eq(approvalRolesTable.orgId, orgId)));
       if (existingRole) {
         roleIdNum = existingRole.id;
       } else {
         const [createdRole] = await db
           .insert(approvalRolesTable)
           .values({
+            orgId,
             name: DEFAULT_ROLE,
             level: 1,
             description: "Default approver group — managers and admins.",
@@ -485,6 +514,7 @@ router.post("/approvals/requests", async (req, res) => {
     }
 
     const [created] = await db.insert(approvalRequestsTable).values({
+      orgId,
       entity,
       entityId: idNum,
       status: "open",
@@ -495,6 +525,7 @@ router.post("/approvals/requests", async (req, res) => {
     }).returning();
 
     await db.insert(approvalAuditEventsTable).values({
+      orgId,
       requestId: created.id,
       event: "submitted",
       actorUserId: user.id ?? null,
@@ -502,7 +533,7 @@ router.post("/approvals/requests", async (req, res) => {
       comment: trimmedComment,
     });
 
-    const full = await loadRequestWithAudit(created.id);
+    const full = await loadRequestWithAudit(created.id, orgId);
     res.status(201).json({ data: full });
   } catch (err) { handleDbError(req, res, err); }
 });
@@ -512,6 +543,7 @@ router.post("/approvals/requests/:id/decision", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const user = getSessionUser(req);
   if (user.role !== "admin" && user.role !== "manager") { res.status(403).json({ error: "Forbidden — only managers and admins can approve or reject" }); return; }
+  const orgId = req.orgId as number;
   try {
     const id = parseId(req.params.id, res);
     if (id == null) return;
@@ -525,17 +557,19 @@ router.post("/approvals/requests/:id/decision", async (req, res) => {
       res.status(400).json({ error: "A comment is required when rejecting an approval request." });
       return;
     }
-    const [existing] = await db.select().from(approvalRequestsTable).where(eq(approvalRequestsTable.id, id));
+    const [existing] = await db.select().from(approvalRequestsTable)
+      .where(and(eq(approvalRequestsTable.id, id), eq(approvalRequestsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Request not found" }); return; }
     const now = new Date();
 
     const finalId = await db.transaction(async (tx) => {
       const updated = await tx.update(approvalRequestsTable)
         .set({ status: decision, decidedBy: user.id ?? null, decidedAt: now, updatedAt: now })
-        .where(and(eq(approvalRequestsTable.id, id), eq(approvalRequestsTable.status, "open")))
+        .where(and(eq(approvalRequestsTable.id, id), eq(approvalRequestsTable.status, "open"), eq(approvalRequestsTable.orgId, orgId)))
         .returning({ id: approvalRequestsTable.id });
       if (updated.length === 0) return null;
       await tx.insert(approvalAuditEventsTable).values({
+        orgId,
         requestId: id,
         event: decision,
         actorUserId: user.id ?? null,
@@ -557,7 +591,7 @@ router.post("/approvals/requests/:id/decision", async (req, res) => {
       );
     }
 
-    const full = await loadRequestWithAudit(id);
+    const full = await loadRequestWithAudit(id, orgId);
     res.json({ data: full });
   } catch (err) { handleDbError(req, res, err); }
 });
@@ -566,6 +600,7 @@ router.post("/approvals/requests/:id/decision", async (req, res) => {
 router.post("/approvals/requests/:id/comment", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const user = getSessionUser(req);
+  const orgId = req.orgId as number;
   try {
     const id = parseId(req.params.id, res);
     if (id == null) return;
@@ -574,10 +609,12 @@ router.post("/approvals/requests/:id/comment", async (req, res) => {
       res.status(400).json({ error: "comment is required" });
       return;
     }
-    const [existing] = await db.select().from(approvalRequestsTable).where(eq(approvalRequestsTable.id, id));
+    const [existing] = await db.select().from(approvalRequestsTable)
+      .where(and(eq(approvalRequestsTable.id, id), eq(approvalRequestsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Request not found" }); return; }
 
     await db.insert(approvalAuditEventsTable).values({
+      orgId,
       requestId: id,
       event: "commented",
       actorUserId: user.id ?? null,
@@ -585,7 +622,7 @@ router.post("/approvals/requests/:id/comment", async (req, res) => {
       comment: comment.trim(),
     });
 
-    const full = await loadRequestWithAudit(id);
+    const full = await loadRequestWithAudit(id, orgId);
     res.json({ data: full });
   } catch (err) { handleDbError(req, res, err); }
 });
@@ -594,10 +631,12 @@ router.post("/approvals/requests/:id/comment", async (req, res) => {
 router.post("/approvals/requests/:id/cancel", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const user = getSessionUser(req);
+  const orgId = req.orgId as number;
   try {
     const id = parseId(req.params.id, res);
     if (id == null) return;
-    const [existing] = await db.select().from(approvalRequestsTable).where(eq(approvalRequestsTable.id, id));
+    const [existing] = await db.select().from(approvalRequestsTable)
+      .where(and(eq(approvalRequestsTable.id, id), eq(approvalRequestsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Request not found" }); return; }
     if (existing.requestedBy !== user.id && user.role !== "admin") {
       res.status(403).json({ error: "Only the requester or an admin can cancel" });
@@ -611,10 +650,11 @@ router.post("/approvals/requests/:id/cancel", async (req, res) => {
     const finalId = await db.transaction(async (tx) => {
       const updated = await tx.update(approvalRequestsTable)
         .set({ status: "cancelled", decidedBy: user.id ?? null, decidedAt: now, updatedAt: now })
-        .where(and(eq(approvalRequestsTable.id, id), eq(approvalRequestsTable.status, "open")))
+        .where(and(eq(approvalRequestsTable.id, id), eq(approvalRequestsTable.status, "open"), eq(approvalRequestsTable.orgId, orgId)))
         .returning({ id: approvalRequestsTable.id });
       if (updated.length === 0) return null;
       await tx.insert(approvalAuditEventsTable).values({
+        orgId,
         requestId: id,
         event: "cancelled",
         actorUserId: user.id ?? null,
@@ -626,7 +666,7 @@ router.post("/approvals/requests/:id/cancel", async (req, res) => {
 
     if (finalId == null) { res.status(409).json({ error: "Request is already closed" }); return; }
 
-    const full = await loadRequestWithAudit(id);
+    const full = await loadRequestWithAudit(id, orgId);
     res.json({ data: full });
   } catch (err) { handleDbError(req, res, err); }
 });

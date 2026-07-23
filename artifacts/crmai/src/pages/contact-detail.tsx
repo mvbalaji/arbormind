@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -134,7 +134,7 @@ export default function ContactDetail() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6 max-w-5xl mx-auto">
+      <div className="flex flex-col gap-3">
         {/* Back + Header */}
         <div>
           <Link href="/contacts">
@@ -155,7 +155,7 @@ export default function ContactDetail() {
                 </h1>
                 {contact.title && (
                   <p className="text-muted-foreground mt-0.5">
-                    {contact.title}{contact.department ? ` · ${contact.department}` : ""}
+                    {contact.title}{contact.department ? ` Â· ${contact.department}` : ""}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-3 mt-3">
@@ -247,7 +247,7 @@ export default function ContactDetail() {
                           </span>
                         )}
                         {act.opportunityName && (
-                          <span className="text-xs text-muted-foreground">· {act.opportunityName}</span>
+                          <span className="text-xs text-muted-foreground">Â· {act.opportunityName}</span>
                         )}
                       </div>
                     </div>
@@ -303,8 +303,8 @@ export default function ContactDetail() {
 
         {/* About Tab */}
         {activeTab === "about" && (
-          <Card className="glass-panel border-border p-6">
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+          <Card className="glass-panel border-border p-4">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
               {[
                 { label: "Email", value: contact.email },
                 { label: "Phone", value: contact.phone },
@@ -319,9 +319,9 @@ export default function ContactDetail() {
                 { label: "Created", value: contact.createdAt ? format(new Date(contact.createdAt), "MMM d, yyyy") : null },
               ].map(({ label, value }) =>
                 value ? (
-                  <div key={label}>
-                    <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
-                    <dd className="text-sm text-foreground">{value}</dd>
+                  <div key={label} className="flex items-baseline gap-2">
+                    <dt className="text-xs text-muted-foreground w-24 flex-shrink-0">{label}</dt>
+                    <dd className="text-xs text-foreground font-medium">{value}</dd>
                   </div>
                 ) : null
               )}
@@ -338,3 +338,4 @@ export default function ContactDetail() {
     </Layout>
   );
 }
+

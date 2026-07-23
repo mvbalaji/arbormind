@@ -5,6 +5,7 @@ export const opportunityStageHistoryTable = pgTable(
   "opportunity_stage_history",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().default(1),
     opportunityId: integer("opportunity_id")
       .notNull()
       .references(() => opportunitiesTable.id, { onDelete: "cascade" }),

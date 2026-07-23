@@ -4,8 +4,6 @@ import { campaignsTable, activitiesTable, usersTable } from "@workspace/db";
 import { eq, ilike, or, sql, and } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
-import { getEmailSettingsRow, resolveSmtpConfig } from "../lib/smtp-config";
-import { getOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 router.use("/campaigns", requireScreenAccess("campaigns"));
@@ -27,13 +25,12 @@ function formatCampaign(c: Record<string, unknown>) {
 
 router.get("/campaigns", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const { search, status, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [eq(campaignsTable.orgId, orgId)];
+    const conditions = [eq(campaignsTable.orgId, req.orgId as number)];
     if (search) {
       conditions.push(or(
         ilike(campaignsTable.name, `%${search}%`),
@@ -75,9 +72,8 @@ function coerceCampaignBody(input: Record<string, unknown>): Record<string, unkn
 
 router.post("/campaigns", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
-    const body = { ...coerceCampaignBody(req.body), orgId };
-    const [campaign] = await db.insert(campaignsTable).values(body as typeof campaignsTable.$inferInsert).returning();
+    const body = coerceCampaignBody(req.body);
+    const [campaign] = await db.insert(campaignsTable).values({ ...body, orgId: req.orgId as number } as typeof campaignsTable.$inferInsert).returning();
     res.status(201).json(formatCampaign(campaign));
   } catch (err) {
     req.log.error(err);
@@ -87,8 +83,7 @@ router.post("/campaigns", async (req, res) => {
 
 router.get("/campaigns/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
-    const [campaign] = await db.select().from(campaignsTable).where(and(eq(campaignsTable.id, parseInt(req.params.id)), eq(campaignsTable.orgId, orgId)));
+    const [campaign] = await db.select().from(campaignsTable).where(and(eq(campaignsTable.id, parseInt(req.params.id)), eq(campaignsTable.orgId, req.orgId as number)));
     if (!campaign) {
       res.status(404).json({ error: "Campaign not found" });
     } else {
@@ -102,11 +97,10 @@ router.get("/campaigns/:id", async (req, res) => {
 
 router.put("/campaigns/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const body = { ...coerceCampaignBody(req.body), updatedAt: new Date() };
     const [campaign] = await db.update(campaignsTable)
       .set(body)
-      .where(and(eq(campaignsTable.id, parseInt(req.params.id)), eq(campaignsTable.orgId, orgId)))
+      .where(and(eq(campaignsTable.id, parseInt(req.params.id)), eq(campaignsTable.orgId, req.orgId as number)))
       .returning();
     if (!campaign) {
       res.status(404).json({ error: "Campaign not found" });
@@ -121,9 +115,8 @@ router.put("/campaigns/:id", async (req, res) => {
 
 router.delete("/campaigns/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
-    await db.delete(campaignsTable).where(and(eq(campaignsTable.id, id), eq(campaignsTable.orgId, orgId)));
+    await db.delete(campaignsTable).where(and(eq(campaignsTable.id, id), eq(campaignsTable.orgId, req.orgId as number)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);
@@ -144,7 +137,7 @@ router.post("/campaigns/:id/launch", async (req, res) => {
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    const orgId = getOrgId(req);
+    const orgId = req.orgId as number;
     const campaignId = parseInt(req.params.id);
     const [campaign] = await db.select().from(campaignsTable).where(and(eq(campaignsTable.id, campaignId), eq(campaignsTable.orgId, orgId)));
 
@@ -159,7 +152,7 @@ router.post("/campaigns/:id/launch", async (req, res) => {
     // 1. Atomically update status
     const [updated] = await db.update(campaignsTable)
       .set({ status: "active", launchedAt: now, updatedAt: now })
-      .where(eq(campaignsTable.id, campaignId))
+      .where(and(eq(campaignsTable.id, campaignId), eq(campaignsTable.orgId, orgId)))
       .returning();
 
     // 2. Log activity (best-effort)
@@ -177,6 +170,7 @@ router.post("/campaigns/:id/launch", async (req, res) => {
     ].join("\n");
 
     await db.insert(activitiesTable).values({
+      orgId,
       type: "note",
       subject: `🚀 Campaign Launched: ${campaign.name}`,
       description: activityDesc,
@@ -211,10 +205,15 @@ router.post("/campaigns/:id/launch", async (req, res) => {
     }
 
     // Send emails (fire and forget — do not let SMTP failure abort the launch)
-    const emailSettings = await getEmailSettingsRow();
-    const smtp = resolveSmtpConfig(emailSettings, { defaultFromName: "ArborMind CRM" });
+    const host = process.env.SMTP_HOST || process.env.IMAP_HOST || "";
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD;
 
-    if (smtp) {
+    if (host && smtpUser && smtpPass) {
+      const port = Number(process.env.SMTP_PORT ?? 465);
+      const secure = process.env.SMTP_SECURE !== "false";
+      const fromName = process.env.SMTP_FROM_NAME || "ArborMind CRM";
+
       const startStr = campaign.startDate ? new Date(campaign.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—";
       const endStr = campaign.endDate ? new Date(campaign.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—";
 
@@ -254,15 +253,12 @@ router.post("/campaigns/:id/launch", async (req, res) => {
 
       try {
         const nodemailer = await import("nodemailer");
-        const transporter = nodemailer.createTransport({
-          host: smtp.host, port: smtp.port, secure: smtp.secure,
-          auth: { user: smtp.user, pass: smtp.pass },
-        });
+        const transporter = nodemailer.createTransport({ host, port, secure, auth: { user: smtpUser, pass: smtpPass } });
 
         for (const recipient of matched) {
           try {
             await transporter.sendMail({
-              from: `"${smtp.fromName}" <${smtp.user}>`,
+              from: `"${fromName}" <${smtpUser}>`,
               to: recipient.email,
               subject: `🚀 Campaign Launched: ${campaign.name}`,
               text: activityDesc,
@@ -289,7 +285,7 @@ router.post("/campaigns/:id/launch", async (req, res) => {
       launchedAt: now,
       notifiedCount,
       emailResults,
-      smtpConfigured: !!smtp,
+      smtpConfigured: !!(host && smtpUser && smtpPass),
     });
   } catch (err) {
     req.log.error(err);

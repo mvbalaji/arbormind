@@ -6186,6 +6186,323 @@ ALTER TABLE ONLY public.stims_target_cycles
 
 
 --
+-- Schema changes applied after 2026-07-04 dump
+-- These DDL statements are idempotent and safe to re-run.
+--
+
+-- users: org_id column (added to support multi-org)
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS org_id integer NOT NULL DEFAULT 1;
+
+-- products: cost_price and quantity_unit_of_measure columns
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS cost_price numeric;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS quantity_unit_of_measure text;
+
+-- quote_items: cost_price, margin_pct, bundle_id, bundle_name columns
+ALTER TABLE public.quote_items ADD COLUMN IF NOT EXISTS cost_price numeric;
+ALTER TABLE public.quote_items ADD COLUMN IF NOT EXISTS margin_pct numeric;
+ALTER TABLE public.quote_items ADD COLUMN IF NOT EXISTS bundle_id integer;
+ALTER TABLE public.quote_items ADD COLUMN IF NOT EXISTS bundle_name text;
+
+-- price_book_entries: use_standard_price column
+ALTER TABLE public.price_book_entries ADD COLUMN IF NOT EXISTS use_standard_price boolean NOT NULL DEFAULT false;
+
+-- admin_settings: key-value store for system config (CPQ toggle, email, etc.)
+CREATE TABLE IF NOT EXISTS public.admin_settings (
+    key text PRIMARY KEY,
+    value text NOT NULL DEFAULT '',
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+
+-- product_rules: validation and alert rules for products on quotes
+CREATE TABLE IF NOT EXISTS public.product_rules (
+    id integer NOT NULL DEFAULT nextval('public.product_rules_id_seq'::regclass),
+    name text NOT NULL,
+    type text NOT NULL,
+    scope text NOT NULL DEFAULT 'Product',
+    conditions_met text NOT NULL DEFAULT 'All',
+    conditions text NOT NULL DEFAULT '[]',
+    actions text NOT NULL DEFAULT '[]',
+    error_message text,
+    active boolean NOT NULL DEFAULT true,
+    sort_order integer NOT NULL DEFAULT 0,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.product_rules_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.product_rules_id_seq OWNED BY public.product_rules.id;
+
+-- product_bundles: named collections of products with a bundle discount
+CREATE TABLE IF NOT EXISTS public.product_bundles (
+    id integer NOT NULL DEFAULT nextval('public.product_bundles_id_seq'::regclass),
+    name text NOT NULL,
+    description text,
+    bundle_discount_pct numeric NOT NULL DEFAULT 0,
+    is_active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.product_bundles_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.product_bundles_id_seq OWNED BY public.product_bundles.id;
+
+-- product_bundle_items: line items within a bundle
+CREATE TABLE IF NOT EXISTS public.product_bundle_items (
+    id integer NOT NULL DEFAULT nextval('public.product_bundle_items_id_seq'::regclass),
+    bundle_id integer NOT NULL,
+    product_id integer NOT NULL,
+    quantity numeric NOT NULL DEFAULT 1,
+    unit_price_override numeric,
+    discount_pct numeric NOT NULL DEFAULT 0,
+    sort_order integer NOT NULL DEFAULT 0,
+    created_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.product_bundle_items_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.product_bundle_items_id_seq OWNED BY public.product_bundle_items.id;
+ALTER TABLE ONLY public.product_bundle_items
+    ADD CONSTRAINT product_bundle_items_bundle_id_fkey FOREIGN KEY (bundle_id) REFERENCES public.product_bundles(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.product_bundle_items
+    ADD CONSTRAINT product_bundle_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE CASCADE;
+
+-- quote_attachments: file attachments stored as base64 against a quote
+CREATE TABLE IF NOT EXISTS public.quote_attachments (
+    id integer NOT NULL DEFAULT nextval('public.quote_attachments_id_seq'::regclass),
+    quote_id integer NOT NULL,
+    file_name text NOT NULL,
+    file_size integer NOT NULL DEFAULT 0,
+    file_type text NOT NULL DEFAULT '',
+    file_data text NOT NULL,
+    uploaded_by_name text,
+    created_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.quote_attachments_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.quote_attachments_id_seq OWNED BY public.quote_attachments.id;
+ALTER TABLE ONLY public.quote_attachments
+    ADD CONSTRAINT quote_attachments_quote_id_fkey FOREIGN KEY (quote_id) REFERENCES public.quotes(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS qa_quote_id_idx ON public.quote_attachments(quote_id);
+
+-- quote_team_members: internal employees assigned to work on a quote
+CREATE TABLE IF NOT EXISTS public.quote_team_members (
+    id integer NOT NULL DEFAULT nextval('public.quote_team_members_id_seq'::regclass),
+    quote_id integer NOT NULL,
+    user_id integer NOT NULL,
+    role text NOT NULL DEFAULT 'Team Member',
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    CONSTRAINT quote_team_members_quote_user_unique UNIQUE (quote_id, user_id)
+);
+CREATE SEQUENCE IF NOT EXISTS public.quote_team_members_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.quote_team_members_id_seq OWNED BY public.quote_team_members.id;
+ALTER TABLE ONLY public.quote_team_members
+    ADD CONSTRAINT quote_team_members_quote_id_fkey FOREIGN KEY (quote_id) REFERENCES public.quotes(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.quote_team_members
+    ADD CONSTRAINT quote_team_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS qtm_quote_id_idx ON public.quote_team_members(quote_id);
+
+-- social_messages: inbound/outbound messages across social platforms
+CREATE TABLE IF NOT EXISTS public.social_messages (
+    id integer NOT NULL DEFAULT nextval('public.social_messages_id_seq'::regclass),
+    lead_id integer,
+    contact_id integer,
+    sent_by_user_id integer,
+    platform text NOT NULL,
+    direction text NOT NULL,
+    content text NOT NULL,
+    media_url text,
+    media_type text,
+    sender_name text,
+    sender_handle text,
+    sender_avatar_url text,
+    platform_message_id text,
+    platform_thread_id text,
+    platform_profile_url text,
+    status text NOT NULL DEFAULT 'sent',
+    is_read boolean NOT NULL DEFAULT false,
+    delivered_at timestamp without time zone,
+    read_at timestamp without time zone,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.social_messages_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.social_messages_id_seq OWNED BY public.social_messages.id;
+CREATE INDEX IF NOT EXISTS sm_lead_id_idx ON public.social_messages(lead_id);
+CREATE INDEX IF NOT EXISTS sm_platform_idx ON public.social_messages(platform);
+CREATE INDEX IF NOT EXISTS sm_created_at_idx ON public.social_messages(created_at);
+
+-- app_modules: toggleable feature modules (quotes, orders, contracts, CPQ)
+CREATE TABLE IF NOT EXISTS public.app_modules (
+    key text PRIMARY KEY,
+    label text NOT NULL,
+    description text NOT NULL DEFAULT '',
+    is_enabled boolean NOT NULL DEFAULT true,
+    is_core boolean NOT NULL DEFAULT false,
+    sort_order integer NOT NULL DEFAULT 100,
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+
+-- lead_attachments: file attachments against leads
+CREATE TABLE IF NOT EXISTS public.lead_attachments (
+    id integer NOT NULL DEFAULT nextval('public.lead_attachments_id_seq'::regclass),
+    lead_id integer NOT NULL,
+    file_name text NOT NULL,
+    file_size integer NOT NULL DEFAULT 0,
+    file_type text NOT NULL DEFAULT '',
+    file_data text NOT NULL,
+    uploaded_by_name text,
+    created_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.lead_attachments_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.lead_attachments_id_seq OWNED BY public.lead_attachments.id;
+ALTER TABLE ONLY public.lead_attachments
+    ADD CONSTRAINT lead_attachments_lead_id_fkey FOREIGN KEY (lead_id) REFERENCES public.leads(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS la_lead_id_idx ON public.lead_attachments(lead_id);
+
+-- opportunity_attachments: file attachments against opportunities
+CREATE TABLE IF NOT EXISTS public.opportunity_attachments (
+    id integer NOT NULL DEFAULT nextval('public.opportunity_attachments_id_seq'::regclass),
+    opportunity_id integer NOT NULL,
+    file_name text NOT NULL,
+    file_size integer NOT NULL DEFAULT 0,
+    file_type text NOT NULL DEFAULT '',
+    file_data text NOT NULL,
+    uploaded_by_name text,
+    created_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.opportunity_attachments_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.opportunity_attachments_id_seq OWNED BY public.opportunity_attachments.id;
+ALTER TABLE ONLY public.opportunity_attachments
+    ADD CONSTRAINT opportunity_attachments_opp_id_fkey FOREIGN KEY (opportunity_id) REFERENCES public.opportunities(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS oa_opp_id_idx ON public.opportunity_attachments(opportunity_id);
+
+--
+-- CLM column extensions on contracts table
+--
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS contract_type text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS territory text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS business_unit text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS priority text DEFAULT 'Medium';
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS governing_law text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS payment_terms text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS liability_cap_multiplier numeric;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS confidentiality_period_years integer;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS ip_ownership text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS termination_notice_days integer;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS counterparty_company text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS counterparty_signer_name text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS counterparty_signer_email text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS counterparty_signer_title text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS counterparty_address text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS signing_provider text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS signing_order text DEFAULT 'Sequential';
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS signing_deadline date;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS renewal_status text;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS renewal_decision_date date;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS renewal_window_days integer DEFAULT 90;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS arr_at_risk numeric;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS yearly_escalation_pct numeric;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS minimum_annual_commit numeric;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS risk_score integer;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS redline_round integer DEFAULT 0;
+ALTER TABLE public.contracts ADD COLUMN IF NOT EXISTS template_id integer;
+
+-- clm_templates: reusable contract templates
+CREATE TABLE IF NOT EXISTS public.clm_templates (
+    id integer NOT NULL DEFAULT nextval('public.clm_templates_id_seq'::regclass),
+    name text NOT NULL,
+    category text NOT NULL DEFAULT 'MSA',
+    description text,
+    content text,
+    variables text NOT NULL DEFAULT '[]',
+    active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.clm_templates_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.clm_templates_id_seq OWNED BY public.clm_templates.id;
+
+-- clm_reviews: review stages per contract
+CREATE TABLE IF NOT EXISTS public.clm_reviews (
+    id integer NOT NULL DEFAULT nextval('public.clm_reviews_id_seq'::regclass),
+    contract_id integer NOT NULL,
+    reviewer_id integer,
+    stage text NOT NULL DEFAULT 'legal',
+    status text NOT NULL DEFAULT 'pending',
+    decision text,
+    due_date date,
+    decision_date date,
+    notes text,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.clm_reviews_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.clm_reviews_id_seq OWNED BY public.clm_reviews.id;
+
+-- clm_signers: counterparty signers for e-signature workflows
+CREATE TABLE IF NOT EXISTS public.clm_signers (
+    id integer NOT NULL DEFAULT nextval('public.clm_signers_id_seq'::regclass),
+    contract_id integer NOT NULL,
+    name text NOT NULL,
+    email text NOT NULL,
+    title text,
+    role text NOT NULL DEFAULT 'signer',
+    signing_order integer NOT NULL DEFAULT 1,
+    party text NOT NULL DEFAULT 'counterparty',
+    status text NOT NULL DEFAULT 'pending',
+    signed_at timestamp without time zone,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.clm_signers_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.clm_signers_id_seq OWNED BY public.clm_signers.id;
+
+-- clm_redlines: tracked changes during contract negotiation
+CREATE TABLE IF NOT EXISTS public.clm_redlines (
+    id integer NOT NULL DEFAULT nextval('public.clm_redlines_id_seq'::regclass),
+    contract_id integer NOT NULL,
+    author_id integer,
+    round integer NOT NULL DEFAULT 1,
+    section text,
+    original_text text,
+    proposed_text text,
+    change_type text NOT NULL DEFAULT 'modification',
+    party text NOT NULL DEFAULT 'counterparty',
+    status text NOT NULL DEFAULT 'open',
+    notes text,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.clm_redlines_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.clm_redlines_id_seq OWNED BY public.clm_redlines.id;
+
+-- clm_workflow_rules: automation rules triggered by CLM events
+CREATE TABLE IF NOT EXISTS public.clm_workflow_rules (
+    id integer NOT NULL DEFAULT nextval('public.clm_workflow_rules_id_seq'::regclass),
+    name text NOT NULL,
+    trigger_event text NOT NULL,
+    conditions text NOT NULL DEFAULT '[]',
+    actions text NOT NULL DEFAULT '[]',
+    active boolean NOT NULL DEFAULT true,
+    sort_order integer NOT NULL DEFAULT 0,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.clm_workflow_rules_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.clm_workflow_rules_id_seq OWNED BY public.clm_workflow_rules.id;
+
+-- clm_notification_rules: alert rules for contract lifecycle events
+CREATE TABLE IF NOT EXISTS public.clm_notification_rules (
+    id integer NOT NULL DEFAULT nextval('public.clm_notification_rules_id_seq'::regclass),
+    name text NOT NULL,
+    event text NOT NULL,
+    recipients text NOT NULL DEFAULT '[]',
+    channels text NOT NULL DEFAULT '["email"]',
+    trigger_days_before integer,
+    message_template text,
+    active boolean NOT NULL DEFAULT true,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    updated_at timestamp without time zone NOT NULL DEFAULT now()
+);
+CREATE SEQUENCE IF NOT EXISTS public.clm_notification_rules_id_seq AS integer START WITH 1 INCREMENT BY 1 NO MINVALUE NO MAXVALUE CACHE 1;
+ALTER SEQUENCE public.clm_notification_rules_id_seq OWNED BY public.clm_notification_rules.id;
+
+--
 -- PostgreSQL database dump complete
 --
 

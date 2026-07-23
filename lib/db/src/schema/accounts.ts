@@ -2,11 +2,10 @@ import { pgTable, serial, text, integer, numeric, boolean, timestamp } from "dri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
-import { organizationsTable } from "./organizations";
 
 export const accountsTable = pgTable("accounts", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().references(() => organizationsTable.id),
+  orgId: integer("org_id").notNull().default(1),
   name: text("name").notNull(),
   industry: text("industry"),
   website: text("website"),

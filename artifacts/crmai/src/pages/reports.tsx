@@ -108,7 +108,7 @@ export default function Reports() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">Reports &amp; Analytics</h1>
@@ -127,7 +127,7 @@ export default function Reports() {
             <TabsTrigger value="custom">Custom Reports</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6 mt-4">
+          <TabsContent value="overview" className="space-y-4 mt-4">
         {/* KPI ROW */}
         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-3">
           <KpiCard icon={PoundSterling} label="Pipeline Value" value={gbp(stats?.totalPipelineValue ?? 0)}

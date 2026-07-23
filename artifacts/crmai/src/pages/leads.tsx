@@ -102,23 +102,23 @@ const defaultFormData: LeadFormData = {
 type LeadColKey = "select" | "name" | "company" | "phone" | "email" | "website" | "status" | "score" | "createdAt" | "owner" | "actions";
 
 const LEAD_COL_DEFAULTS: Record<LeadColKey, number> = {
-  select: 40,
-  name: 200,
-  company: 180,
-  phone: 160,
-  email: 220,
-  website: 200,
-  status: 150,
-  score: 90,
-  createdAt: 140,
-  owner: 150,
-  actions: 160,
+  select: 32,
+  name: 140,
+  company: 100,
+  phone: 100,
+  email: 140,
+  website: 100,
+  status: 95,
+  score: 60,
+  createdAt: 85,
+  owner: 90,
+  actions: 52,
 };
 
 const LEAD_COL_ORDER: LeadColKey[] = ["select", "name", "company", "phone", "email", "website", "status", "score", "createdAt", "owner", "actions"];
 const LEAD_COL_RESIZABLE: ReadonlySet<LeadColKey> = new Set<LeadColKey>(["name", "company", "phone", "email", "website", "status", "score", "createdAt", "owner", "actions"]);
 const LEAD_COL_MIN = 60;
-const LEAD_COL_STORAGE_KEY = "col-widths:leads:v2";
+const LEAD_COL_STORAGE_KEY = "col-widths:leads:v3";
 
 type LeadToggleableCol = "name" | "company" | "phone" | "email" | "website" | "status" | "score" | "createdAt" | "owner";
 const LEAD_TOGGLEABLE_COLS: { key: LeadToggleableCol; label: string }[] = [
@@ -247,8 +247,8 @@ export default function Leads() {
   const [convertingId, setConvertingId] = useState<{ id: number; name: string; company?: string | null } | null>(null);
   const [emailOpen, setEmailOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [sortField, setSortField] = useState<string>("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState<string>("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [visibleCols, setVisibleCols] = useState<Set<LeadToggleableCol>>(() => loadLeadColVisibility());
   React.useEffect(() => {
     try {
@@ -629,19 +629,9 @@ export default function Leads() {
                           {lead.score != null ? (() => {
                             const meta = SCORE_META(lead.score);
                             return (
-                              <div className="flex flex-col items-center gap-0.5">
-                                <span className={cn("inline-flex items-center justify-center w-7 h-5 rounded-md border text-[10px] font-bold", meta.classes)}>
-                                  {lead.score}
-                                </span>
-                                <span className={cn("text-[9px] font-semibold leading-none px-1 rounded", meta.classes)}>
-                                  {meta.label}
-                                </span>
-                                {(lead as unknown as { buyerClassification?: string }).buyerClassification && (
-                                  <span className={cn("text-[9px] px-1 rounded border mt-0.5", BUYER_CLASS_COLORS[(lead as unknown as { buyerClassification: string }).buyerClassification] ?? "")}>
-                                    {BUYER_CLASS_LABELS[(lead as unknown as { buyerClassification: string }).buyerClassification] ?? ""}
-                                  </span>
-                                )}
-                              </div>
+                              <span className={cn("inline-flex items-center gap-1 px-1.5 py-0 rounded border text-[10px] font-bold", meta.classes)}>
+                                {lead.score} <span className="font-normal opacity-80">{meta.label}</span>
+                              </span>
                             );
                           })() : <span className="text-muted-foreground">—</span>}
                         </td>
@@ -656,51 +646,15 @@ export default function Leads() {
                           {lead.assignedToName ?? <span className="italic">Unassigned</span>}
                         </td>
                       )}
-                      <td className="px-3 py-1 sticky right-0 z-10 bg-card group-hover:bg-muted/30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-1.5 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                            onClick={() => setEditingLead({
-                              id: lead.id,
-                              firstName: lead.firstName,
-                              lastName: lead.lastName,
-                              email: lead.email ?? "",
-                              phone: lead.phone ?? "",
-                              website: (lead as any).website ?? "",
-                              company: lead.company ?? "",
-                              title: lead.title ?? "",
-                              source: lead.source ?? "",
-                              status: lead.status,
-                              assignedTo: (lead.assignedTo?.toString()) ?? "",
-                              score: (lead.score?.toString()) ?? "",
-                              industry: lead.industry ?? "",
-                              employees: (lead.employees ?? "").toString(),
-                              annualRevenue: (lead.annualRevenue ?? "").toString(),
-                              description: lead.description ?? "",
-                            })}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-1.5 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setDeletingId(lead.id)}
-                            aria-label={`Delete ${lead.firstName} ${lead.lastName}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            Delete
-                          </Button>
+                      <td className="px-2 py-1 sticky right-0 z-10 bg-card group-hover:bg-muted/30 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]">
+                        <div className="flex items-center justify-center">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                aria-label={`More actions for ${lead.firstName} ${lead.lastName}`}
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                aria-label={`Actions for ${lead.firstName} ${lead.lastName}`}
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                               </Button>
@@ -708,17 +662,38 @@ export default function Leads() {
                             <DropdownMenuContent align="end" className="w-44">
                               <DropdownMenuItem asChild>
                                 <Link href={`/leads/${lead.id}`} className="flex items-center gap-2 cursor-pointer">
-                                  <Eye className="w-4 h-4" />
-                                  View Details
+                                  <Eye className="w-4 h-4" /> View Details
                                 </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setEditingLead({
+                                  id: lead.id,
+                                  firstName: lead.firstName,
+                                  lastName: lead.lastName,
+                                  email: lead.email ?? "",
+                                  phone: lead.phone ?? "",
+                                  website: (lead as any).website ?? "",
+                                  company: lead.company ?? "",
+                                  title: lead.title ?? "",
+                                  source: lead.source ?? "",
+                                  status: lead.status,
+                                  assignedTo: (lead.assignedTo?.toString()) ?? "",
+                                  score: (lead.score?.toString()) ?? "",
+                                  industry: lead.industry ?? "",
+                                  employees: (lead.employees ?? "").toString(),
+                                  annualRevenue: (lead.annualRevenue ?? "").toString(),
+                                  description: lead.description ?? "",
+                                })}
+                                className="cursor-pointer"
+                              >
+                                <Pencil className="w-4 h-4 mr-2" /> Edit
                               </DropdownMenuItem>
                               {!lead.isConverted && (
                                 <DropdownMenuItem
                                   onClick={() => setConvertingId({ id: lead.id, name: `${lead.firstName} ${lead.lastName}`, company: lead.company })}
                                   className="cursor-pointer"
                                 >
-                                  <ArrowRightLeft className="w-4 h-4 mr-2" />
-                                  Convert
+                                  <ArrowRightLeft className="w-4 h-4 mr-2" /> Convert
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuSeparator />
@@ -726,8 +701,7 @@ export default function Leads() {
                                 onClick={() => setDeletingId(lead.id)}
                                 className="text-destructive focus:text-destructive cursor-pointer"
                               >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1012,18 +986,18 @@ function LeadFormDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label className="text-xs font-medium">First Name *</Label>
-              <Input required value={formData.firstName} onChange={f("firstName")} className="h-8 text-sm" />
+              <Label htmlFor="lead-firstName" className="text-xs font-medium">First Name *</Label>
+              <Input id="lead-firstName" required value={formData.firstName} onChange={f("firstName")} className="h-8 text-sm" />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Last Name *</Label>
-              <Input required value={formData.lastName} onChange={f("lastName")} className="h-8 text-sm" />
+              <Label htmlFor="lead-lastName" className="text-xs font-medium">Last Name *</Label>
+              <Input id="lead-lastName" required value={formData.lastName} onChange={f("lastName")} className="h-8 text-sm" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Company</Label>
-              <Input value={formData.company} onChange={f("company")} className="h-8 text-sm" />
+              <Label htmlFor="lead-company" className="text-xs font-medium">Company</Label>
+              <Input id="lead-company" value={formData.company} onChange={f("company")} className="h-8 text-sm" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-medium">Title</Label>
@@ -1062,8 +1036,8 @@ function LeadFormDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Email</Label>
-              <Input type="email" value={formData.email} onChange={f("email")} className="h-8 text-sm" />
+              <Label htmlFor="lead-email" className="text-xs font-medium">Email</Label>
+              <Input id="lead-email" type="email" value={formData.email} onChange={f("email")} className="h-8 text-sm" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs font-medium">Phone</Label>

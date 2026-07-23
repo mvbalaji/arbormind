@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+﻿import React, { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { Card } from "@/components/ui/card";
@@ -116,7 +116,7 @@ function parseVars(raw: string): string[] {
   } catch { return []; }
 }
 
-// ── Field Picker ──────────────────────────────────────────────────────────────
+// â”€â”€ Field Picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FieldPicker({ selected, onChange }: { selected: string[]; onChange: (v: string[]) => void }) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ "Customer / Party": true, "Contract Dates": true });
 
@@ -147,7 +147,7 @@ function FieldPicker({ selected, onChange }: { selected: string[]; onChange: (v:
                   <button key={f.variable} type="button" onClick={() => toggle(f.variable)}
                     className={`flex items-center gap-2 text-left px-2.5 py-1.5 rounded text-sm transition-colors ${checked ? "bg-primary/10 text-primary border border-primary/30" : "text-foreground hover:bg-muted border border-transparent"}`}>
                     <span className={`w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center text-[10px] ${checked ? "bg-primary border-primary text-white" : "border-border"}`}>
-                      {checked && "✓"}
+                      {checked && "âœ“"}
                     </span>
                     <span className="truncate leading-tight">{f.label}</span>
                   </button>
@@ -161,7 +161,7 @@ function FieldPicker({ selected, onChange }: { selected: string[]; onChange: (v:
   );
 }
 
-// ── Content Editor ────────────────────────────────────────────────────────────
+// â”€â”€ Content Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ContentEditor({ value, onChange, variables }: { value: string; onChange: (v: string) => void; variables: string[] }) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -197,7 +197,7 @@ function ContentEditor({ value, onChange, variables }: { value: string; onChange
   );
 }
 
-// ── Template Form ─────────────────────────────────────────────────────────────
+// â”€â”€ Template Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function TemplateForm({ initial, onSave, onClose }: { initial?: Template; onSave: (d: Partial<Template>) => Promise<void>; onClose: () => void }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [category, setCategory] = useState(initial?.category ?? "MSA");
@@ -285,7 +285,7 @@ function TemplateForm({ initial, onSave, onClose }: { initial?: Template; onSave
   );
 }
 
-// ── Template Detail View ──────────────────────────────────────────────────────
+// â”€â”€ Template Detail View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function TemplateDetail({
   template,
   onBack,
@@ -375,7 +375,7 @@ function TemplateDetail({
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+// â”€â”€ Main Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function ClmTemplates() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -573,3 +573,4 @@ export default function ClmTemplates() {
     </Layout>
   );
 }
+

@@ -1,5 +1,6 @@
 import { db } from "@workspace/db";
 import { appModulesTable, type AppModule } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 export const SEED_MODULES: Array<{
   key: string; label: string; description: string;
@@ -37,6 +38,14 @@ export const SEED_MODULES: Array<{
     isCore: false,
     sortOrder: 40,
   },
+  {
+    key: "cpq",
+    label: "CPQ (Configure-Price-Quote)",
+    description: "Advanced guided selling, product configurator, quote line editor, pricing rules and CPQ dashboard. Enable for customers who need Salesforce-style CPQ workflows.",
+    isEnabled: false,
+    isCore: false,
+    sortOrder: 50,
+  },
 ];
 
 // Which nav screen keys each module owns.
@@ -51,27 +60,30 @@ export const MODULE_SCREENS: Record<string, string[]> = {
   contracts: ["contracts"],
 };
 
-let seeded = false;
-export async function seedAppModules(): Promise<void> {
-  if (seeded) return;
+const seededOrgs = new Set<number>();
+export async function seedAppModules(orgId: number): Promise<void> {
+  if (seededOrgs.has(orgId)) return;
   try {
-    await db.insert(appModulesTable).values(SEED_MODULES).onConflictDoNothing();
-    seeded = true;
+    await db.insert(appModulesTable)
+      .values(SEED_MODULES.map((m) => ({ ...m, orgId })))
+      .onConflictDoNothing();
+    seededOrgs.add(orgId);
   } catch (err) {
     console.error("[AppModules] Seed failed:", err);
   }
 }
 
-export async function getEnabledModules(): Promise<Record<string, boolean>> {
+export async function getEnabledModules(orgId: number | undefined): Promise<Record<string, boolean>> {
   try {
-    const rows = await db.select().from(appModulesTable);
+    if (orgId == null) throw new Error("no org context");
+    const rows = await db.select().from(appModulesTable).where(eq(appModulesTable.orgId, orgId));
     const out: Record<string, boolean> = {};
     for (const r of rows) out[r.key] = r.isEnabled;
     // Ensure core module is always shown as enabled
     out["crm_sales"] = true;
     return out;
   } catch {
-    // Fallback — if table doesn't exist yet return all enabled
+    // Fallback — if table doesn't exist yet (or no org context) return all enabled
     return { crm_sales: true, quotes: true, orders: true, contracts: true };
   }
 }

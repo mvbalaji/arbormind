@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db, emailSettingsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { runEmailSync, startEmailPoller, stopEmailPoller } from "../email-sync";
 import { previewAutoReply } from "../auto-reply";
 
@@ -20,10 +21,13 @@ function requireAdmin(req: any, res: any): boolean {
 router.get("/admin/email-settings", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const rows = await db.select().from(emailSettingsTable).limit(1);
+    const orgId = req.orgId as number;
+    // email_settings is now per-org (one row per org, unique on org_id) rather
+    // than a single global row.
+    const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, orgId)).limit(1);
     let row = rows[0];
     if (!row) {
-      const [created] = await db.insert(emailSettingsTable).values({}).returning();
+      const [created] = await db.insert(emailSettingsTable).values({ orgId }).returning();
       row = created;
     }
     // Mask password in response
@@ -39,6 +43,7 @@ router.get("/admin/email-settings", async (req, res) => {
 router.post("/admin/email-settings", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
+    const orgId = req.orgId as number;
     const {
       imapHost, imapPort, imapUser, imapPassword,
       imapSecure, smtpHost, smtpPort, smtpUser,
@@ -46,7 +51,7 @@ router.post("/admin/email-settings", async (req, res) => {
       syncEnabled, syncIntervalMinutes,
     } = req.body as Record<string, any>;
 
-    const rows = await db.select().from(emailSettingsTable).limit(1);
+    const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, orgId)).limit(1);
     const existing = rows[0];
 
     const update: Record<string, any> = {
@@ -73,10 +78,9 @@ router.post("/admin/email-settings", async (req, res) => {
 
     let row;
     if (existing) {
-      const { eq } = await import("drizzle-orm");
       [row] = await db.update(emailSettingsTable).set(update).where(eq(emailSettingsTable.id, existing.id)).returning();
     } else {
-      [row] = await db.insert(emailSettingsTable).values(update).returning();
+      [row] = await db.insert(emailSettingsTable).values({ ...update, orgId }).returning();
     }
 
     // Restart/stop the poller based on new settings
@@ -97,7 +101,8 @@ router.post("/admin/email-settings", async (req, res) => {
 router.post("/admin/email-settings/test", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const rows = await db.select().from(emailSettingsTable).limit(1);
+    const orgId = req.orgId as number;
+    const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, orgId)).limit(1);
     const settings = rows[0];
     if (!settings?.imapUser || !settings?.imapPassword) {
       return res.status(400).json({ success: false, error: "IMAP credentials not configured" });

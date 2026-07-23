@@ -35,3 +35,5 @@ export * from "./campaign-members";
 export * from "./lead-scoring-rules";
 export * from "./lead-score-milestones";
 export * from "./product-rules";
+export * from "./social-messages";
+export * from "./quote-team-members";

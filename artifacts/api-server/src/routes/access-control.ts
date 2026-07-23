@@ -22,21 +22,24 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-router.get("/admin/access-control/roles", requireAdmin, async (_req, res) => {
+router.get("/admin/access-control/roles", requireAdmin, async (req, res) => {
   try {
-    const rows = await db.select().from(rolesTable).orderBy(rolesTable.sortOrder);
+    const rows = await db.select().from(rolesTable)
+      .where(eq(rolesTable.orgId, req.orgId as number))
+      .orderBy(rolesTable.sortOrder);
     res.json({ data: rows });
   } catch (err) {
-    _req.log?.error(err);
+    req.log?.error(err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
 router.get("/admin/access-control/screens", requireAdmin, async (req, res) => {
   try {
-    const screens = await db.select().from(screensTable).orderBy(screensTable.sortOrder);
-    const roles = await db.select().from(rolesTable).orderBy(rolesTable.sortOrder);
-    const accessRows = await db.select().from(screenAccessTable);
+    const orgId = req.orgId as number;
+    const screens = await db.select().from(screensTable).where(eq(screensTable.orgId, orgId)).orderBy(screensTable.sortOrder);
+    const roles = await db.select().from(rolesTable).where(eq(rolesTable.orgId, orgId)).orderBy(rolesTable.sortOrder);
+    const accessRows = await db.select().from(screenAccessTable).where(eq(screenAccessTable.orgId, orgId));
 
     const matrix: Record<string, Record<string, AccessLevel>> = {};
     for (const s of screens) {
@@ -60,6 +63,7 @@ router.get("/admin/access-control/screens", requireAdmin, async (req, res) => {
 
 router.put("/admin/access-control/screens/:screenKey/roles/:roleKey", requireAdmin, async (req, res) => {
   try {
+    const orgId = req.orgId as number;
     const { screenKey, roleKey } = req.params;
     const { accessLevel } = req.body as { accessLevel?: unknown };
     if (!isValidAccessLevel(accessLevel)) {
@@ -71,16 +75,16 @@ router.put("/admin/access-control/screens/:screenKey/roles/:roleKey", requireAdm
       return;
     }
     // Verify FK targets exist for clearer errors.
-    const [screen] = await db.select().from(screensTable).where(eq(screensTable.key, screenKey));
+    const [screen] = await db.select().from(screensTable).where(and(eq(screensTable.orgId, orgId), eq(screensTable.key, screenKey)));
     if (!screen) { res.status(404).json({ error: "Screen not found" }); return; }
-    const [role] = await db.select().from(rolesTable).where(eq(rolesTable.key, roleKey));
+    const [role] = await db.select().from(rolesTable).where(and(eq(rolesTable.orgId, orgId), eq(rolesTable.key, roleKey)));
     if (!role) { res.status(404).json({ error: "Role not found" }); return; }
 
     const actor = (req.user || (req.session as any)?.user) as { id?: number; name?: string; email?: string } | undefined;
 
     const result = await db.transaction(async (tx) => {
       const [existing] = await tx.select().from(screenAccessTable)
-        .where(and(eq(screenAccessTable.screenKey, screenKey), eq(screenAccessTable.roleKey, roleKey)));
+        .where(and(eq(screenAccessTable.orgId, orgId), eq(screenAccessTable.screenKey, screenKey), eq(screenAccessTable.roleKey, roleKey)));
       const previousLevel = existing?.accessLevel ?? "none";
 
       if (previousLevel === accessLevel) {
@@ -90,16 +94,16 @@ router.put("/admin/access-control/screens/:screenKey/roles/:roleKey", requireAdm
       if (existing) {
         await tx.update(screenAccessTable)
           .set({ accessLevel, updatedBy: actor?.id ?? null, updatedAt: new Date() })
-          .where(eq(screenAccessTable.id, existing.id));
+          .where(and(eq(screenAccessTable.id, existing.id), eq(screenAccessTable.orgId, orgId)));
       } else {
         await tx.insert(screenAccessTable).values({
-          screenKey, roleKey, accessLevel,
+          orgId, screenKey, roleKey, accessLevel,
           updatedBy: actor?.id ?? null,
         });
       }
 
       await tx.insert(accessAuditLogTable).values({
-        screenKey, roleKey,
+        orgId, screenKey, roleKey,
         previousLevel,
         newLevel: accessLevel,
         changedByUserId: actor?.id ?? null,
@@ -124,6 +128,7 @@ router.get("/admin/access-control/audit", requireAdmin, async (req, res) => {
   try {
     const limit = Math.min(parseInt((req.query.limit as string) || "100"), 500);
     const rows = await db.select().from(accessAuditLogTable)
+      .where(eq(accessAuditLogTable.orgId, req.orgId as number))
       .orderBy(desc(accessAuditLogTable.createdAt))
       .limit(limit);
     res.json({ data: rows });

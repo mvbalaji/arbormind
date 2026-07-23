@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
@@ -91,7 +91,7 @@ export default function ClmRenewals() {
                 <Clock className="w-5 h-5 text-amber-500" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Expiring ≤ 90d</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Expiring â‰¤ 90d</p>
                 <p className="text-2xl font-bold text-foreground">{expiringSoon.length}</p>
               </div>
             </div>
@@ -216,3 +216,4 @@ export default function ClmRenewals() {
     </Layout>
   );
 }
+

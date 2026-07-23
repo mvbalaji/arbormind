@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, numeric, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { quotesTable } from "./quotes";
@@ -7,12 +7,11 @@ import { contactsTable } from "./contacts";
 import { accountsTable } from "./accounts";
 import { productsTable } from "./products";
 import { usersTable } from "./users";
-import { organizationsTable } from "./organizations";
 
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().references(() => organizationsTable.id),
-  orderNumber: text("order_number").notNull().unique(),
+  orgId: integer("org_id").notNull().default(1),
+  orderNumber: text("order_number").notNull(),
   quoteId: integer("quote_id").references(() => quotesTable.id),
   opportunityId: integer("opportunity_id").references(() => opportunitiesTable.id),
   contactId: integer("contact_id").references(() => contactsTable.id),
@@ -27,10 +26,13 @@ export const ordersTable = pgTable("orders", {
   orderDate: timestamp("order_date").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  orgOrderNumberUnique: uniqueIndex("orders_org_order_number_unique").on(t.orgId, t.orderNumber),
+}));
 
 export const orderItemsTable = pgTable("order_items", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
   orderId: integer("order_id").notNull().references(() => ordersTable.id),
   productId: integer("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   productName: text("product_name").notNull(),

@@ -87,10 +87,10 @@ const VIEW_OPTIONS = [
 ];
 
 const ACCOUNTS_COL_KEYS = ["name","location","phone","industry","email","owner","contacts","deals","actions"] as const;
-const ACCOUNTS_COL_DEFAULTS: Record<typeof ACCOUNTS_COL_KEYS[number], number> = {"name":200,"location":160,"phone":130,"industry":140,"email":200,"owner":140,"contacts":90,"deals":90,"actions":120};
+const ACCOUNTS_COL_DEFAULTS: Record<typeof ACCOUNTS_COL_KEYS[number], number> = {"name":150,"location":110,"phone":100,"industry":100,"email":140,"owner":100,"contacts":65,"deals":65,"actions":52};
 
 export default function Accounts() {
-  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:accounts:v1", ACCOUNTS_COL_KEYS, ACCOUNTS_COL_DEFAULTS);
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:accounts:v2", ACCOUNTS_COL_KEYS, ACCOUNTS_COL_DEFAULTS);
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState("");
@@ -316,41 +316,11 @@ export default function Accounts() {
                           </span>
                         </td>
                       )}
-                      <td className="px-3 py-1">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-1.5 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                            onClick={() => setEditingAccount({
-                              id: acc.id,
-                              name: acc.name,
-                              industry: acc.industry ?? "",
-                              website: acc.website ?? "",
-                              phone: acc.phone ?? "",
-                              email: acc.email ?? "",
-                              city: acc.city ?? "",
-                              country: acc.country ?? "",
-                              employees: acc.employees != null ? String(acc.employees) : "",
-                              annualRevenue: acc.annualRevenue != null ? String(acc.annualRevenue) : "",
-                              description: acc.description ?? "",
-                              status: acc.status ?? "active",
-                              stage: acc.stage ?? "",
-                              amount: acc.amount != null ? String(acc.amount) : "",
-                              closeDate: acc.closeDate ?? "",
-                              probability: acc.probability != null ? String(acc.probability) : "",
-                              forecastCategory: acc.forecastCategory ?? "",
-                              nextStep: acc.nextStep ?? "",
-                              optyOwner: acc.optyOwner ?? "",
-                              optyTeam: acc.optyTeam ?? "",
-                            })}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Edit
-                          </Button>
+                      <td className="px-2 py-1">
+                        <div className="flex items-center justify-center">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground" aria-label={`More actions for ${acc.name}`}>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted" aria-label={`Actions for ${acc.name}`}>
                                 <MoreHorizontal className="w-4 h-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -500,8 +470,8 @@ function AccountFormDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium">Account Name *</Label>
-            <Input required className="h-8 text-sm" value={formData.name} onChange={f("name")} />
+            <Label htmlFor="account-name" className="text-xs font-medium">Account Name *</Label>
+            <Input id="account-name" required className="h-8 text-sm" value={formData.name} onChange={f("name")} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-medium">Industry</Label>

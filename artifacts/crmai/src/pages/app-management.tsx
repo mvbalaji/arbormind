@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
   LayoutDashboard, FileText, ShoppingCart, FileSignature,
-  CheckCircle2, Lock, Layers, Zap, RefreshCw,
+  CheckCircle2, Lock, Layers, Zap, RefreshCw, Cpu,
 } from "lucide-react";
 
 interface AppModule {
@@ -48,6 +48,12 @@ const MODULE_META: Record<string, {
     color: "text-purple-600 bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-800",
     screens: ["Contracts"],
     features: ["Full lifecycle: Draft → Review → Active → Expired", "Automated expiry notifications", "E-signature support", "Renewal workflows"],
+  },
+  cpq: {
+    icon: Cpu,
+    color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/50 border-indigo-200 dark:border-indigo-800",
+    screens: ["CPQ Dashboard", "Guided Selling", "Product Configurator", "Quote Line Editor", "Pricing Rules"],
+    features: ["Guided selling wizard", "Product & bundle configurator", "Volume pricing & discount rules", "Approval escalation ladder", "Enterprise quote line editor"],
   },
 };
 
@@ -106,7 +112,7 @@ export function AppManagementInline() {
   const modules = data?.modules ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Layers className="w-6 h-6 text-primary" />
         <div>

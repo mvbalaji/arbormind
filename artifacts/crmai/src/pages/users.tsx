@@ -322,7 +322,7 @@ export default function Users() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold text-foreground tracking-tight">System Admin</h1>
@@ -628,7 +628,7 @@ export default function Users() {
         )}
 
         {activeTab === "mail" && isAdmin && (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
             {/* Sync status banner */}
             <Card className="glass-panel border-border">
               <div className="p-5 flex flex-wrap items-center gap-4 justify-between">

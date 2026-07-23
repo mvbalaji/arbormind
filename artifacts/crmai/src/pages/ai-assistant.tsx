@@ -85,7 +85,7 @@ export default function AIAssistant() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6 relative">
+      <div className="flex flex-col gap-3 relative">
         <div className="absolute top-0 right-0 -z-10 w-[500px] h-[500px] bg-accent/20 blur-[120px] rounded-full pointer-events-none" />
         <div className="absolute bottom-0 left-0 -z-10 w-[500px] h-[500px] bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
 

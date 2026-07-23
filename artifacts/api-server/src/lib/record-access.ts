@@ -16,11 +16,11 @@ export const SEED_RECORD_TYPES: Array<{ key: string; name: string; sortOrder: nu
   { key: "campaigns", name: "Campaign", sortOrder: 100 },
 ];
 
-export async function seedRecordAccess(): Promise<void> {
+export async function seedRecordAccess(orgId: number): Promise<void> {
   try {
     // Seed record types (idempotent).
     for (const rt of SEED_RECORD_TYPES) {
-      await db.insert(recordTypesTable).values(rt).onConflictDoNothing();
+      await db.insert(recordTypesTable).values({ ...rt, orgId }).onConflictDoNothing();
     }
 
     // Ensure admin has all permissions for every record type.
@@ -28,6 +28,7 @@ export async function seedRecordAccess(): Promise<void> {
       await db
         .insert(recordAccessTable)
         .values({
+          orgId,
           recordTypeKey: rt.key,
           roleKey: "admin",
           canView: true,
@@ -76,11 +77,12 @@ const COLUMN_BY_PERMISSION: Record<RecordPermission, keyof PermissionsRow> = {
   delete: "canDelete",
 };
 
-export async function getRecordPermissionsForRole(roleKey: string): Promise<Record<string, PermissionsRow>> {
+export async function getRecordPermissionsForRole(roleKey: string, orgId: number | undefined): Promise<Record<string, PermissionsRow>> {
   if (roleKey === "admin") {
     return Object.fromEntries(SEED_RECORD_TYPES.map((rt) => [rt.key, ALL_PERMS]));
   }
-  const rows = await db.select().from(recordAccessTable).where(eq(recordAccessTable.roleKey, roleKey));
+  if (orgId == null) return {};
+  const rows = await db.select().from(recordAccessTable).where(and(eq(recordAccessTable.orgId, orgId), eq(recordAccessTable.roleKey, roleKey)));
   const out: Record<string, PermissionsRow> = {};
   for (const r of rows) {
     out[r.recordTypeKey] = {
@@ -98,13 +100,15 @@ export async function userHasRecordPermission(
   roleKey: string | undefined | null,
   recordTypeKey: string,
   permission: RecordPermission,
+  orgId: number | undefined,
 ): Promise<boolean> {
   if (!roleKey) return false;
   if (roleKey === "admin") return true;
+  if (orgId == null) return false;
   const [row] = await db
     .select()
     .from(recordAccessTable)
-    .where(and(eq(recordAccessTable.recordTypeKey, recordTypeKey), eq(recordAccessTable.roleKey, roleKey)));
+    .where(and(eq(recordAccessTable.orgId, orgId), eq(recordAccessTable.recordTypeKey, recordTypeKey), eq(recordAccessTable.roleKey, roleKey)));
   if (!row) return false;
   const col = COLUMN_BY_PERMISSION[permission];
   return Boolean(row[col]);
@@ -137,7 +141,7 @@ export function requireRecordPermission(recordTypeKey: string, permission?: Reco
       return;
     }
     const required: RecordPermission = permission ?? METHOD_TO_PERMISSION[req.method] ?? "view";
-    const allowed = await userHasRecordPermission(roleKey, recordTypeKey, required);
+    const allowed = await userHasRecordPermission(roleKey, recordTypeKey, required, req.orgId);
     if (!allowed) {
       res.status(403).json({ error: `Forbidden: ${required} on ${recordTypeKey} not allowed for role ${roleKey}` });
       return;

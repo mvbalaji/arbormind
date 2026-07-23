@@ -47,6 +47,7 @@ const VIEW_OPTIONS = [
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "border-border text-muted-foreground",
+  proposal: "border-purple-500/30 text-purple-600 bg-purple-500/5",
   sent: "border-blue-500/30 text-blue-600 bg-blue-500/5",
   accepted: "border-green-500/30 text-green-600 bg-green-500/5",
   rejected: "border-red-500/30 text-red-600 bg-red-500/5",
@@ -72,6 +73,21 @@ interface QuoteItem {
   quantity: number;
   unitPrice: number;
   discount: number;
+  costPrice: number | null;
+}
+
+function lineMarginPct(item: QuoteItem): number | null {
+  if (!item.costPrice || item.costPrice <= 0) return null;
+  const effective = item.unitPrice * (1 - (item.discount ?? 0) / 100);
+  if (effective <= 0) return null;
+  return ((effective - item.costPrice) / effective) * 100;
+}
+
+function marginColor(pct: number | null) {
+  if (pct == null) return "text-muted-foreground";
+  if (pct >= 30) return "text-green-600";
+  if (pct >= 15) return "text-amber-600";
+  return "text-red-600";
 }
 
 interface QuoteFormData {
@@ -88,7 +104,7 @@ const DEFAULT_FORM: QuoteFormData = {
   name: "", status: "draft", validUntil: "", discount: "0", tax: "0", notes: "", items: [],
 };
 
-const DEFAULT_ITEM: QuoteItem = { productId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0 };
+const DEFAULT_ITEM: QuoteItem = { productId: null, productName: "", quantity: 1, unitPrice: 0, discount: 0, costPrice: null };
 
 interface QuoteFormDialogProps {
   open: boolean;
@@ -119,6 +135,10 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
   const discountAmt = subtotal * (parseFloat(formData.discount) || 0) / 100;
   const taxAmt = (subtotal - discountAmt) * (parseFloat(formData.tax) || 0) / 100;
   const total = subtotal - discountAmt + taxAmt;
+
+  const totalCost = formData.items.reduce((sum, item) => sum + (item.costPrice != null ? item.quantity * item.costPrice : 0), 0);
+  const itemsWithCost = formData.items.filter(i => i.costPrice != null && i.costPrice > 0);
+  const blendedMargin = subtotal > 0 && itemsWithCost.length > 0 ? ((subtotal - totalCost) / subtotal) * 100 : null;
 
   const addItem = () => setFormData(d => ({ ...d, items: [...d.items, { ...DEFAULT_ITEM }] }));
 
@@ -151,7 +171,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
   const pickProduct = (idx: number, productId: number) => {
     const prod = products.find(p => p.id === productId);
     if (prod) {
-      updateItem(idx, { productId: prod.id, productName: prod.name, unitPrice: prod.unitPrice, discount: 0 });
+      updateItem(idx, { productId: prod.id, productName: prod.name, unitPrice: prod.unitPrice, discount: 0, costPrice: (prod as any).costPrice ?? null });
     }
   };
 
@@ -255,16 +275,17 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
             ) : (
               <div className="space-y-2">
                 <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground uppercase px-1 mb-1">
-                  <span className="col-span-4">Product</span>
+                  <span className="col-span-3">Product</span>
                   <span className="col-span-2 text-right">Qty</span>
                   <span className="col-span-2 text-right">Unit Price</span>
-                  <span className="col-span-2 text-right">Disc %</span>
-                  <span className="col-span-1 text-right">Total</span>
+                  <span className="col-span-1 text-right">Disc %</span>
+                  <span className="col-span-1 text-right">Margin</span>
+                  <span className="col-span-2 text-right">Total</span>
                   <span className="col-span-1"></span>
                 </div>
                 {formData.items.map((item, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-muted/50 rounded-lg p-2">
-                    <div className="col-span-4">
+                    <div className="col-span-3">
                       <select
                         className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
                         value={item.productId ?? ""}
@@ -301,12 +322,15 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                         value={item.unitPrice}
                         onChange={e => updateItem(idx, { unitPrice: parseFloat(e.target.value) || 0 })} />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-1">
                       <Input type="number" min="0" max="100" className="h-8 bg-muted border-border text-right text-sm"
                         value={item.discount}
                         onChange={e => updateItem(idx, { discount: parseFloat(e.target.value) || 0 })} />
                     </div>
-                    <div className="col-span-1 text-right text-sm font-medium text-foreground">
+                    <div className="col-span-1 text-right text-xs font-semibold">
+                      {(() => { const m = lineMarginPct(item); return m != null ? <span className={marginColor(m)}>{m.toFixed(1)}%</span> : <span className="text-muted-foreground">—</span>; })()}
+                    </div>
+                    <div className="col-span-2 text-right text-sm font-medium text-foreground">
                       {fmtMoney(lineTotal(item))}
                     </div>
                     <div className="col-span-1 flex justify-end">
@@ -354,6 +378,12 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                   <div className="flex justify-between text-muted-foreground">
                     <span>Tax ({formData.tax}%)</span>
                     <span>{fmtMoney(taxAmt)}</span>
+                  </div>
+                )}
+                {blendedMargin != null && (
+                  <div className={`flex justify-between items-center px-2 py-1 rounded text-sm font-semibold ${blendedMargin >= 30 ? "bg-green-500/10" : blendedMargin >= 15 ? "bg-amber-500/10" : "bg-red-500/10"}`}>
+                    <span className="text-muted-foreground font-normal">Blended Margin</span>
+                    <span className={marginColor(blendedMargin)}>{blendedMargin.toFixed(1)}%</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-foreground text-base border-t border-border pt-1 mt-1">

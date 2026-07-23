@@ -16,25 +16,25 @@
 
 import { Router, type IRouter } from "express";
 import { db, campaignEngagementsTable, leadsTable, campaignsTable, EVENT_SCORES, scoreToCategory } from "@workspace/db";
-import { eq, ilike } from "drizzle-orm";
+import { eq, and, ilike } from "drizzle-orm";
 import crypto from "crypto";
 
 const router: IRouter = Router();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function resolveLeadByEmail(email: string): Promise<number | null> {
+async function resolveLeadByEmail(orgId: number, email: string): Promise<number | null> {
   const rows = await db.select({ id: leadsTable.id })
     .from(leadsTable)
-    .where(ilike(leadsTable.email, email))
+    .where(and(ilike(leadsTable.email, email), eq(leadsTable.orgId, orgId)))
     .limit(1);
   return rows[0]?.id ?? null;
 }
 
-async function resolveCampaignByUtm(utmCampaign: string): Promise<number | null> {
+async function resolveCampaignByUtm(orgId: number, utmCampaign: string): Promise<number | null> {
   const rows = await db.select({ id: campaignsTable.id })
     .from(campaignsTable)
-    .where(ilike(campaignsTable.name, `%${utmCampaign}%`))
+    .where(and(ilike(campaignsTable.name, `%${utmCampaign}%`), eq(campaignsTable.orgId, orgId)))
     .limit(1);
   return rows[0]?.id ?? null;
 }
@@ -42,6 +42,7 @@ async function resolveCampaignByUtm(utmCampaign: string): Promise<number | null>
 type EventType = keyof typeof EVENT_SCORES;
 
 async function recordEngagement(params: {
+  orgId: number;
   platform: string;
   eventType: EventType;
   campaignId?: number | null;
@@ -62,6 +63,7 @@ async function recordEngagement(params: {
   const score = EVENT_SCORES[params.eventType] ?? 1;
   const category = scoreToCategory(score);
   await db.insert(campaignEngagementsTable).values({
+    orgId: params.orgId,
     campaignId: params.campaignId ?? null,
     platform: params.platform,
     eventType: params.eventType,
@@ -116,6 +118,11 @@ router.post("/webhooks/meta", async (req, res) => {
 
   res.status(200).send("EVENT_RECEIVED"); // Respond quickly — Meta retries if you're slow
 
+  // Public webhook — Meta calls this server-to-server with no session, so there is
+  // no per-app/per-page routing key today to resolve which org a page belongs to.
+  // Falls back to the Default Organization until per-platform org routing exists.
+  const orgId = req.orgId ?? 1;
+
   try {
     const body = req.body as {
       object?: string;
@@ -150,6 +157,7 @@ router.post("/webhooks/meta", async (req, res) => {
       for (const msg of entry.messaging ?? []) {
         const userId = msg.sender?.id;
         await recordEngagement({
+          orgId,
           platform,
           eventType: "message",
           platformUserId: userId ?? null,
@@ -173,8 +181,9 @@ router.post("/webhooks/meta", async (req, res) => {
           const email = emailField?.values?.[0] ?? null;
           const name = nameField?.values?.[0] ?? null;
           let leadId: number | null = null;
-          if (email) leadId = await resolveLeadByEmail(email);
+          if (email) leadId = await resolveLeadByEmail(orgId, email);
           await recordEngagement({
+            orgId,
             platform,
             eventType,
             leadId,
@@ -191,6 +200,7 @@ router.post("/webhooks/meta", async (req, res) => {
         else if (val.item === "share") eventType = "share";
 
         await recordEngagement({
+          orgId,
           platform,
           eventType,
           platformUserId: val.from?.id ?? null,
@@ -221,6 +231,10 @@ router.get("/webhooks/linkedin", (req, res) => {
 router.post("/webhooks/linkedin", async (req, res) => {
   res.status(200).send("OK");
 
+  // Public webhook — no session; no routing key to resolve org yet, so we fall
+  // back to the Default Organization (same known limitation as the Meta webhook above).
+  const orgId = req.orgId ?? 1;
+
   try {
     const body = req.body as {
       events?: Array<{
@@ -243,6 +257,7 @@ router.post("/webhooks/linkedin", async (req, res) => {
       else if (liEventType.includes("impression")) eventType = "ad_impression";
 
       await recordEngagement({
+        orgId,
         platform: "linkedin",
         eventType,
         platformUserId: event.actor?.id ?? null,
@@ -260,6 +275,10 @@ router.post("/webhooks/linkedin", async (req, res) => {
 
 router.post("/webhooks/telegram", async (req, res) => {
   res.status(200).send("OK");
+
+  // Public webhook — no session; no routing key to resolve org yet, so we fall
+  // back to the Default Organization (same known limitation as the Meta webhook above).
+  const orgId = req.orgId ?? 1;
 
   try {
     const update = req.body as {
@@ -280,6 +299,7 @@ router.post("/webhooks/telegram", async (req, res) => {
       const from = msg.from;
       const name = [from?.first_name, from?.last_name].filter(Boolean).join(" ") || from?.username || null;
       await recordEngagement({
+        orgId,
         platform: "telegram",
         eventType: "message",
         platformUserId: from?.id?.toString() ?? null,
@@ -291,6 +311,7 @@ router.post("/webhooks/telegram", async (req, res) => {
     } else if (update.callback_query) {
       const from = update.callback_query.from;
       await recordEngagement({
+        orgId,
         platform: "telegram",
         eventType: "button_click",
         platformUserId: from?.id?.toString() ?? null,
@@ -321,6 +342,10 @@ router.get("/webhooks/whatsapp", (req, res) => {
 
 router.post("/webhooks/whatsapp", async (req, res) => {
   res.status(200).send("EVENT_RECEIVED");
+
+  // Public webhook — no session; no routing key to resolve org yet, so we fall
+  // back to the Default Organization (same known limitation as the Meta webhook above).
+  const orgId = req.orgId ?? 1;
 
   try {
     const body = req.body as {
@@ -353,6 +378,7 @@ router.post("/webhooks/whatsapp", async (req, res) => {
           const eventType: EventType = msg.type === "interactive" ? "button_click" : "message";
 
           await recordEngagement({
+            orgId,
             platform: "whatsapp",
             eventType,
             platformUserId: phone,

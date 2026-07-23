@@ -6,6 +6,7 @@ export const websiteVisitsTable = pgTable(
   "website_visits",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().default(1),
     // Anonymous visitor id generated client-side and persisted in the
     // browser so repeat page views can be attributed to the same visitor.
     sessionId: text("session_id"),

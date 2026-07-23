@@ -35,10 +35,16 @@ import {
   Zap,
   Bell,
   Target,
-  TrendingUp,
   DollarSign,
   Crown,
+  Cpu,
+  GitBranch,
+  SlidersHorizontal,
+  Table2,
+  TrendingUp,
   Settings2,
+  Grid3x3,
+  X as XIcon,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AIChatbot } from "@/components/ai-chatbot";
@@ -57,9 +63,12 @@ import { useTheme } from "@/context/theme";
 import { useCurrency } from "@/context/currency";
 import { CURRENCY_META } from "@/lib/currency";
 import { NotificationBell } from "@/components/notification-bell";
+import { useCpqEnabled } from "@/context/cpq-feature";
+import { APP_DEFINITIONS, ALL_APP_ID, type AppDefinition } from "@/lib/apps-config";
 
-const NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: string; adminOnly?: boolean; moduleKey?: string }> = [
+const BASE_NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: string; adminOnly?: boolean; moduleKey?: string; cpqOnly?: boolean }> = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard, screenKey: "dashboard" },
+  { label: "Sales Manager", href: "/sales-manager", icon: TrendingUp, screenKey: "dashboard" },
   { label: "Leads", href: "/leads", icon: UserPlus, screenKey: "leads" },
   { label: "Contacts", href: "/contacts", icon: Users, screenKey: "contacts" },
   { label: "Accounts", href: "/accounts", icon: Building2, screenKey: "accounts" },
@@ -84,11 +93,19 @@ const NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?: str
   { label: "Support", href: "/support", icon: Mail, screenKey: "support" },
   { label: "Product Rules", href: "/admin/product-rules", icon: Sliders, screenKey: "products", adminOnly: true },
   { label: "System Admin", href: "/users", icon: Settings, screenKey: "users" },
+  // STIMS — Sales Performance
   { label: "Sales Performance", href: "/stims/dashboard", icon: BarChart3 },
   { label: "Target Cycles", href: "/stims/target-cycles", icon: Target },
   { label: "Incentive Plans", href: "/stims/incentive-plans", icon: TrendingUp },
   { label: "Calc Runs & Payouts", href: "/stims/calc-runs", icon: DollarSign },
   { label: "Comp Admin", href: "/stims/admin", icon: Settings2, adminOnly: true },
+  // CPQ items (only shown when cpqEnabled)
+  { label: "CPQ", href: "/cpq", icon: Cpu, cpqOnly: true },
+  { label: "Guided Selling", href: "/cpq/guided-selling", icon: GitBranch, cpqOnly: true },
+  { label: "CPQ Configurator", href: "/cpq/configurator", icon: SlidersHorizontal, cpqOnly: true },
+  { label: "Quote Line Editor", href: "/cpq/qle", icon: Table2, cpqOnly: true },
+  { label: "Pricing Rules", href: "/cpq/pricing", icon: TrendingUp, cpqOnly: true },
+  { label: "CPQ Settings", href: "/cpq/admin", icon: Settings2, cpqOnly: true, adminOnly: true },
 ];
 
 // 4 pinned tabs for the mobile bottom bar; "More" is the 5th slot
@@ -105,10 +122,38 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { displayCurrency, setDisplayCurrency, supported } = useCurrency();
+  const { cpqEnabled } = useCpqEnabled();
 
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U";
+
+  // App Launcher state
+  const appKey = `crmai:activeApp:${user?.id ?? "anon"}`;
+  const [activeAppId, setActiveAppId] = useState<string>(() => {
+    try { return localStorage.getItem(appKey) ?? ALL_APP_ID; } catch { return ALL_APP_ID; }
+  });
+  const [launcherOpen, setLauncherOpen] = useState(false);
+
+  const switchApp = (appId: string) => {
+    setActiveAppId(appId);
+    try { localStorage.setItem(appKey, appId); } catch {}
+    setLauncherOpen(false);
+  };
+
+  // Only show apps that are available (CPQ gated, module gated)
+  const availableApps = useMemo<AppDefinition[]>(() => {
+    return APP_DEFINITIONS.filter((app) => {
+      if (app.cpqRequired && !cpqEnabled) return false;
+      if (app.moduleKeys?.length) {
+        return app.moduleKeys.some((k) => user?.enabledModules?.[k] !== false);
+      }
+      return true;
+    });
+  }, [cpqEnabled, user?.enabledModules]);
+
+  const activeApp = availableApps.find((a) => a.id === activeAppId) ?? null;
+  const activeAppLabel = activeApp?.name ?? "All Apps";
 
   const isActive = (href: string) => {
     if (href === "/") return location === "/" || location === "/dashboard";
@@ -173,12 +218,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
       ro.disconnect();
       window.removeEventListener("resize", compute);
     };
-  }, [user?.role, user?.screenAccess, user?.enabledModules]);
+  }, [user?.role, user?.screenAccess, user?.enabledModules, cpqEnabled]);
 
   const visibleNavItems = useMemo(() => {
     const isFullAdmin = user?.role === "admin" || user?.role === "super_admin";
-    const allowed = NAV_ITEMS.filter((item) => {
-      // Module gate — hide nav item if its module is disabled
+    const appHrefs = activeApp ? new Set(activeApp.navHrefs) : null;
+    const allowed = BASE_NAV_ITEMS.filter((item) => {
+      // Filter by active app
+      if (appHrefs && !appHrefs.has(item.href)) return false;
+      // Hide CPQ items when CPQ is not enabled
+      if (item.cpqOnly && !cpqEnabled) return false;
+      // Module gate
       if (item.moduleKey && user?.enabledModules) {
         if (!user.enabledModules[item.moduleKey]) return false;
       }
@@ -197,7 +247,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
     for (const it of allowed) if (byHref.has(it.href)) ordered.push(it);
     return ordered;
-  }, [user?.role, user?.screenAccess, navOrder]);
+  }, [user?.role, user?.screenAccess, navOrder, cpqEnabled, activeApp]);
 
   const reorderNav = (sourceHref: string, targetHref: string) => {
     if (sourceHref === targetHref) return;
@@ -214,8 +264,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <TooltipProvider delayDuration={200}>
       <ImpersonationBanner />
-      <div className="flex h-screen bg-background text-foreground overflow-hidden border-[6px] border-solid [border-image:linear-gradient(to_right,#2563eb,#1d4ed8)_1]">
-
+      <div className="flex h-screen bg-background text-foreground overflow-hidden ">
 
         {/* ── Mobile: Full slide-over drawer ── */}
         {isMobileMenuOpen && (
@@ -243,6 +292,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     )}>
                       <item.icon className="w-4 h-4 flex-shrink-0" />
                       {item.label}
+                      {(item as any).cpqOnly && (
+                        <span className="ml-auto text-[9px] font-bold uppercase tracking-wide bg-blue-500/30 text-blue-200 px-1.5 py-0.5 rounded">CPQ</span>
+                      )}
                     </div>
                   </Link>
                 ))}
@@ -276,22 +328,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* Top Header */}
           <header className="h-14 border-b border-sidebar-border bg-card flex items-center justify-between px-4 lg:px-6 z-20 flex-shrink-0 shadow-sm">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-sm font-bold text-primary whitespace-nowrap">arbormind<span className="text-muted-foreground font-normal">.in</span></span>
-                {user?.organizationName && (
-                  <>
-                    <span className="text-border">/</span>
-                    <span className="text-sm text-muted-foreground truncate max-w-[160px]" title={user.organizationName}>
-                      {user.organizationName}
-                    </span>
-                  </>
-                )}
-              </div>
-
+              <span className="text-sm font-bold text-primary">arbormind<span className="text-muted-foreground font-normal">.in</span></span>
               <GlobalSearch />
             </div>
 
             <div className="flex items-center gap-2">
+              {/* App Launcher waffle button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground relative"
+                onClick={() => setLauncherOpen((o) => !o)}
+                title={`App Launcher — ${activeAppLabel}`}
+              >
+                <Grid3x3 className="w-4 h-4" />
+                {activeApp && (
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-background"
+                    style={{ background: "hsl(var(--primary))" }} />
+                )}
+              </Button>
+
               {/* Display currency switcher */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -362,7 +418,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Avatar — desktop only (mobile has it in drawer) */}
+              {/* Avatar */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Avatar className="w-7 h-7 border border-border cursor-pointer">
@@ -390,11 +446,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  {user?.role === "super_admin" && (
+                  {(user?.role === "admin" || user?.role === "super_admin") && (
                     <DropdownMenuItem className="cursor-pointer" asChild>
-                      <Link href="/admin/organizations" className="flex items-center gap-2">
-                        <Crown className="w-4 h-4" />
-                        Organizations
+                      <Link href="/cpq/admin" className="flex items-center gap-2">
+                        <Cpu className="w-4 h-4" />
+                        CPQ Settings
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -408,9 +464,75 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          {/* Salesforce-style horizontal top nav (desktop only) — overflows into a "More" dropdown */}
+          {/* App Launcher Overlay */}
+          {launcherOpen && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4" onClick={() => setLauncherOpen(false)}>
+              <div
+                className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-2xl p-6 animate-in fade-in slide-in-from-top-2 duration-150"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h2 className="text-lg font-bold text-foreground">App Launcher</h2>
+                    <p className="text-xs text-muted-foreground">Currently in: <span className="font-semibold text-foreground">{activeAppLabel}</span></p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => setLauncherOpen(false)}>
+                    <XIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* All Apps tile */}
+                <div className="mb-4">
+                  <button
+                    onClick={() => switchApp(ALL_APP_ID)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all",
+                      activeAppId === ALL_APP_ID
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border hover:border-primary/40 hover:bg-muted/50"
+                    )}
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-lg shrink-0">
+                      🏠
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">All Apps</p>
+                      <p className="text-xs text-muted-foreground">Show the full navigation</p>
+                    </div>
+                    {activeAppId === ALL_APP_ID && <span className="ml-auto text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Active</span>}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {availableApps.map((app) => (
+                    <button
+                      key={app.id}
+                      onClick={() => switchApp(app.id)}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all",
+                        activeAppId === app.id
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40 hover:bg-muted/50"
+                      )}
+                    >
+                      <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0", app.color)}>
+                        {app.emoji}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={cn("text-sm font-semibold truncate", activeAppId === app.id && "text-primary")}>{app.name}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{app.description}</p>
+                      </div>
+                      {activeAppId === app.id && <span className="ml-auto shrink-0 text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Active</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Salesforce-style horizontal top nav (desktop only) */}
           <nav className="hidden md:block border-b border-sidebar-border flex-shrink-0 z-10 relative" style={{ background: "hsl(var(--sidebar))" }}>
-            {/* Hidden measurer: renders every item off-screen so we can read their natural widths */}
+            {/* Hidden measurer */}
             <div
               ref={navMeasureRef}
               aria-hidden="true"
@@ -425,10 +547,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div ref={navContainerRef} className="flex items-stretch gap-0 px-2 overflow-hidden">
+              {/* Active app pill */}
+              {activeApp && (
+                <button
+                  onClick={() => setLauncherOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white/70 hover:text-white whitespace-nowrap border-r border-white/10 mr-1 shrink-0"
+                  title="Switch app"
+                >
+                  <span>{activeApp.emoji}</span>
+                  <span>{activeApp.name}</span>
+                  <Grid3x3 className="w-3 h-3 opacity-50" />
+                </button>
+              )}
               {visibleNavItems.slice(0, visibleNavCount).map((item) => {
                 const active = isActive(item.href);
                 const isDragging = dragHref === item.href;
                 const isDragOver = dragOverHref === item.href && dragHref !== null && dragHref !== item.href;
+                const isCpq = (item as any).cpqOnly;
                 return (
                   <div
                     key={item.href}
@@ -476,6 +611,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       >
                         <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
                         {item.label}
+                        {isCpq && (
+                          <span className="text-[8px] font-bold uppercase tracking-wide bg-blue-400/30 text-blue-200 px-1 py-0.5 rounded leading-none">CPQ</span>
+                        )}
                         {active && (
                           <span className="absolute left-2 right-2 bottom-0 h-0.5 bg-white rounded-t-full" />
                         )}
@@ -514,6 +652,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         )}>
                           <item.icon className="w-3.5 h-3.5 text-muted-foreground" />
                           {item.label}
+                          {(item as any).cpqOnly && (
+                            <span className="ml-auto text-[9px] font-bold bg-blue-100 text-blue-600 px-1 py-0.5 rounded">CPQ</span>
+                          )}
                         </Link>
                       </DropdownMenuItem>
                     ))}
@@ -523,8 +664,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </nav>
 
-          {/* Page Content — adds bottom padding on mobile to clear the nav bar */}
-          <main className="flex-1 overflow-auto bg-background p-1 sm:p-1.5 lg:p-2 pb-20 md:pb-2 lg:pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent" style={{ scrollbarWidth: "thin", scrollbarColor: "hsl(var(--border)) transparent" }}>
+          {/* Page Content */}
+          <main className="flex-1 overflow-auto bg-background p-1 sm:p-1.5 lg:p-2 pb-20 md:pb-2 lg:pb-2" style={{ scrollbarWidth: "thin", scrollbarColor: "hsl(var(--muted-foreground) / 0.4) transparent" }}>
             <div className="border-2 border-blue-700 dark:border-blue-800 rounded-md bg-card px-4 py-3 sm:px-5 sm:py-3 lg:px-8 lg:py-4 shadow-sm animate-in fade-in duration-300 min-h-full">
               {children}
             </div>

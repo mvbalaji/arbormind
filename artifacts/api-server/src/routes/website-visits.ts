@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db, websiteVisitsTable, insertWebsiteVisitSchema } from "@workspace/db";
-import { ilike, or, sql, and, isNotNull } from "drizzle-orm";
+import { eq, ilike, or, sql, and, isNotNull } from "drizzle-orm";
 import { requireScreenAccess } from "../lib/access-control";
+import { getDefaultOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 
@@ -29,10 +30,16 @@ router.post("/website-visits", async (req, res) => {
     const utmTerm = body.utm_term ?? body.utmTerm ?? null;
     const campaignId = body.campaign_id ? parseInt(body.campaign_id) : null;
 
+    // Public, unauthenticated endpoint — no session-derived orgId is available,
+    // so fall back to the Default Organization (matches the dev-mode/demo behavior
+    // in resolveOrgId) when req.orgId wasn't resolved for this request.
+    const orgId = req.orgId ?? (await getDefaultOrgId());
+
     const [visit] = await db
       .insert(websiteVisitsTable)
       .values({
         ...parsed,
+        orgId,
         userAgent,
         ipAddress: clientIp(req),
         utmSource,
@@ -61,7 +68,8 @@ router.get("/website-visits/stats", async (req, res) => {
         unique: sql<number>`count(distinct ${websiteVisitsTable.sessionId})`,
         today: sql<number>`count(*) filter (where ${websiteVisitsTable.visitedAt} >= date_trunc('day', now()))`,
       })
-      .from(websiteVisitsTable);
+      .from(websiteVisitsTable)
+      .where(eq(websiteVisitsTable.orgId, req.orgId as number));
     res.json({
       total: Number(row?.total ?? 0),
       unique: Number(row?.unique ?? 0),
@@ -88,7 +96,7 @@ router.get("/website-visits/by-session", async (req, res) => {
         paths: sql<string[]>`array_agg(path order by visited_at)`,
       })
       .from(websiteVisitsTable)
-      .where(isNotNull(websiteVisitsTable.sessionId))
+      .where(and(isNotNull(websiteVisitsTable.sessionId), eq(websiteVisitsTable.orgId, req.orgId as number)))
       .groupBy(websiteVisitsTable.sessionId)
       .orderBy(sql`max(visited_at) desc`)
       .limit(300);
@@ -114,7 +122,7 @@ router.get("/website-visits/by-ip", async (req, res) => {
         paths: sql<string[]>`array_agg(distinct path)`,
       })
       .from(websiteVisitsTable)
-      .where(isNotNull(websiteVisitsTable.ipAddress))
+      .where(and(isNotNull(websiteVisitsTable.ipAddress), eq(websiteVisitsTable.orgId, req.orgId as number)))
       .groupBy(websiteVisitsTable.ipAddress)
       .orderBy(sql`max(visited_at) desc`)
       .limit(300);
@@ -132,7 +140,7 @@ router.get("/website-visits", async (req, res) => {
     const limitNum = Math.min(200, Math.max(1, parseInt(limit) || 50));
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [];
+    const conditions = [eq(websiteVisitsTable.orgId, req.orgId as number)];
     if (search) {
       conditions.push(
         or(
@@ -143,8 +151,7 @@ router.get("/website-visits", async (req, res) => {
         )!,
       );
     }
-    const whereClause =
-      conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
 
     const [data, countResult] = await Promise.all([
       db

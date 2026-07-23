@@ -1,4 +1,10 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { Component as RC } from "react";
+class RouteEB extends RC<{children: React.ReactNode},{e:string|null}> {
+  state={e:null};
+  static getDerivedStateFromError(err:Error){return{e:err.message+'\n'+err.stack};}
+  render(){return this.state.e?<pre style={{color:'red',padding:16,whiteSpace:'pre-wrap',fontSize:11,background:'#fff'}}>{this.state.e}</pre>:this.props.children;}
+}
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,6 +16,7 @@ import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 
 import Dashboard from "./pages/dashboard";
+import SalesManager from "./pages/sales-manager";
 import Contacts from "./pages/contacts";
 import ContactDetail from "./pages/contact-detail";
 import Leads from "./pages/leads";
@@ -52,6 +59,14 @@ import StimsIncentivePlans from "./pages/stims-incentive-plans";
 import StimsCalcRuns from "./pages/stims-calc-runs";
 import StimsAdmin from "./pages/stims-admin";
 
+// CPQ Module
+import CpqDashboard from "./pages/cpq-dashboard";
+import CpqGuidedSelling from "./pages/cpq-guided-selling";
+import CpqProductConfigurator from "./pages/cpq-product-configurator";
+import CpqQle from "./pages/cpq-qle";
+import CpqPricing from "./pages/cpq-pricing";
+import CpqAdmin from "./pages/cpq-admin";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -64,8 +79,10 @@ const queryClient = new QueryClient({
 function CRMRoutes() {
   return (
     <Switch>
+      <Route path="/login"><Redirect to="/dashboard" /></Route>
       <Route path="/" component={Dashboard} />
       <Route path="/dashboard" component={Dashboard} />
+      <Route path="/sales-manager">{()=><RouteEB><SalesManager /></RouteEB>}</Route>
       <Route path="/contacts" component={Contacts} />
       <Route path="/contacts/:id" component={ContactDetail} />
       <Route path="/leads" component={Leads} />
@@ -97,16 +114,26 @@ function CRMRoutes() {
       <Route path="/admin/access-control" component={AccessControl} />
       <Route path="/admin/organizations" component={Organizations} />
       <Route path="/admin/product-rules" component={ProductRulesAdmin} />
+      <Route path="/approvals" component={ApprovalsList} />
+      {/* CLM */}
       <Route path="/clm/templates" component={ClmTemplates} />
       <Route path="/clm/renewals" component={ClmRenewals} />
       <Route path="/clm/workflow" component={ClmWorkflow} />
       <Route path="/clm/notifications" component={ClmNotifications} />
-      <Route path="/approvals" component={ApprovalsList} />
+      {/* STIMS */}
       <Route path="/stims/dashboard" component={StimsDashboard} />
       <Route path="/stims/target-cycles" component={StimsTargetCycles} />
       <Route path="/stims/incentive-plans" component={StimsIncentivePlans} />
       <Route path="/stims/calc-runs" component={StimsCalcRuns} />
       <Route path="/stims/admin" component={StimsAdmin} />
+      {/* CPQ */}
+      <Route path="/cpq" component={CpqDashboard} />
+      <Route path="/cpq/guided-selling" component={CpqGuidedSelling} />
+      <Route path="/cpq/configurator" component={CpqProductConfigurator} />
+      <Route path="/cpq/qle" component={CpqQle} />
+      <Route path="/cpq/qle/:quoteId" component={CpqQle} />
+      <Route path="/cpq/pricing" component={CpqPricing} />
+      <Route path="/cpq/admin" component={CpqAdmin} />
       <Route component={NotFound} />
     </Switch>
   );

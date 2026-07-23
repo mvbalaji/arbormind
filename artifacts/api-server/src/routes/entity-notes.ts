@@ -45,7 +45,7 @@ router.get("/notes", async (req, res) => {
     if (!Number.isFinite(idNum) || idNum <= 0) { res.status(400).json({ error: "entityId is required" }); return; }
 
     const rows = await db.select().from(entityNotesTable)
-      .where(and(eq(entityNotesTable.entityType, entity), eq(entityNotesTable.entityId, idNum)))
+      .where(and(eq(entityNotesTable.entityType, entity), eq(entityNotesTable.entityId, idNum), eq(entityNotesTable.orgId, req.orgId as number)))
       .orderBy(desc(entityNotesTable.createdAt));
     res.json({ data: rows });
   } catch (err) { req.log.error(err); res.status(500).json({ error: "Internal server error" }); }
@@ -74,6 +74,7 @@ router.post("/notes", async (req, res) => {
     }
 
     const [created] = await db.insert(entityNotesTable).values({
+      orgId: req.orgId as number,
       entityType: entity,
       entityId: idNum,
       body: trimmedBody,
@@ -90,7 +91,8 @@ router.patch("/notes/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id, res);
     if (id == null) return;
-    const [existing] = await db.select().from(entityNotesTable).where(eq(entityNotesTable.id, id));
+    const orgId = req.orgId as number;
+    const [existing] = await db.select().from(entityNotesTable).where(and(eq(entityNotesTable.id, id), eq(entityNotesTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Note not found" }); return; }
     const { body, attachmentName, attachmentUrl } = req.body ?? {};
     const updates: Partial<typeof existing> = { updatedAt: new Date() };
@@ -112,7 +114,7 @@ router.patch("/notes/:id", async (req, res) => {
       res.status(400).json({ error: "A note must keep either a body or an attachment URL" });
       return;
     }
-    const [updated] = await db.update(entityNotesTable).set(updates).where(eq(entityNotesTable.id, id)).returning();
+    const [updated] = await db.update(entityNotesTable).set(updates).where(and(eq(entityNotesTable.id, id), eq(entityNotesTable.orgId, orgId))).returning();
     res.json({ data: updated });
   } catch (err) { req.log.error(err); res.status(500).json({ error: "Internal server error" }); }
 });
@@ -121,9 +123,10 @@ router.delete("/notes/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id, res);
     if (id == null) return;
-    const [existing] = await db.select().from(entityNotesTable).where(eq(entityNotesTable.id, id));
+    const orgId = req.orgId as number;
+    const [existing] = await db.select().from(entityNotesTable).where(and(eq(entityNotesTable.id, id), eq(entityNotesTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Note not found" }); return; }
-    await db.delete(entityNotesTable).where(eq(entityNotesTable.id, id));
+    await db.delete(entityNotesTable).where(and(eq(entityNotesTable.id, id), eq(entityNotesTable.orgId, orgId)));
     res.json({ success: true, id });
   } catch (err) { req.log.error(err); res.status(500).json({ error: "Internal server error" }); }
 });

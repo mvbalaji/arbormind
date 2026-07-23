@@ -56,7 +56,7 @@ const defaultFormData: ContactFormData = {
 };
 
 const CONTACTS_COL_KEYS = ["name","contactInfo","account","owner","actions"] as const;
-const CONTACTS_COL_DEFAULTS: Record<typeof CONTACTS_COL_KEYS[number], number> = {"name":180,"contactInfo":240,"account":200,"owner":140,"actions":120};
+const CONTACTS_COL_DEFAULTS: Record<typeof CONTACTS_COL_KEYS[number], number> = {"name":130,"contactInfo":200,"account":160,"owner":100,"actions":52};
 
 const VIEW_OPTIONS = [
   { label: "All Contacts", value: "all", pinned: true },
@@ -65,7 +65,7 @@ const VIEW_OPTIONS = [
 ];
 
 export default function Contacts() {
-  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:contacts:v1", CONTACTS_COL_KEYS, CONTACTS_COL_DEFAULTS);
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:contacts:v2", CONTACTS_COL_KEYS, CONTACTS_COL_DEFAULTS);
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [activeView, setActiveView] = useState(VIEW_OPTIONS[0]);
@@ -174,26 +174,19 @@ export default function Contacts() {
                       )}
                       {colVis.isVisible("contactInfo") && (
                         <td className="px-3 py-1">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Mail className="w-3.5 h-3.5" />
-                              <span className="truncate max-w-[150px]">{contact.email ?? "-"}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Phone className="w-3.5 h-3.5" />
-                              <span>{contact.phone ?? "-"}</span>
-                            </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Mail className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate max-w-[140px]">{contact.email ?? "—"}</span>
+                            {contact.phone && <><span className="text-border">·</span><Phone className="w-3 h-3 flex-shrink-0" /><span className="whitespace-nowrap">{contact.phone}</span></>}
                           </div>
                         </td>
                       )}
                       {colVis.isVisible("account") && (
                         <td className="px-3 py-1">
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 font-medium text-foreground">
-                              <Building2 className="w-3.5 h-3.5 text-primary" />
-                              {contact.accountName ?? <span className="text-muted-foreground font-normal">No Account</span>}
-                            </div>
-                            <div className="text-xs text-muted-foreground ml-5">{contact.title ?? "-"}</div>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <Building2 className="w-3 h-3 text-primary flex-shrink-0" />
+                            <span className="font-medium text-foreground">{contact.accountName ?? <span className="text-muted-foreground font-normal">—</span>}</span>
+                            {contact.title && <span className="text-muted-foreground">· {contact.title}</span>}
                           </div>
                         </td>
                       )}

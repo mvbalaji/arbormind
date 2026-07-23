@@ -1,10 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { ArrowDownLeft, ArrowUpRight, Eye, Loader2, Mail, Paperclip } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Eye, Loader2, Mail, Paperclip, RefreshCw } from "lucide-react";
 import DOMPurify from "dompurify";
+import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface EmailAttachmentInfo {
   filename: string;
@@ -42,6 +45,13 @@ interface EmailViewerProps {
 }
 
 export function EmailViewer({ activityId, open, onOpenChange }: EmailViewerProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [markingOpened, setMarkingOpened] = useState(false);
+  const [simulatingReply, setSimulatingReply] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [showReplyBox, setShowReplyBox] = useState(false);
+
   const { data, isLoading, error } = useQuery<EmailBody>({
     queryKey: ["email-body", activityId],
     queryFn: async () => {
@@ -55,6 +65,49 @@ export function EmailViewer({ activityId, open, onOpenChange }: EmailViewerProps
 
   const isInbound = data?.direction === "inbound";
   const isGmailProxy = /GoogleImageProxy|ggpht\.com/i.test(data?.lastUserAgent ?? "");
+
+  async function handleMarkOpened() {
+    if (!activityId) return;
+    setMarkingOpened(true);
+    try {
+      const res = await fetch(`/api/email/mark-opened/${activityId}`, { method: "POST", credentials: "include" });
+      if (!res.ok) throw new Error("Failed");
+      await queryClient.invalidateQueries({ queryKey: ["email-body", activityId] });
+      await queryClient.invalidateQueries({ queryKey: ["activities"] });
+      toast({ title: "Marked as opened", description: "Open count updated." });
+    } catch {
+      toast({ title: "Error", description: "Could not mark as opened.", variant: "destructive" });
+    } finally {
+      setMarkingOpened(false);
+    }
+  }
+
+  async function handleSimulateReply() {
+    if (!replyText.trim() || !data) return;
+    setSimulatingReply(true);
+    try {
+      const res = await fetch("/api/emails", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromEmail: data.toEmail ?? "customer@example.com",
+          fromName: data.toEmail ?? "Customer",
+          subject: `Re: ${data.subject}`,
+          message: replyText.trim(),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      await queryClient.invalidateQueries({ queryKey: ["activities"] });
+      toast({ title: "Reply simulated", description: "Inbound reply logged as a new activity." });
+      setReplyText("");
+      setShowReplyBox(false);
+    } catch {
+      toast({ title: "Error", description: "Could not simulate reply.", variant: "destructive" });
+    } finally {
+      setSimulatingReply(false);
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,6 +179,48 @@ export function EmailViewer({ activityId, open, onOpenChange }: EmailViewerProps
                       {data.lastOpenedAt && ` · ${format(new Date(data.lastOpenedAt), "MMM d, HH:mm")}`}
                       {isGmailProxy && " (Gmail caches the open-tracking pixel after the first fetch, so reopens are not reported)"}
                     </span>
+                  </div>
+                )}
+                {!isInbound && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5"
+                      disabled={markingOpened}
+                      onClick={handleMarkOpened}
+                    >
+                      {markingOpened ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
+                      {data.openCount > 0 ? "Record another open" : "Mark as Opened"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => setShowReplyBox((v) => !v)}
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Simulate Customer Reply
+                    </Button>
+                  </div>
+                )}
+                {showReplyBox && (
+                  <div className="mt-2 space-y-2 border border-border rounded-md p-3 bg-muted/20">
+                    <p className="text-[11px] text-muted-foreground">Enter the customer's reply text — it will be logged as an inbound email activity on this record.</p>
+                    <textarea
+                      className="w-full text-sm border border-border rounded px-2 py-1.5 bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                      rows={4}
+                      placeholder="Customer reply..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" className="h-7 text-xs" disabled={simulatingReply || !replyText.trim()} onClick={handleSimulateReply}>
+                        {simulatingReply ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                        Log Inbound Reply
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setShowReplyBox(false); setReplyText(""); }}>Cancel</Button>
+                    </div>
                   </div>
                 )}
               </div>

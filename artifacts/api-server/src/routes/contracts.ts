@@ -8,6 +8,7 @@ import {
   contactsTable,
   opportunitiesTable,
   opportunityItemsTable,
+  priceBooksTable,
   usersTable,
 } from "@workspace/db";
 import { eq, and, sql, inArray, desc } from "drizzle-orm";
@@ -15,7 +16,7 @@ import { eq, and, sql, inArray, desc } from "drizzle-orm";
 import { requireScreenAccess } from "../lib/access-control";
 import { computeEndDate, getActiveContractPricing, expireElapsedContracts } from "../lib/contracts";
 import { generateContractDocument } from "../lib/contract-document";
-import { getOrgId } from "../lib/org-context";
+
 
 const router: IRouter = Router();
 router.use("/contracts", requireScreenAccess("contracts"));
@@ -115,10 +116,11 @@ function computeTotals(items: LineItemInput[], discountPct: number, taxPct: numb
   return { subtotal, total };
 }
 
-function itemRows(contractId: number, items: LineItemInput[]) {
+function itemRows(contractId: number, items: LineItemInput[], orgId: number) {
   return items.map((item) => {
     const qty = item.quantity ?? 1;
     return {
+      orgId,
       contractId,
       productId: item.productId ?? null,
       productName: item.productName,
@@ -131,8 +133,11 @@ function itemRows(contractId: number, items: LineItemInput[]) {
   });
 }
 
-async function nextContractNumber(): Promise<string> {
-  const [maxRow] = await db.select({ maxNum: sql<string>`max(contract_number)` }).from(contractsTable);
+async function nextContractNumber(orgId: number): Promise<string> {
+  const [maxRow] = await db
+    .select({ maxNum: sql<string>`max(contract_number)` })
+    .from(contractsTable)
+    .where(eq(contractsTable.orgId, orgId));
   const nextNum = maxRow?.maxNum ? parseInt(maxRow.maxNum.replace("CNTR-", "")) + 1 : 1001;
   return `CNTR-${nextNum}`;
 }
@@ -147,6 +152,7 @@ function sessionUserId(req: any): number | null {
 // unique violation in case two revisions race for the same number.
 async function insertContractDocumentVersion(
   contractId: number,
+  orgId: number,
   values: { title: string | null; content: string; changeSummary: string | null; createdByUserId: number | null },
 ): Promise<typeof contractDocumentsTable.$inferSelect | undefined> {
   let doc: typeof contractDocumentsTable.$inferSelect | undefined;
@@ -162,6 +168,7 @@ async function insertContractDocumentVersion(
         .set({ isActive: false })
         .where(eq(contractDocumentsTable.contractId, contractId));
       [doc] = await db.insert(contractDocumentsTable).values({
+        orgId,
         contractId,
         version,
         title: values.title,
@@ -331,13 +338,14 @@ async function buildContractDocumentContent(
 // or undefined if version allocation failed after retries.
 async function generateContractDocumentRevision(
   contractId: number,
+  orgId: number,
   userId: number | null,
   changeSummary: string,
 ): Promise<"not_found" | typeof contractDocumentsTable.$inferSelect | undefined> {
   const built = await buildContractDocumentContent(contractId);
   if (built === "not_found") return "not_found";
 
-  return insertContractDocumentVersion(contractId, {
+  return insertContractDocumentVersion(contractId, orgId, {
     title: built.title,
     content: built.content,
     changeSummary,
@@ -368,10 +376,11 @@ async function syncDraftContractDocument(contractId: number): Promise<void> {
 // ----- Active contract pricing lookup for an account -----
 router.get("/contracts/active-pricing/:accountId", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const accountId = parseId(req.params.accountId);
     if (!accountId) { res.status(400).json({ error: "Invalid account ID" }); return; }
-    const pricing = await getActiveContractPricing(accountId, orgId);
+    const [account] = await db.select({ id: accountsTable.id }).from(accountsTable).where(and(eq(accountsTable.id, accountId), eq(accountsTable.orgId, req.orgId as number)));
+    if (!account) { res.status(404).json({ error: "Account not found" }); return; }
+    const pricing = await getActiveContractPricing(accountId);
     res.json({ accountId, pricing });
   } catch (err) {
     req.log.error(err);
@@ -382,16 +391,15 @@ router.get("/contracts/active-pricing/:accountId", async (req, res) => {
 // ----- List -----
 router.get("/contracts", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const { accountId, opportunityId, status, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
     // Keep lifecycle state current: expire any elapsed activated contracts.
-    await expireElapsedContracts(accountId ? parseInt(accountId) : undefined, orgId);
+    await expireElapsedContracts(accountId ? parseInt(accountId) : undefined);
 
-    const conditions = [eq(contractsTable.orgId, orgId)];
+    const conditions = [eq(contractsTable.orgId, req.orgId as number)];
     if (accountId) conditions.push(eq(contractsTable.accountId, parseInt(accountId)));
     if (opportunityId) conditions.push(eq(contractsTable.opportunityId, parseInt(opportunityId)));
     if (status) conditions.push(eq(contractsTable.status, status));
@@ -437,16 +445,17 @@ router.get("/contracts", async (req, res) => {
 // ----- Create -----
 router.post("/contracts", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const { items = [], ...data } = req.body as { items?: LineItemInput[]; [key: string]: unknown };
+    const orgId = req.orgId as number;
 
-    // Verify any referenced account/contact/opportunity/signer contact actually
-    // belongs to this org — otherwise a crafted request could attach this
+    // Verify any referenced account/contact/opportunity/price book/signer contact
+    // actually belongs to this org — otherwise a crafted request could attach this
     // contract to another org's records.
     for (const [field, table] of [
       ["accountId", accountsTable],
       ["contactId", contactsTable],
       ["opportunityId", opportunitiesTable],
+      ["priceBookId", priceBooksTable],
       ["customerSignedByContactId", contactsTable],
     ] as const) {
       const refId = data[field];
@@ -456,7 +465,7 @@ router.post("/contracts", async (req, res) => {
       }
     }
 
-    const contractNumber = await nextContractNumber();
+    const contractNumber = await nextContractNumber(orgId);
     const discountPct = Number(data.discount) || 0;
     const taxPct = Number(data.tax) || 0;
     const { subtotal, total } = computeTotals(items, discountPct, taxPct);
@@ -493,7 +502,7 @@ router.post("/contracts", async (req, res) => {
     }).returning();
 
     if (items.length > 0) {
-      await db.insert(contractLineItemsTable).values(itemRows(contract.id, items));
+      await db.insert(contractLineItemsTable).values(itemRows(contract.id, items, orgId));
     }
 
     res.status(201).json(formatContract(contract, []));
@@ -506,9 +515,9 @@ router.post("/contracts", async (req, res) => {
 // ----- Create from opportunity -----
 router.post("/contracts/from-opportunity/:opportunityId", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const opportunityId = parseId(req.params.opportunityId);
     if (!opportunityId) { res.status(400).json({ error: "Invalid opportunity ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [opp] = await db.select().from(opportunitiesTable).where(and(eq(opportunitiesTable.id, opportunityId), eq(opportunitiesTable.orgId, orgId)));
     if (!opp) { res.status(404).json({ error: "Opportunity not found" }); return; }
@@ -523,7 +532,7 @@ router.post("/contracts/from-opportunity/:opportunityId", async (req, res) => {
       discount: Number(oi.discount),
     }));
 
-    const contractNumber = await nextContractNumber();
+    const contractNumber = await nextContractNumber(orgId);
     const { subtotal, total } = computeTotals(items, 0, 0);
 
     const [contract] = await db.insert(contractsTable).values({
@@ -543,7 +552,7 @@ router.post("/contracts/from-opportunity/:opportunityId", async (req, res) => {
     }).returning();
 
     if (items.length > 0) {
-      await db.insert(contractLineItemsTable).values(itemRows(contract.id, items));
+      await db.insert(contractLineItemsTable).values(itemRows(contract.id, items, orgId));
     }
 
     res.status(201).json(formatContract(contract, []));
@@ -569,16 +578,16 @@ const documentFields = {
 
 router.get("/contracts/:id/documents", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const orgId = req.orgId as number;
     const [contract] = await db.select({ id: contractsTable.id }).from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!contract) { res.status(404).json({ error: "Contract not found" }); return; }
     const docs = await db
       .select(documentFields)
       .from(contractDocumentsTable)
       .leftJoin(usersTable, eq(contractDocumentsTable.createdByUserId, usersTable.id))
-      .where(eq(contractDocumentsTable.contractId, id))
+      .where(and(eq(contractDocumentsTable.contractId, id), eq(contractDocumentsTable.orgId, orgId)))
       .orderBy(desc(contractDocumentsTable.version));
     res.json({ data: docs });
   } catch (err) {
@@ -589,9 +598,9 @@ router.get("/contracts/:id/documents", async (req, res) => {
 
 router.post("/contracts/:id/documents", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const orgId = req.orgId as number;
     const [contract] = await db.select({ id: contractsTable.id }).from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!contract) { res.status(404).json({ error: "Contract not found" }); return; }
 
@@ -601,7 +610,7 @@ router.post("/contracts/:id/documents", async (req, res) => {
       return;
     }
 
-    const doc = await insertContractDocumentVersion(id, {
+    const doc = await insertContractDocumentVersion(id, orgId, {
       title: data.title ?? null,
       content: data.content,
       changeSummary: data.changeSummary ?? null,
@@ -622,7 +631,6 @@ router.post("/contracts/:id/documents", async (req, res) => {
 // ----- Get one -----
 router.get("/contracts/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
 
@@ -639,7 +647,7 @@ router.get("/contracts/:id", async (req, res) => {
       LEFT JOIN contacts con     ON con.id = c.contact_id
       LEFT JOIN opportunities opp ON opp.id = c.opportunity_id
       LEFT JOIN users u          ON u.id   = c.owner_id
-      WHERE c.id = ${id} AND c.org_id = ${orgId}
+      WHERE c.id = ${id} AND c.org_id = ${req.orgId as number}
     `);
     const row = rows.rows[0] as Record<string, unknown> | undefined;
     if (!row) { res.status(404).json({ error: "Contract not found" }); return; }
@@ -723,9 +731,9 @@ router.get("/contracts/:id", async (req, res) => {
 // ----- Update -----
 router.put("/contracts/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [existing] = await db.select().from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
@@ -736,6 +744,7 @@ router.put("/contracts/:id", async (req, res) => {
       ["accountId", accountsTable],
       ["contactId", contactsTable],
       ["opportunityId", opportunitiesTable],
+      ["priceBookId", priceBooksTable],
       ["customerSignedByContactId", contactsTable],
     ] as const) {
       const refId = data[field];
@@ -768,7 +777,7 @@ router.put("/contracts/:id", async (req, res) => {
     if (items) {
       await db.delete(contractLineItemsTable).where(eq(contractLineItemsTable.contractId, id));
       if (items.length > 0) {
-        await db.insert(contractLineItemsTable).values(itemRows(id, items));
+        await db.insert(contractLineItemsTable).values(itemRows(id, items, orgId));
       }
     }
 
@@ -812,9 +821,9 @@ router.put("/contracts/:id", async (req, res) => {
 // ----- Lifecycle: submit for approval (auto-generates the contract document) -----
 router.post("/contracts/:id/submit-for-approval", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const orgId = req.orgId as number;
 
     // Atomically claim the draft -> in_approval transition so concurrent submits
     // cannot both proceed and generate duplicate documents.
@@ -829,7 +838,7 @@ router.post("/contracts/:id/submit-for-approval", async (req, res) => {
       return;
     }
 
-    const doc = await generateContractDocumentRevision(id, sessionUserId(req), "Auto-generated on submission for approval");
+    const doc = await generateContractDocumentRevision(id, orgId, sessionUserId(req), "Auto-generated on submission for approval");
     if (doc === "not_found" || !doc) {
       // Generation failed after we claimed the transition; roll status back to draft.
       await db.update(contractsTable)
@@ -850,14 +859,14 @@ router.post("/contracts/:id/submit-for-approval", async (req, res) => {
 // ----- Generate the contract document from current data (no status change) -----
 router.post("/contracts/:id/generate-document", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [contract] = await db.select({ id: contractsTable.id }).from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!contract) { res.status(404).json({ error: "Contract not found" }); return; }
 
-    const doc = await generateContractDocumentRevision(id, sessionUserId(req), "Generated from contract data");
+    const doc = await generateContractDocumentRevision(id, orgId, sessionUserId(req), "Generated from contract data");
     if (doc === "not_found") { res.status(404).json({ error: "Contract not found" }); return; }
     if (!doc) { res.status(409).json({ error: "Could not generate the contract document, please retry" }); return; }
 
@@ -871,9 +880,9 @@ router.post("/contracts/:id/generate-document", async (req, res) => {
 // ----- Lifecycle: activate -----
 router.post("/contracts/:id/activate", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [existing] = await db.select().from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
@@ -905,9 +914,9 @@ router.post("/contracts/:id/activate", async (req, res) => {
 // ----- Lifecycle: terminate -----
 router.post("/contracts/:id/terminate", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [existing] = await db.select().from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
@@ -934,9 +943,9 @@ router.post("/contracts/:id/terminate", async (req, res) => {
 // ----- Lifecycle: renew (creates a new draft contract continuing the term) -----
 router.post("/contracts/:id/renew", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [existing] = await db.select().from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
@@ -954,7 +963,7 @@ router.post("/contracts/:id/renew", async (req, res) => {
     const term = existing.renewalTermMonths ?? existing.contractTermMonths;
     const startDate = existing.endDate ?? new Date();
     const endDate = computeEndDate(startDate, term);
-    const contractNumber = await nextContractNumber();
+    const contractNumber = await nextContractNumber(orgId);
 
     const [contract] = await db.insert(contractsTable).values({
       orgId,
@@ -981,7 +990,7 @@ router.post("/contracts/:id/renew", async (req, res) => {
     }).returning();
 
     if (items.length > 0) {
-      await db.insert(contractLineItemsTable).values(itemRows(contract.id, items));
+      await db.insert(contractLineItemsTable).values(itemRows(contract.id, items, orgId));
     }
 
     res.status(201).json(formatContract(contract, []));
@@ -994,9 +1003,9 @@ router.post("/contracts/:id/renew", async (req, res) => {
 // ----- Delete -----
 router.delete("/contracts/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid contract ID" }); return; }
+    const orgId = req.orgId as number;
     const [existing] = await db.select({ id: contractsTable.id }).from(contractsTable).where(and(eq(contractsTable.id, id), eq(contractsTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Contract not found" }); return; }
     await db.delete(contractDocumentsTable).where(eq(contractDocumentsTable.contractId, id));

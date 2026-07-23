@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable, insertEmailSchema } from "@workspace/db";
-import { eq, ilike, desc } from "drizzle-orm";
+import { eq, and, ilike, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -15,19 +15,24 @@ function requireAdmin(req: any, res: any): boolean {
   return true;
 }
 
-async function checkIfKnownCustomer(email: string) {
+async function checkIfKnownCustomer(orgId: number, email: string) {
   const [contact] = await db
     .select({ id: contactsTable.id, accountId: contactsTable.accountId })
     .from(contactsTable)
-    .where(ilike(contactsTable.email, email));
+    .where(and(ilike(contactsTable.email, email), eq(contactsTable.orgId, orgId)));
   return contact ?? null;
 }
 
 // POST: Receive email via webhook (from email forwarding / Cloudflare Email Routing)
+// NO AUTH — hit directly by the inbound mail provider, so there's no session to
+// resolve an org from. There is currently no per-domain/per-mailbox routing key
+// to determine which tenant this message belongs to, so we fall back to the
+// Default Organization. Known limitation until inbound webhook routing is added.
 router.post("/emails", async (req, res) => {
   try {
+    const orgId = req.orgId ?? 1;
     const parsed = insertEmailSchema.parse(req.body);
-    const knownContact = await checkIfKnownCustomer(parsed.fromEmail);
+    const knownContact = await checkIfKnownCustomer(orgId, parsed.fromEmail);
     const isKnown = !!knownContact;
 
     let relatedLeadId: number | undefined;
@@ -41,6 +46,7 @@ router.post("/emails", async (req, res) => {
       const [opportunity] = await db
         .insert(opportunitiesTable)
         .values({
+          orgId,
           name: `Inquiry: ${parsed.subject}`,
           description: parsed.message,
           stage: "prospecting",
@@ -55,6 +61,7 @@ router.post("/emails", async (req, res) => {
       const [lead] = await db
         .insert(leadsTable)
         .values({
+          orgId,
           firstName: nameParts[0] || "Unknown",
           lastName: nameParts.slice(1).join(" ") || "Unknown",
           email: parsed.fromEmail,
@@ -68,6 +75,7 @@ router.post("/emails", async (req, res) => {
     const [email] = await db
       .insert(emailsTable)
       .values({
+        orgId,
         fromEmail: parsed.fromEmail,
         fromName: parsed.fromName,
         subject: parsed.subject,
@@ -82,6 +90,7 @@ router.post("/emails", async (req, res) => {
       .returning();
 
     await db.insert(activitiesTable).values({
+      orgId,
       type: "email",
       subject: `Inbound: ${parsed.subject}`,
       description: parsed.message?.substring(0, 500) || "",
@@ -112,6 +121,7 @@ router.get("/emails", async (req, res) => {
     const emails = await db
       .select()
       .from(emailsTable)
+      .where(eq(emailsTable.orgId, req.orgId as number))
       .orderBy(desc(emailsTable.createdAt));
     res.json({ emails });
   } catch (err) {
@@ -134,7 +144,7 @@ router.patch("/emails/:id", async (req, res) => {
         notes: notes ?? undefined,
         updatedAt: new Date(),
       })
-      .where(eq(emailsTable.id, emailId))
+      .where(and(eq(emailsTable.id, emailId), eq(emailsTable.orgId, req.orgId as number)))
       .returning();
 
     res.json({ success: true, email });

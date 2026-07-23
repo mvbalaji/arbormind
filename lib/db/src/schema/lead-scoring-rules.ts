@@ -1,9 +1,10 @@
-import { pgTable, serial, text, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, jsonb, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const leadScoringRulesTable = pgTable("lead_scoring_rules", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
   ruleType: text("rule_type").notNull(),
-  key: text("key").notNull().unique(),
+  key: text("key").notNull(),
   label: text("label").notNull(),
   description: text("description"),
   points: integer("points").notNull().default(0),
@@ -12,7 +13,9 @@ export const leadScoringRulesTable = pgTable("lead_scoring_rules", {
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  orgKeyUnique: uniqueIndex("lead_scoring_rules_org_key_unique").on(t.orgId, t.key),
+}));
 
 export type LeadScoringRule = typeof leadScoringRulesTable.$inferSelect;
 export type InsertLeadScoringRule = typeof leadScoringRulesTable.$inferInsert;

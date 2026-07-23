@@ -1,0 +1,35 @@
+{
+  "cookies": [
+    {
+      "name": "GAESA",
+      "value": "Cp4BMDAyZjhmZmQ0N2U1ZDJjMDZhOWY0N2I5MWRjYTM0ODY0YTkzNDRkYTQ0MzFlN2FmYjM4ZjZkZDA2NWY1YTM1MGM0OWUzMjg4NWQxMDY2NGJkZjQ1YjI2YTEwNTVhMWRiNTAzNTc2MDQyOGE4YTZiOTU1ZjI4NjJlOGVlYzdhZTg3Mjg4Y2U4ZTQ0YzExMDNjZGRkOWQ2MmU1MDk3NTkQ-brpvfUz",
+      "domain": "arbormind.in",
+      "path": "/",
+      "expires": 1786475265.725802,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "connect.sid",
+      "value": "s%3AfIoSJ_2GAplgT7sWQbL_fMXtrojg_r6J.4hMGnEt7lV%2B0wfaHt4JjNhwUZ5jwjCMmf0dslZve%2FxA",
+      "domain": "arbormind.in",
+      "path": "/",
+      "expires": 1784488068.101998,
+      "httpOnly": true,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://arbormind.in",
+      "localStorage": [
+        {
+          "name": "crm-theme",
+          "value": "light"
+        }
+      ]
+    }
+  ]
+}

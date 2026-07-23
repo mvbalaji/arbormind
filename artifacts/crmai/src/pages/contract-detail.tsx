@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -49,7 +49,7 @@ function CLMField({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-// ─── Documents Tab ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Documents Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function DocumentsTab({ contractId }: { contractId: number }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -100,8 +100,8 @@ function DocumentsTab({ contractId }: { contractId: number }) {
     const escaped = raw.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     // Highlight section headings like "1. PARTIES" and rule lines
     const htmlBody = escaped
-      .replace(/^(═+)$/gm, '<hr style="border:2px solid #1a1a1a;margin:12px 0">')
-      .replace(/^(─+)$/gm, '<hr style="border:0.5px solid #aaa;margin:4px 0">')
+      .replace(/^(â•+)$/gm, '<hr style="border:2px solid #1a1a1a;margin:12px 0">')
+      .replace(/^(â”€+)$/gm, '<hr style="border:0.5px solid #aaa;margin:4px 0">')
       .replace(/^(\d+)\. ([A-Z &\/\(\)]+)$/gm, (_,n,t) => `<div class="sec-heading"><span class="sec-num">${n}.</span> ${t}</div>`)
       .replace(/^   ([A-Z][A-Za-z &\/]+)$/gm, (_,t) => `<div class="sub-heading">${t}</div>`)
       .replace(/\n/g, "<br>");
@@ -122,7 +122,7 @@ function DocumentsTab({ contractId }: { contractId: number }) {
   }
 </style></head><body>
 <div class="no-print" style="background:#f0f4ff;border:1px solid #c7d7f9;border-radius:6px;padding:10px 16px;margin-bottom:24px;font-size:12px;display:flex;align-items:center;justify-content:space-between">
-  <span>📄 <strong>${title}</strong> &nbsp;·&nbsp; Version ${version}${doc.createdAt ? " &nbsp;·&nbsp; " + new Date(doc.createdAt as string).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : ""}${doc.createdByName ? " &nbsp;·&nbsp; by " + doc.createdByName : ""}</span>
+  <span>ðŸ“„ <strong>${title}</strong> &nbsp;Â·&nbsp; Version ${version}${doc.createdAt ? " &nbsp;Â·&nbsp; " + new Date(doc.createdAt as string).toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"}) : ""}${doc.createdByName ? " &nbsp;Â·&nbsp; by " + doc.createdByName : ""}</span>
   <button onclick="window.print()" style="background:#2563eb;color:#fff;border:none;border-radius:4px;padding:4px 14px;cursor:pointer;font-size:12px">Print / Save PDF</button>
 </div>
 <div>${htmlBody}</div>
@@ -133,7 +133,7 @@ function DocumentsTab({ contractId }: { contractId: number }) {
     setTimeout(() => URL.revokeObjectURL(url), 15000);
   };
 
-  // ── Redline: LCS diff ──────────────────────────────────────────────────────
+  // â”€â”€ Redline: LCS diff â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const computeRedlineSections = (oldText: string, newText: string) => {
     const a = oldText.split("\n");
     const b = newText.split("\n");
@@ -305,7 +305,7 @@ function DocumentsTab({ contractId }: { contractId: number }) {
                         {doc.changeSummary && <span className="text-xs text-muted-foreground italic truncate">{doc.changeSummary as string}</span>}
                         <span className="text-xs text-muted-foreground flex-shrink-0">
                           {doc.createdAt ? format(new Date(doc.createdAt as string), "MMM d, yyyy") : ""}
-                          {doc.createdByName ? ` · ${doc.createdByName}` : ""}
+                          {doc.createdByName ? ` Â· ${doc.createdByName}` : ""}
                         </span>
                       </div>
                     </div>
@@ -343,7 +343,7 @@ function DocumentsTab({ contractId }: { contractId: number }) {
             <div className="flex items-center justify-between p-4 border-b border-border">
               <div>
                 <h3 className="font-semibold text-foreground">{(previewDoc.title as string) || "Untitled Document"}</h3>
-                <p className="text-xs text-muted-foreground">Version {previewDoc.version as number} · {previewDoc.createdAt ? format(new Date(previewDoc.createdAt as string), "MMM d, yyyy") : ""}</p>
+                <p className="text-xs text-muted-foreground">Version {previewDoc.version as number} Â· {previewDoc.createdAt ? format(new Date(previewDoc.createdAt as string), "MMM d, yyyy") : ""}</p>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => openDoc(previewDoc)} className="gap-1 h-7">
@@ -398,14 +398,14 @@ function DocumentsTab({ contractId }: { contractId: number }) {
                     // Section headings
                     if (/^\d+\.\s[A-Z]/.test(line.trim()))
                       return <div key={idx} className="font-bold text-sm py-1 mt-3 border-b border-border text-foreground">{line}</div>;
-                    if (/^[═]{4,}$/.test(line))
+                    if (/^[â•]{4,}$/.test(line))
                       return <hr key={idx} className="border-foreground/40 my-2" />;
-                    if (/^[─]{4,}$/.test(line))
+                    if (/^[â”€]{4,}$/.test(line))
                       return <hr key={idx} className="border-border my-1" />;
-                    return <div key={idx} className="text-foreground/80 whitespace-pre-wrap">{line || " "}</div>;
+                    return <div key={idx} className="text-foreground/80 whitespace-pre-wrap">{line || "Â "}</div>;
                   }
                   if (s.type === "del")
-                    return <div key={idx} className="whitespace-pre-wrap line-through" style={{background:"#fef2f2",color:"#991b1b",borderLeft:"3px solid #ef4444",paddingLeft:8,marginBottom:1}}>− {s.line}</div>;
+                    return <div key={idx} className="whitespace-pre-wrap line-through" style={{background:"#fef2f2",color:"#991b1b",borderLeft:"3px solid #ef4444",paddingLeft:8,marginBottom:1}}>âˆ’ {s.line}</div>;
                   if (s.type === "ins")
                     return <div key={idx} className="whitespace-pre-wrap font-medium" style={{background:"#f0fdf4",color:"#15803d",borderLeft:"3px solid #22c55e",paddingLeft:8,marginBottom:1}}>+ {s.line}</div>;
                   // change — inline word diff
@@ -424,7 +424,7 @@ function DocumentsTab({ contractId }: { contractId: number }) {
   );
 }
 
-// ─── Authoring Tab ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Authoring Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AuthoringTab({ contractId }: { contractId: number }) {
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
@@ -447,7 +447,7 @@ function AuthoringTab({ contractId }: { contractId: number }) {
     { key: "governing_law", label: "Governing Law", options: ["California", "Delaware", "New York", "Texas", "UK", "Singapore", "Other"] },
     { key: "payment_terms", label: "Payment Terms", options: ["Net 15", "Net 30", "Net 45", "Net 60", "Net 90", "Upfront", "Monthly"] },
     { key: "ip_ownership", label: "IP Ownership", options: ["Customer Owns", "Vendor Owns", "Jointly Owned", "Work-for-Hire"] },
-    { key: "liability_cap_multiplier", label: "Liability Cap (× TCV)" },
+    { key: "liability_cap_multiplier", label: "Liability Cap (Ã— TCV)" },
     { key: "confidentiality_period_years", label: "Confidentiality Period (years)" },
     { key: "termination_notice_days", label: "Termination Notice (days)" },
     { key: "counterparty_company", label: "Counterparty Company" },
@@ -541,7 +541,7 @@ function AuthoringTab({ contractId }: { contractId: number }) {
   );
 }
 
-// ─── Review Tab ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Review Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ReviewTab({ contractId }: { contractId: number }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -647,7 +647,7 @@ function ReviewTab({ contractId }: { contractId: number }) {
   );
 }
 
-// ─── Redlining Tab ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Redlining Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function RedliningTab({ contract, contractId }: { contract: Record<string, unknown>; contractId: number }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -711,8 +711,8 @@ function RedliningTab({ contract, contractId }: { contract: Record<string, unkno
               <div className="flex items-center justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant="outline" className={`text-[10px] ${STATUS_COLOR[r.status as string] ?? ""}`}>{r.status as string}</Badge>
-                  <span className="text-xs text-muted-foreground">Rd {r.round as number} · {r.party as string} · {r.change_type as string}</span>
-                  {r.section != null && <span className="text-xs font-medium text-foreground">§ {r.section as string}</span>}
+                  <span className="text-xs text-muted-foreground">Rd {r.round as number} Â· {r.party as string} Â· {r.change_type as string}</span>
+                  {r.section != null && <span className="text-xs font-medium text-foreground">Â§ {r.section as string}</span>}
                 </div>
                 {r.status === "open" && (
                   <div className="flex gap-1">
@@ -733,7 +733,7 @@ function RedliningTab({ contract, contractId }: { contract: Record<string, unkno
           <div className="grid grid-cols-3 gap-3">
             <div>
               <Label className="text-xs">Section / Clause</Label>
-              <Input className="bg-muted border-border mt-1 h-9 text-sm" value={form.section} onChange={(e) => setForm((p) => ({ ...p, section: e.target.value }))} placeholder="e.g. §4.2 Liability" />
+              <Input className="bg-muted border-border mt-1 h-9 text-sm" value={form.section} onChange={(e) => setForm((p) => ({ ...p, section: e.target.value }))} placeholder="e.g. Â§4.2 Liability" />
             </div>
             <div>
               <Label className="text-xs">Change Type</Label>
@@ -772,7 +772,7 @@ function RedliningTab({ contract, contractId }: { contract: Record<string, unkno
   );
 }
 
-// ─── Signing Tab ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Signing Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SigningTab({ contract, contractId }: { contract: Record<string, unknown>; contractId: number }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -862,7 +862,7 @@ function SigningTab({ contract, contractId }: { contract: Record<string, unknown
                   <Badge variant="outline" className="text-[10px]">{s.party as string}</Badge>
                   <Badge variant="outline" className="text-[10px]">#{s.signing_order as number}</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">{s.email as string}{s.title ? ` · ${s.title}` : ""}</p>
+                <p className="text-xs text-muted-foreground">{s.email as string}{s.title ? ` Â· ${s.title}` : ""}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className={`text-[10px] ${(s.status as string) === "completed" ? "text-green-600 border-green-300" : ""}`}>{s.status as string}</Badge>
@@ -905,7 +905,7 @@ function SigningTab({ contract, contractId }: { contract: Record<string, unknown
   );
 }
 
-// ─── Renewal Tab ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Renewal Tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function RenewalTab({ contract, contractId }: { contract: Record<string, unknown>; contractId: number }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -1640,3 +1640,4 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
     </div>
   );
 }
+

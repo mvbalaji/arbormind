@@ -1,10 +1,9 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { ordersTable, orderItemsTable, quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable } from "@workspace/db";
-import { eq, sql, inArray, desc, and } from "drizzle-orm";
+import { and, eq, sql, inArray, desc } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
-import { getOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 router.use("/orders", requireScreenAccess("orders"));
@@ -73,14 +72,12 @@ function formatItem(item: { quantity: string; unitPrice: string; discount: strin
 
 router.get("/orders", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const { page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [eq(ordersTable.orgId, orgId)];
-    const whereClause = and(...conditions);
+    const orgId = req.orgId as number;
 
     const rawData = await db
       .select(orderFields)
@@ -89,7 +86,7 @@ router.get("/orders", async (req, res) => {
       .leftJoin(contactsTable, eq(ordersTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(ordersTable.accountId, accountsTable.id))
       .leftJoin(quotesTable, eq(ordersTable.quoteId, quotesTable.id))
-      .where(whereClause)
+      .where(eq(ordersTable.orgId, orgId))
       .orderBy(desc(ordersTable.createdAt))
       .limit(limitNum)
       .offset(offset);
@@ -105,7 +102,7 @@ router.get("/orders", async (req, res) => {
       itemsByOrder.get(item.orderId)!.push(formatItem(item));
     }
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(ordersTable).where(whereClause);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(ordersTable).where(eq(ordersTable.orgId, orgId));
     res.json({
       data: rawData.map(o => formatOrder(o, itemsByOrder.get(o.id) ?? [])),
       total: Number(countResult.count),
@@ -120,30 +117,15 @@ router.get("/orders", async (req, res) => {
 
 router.post("/orders", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const { items = [], ...orderData } = req.body as {
       items?: Array<{ productId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
       [key: string]: unknown;
     };
 
-    // Verify any referenced quote/opportunity/contact/account actually belongs to this org —
-    // otherwise a crafted request could attach this order to another org's records.
-    for (const [field, table] of [
-      ["quoteId", quotesTable],
-      ["opportunityId", opportunitiesTable],
-      ["contactId", contactsTable],
-      ["accountId", accountsTable],
-    ] as const) {
-      const refId = orderData[field];
-      if (refId != null) {
-        const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, refId as number), eq(table.orgId, orgId)));
-        if (!row) { res.status(400).json({ error: `Invalid ${field}` }); return; }
-      }
-    }
-
+    const orgId = req.orgId as number;
     const sessionUserId = (req.session as any)?.user?.id ?? (req as any).user?.id ?? null;
 
-    const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable);
+    const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable).where(eq(ordersTable.orgId, orgId));
     const nextNum = maxOrder?.maxNum ? parseInt(maxOrder.maxNum.replace("ORD-", "")) + 1 : 5001;
     const orderNumber = `ORD-${nextNum}`;
 
@@ -173,6 +155,7 @@ router.post("/orders", async (req, res) => {
 
     if (items.length > 0) {
       await db.insert(orderItemsTable).values(items.map(item => ({
+        orgId,
         orderId: order.id,
         productId: item.productId ?? null,
         productName: item.productName,
@@ -192,9 +175,9 @@ router.post("/orders", async (req, res) => {
 
 router.post("/orders/from-quote/:quoteId", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const quoteId = parseId(req.params.quoteId);
     if (!quoteId) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [quote] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, quoteId), eq(quotesTable.orgId, orgId)));
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
@@ -207,7 +190,7 @@ router.post("/orders/from-quote/:quoteId", async (req, res) => {
 
     const sessionUserId = (req.session as any)?.user?.id ?? (req as any).user?.id ?? quote.createdByUserId ?? null;
 
-    const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable);
+    const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable).where(eq(ordersTable.orgId, orgId));
     const nextNum = maxOrder?.maxNum ? parseInt(maxOrder.maxNum.replace("ORD-", "")) + 1 : 5001;
     const orderNumber = `ORD-${nextNum}`;
 
@@ -229,6 +212,7 @@ router.post("/orders/from-quote/:quoteId", async (req, res) => {
 
     if (quoteItems.length > 0) {
       await db.insert(orderItemsTable).values(quoteItems.map(item => ({
+        orgId,
         orderId: order.id,
         productId: item.productId,
         productName: item.productName,
@@ -248,7 +232,6 @@ router.post("/orders/from-quote/:quoteId", async (req, res) => {
 
 router.get("/orders/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid order ID" }); return; }
 
@@ -259,7 +242,7 @@ router.get("/orders/:id", async (req, res) => {
       .leftJoin(contactsTable, eq(ordersTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(ordersTable.accountId, accountsTable.id))
       .leftJoin(quotesTable, eq(ordersTable.quoteId, quotesTable.id))
-      .where(and(eq(ordersTable.id, id), eq(ordersTable.orgId, orgId)));
+      .where(and(eq(ordersTable.id, id), eq(ordersTable.orgId, req.orgId as number)));
 
     if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
@@ -275,7 +258,6 @@ const VALID_ORDER_STATUSES = new Set(["pending", "confirmed", "shipped", "delive
 
 router.put("/orders/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid order ID" }); return; }
 
@@ -284,6 +266,7 @@ router.put("/orders/:id", async (req, res) => {
       return;
     }
 
+    const orgId = req.orgId as number;
     const [existing] = await db.select().from(ordersTable).where(and(eq(ordersTable.id, id), eq(ordersTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Order not found" }); return; }
 
@@ -302,6 +285,7 @@ router.put("/orders/:id", async (req, res) => {
       await db.delete(orderItemsTable).where(eq(orderItemsTable.orderId, id));
       if (items.length > 0) {
         await db.insert(orderItemsTable).values(items.map(item => ({
+          orgId,
           orderId: id,
           productId: item.productId ?? null,
           productName: item.productName,
@@ -342,13 +326,13 @@ router.put("/orders/:id", async (req, res) => {
 
 router.delete("/orders/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid order ID" }); return; }
+    const orgId = req.orgId as number;
     const [existing] = await db.select({ id: ordersTable.id }).from(ordersTable).where(and(eq(ordersTable.id, id), eq(ordersTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Order not found" }); return; }
     await db.delete(orderItemsTable).where(eq(orderItemsTable.orderId, id));
-    await db.delete(ordersTable).where(eq(ordersTable.id, id));
+    await db.delete(ordersTable).where(and(eq(ordersTable.id, id), eq(ordersTable.orgId, orgId)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

@@ -11,6 +11,7 @@ export const emailAttachmentsTable = pgTable(
   "email_attachments",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().default(1),
     trackingId: integer("tracking_id")
       .notNull()
       .references(() => emailTrackingTable.id, { onDelete: "cascade" }),

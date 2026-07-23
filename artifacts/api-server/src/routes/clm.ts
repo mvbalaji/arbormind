@@ -5,7 +5,7 @@ import { generateContractDocument } from "../lib/contract-document";
 
 // Rebuilds the active contract document content after CLM field changes.
 // No-op if the contract has no documents yet.
-async function syncActiveDocument(contractId: number): Promise<void> {
+async function syncActiveDocument(contractId: number, orgId: number): Promise<void> {
   const docRows = await pool.query(
     `SELECT id FROM contract_documents WHERE contract_id = $1 ORDER BY version DESC LIMIT 1`,
     [contractId]
@@ -32,9 +32,9 @@ async function syncActiveDocument(contractId: number): Promise<void> {
     pool.query(`SELECT * FROM contract_line_items WHERE contract_id = $1`, [contractId]),
     pool.query(`SELECT r.stage, r.status, r.due_date, r.completed_date, r.notes, u.name AS reviewer_name
                 FROM clm_reviews r LEFT JOIN users u ON u.id = r.reviewer_id
-                WHERE r.contract_id = $1 ORDER BY r.created_at ASC`, [contractId]),
+                WHERE r.contract_id = $1 AND r.org_id = $2 ORDER BY r.created_at ASC`, [contractId, orgId]),
     pool.query(`SELECT name, email, role, status, signed_at FROM clm_signers
-                WHERE contract_id = $1 ORDER BY signing_order ASC`, [contractId]),
+                WHERE contract_id = $1 AND org_id = $2 ORDER BY signing_order ASC`, [contractId, orgId]),
     pool.query(`SELECT body, created_by_name, created_at, attachment_name, attachment_url
                 FROM entity_notes WHERE entity_type = 'contract' AND entity_id = $1
                 ORDER BY created_at ASC`, [contractId]),
@@ -42,10 +42,10 @@ async function syncActiveDocument(contractId: number): Promise<void> {
 
   let templateClauses: string | null = null;
   if (row.template_id) {
-    const tpl = await pool.query(`SELECT content FROM clm_templates WHERE id = $1 AND active = true`, [row.template_id]);
+    const tpl = await pool.query(`SELECT content FROM clm_templates WHERE id = $1 AND active = true AND org_id = $2`, [row.template_id, orgId]);
     if (tpl.rows[0]) templateClauses = (tpl.rows[0] as Record<string, unknown>).content as string;
   } else if (row.contract_type) {
-    const tpl = await pool.query(`SELECT content FROM clm_templates WHERE category = $1 AND active = true ORDER BY id LIMIT 1`, [row.contract_type]);
+    const tpl = await pool.query(`SELECT content FROM clm_templates WHERE category = $1 AND active = true AND org_id = $2 ORDER BY id LIMIT 1`, [row.contract_type, orgId]);
     if (tpl.rows[0]) templateClauses = (tpl.rows[0] as Record<string, unknown>).content as string;
   }
 
@@ -142,7 +142,7 @@ const router = Router();
 router.get("/clm/templates", async (req, res) => {
   try {
     const { category, active } = req.query;
-    const rows = await db.execute(sql`SELECT * FROM clm_templates ORDER BY name ASC`);
+    const rows = await db.execute(sql`SELECT * FROM clm_templates WHERE org_id = ${req.orgId} ORDER BY name ASC`);
     let data = rows.rows as Record<string, unknown>[];
     if (category) data = data.filter((r) => r.category === category);
     if (active !== undefined) data = data.filter((r) => r.active === (active === "true"));
@@ -156,8 +156,8 @@ router.post("/clm/templates", async (req, res) => {
   try {
     const { name, category, description, content, variables, active = true } = req.body;
     const rows = await db.execute(sql`
-      INSERT INTO clm_templates (name, category, description, content, variables, active)
-      VALUES (${name}, ${category}, ${description}, ${content}, ${JSON.stringify(variables ?? [])}, ${active})
+      INSERT INTO clm_templates (org_id, name, category, description, content, variables, active)
+      VALUES (${req.orgId}, ${name}, ${category}, ${description}, ${content}, ${JSON.stringify(variables ?? [])}, ${active})
       RETURNING *
     `);
     res.status(201).json(rows.rows[0]);
@@ -179,7 +179,7 @@ router.put("/clm/templates/:id", async (req, res) => {
         variables = COALESCE(${variables != null ? JSON.stringify(variables) : null}, variables),
         active = COALESCE(${active}, active),
         updated_at = NOW()
-      WHERE id = ${id} RETURNING *
+      WHERE id = ${id} AND org_id = ${req.orgId} RETURNING *
     `);
     res.json(rows.rows[0]);
   } catch (err) {
@@ -190,7 +190,7 @@ router.put("/clm/templates/:id", async (req, res) => {
 router.delete("/clm/templates/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.execute(sql`DELETE FROM clm_templates WHERE id = ${id}`);
+    await db.execute(sql`DELETE FROM clm_templates WHERE id = ${id} AND org_id = ${req.orgId}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -205,7 +205,7 @@ router.get("/clm/reviews", async (req, res) => {
     const rows = await db.execute(sql`
       SELECT r.*, u.name as reviewer_name FROM clm_reviews r
       LEFT JOIN users u ON u.id = r.reviewer_id
-      WHERE (${contractId ? parseInt(contractId as string) : null} IS NULL OR r.contract_id = ${contractId ? parseInt(contractId as string) : null})
+      WHERE r.org_id = ${req.orgId} AND (${contractId ? parseInt(contractId as string) : null} IS NULL OR r.contract_id = ${contractId ? parseInt(contractId as string) : null})
       ORDER BY r.created_at DESC
     `);
     res.json(rows.rows);
@@ -218,8 +218,8 @@ router.post("/clm/reviews", async (req, res) => {
   try {
     const { contractId, reviewerId, stage, dueDate, notes } = req.body;
     const rows = await db.execute(sql`
-      INSERT INTO clm_reviews (contract_id, reviewer_id, stage, status, due_date, notes)
-      VALUES (${contractId}, ${reviewerId}, ${stage}, 'pending', ${dueDate ?? null}, ${notes ?? null})
+      INSERT INTO clm_reviews (org_id, contract_id, reviewer_id, stage, status, due_date, notes)
+      VALUES (${req.orgId}, ${contractId}, ${reviewerId}, ${stage}, 'pending', ${dueDate ?? null}, ${notes ?? null})
       RETURNING *
     `);
     res.status(201).json(rows.rows[0]);
@@ -239,7 +239,7 @@ router.put("/clm/reviews/:id", async (req, res) => {
         notes = COALESCE(${notes}, notes),
         decision_date = COALESCE(${decisionDate ?? null}, decision_date),
         updated_at = NOW()
-      WHERE id = ${id} RETURNING *
+      WHERE id = ${id} AND org_id = ${req.orgId} RETURNING *
     `);
     res.json(rows.rows[0]);
   } catch (err) {
@@ -254,7 +254,7 @@ router.get("/clm/signers", async (req, res) => {
     const { contractId } = req.query;
     const rows = await db.execute(sql`
       SELECT * FROM clm_signers
-      WHERE (${contractId ? parseInt(contractId as string) : null} IS NULL OR contract_id = ${contractId ? parseInt(contractId as string) : null})
+      WHERE org_id = ${req.orgId} AND (${contractId ? parseInt(contractId as string) : null} IS NULL OR contract_id = ${contractId ? parseInt(contractId as string) : null})
       ORDER BY signing_order ASC
     `);
     res.json(rows.rows);
@@ -267,8 +267,8 @@ router.post("/clm/signers", async (req, res) => {
   try {
     const { contractId, name, email, title, role, signingOrder, party } = req.body;
     const rows = await db.execute(sql`
-      INSERT INTO clm_signers (contract_id, name, email, title, role, signing_order, party, status)
-      VALUES (${contractId}, ${name}, ${email}, ${title ?? null}, ${role ?? "signer"}, ${signingOrder ?? 1}, ${party ?? "counterparty"}, 'pending')
+      INSERT INTO clm_signers (org_id, contract_id, name, email, title, role, signing_order, party, status)
+      VALUES (${req.orgId}, ${contractId}, ${name}, ${email}, ${title ?? null}, ${role ?? "signer"}, ${signingOrder ?? 1}, ${party ?? "counterparty"}, 'pending')
       RETURNING *
     `);
     res.status(201).json(rows.rows[0]);
@@ -286,7 +286,7 @@ router.put("/clm/signers/:id", async (req, res) => {
         status = COALESCE(${status}, status),
         signed_at = COALESCE(${signedAt ?? null}, signed_at),
         updated_at = NOW()
-      WHERE id = ${id} RETURNING *
+      WHERE id = ${id} AND org_id = ${req.orgId} RETURNING *
     `);
     res.json(rows.rows[0]);
   } catch (err) {
@@ -296,7 +296,7 @@ router.put("/clm/signers/:id", async (req, res) => {
 
 router.delete("/clm/signers/:id", async (req, res) => {
   try {
-    await db.execute(sql`DELETE FROM clm_signers WHERE id = ${parseInt(req.params.id)}`);
+    await db.execute(sql`DELETE FROM clm_signers WHERE id = ${parseInt(req.params.id)} AND org_id = ${req.orgId}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -311,7 +311,7 @@ router.get("/clm/redlines", async (req, res) => {
     const rows = await db.execute(sql`
       SELECT r.*, u.name as author_name FROM clm_redlines r
       LEFT JOIN users u ON u.id = r.author_id
-      WHERE (${contractId ? parseInt(contractId as string) : null} IS NULL OR r.contract_id = ${contractId ? parseInt(contractId as string) : null})
+      WHERE r.org_id = ${req.orgId} AND (${contractId ? parseInt(contractId as string) : null} IS NULL OR r.contract_id = ${contractId ? parseInt(contractId as string) : null})
       ORDER BY r.created_at DESC
     `);
     res.json(rows.rows);
@@ -324,8 +324,8 @@ router.post("/clm/redlines", async (req, res) => {
   try {
     const { contractId, authorId, round, section, originalText, proposedText, changeType, party, notes } = req.body;
     const rows = await db.execute(sql`
-      INSERT INTO clm_redlines (contract_id, author_id, round, section, original_text, proposed_text, change_type, party, status, notes)
-      VALUES (${contractId}, ${authorId ?? null}, ${round ?? 1}, ${section ?? null}, ${originalText ?? null}, ${proposedText ?? null}, ${changeType ?? "modification"}, ${party ?? "counterparty"}, 'open', ${notes ?? null})
+      INSERT INTO clm_redlines (org_id, contract_id, author_id, round, section, original_text, proposed_text, change_type, party, status, notes)
+      VALUES (${req.orgId}, ${contractId}, ${authorId ?? null}, ${round ?? 1}, ${section ?? null}, ${originalText ?? null}, ${proposedText ?? null}, ${changeType ?? "modification"}, ${party ?? "counterparty"}, 'open', ${notes ?? null})
       RETURNING *
     `);
     res.status(201).json(rows.rows[0]);
@@ -343,7 +343,7 @@ router.put("/clm/redlines/:id", async (req, res) => {
         status = COALESCE(${status}, status),
         notes = COALESCE(${notes}, notes),
         updated_at = NOW()
-      WHERE id = ${id} RETURNING *
+      WHERE id = ${id} AND org_id = ${req.orgId} RETURNING *
     `);
     res.json(rows.rows[0]);
   } catch (err) {
@@ -355,7 +355,7 @@ router.put("/clm/redlines/:id", async (req, res) => {
 
 router.get("/clm/workflow-rules", async (req, res) => {
   try {
-    const rows = await db.execute(sql`SELECT * FROM clm_workflow_rules ORDER BY sort_order ASC, name ASC`);
+    const rows = await db.execute(sql`SELECT * FROM clm_workflow_rules WHERE org_id = ${req.orgId} ORDER BY sort_order ASC, name ASC`);
     res.json(rows.rows);
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -366,8 +366,8 @@ router.post("/clm/workflow-rules", async (req, res) => {
   try {
     const { name, triggerEvent, conditions, actions, active = true, sortOrder = 0 } = req.body;
     const rows = await db.execute(sql`
-      INSERT INTO clm_workflow_rules (name, trigger_event, conditions, actions, active, sort_order)
-      VALUES (${name}, ${triggerEvent}, ${JSON.stringify(conditions ?? [])}, ${JSON.stringify(actions ?? [])}, ${active}, ${sortOrder})
+      INSERT INTO clm_workflow_rules (org_id, name, trigger_event, conditions, actions, active, sort_order)
+      VALUES (${req.orgId}, ${name}, ${triggerEvent}, ${JSON.stringify(conditions ?? [])}, ${JSON.stringify(actions ?? [])}, ${active}, ${sortOrder})
       RETURNING *
     `);
     res.status(201).json(rows.rows[0]);
@@ -389,7 +389,7 @@ router.put("/clm/workflow-rules/:id", async (req, res) => {
         active = COALESCE(${active}, active),
         sort_order = COALESCE(${sortOrder}, sort_order),
         updated_at = NOW()
-      WHERE id = ${id} RETURNING *
+      WHERE id = ${id} AND org_id = ${req.orgId} RETURNING *
     `);
     res.json(rows.rows[0]);
   } catch (err) {
@@ -399,7 +399,7 @@ router.put("/clm/workflow-rules/:id", async (req, res) => {
 
 router.delete("/clm/workflow-rules/:id", async (req, res) => {
   try {
-    await db.execute(sql`DELETE FROM clm_workflow_rules WHERE id = ${parseInt(req.params.id)}`);
+    await db.execute(sql`DELETE FROM clm_workflow_rules WHERE id = ${parseInt(req.params.id)} AND org_id = ${req.orgId}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -410,7 +410,7 @@ router.delete("/clm/workflow-rules/:id", async (req, res) => {
 
 router.get("/clm/notification-rules", async (req, res) => {
   try {
-    const rows = await db.execute(sql`SELECT * FROM clm_notification_rules ORDER BY name ASC`);
+    const rows = await db.execute(sql`SELECT * FROM clm_notification_rules WHERE org_id = ${req.orgId} ORDER BY name ASC`);
     res.json(rows.rows);
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -421,8 +421,8 @@ router.post("/clm/notification-rules", async (req, res) => {
   try {
     const { name, event, recipients, channels, triggerDaysBefore, messageTemplate, active = true } = req.body;
     const rows = await db.execute(sql`
-      INSERT INTO clm_notification_rules (name, event, recipients, channels, trigger_days_before, message_template, active)
-      VALUES (${name}, ${event}, ${JSON.stringify(recipients ?? [])}, ${JSON.stringify(channels ?? ["email"])}, ${triggerDaysBefore ?? null}, ${messageTemplate ?? null}, ${active})
+      INSERT INTO clm_notification_rules (org_id, name, event, recipients, channels, trigger_days_before, message_template, active)
+      VALUES (${req.orgId}, ${name}, ${event}, ${JSON.stringify(recipients ?? [])}, ${JSON.stringify(channels ?? ["email"])}, ${triggerDaysBefore ?? null}, ${messageTemplate ?? null}, ${active})
       RETURNING *
     `);
     res.status(201).json(rows.rows[0]);
@@ -445,7 +445,7 @@ router.put("/clm/notification-rules/:id", async (req, res) => {
         message_template = COALESCE(${messageTemplate ?? null}, message_template),
         active = COALESCE(${active}, active),
         updated_at = NOW()
-      WHERE id = ${id} RETURNING *
+      WHERE id = ${id} AND org_id = ${req.orgId} RETURNING *
     `);
     res.json(rows.rows[0]);
   } catch (err) {
@@ -455,7 +455,7 @@ router.put("/clm/notification-rules/:id", async (req, res) => {
 
 router.delete("/clm/notification-rules/:id", async (req, res) => {
   try {
-    await db.execute(sql`DELETE FROM clm_notification_rules WHERE id = ${parseInt(req.params.id)}`);
+    await db.execute(sql`DELETE FROM clm_notification_rules WHERE id = ${parseInt(req.params.id)} AND org_id = ${req.orgId}`);
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -504,7 +504,7 @@ router.patch("/contracts/:id/clm", async (req, res) => {
     // Regenerate the active document in-place so it reflects the updated CLM fields.
     // This is non-fatal — if no document exists yet, it's a no-op.
     try {
-      await syncActiveDocument(id);
+      await syncActiveDocument(id, req.orgId as number);
     } catch { /* non-fatal */ }
   } catch (err) {
     res.status(500).json({ error: String(err) });

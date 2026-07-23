@@ -7,7 +7,6 @@ import { contactsTable } from "./contacts";
 import { opportunitiesTable } from "./opportunities";
 import { priceBooksTable } from "./price-books";
 import { productsTable } from "./products";
-import { organizationsTable } from "./organizations";
 
 export const CONTRACT_STATUSES = [
   "draft",
@@ -21,8 +20,8 @@ export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
 
 export const contractsTable = pgTable("contracts", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().references(() => organizationsTable.id),
-  contractNumber: text("contract_number").notNull().unique(),
+  orgId: integer("org_id").notNull().default(1),
+  contractNumber: text("contract_number").notNull(),
   name: text("name").notNull(),
   accountId: integer("account_id").references(() => accountsTable.id),
   contactId: integer("contact_id").references(() => contactsTable.id),
@@ -50,10 +49,13 @@ export const contractsTable = pgTable("contracts", {
   createdByUserId: integer("created_by_user_id").references(() => usersTable.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  orgContractNumberUnique: uniqueIndex("contracts_org_contract_number_unique").on(t.orgId, t.contractNumber),
+}));
 
 export const contractLineItemsTable = pgTable("contract_line_items", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
   contractId: integer("contract_id").notNull().references(() => contractsTable.id),
   productId: integer("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   productName: text("product_name").notNull(),
@@ -67,13 +69,13 @@ export const contractLineItemsTable = pgTable("contract_line_items", {
 
 export const contractDocumentsTable = pgTable("contract_documents", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
   contractId: integer("contract_id").notNull().references(() => contractsTable.id),
   version: integer("version").notNull(),
   title: text("title"),
   content: text("content").notNull(),
   changeSummary: text("change_summary"),
   createdByUserId: integer("created_by_user_id").references(() => usersTable.id),
-  isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
   contractVersionUnique: uniqueIndex("contract_documents_contract_version_unique").on(t.contractId, t.version),

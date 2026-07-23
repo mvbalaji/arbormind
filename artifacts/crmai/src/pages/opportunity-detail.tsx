@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useParams, Link } from "wouter";
+﻿import React, { useState } from "react";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useListQuotes, useCreateQuote, useListProducts, useUpdateOpportunity, useListOpportunityItems, useUpdateOpportunityItems, useListPriceBooks, useListActivePriceBookEntries, useListContracts, getListContractsQueryKey, getListQuotesQueryKey, getListOpportunityItemsQueryKey, getListActivePriceBookEntriesQueryKey, CreateQuoteInputStatus, type CreateQuoteInput, type CreateQuoteItemInput, type OpportunityItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,12 +22,13 @@ import { EntityNotes } from "@/components/entity-notes";
 import { ContactFormDialog } from "@/pages/contacts";
 import { useTabOrder } from "@/hooks/use-tab-order";
 import { useAuth } from "@/context/auth";
+import { useCpqEnabled } from "@/context/cpq-feature";
 import {
   ArrowLeft, ArrowRight, Pencil, DollarSign, Calendar, Activity, Building2,
   Phone, Mail, Users, Briefcase, Check, CheckCircle2, Clock, TrendingUp,
   FileText, FileSignature, Plus, Package, X, Printer, ShieldCheck,
   Filter, RotateCw, ChevronDown, ChevronRight, PhoneCall, CalendarPlus, ListTodo,
-  UserPlus, FilePlus, Copy, MoreVertical, Globe, GripVertical,
+  UserPlus, FilePlus, Copy, MoreVertical, Globe, GripVertical, Paperclip, Upload, Trash,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useCurrency } from "@/context/currency";
@@ -303,7 +304,7 @@ const QUOTE_STATUS_COLORS: Record<string, string> = {
 
 function QuickQuoteDialog({
   open, onOpenChange, opportunityId, opportunityName,
-  accountId, accountName, contactId, contactName, priceBookId, initialItems,
+  accountId, accountName, contactId, contactName, priceBookId, initialItems, onCreated,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -315,6 +316,7 @@ function QuickQuoteDialog({
   contactName: string | null;
   priceBookId: number | null;
   initialItems: OpportunityItem[];
+  onCreated?: (quoteId: number) => void;
 }) {
   const [name, setName] = useState(opportunityName + " Quote");
   const [status, setStatus] = useState<string>("draft");
@@ -403,11 +405,13 @@ function QuickQuoteDialog({
       items: quoteItems,
     };
     try {
-      await createMutation.mutateAsync({ data: payload });
+      const result = await createMutation.mutateAsync({ data: payload });
       await queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
       await queryClient.invalidateQueries({ queryKey: ["opportunity-quotes", String(opportunityId)] });
       toast({ title: "Quote created", description: `${name} linked to this opportunity.` });
       onOpenChange(false);
+      const newId = result?.data?.id ?? result?.id;
+      if (newId) onCreated?.(newId);
     } catch {
       toast({ title: "Error", description: "Could not create quote.", variant: "destructive" });
     }
@@ -646,6 +650,7 @@ function generateQuotePDF(quote: OppQuote, opp: OpportunityDetail, fmtMoney: (am
 export default function OpportunityDetail() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>("about");
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
   const [isProductsOpen, setIsProductsOpen] = useState(false);
@@ -664,6 +669,7 @@ export default function OpportunityDetail() {
   const ownerSeededRef = React.useRef<number | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { cpqEnabled } = useCpqEnabled();
   const { format: fmtMoney } = useCurrency();
   const isAdmin = user?.role === "admin";
 
@@ -755,6 +761,40 @@ export default function OpportunityDetail() {
     enabled: !!id,
   });
 
+  // Attachment state for opportunity
+  const [isDraggingOppFile, setIsDraggingOppFile] = useState(false);
+  const [sideOppActivitySubTab, setSideOppActivitySubTab] = useState<"call" | "email" | "task" | "event">("call");
+  const [sideOppActivityText, setSideOppActivityText] = useState("");
+  const [isAddingOppSideActivity, setIsAddingOppSideActivity] = useState(false);
+  const { data: oppAttachmentsData, refetch: refetchOppAttachments } = useQuery<{ data: any[] }>({
+    queryKey: ["opportunity-attachments", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/opportunities/${id}/attachments`, { credentials: "include" });
+      return res.ok ? res.json() : { data: [] };
+    },
+    enabled: !!id,
+  });
+  const oppAttachmentsList = oppAttachmentsData?.data ?? [];
+
+  const uploadOppFile = async (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const fileData = (reader.result as string).split(",")[1];
+      await fetch(`/api/opportunities/${id}/attachments`, {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileSize: file.size, fileType: file.type, fileData }),
+      });
+      void refetchOppAttachments();
+    };
+    reader.readAsDataURL(file);
+  };
+  const deleteOppAttachment = async (attId: number) => {
+    await fetch(`/api/opportunities/${id}/attachments/${attId}`, { method: "DELETE", credentials: "include" });
+    void refetchOppAttachments();
+  };
+  const fmtFileSize = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+
   const numericId = id ? parseInt(id) : undefined;
   const { data: quotesData } = useListQuotes(numericId ? { opportunityId: numericId } : undefined);
   const oppQuotes: OppQuote[] = (quotesData?.data ?? []) as OppQuote[];
@@ -832,7 +872,7 @@ export default function OpportunityDetail() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-8">
+      <div className="flex flex-col gap-3 pb-8">
         <div>
           <Link href="/opportunities">
             <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-4 hover:text-foreground">
@@ -1025,9 +1065,9 @@ export default function OpportunityDetail() {
           <AINextActions entityType="opportunity" entityId={opp.id} />
         </div>
 
-        {/* Two-column layout: tabs + right sidebar (sidebar only on Details tab) */}
-        <div className={`grid grid-cols-1 gap-6 ${activeTab === "about" ? "lg:grid-cols-[1fr_320px]" : ""}`}>
-          <div className="min-w-0 flex flex-col gap-6">
+        {/* Two-column layout: tabs + right sidebar (always visible) */}
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4">
+          <div className="min-w-0 flex flex-col gap-3">
         {/* Tabs — draggable to reorder */}
         <div className="inline-flex items-center gap-1 rounded-lg bg-muted/70 border border-border p-1 overflow-x-auto">
           {TABS.map((tab) => {
@@ -1277,7 +1317,7 @@ export default function OpportunityDetail() {
                                 </span>
                               )}
                               {act.contactName && (
-                                <span className="text-xs text-muted-foreground">· {act.contactName}</span>
+                                <span className="text-xs text-muted-foreground">Â· {act.contactName}</span>
                               )}
                             </div>
                           </div>
@@ -1465,8 +1505,8 @@ export default function OpportunityDetail() {
             )}
 
             {/* Main Details Grid */}
-            <Card className="glass-panel border-border p-6">
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+            <Card className="glass-panel border-border p-4">
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                 {[
                   { label: "Opportunity Name", value: opp.name },
                   { label: "Account", value: opp.accountName },
@@ -1482,9 +1522,9 @@ export default function OpportunityDetail() {
                   { label: "Last Modified", value: opp.updatedAt ? format(new Date(opp.updatedAt), "MMM d, yyyy 'at' h:mm a") : null },
                 ].map(({ label, value }) =>
                   value ? (
-                    <div key={label}>
-                      <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
-                      <dd className="text-sm text-foreground">{value}</dd>
+                    <div key={label} className="flex items-baseline gap-2">
+                      <dt className="text-xs text-muted-foreground w-32 flex-shrink-0">{label}</dt>
+                      <dd className="text-xs text-foreground font-medium">{value}</dd>
                     </div>
                   ) : null
                 )}
@@ -1612,7 +1652,7 @@ export default function OpportunityDetail() {
                                           <div className="min-w-0 flex-1">
                                             <div className="text-sm font-medium truncate">{u.name}</div>
                                             <div className="text-xs text-muted-foreground truncate">
-                                              {roleLabel(u.role)}{u.email ? ` · ${u.email}` : ""}
+                                              {roleLabel(u.role)}{u.email ? ` Â· ${u.email}` : ""}
                                             </div>
                                           </div>
                                           <Check className={`w-3.5 h-3.5 ${newTeamMember === u.name ? "opacity-100" : "opacity-0"}`} />
@@ -1634,9 +1674,8 @@ export default function OpportunityDetail() {
           </div>
         )}
           </div>
-          {/* Right Sidebar — only on Details (about) tab */}
-          {activeTab === "about" && (
-          <aside className="flex flex-col gap-4">
+          {/* Right Sidebar — always visible */}
+          <aside className="flex flex-col gap-3">
             {/* Account Details */}
             <Card className="border-border overflow-hidden">
               <div className="flex items-center justify-between px-3 py-1 bg-blue-50 dark:bg-blue-950/40 border-b border-border">
@@ -1740,9 +1779,9 @@ export default function OpportunityDetail() {
                           )}
                         </span>
                         <span className="text-[11px] text-muted-foreground shrink-0 flex items-center gap-1.5">
-                          {Number(it.quantity)} × {fmtMoney(Number(it.unitPrice))}
+                          {Number(it.quantity)} Ã— {fmtMoney(Number(it.unitPrice))}
                           {disc > 0 && (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">−{disc}%</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">âˆ’{disc}%</span>
                           )}
                           <span className="text-foreground font-medium">{fmtMoney(lineAmt)}</span>
                         </span>
@@ -1771,7 +1810,7 @@ export default function OpportunityDetail() {
                         {hasDiscount && (
                           <div className="flex justify-between text-[11px]">
                             <span className="text-emerald-600 dark:text-emerald-400">Discount savings</span>
-                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">−{fmtMoney(savedAmt)}</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">âˆ’{fmtMoney(savedAmt)}</span>
                           </div>
                         )}
                         <div className="flex justify-between text-[12px] font-semibold pt-0.5">
@@ -1854,8 +1893,100 @@ export default function OpportunityDetail() {
                 <div className="p-4 text-xs text-muted-foreground">No contact roles assigned.</div>
               )}
             </Card>
+
+            {/* Activities quick-log */}
+            <Card className="border-border overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-primary" /> Activities
+                </h3>
+                <button onClick={() => queryClient.invalidateQueries({ queryKey: ["opportunity-activities", id] })} className="p-1 rounded hover:bg-muted transition-colors">
+                  <RotateCw className="w-3.5 h-3.5 text-muted-foreground" />
+                </button>
+              </div>
+              <div className="p-3 border-b border-border">
+                <div className="flex gap-1 mb-2">
+                  {([{k:"call",i:PhoneCall},{k:"email",i:Mail},{k:"task",i:ListTodo},{k:"event",i:CalendarPlus}] as const).map(({k,i:Icon})=>(
+                    <button key={k} onClick={()=>setSideOppActivitySubTab(k as any)} className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${sideOppActivitySubTab===k?"bg-primary text-primary-foreground":"bg-muted/60 text-muted-foreground hover:bg-muted"}`}>
+                      <Icon className="w-3 h-3"/>{k.charAt(0).toUpperCase()+k.slice(1)}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 h-8 px-2 rounded-md bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground"
+                    placeholder={`Recap the ${sideOppActivitySubTab}...`}
+                    value={sideOppActivityText}
+                    onChange={e=>setSideOppActivityText(e.target.value)}
+                    onKeyDown={async e=>{
+                      if(e.key==="Enter"&&sideOppActivityText.trim()&&numericId){
+                        setIsAddingOppSideActivity(true);
+                        await fetch("/api/activities",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:sideOppActivitySubTab,subject:sideOppActivityText.slice(0,80),notes:sideOppActivityText,status:"completed",opportunityId:numericId})});
+                        setSideOppActivityText(""); queryClient.invalidateQueries({queryKey:["opportunity-activities",id]}); setIsAddingOppSideActivity(false);
+                      }
+                    }}
+                  />
+                  <Button size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 px-3" disabled={isAddingOppSideActivity||!sideOppActivityText.trim()} onClick={async()=>{
+                    if(!numericId) return;
+                    setIsAddingOppSideActivity(true);
+                    await fetch("/api/activities",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:sideOppActivitySubTab,subject:sideOppActivityText.slice(0,80),notes:sideOppActivityText,status:"completed",opportunityId:numericId})});
+                    setSideOppActivityText(""); queryClient.invalidateQueries({queryKey:["opportunity-activities",id]}); setIsAddingOppSideActivity(false);
+                  }}>Add</Button>
+                </div>
+              </div>
+              <div className="divide-y divide-border max-h-64 overflow-y-auto">
+                {(activitiesData?.data ?? []).length===0?(
+                  <div className="py-6 text-center text-muted-foreground text-xs">No activities yet.</div>
+                ):(activitiesData?.data ?? []).slice(0,8).map((a:any)=>{
+                  const Icon = ACTIVITY_ICONS[a.type] ?? Activity;
+                  return (
+                    <div key={a.id} className="px-3 py-2 flex gap-2 items-start">
+                      <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mt-0.5 shrink-0">
+                        <Icon className="w-3 h-3 text-primary"/>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-foreground truncate">{a.subject}</p>
+                        <p className="text-[10px] text-muted-foreground">{a.type} · {a.createdAt ? format(new Date(a.createdAt),"MMM d, h:mm a") : ""}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Attachments */}
+            <Card className="border-border overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
+                <Paperclip className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground flex-1">Attachments</h3>
+              </div>
+              <div className="p-3 space-y-2">
+                <div
+                  className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDraggingOppFile?"border-primary bg-primary/5":"border-border hover:border-primary/40"}`}
+                  onDragOver={e=>{e.preventDefault();setIsDraggingOppFile(true);}}
+                  onDragLeave={()=>setIsDraggingOppFile(false)}
+                  onDrop={e=>{e.preventDefault();setIsDraggingOppFile(false);Array.from(e.dataTransfer.files).forEach(uploadOppFile);}}
+                  onClick={()=>{ const inp=document.createElement("input"); inp.type="file"; inp.multiple=true; inp.onchange=()=>Array.from(inp.files??[]).forEach(uploadOppFile); inp.click(); }}
+                >
+                  <Upload className="w-5 h-5 mx-auto mb-1 text-muted-foreground opacity-50" />
+                  <p className="text-xs text-muted-foreground">Drag &amp; drop or click to upload</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">PDF, Word, Excel, images</p>
+                </div>
+                {oppAttachmentsList.map((att:any)=>(
+                  <div key={att.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/40 border border-border group">
+                    <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate">{att.file_name}</p>
+                      <p className="text-[10px] text-muted-foreground">{fmtFileSize(att.file_size)}</p>
+                    </div>
+                    <button onClick={()=>void deleteOppAttachment(att.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 transition-all">
+                      <Trash className="w-3 h-3 text-destructive"/>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Card>
           </aside>
-          )}
         </div>
       </div>
       {numericId && (
@@ -1882,6 +2013,13 @@ export default function OpportunityDetail() {
                 : null
             }
             initialItems={oppItems}
+            onCreated={(quoteId) => {
+              if (cpqEnabled) {
+                navigate(`/quotes/${quoteId}?cpqPrompt=1`);
+              } else {
+                navigate(`/quotes/${quoteId}`);
+              }
+            }}
           />
         </>
       )}
@@ -2063,7 +2201,7 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Amount (£)</Label>
+            <div className="space-y-1.5"><Label className="text-xs">Amount (Â£)</Label>
               <Input type="number" className="bg-muted border-border h-9" value={form.amount} onChange={f("amount")} />
             </div>
             <div className="space-y-1.5"><Label className="text-xs">Win Probability (%)</Label>
@@ -2108,3 +2246,4 @@ function OppEditDialog({ open, onOpenChange, opp, oppId, onSaved }: {
     </Dialog>
   );
 }
+

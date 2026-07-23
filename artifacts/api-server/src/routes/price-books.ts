@@ -22,10 +22,12 @@ function formatEntry(e: { listPrice: string | null; [key: string]: unknown }) {
 
 router.get("/price-books", async (req, res) => {
   try {
-    await getStandardPriceBook();
+    const orgId = req.orgId as number;
+    await getStandardPriceBook(orgId);
     const rows = await db
       .select()
       .from(priceBooksTable)
+      .where(eq(priceBooksTable.orgId, orgId))
       .orderBy(desc(priceBooksTable.isStandard), priceBooksTable.name);
 
     const counts = await db
@@ -34,6 +36,7 @@ router.get("/price-books", async (req, res) => {
         count: sql<number>`count(*)`,
       })
       .from(priceBookEntriesTable)
+      .where(eq(priceBookEntriesTable.orgId, orgId))
       .groupBy(priceBookEntriesTable.priceBookId);
     const countByBook = new Map(counts.map((c) => [c.priceBookId, Number(c.count)]));
 
@@ -61,6 +64,7 @@ router.post("/price-books", async (req, res) => {
     const [book] = await db
       .insert(priceBooksTable)
       .values({
+        orgId: req.orgId as number,
         name: name.trim(),
         description: description ?? null,
         isStandard: false,
@@ -78,7 +82,7 @@ router.get("/price-books/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid price book ID" }); return; }
-    const [book] = await db.select().from(priceBooksTable).where(eq(priceBooksTable.id, id));
+    const [book] = await db.select().from(priceBooksTable).where(and(eq(priceBooksTable.id, id), eq(priceBooksTable.orgId, req.orgId as number)));
     if (!book) { res.status(404).json({ error: "Price book not found" }); return; }
 
     const entries = await db
@@ -112,7 +116,7 @@ router.put("/price-books/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid price book ID" }); return; }
-    const [existing] = await db.select().from(priceBooksTable).where(eq(priceBooksTable.id, id));
+    const [existing] = await db.select().from(priceBooksTable).where(and(eq(priceBooksTable.id, id), eq(priceBooksTable.orgId, req.orgId as number)));
     if (!existing) { res.status(404).json({ error: "Price book not found" }); return; }
 
     const { name, description, isActive } = req.body as {
@@ -147,7 +151,7 @@ router.delete("/price-books/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid price book ID" }); return; }
-    const [existing] = await db.select().from(priceBooksTable).where(eq(priceBooksTable.id, id));
+    const [existing] = await db.select().from(priceBooksTable).where(and(eq(priceBooksTable.id, id), eq(priceBooksTable.orgId, req.orgId as number)));
     if (!existing) { res.status(404).json({ error: "Price book not found" }); return; }
     if (existing.isStandard) {
       res.status(400).json({ error: "The Standard Price Book cannot be deleted." });
@@ -168,7 +172,8 @@ router.post("/price-books/:id/entries", async (req, res) => {
   try {
     const priceBookId = parseId(req.params.id);
     if (!priceBookId) { res.status(400).json({ error: "Invalid price book ID" }); return; }
-    const [book] = await db.select().from(priceBooksTable).where(eq(priceBooksTable.id, priceBookId));
+    const orgId = req.orgId as number;
+    const [book] = await db.select().from(priceBooksTable).where(and(eq(priceBooksTable.id, priceBookId), eq(priceBooksTable.orgId, orgId)));
     if (!book) { res.status(404).json({ error: "Price book not found" }); return; }
 
     const { productId, listPrice, currency, isActive, useStandardPrice } = req.body as {
@@ -187,14 +192,14 @@ router.post("/price-books/:id/entries", async (req, res) => {
       return;
     }
 
-    const [product] = await db.select().from(productsTable).where(eq(productsTable.id, productId));
+    const [product] = await db.select().from(productsTable).where(and(eq(productsTable.id, productId), eq(productsTable.orgId, orgId)));
     if (!product) { res.status(404).json({ error: "Product not found" }); return; }
 
     // Standard-price-first rule: a product must have a Standard Price entry
     // before it can be added to any custom price book.
     if (book.isStandard) {
       // Adding/keeping the standard entry also syncs the product's unitPrice.
-      await syncStandardEntry(productId, Number(listPrice), "GBP");
+      await syncStandardEntry(orgId, productId, Number(listPrice), "GBP");
       await db
         .update(productsTable)
         .set({ unitPrice: Number(listPrice).toString(), updatedAt: new Date() })
@@ -207,7 +212,7 @@ router.post("/price-books/:id/entries", async (req, res) => {
       return;
     }
 
-    if (!(await productHasStandardEntry(productId))) {
+    if (!(await productHasStandardEntry(orgId, productId))) {
       res.status(400).json({
         error: "This product needs a Standard Price before it can be added to a custom price book.",
       });
@@ -227,6 +232,7 @@ router.post("/price-books/:id/entries", async (req, res) => {
     const [entry] = await db
       .insert(priceBookEntriesTable)
       .values({
+        orgId,
         priceBookId,
         productId,
         listPrice: Number(listPrice).toString(),
@@ -247,13 +253,14 @@ router.put("/price-books/:id/entries/:entryId", async (req, res) => {
     const priceBookId = parseId(req.params.id);
     const entryId = parseId(req.params.entryId);
     if (!priceBookId || !entryId) { res.status(400).json({ error: "Invalid ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [entry] = await db
       .select()
       .from(priceBookEntriesTable)
-      .where(and(eq(priceBookEntriesTable.id, entryId), eq(priceBookEntriesTable.priceBookId, priceBookId)));
+      .where(and(eq(priceBookEntriesTable.id, entryId), eq(priceBookEntriesTable.priceBookId, priceBookId), eq(priceBookEntriesTable.orgId, orgId)));
     if (!entry) { res.status(404).json({ error: "Price book entry not found" }); return; }
-    const [book] = await db.select().from(priceBooksTable).where(eq(priceBooksTable.id, priceBookId));
+    const [book] = await db.select().from(priceBooksTable).where(and(eq(priceBooksTable.id, priceBookId), eq(priceBooksTable.orgId, orgId)));
 
     const { listPrice, currency, isActive } = req.body as {
       listPrice?: number | string;
@@ -296,13 +303,14 @@ router.delete("/price-books/:id/entries/:entryId", async (req, res) => {
     const priceBookId = parseId(req.params.id);
     const entryId = parseId(req.params.entryId);
     if (!priceBookId || !entryId) { res.status(400).json({ error: "Invalid ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [entry] = await db
       .select()
       .from(priceBookEntriesTable)
-      .where(and(eq(priceBookEntriesTable.id, entryId), eq(priceBookEntriesTable.priceBookId, priceBookId)));
+      .where(and(eq(priceBookEntriesTable.id, entryId), eq(priceBookEntriesTable.priceBookId, priceBookId), eq(priceBookEntriesTable.orgId, orgId)));
     if (!entry) { res.status(404).json({ error: "Price book entry not found" }); return; }
-    const [book] = await db.select().from(priceBooksTable).where(eq(priceBooksTable.id, priceBookId));
+    const [book] = await db.select().from(priceBooksTable).where(and(eq(priceBooksTable.id, priceBookId), eq(priceBooksTable.orgId, orgId)));
     if (book?.isStandard) {
       res.status(400).json({
         error: "Cannot remove a product's Standard Price. Remove the product from custom books first.",
@@ -337,7 +345,7 @@ router.get("/price-books/by-product/:productId", async (req, res) => {
       })
       .from(priceBookEntriesTable)
       .leftJoin(priceBooksTable, eq(priceBookEntriesTable.priceBookId, priceBooksTable.id))
-      .where(eq(priceBookEntriesTable.productId, productId))
+      .where(and(eq(priceBookEntriesTable.productId, productId), eq(priceBookEntriesTable.orgId, req.orgId as number)))
       .orderBy(desc(priceBooksTable.isStandard), priceBooksTable.name);
     res.json({ data: rows.map(formatEntry) });
   } catch (err) {
@@ -364,7 +372,7 @@ router.get("/price-books/:id/active-entries", async (req, res) => {
       })
       .from(priceBookEntriesTable)
       .leftJoin(productsTable, eq(priceBookEntriesTable.productId, productsTable.id))
-      .where(and(eq(priceBookEntriesTable.priceBookId, priceBookId), eq(priceBookEntriesTable.isActive, true)))
+      .where(and(eq(priceBookEntriesTable.priceBookId, priceBookId), eq(priceBookEntriesTable.isActive, true), eq(priceBookEntriesTable.orgId, req.orgId as number)))
       .orderBy(productsTable.name);
     res.json({ data: rows.map(formatEntry) });
   } catch (err) {

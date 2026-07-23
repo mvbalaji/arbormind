@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable, opportunityItemsTable } from "@workspace/db";
+import { quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable, opportunityItemsTable, productsTable } from "@workspace/db";
 import { getStandardPriceBookId } from "../lib/pricing";
 import { eq, sql, inArray, desc, and, or } from "drizzle-orm";
 import PDFDocument from "pdfkit";
@@ -10,7 +10,7 @@ import { Writable } from "stream";
 import { requireScreenAccess } from "../lib/access-control";
 import { evaluateApprovalsForEntity } from "../lib/approvals-engine";
 import { getEmailSettingsRow, resolveSmtpConfig } from "../lib/smtp-config";
-import { getOrgId } from "../lib/org-context";
+
 
 function actorFromReq(req: any) {
   const u = req.session?.user ?? req.user ?? null;
@@ -96,14 +96,44 @@ function formatQuote(q: QuoteRow, items: unknown[] = []) {
   };
 }
 
-function formatItem(item: { quantity: string; unitPrice: string; discount: string; total: string; [key: string]: unknown }) {
+function formatItem(raw: Record<string, unknown>) {
+  // Normalize snake_case (raw SQL) to camelCase (Drizzle convention)
+  const item: Record<string, unknown> = { ...raw };
+  if ("quote_id" in raw) {
+    item.quoteId = raw.quote_id;
+    item.productId = raw.product_id;
+    item.priceBookEntryId = raw.price_book_entry_id;
+    item.productName = raw.product_name;
+    item.unitPrice = raw.unit_price;
+    item.costPrice = raw.cost_price;
+    item.marginPct = raw.margin_pct;
+    item.bundleId = raw.bundle_id;
+    item.bundleName = raw.bundle_name;
+    item.createdAt = raw.created_at;
+  }
   return {
     ...item,
     quantity: Number(item.quantity),
     unitPrice: Number(item.unitPrice),
     discount: Number(item.discount),
     total: Number(item.total),
+    costPrice: item.costPrice != null ? Number(item.costPrice) : null,
+    marginPct: item.marginPct != null ? Number(item.marginPct) : null,
   };
+}
+
+async function resolveCostPrices(items: Array<{ productId?: number | null }>): Promise<Map<number, number>> {
+  const productIds = items.map(i => i.productId).filter((id): id is number => !!id);
+  if (productIds.length === 0) return new Map();
+  const rows = await db.select({ id: productsTable.id, costPrice: productsTable.costPrice }).from(productsTable).where(inArray(productsTable.id, productIds));
+  return new Map(rows.filter(r => r.costPrice != null).map(r => [r.id, Number(r.costPrice)]));
+}
+
+function calcMarginPct(unitPrice: number, discountPct: number, costPrice: number | null | undefined): number | null {
+  if (costPrice == null || costPrice <= 0) return null;
+  const effectivePrice = unitPrice * (1 - discountPct / 100);
+  if (effectivePrice <= 0) return null;
+  return ((effectivePrice - costPrice) / effectivePrice) * 100;
 }
 
 interface QuoteForPdf {
@@ -129,6 +159,8 @@ interface QuoteItemForPdf {
   unitPrice: string;
   discount: string;
   total: string;
+  bundleId?: number | null;
+  bundleName?: string | null;
 }
 
 function generatePdfDoc(quote: QuoteForPdf, items: QuoteItemForPdf[]): PDFKit.PDFDocument {
@@ -182,9 +214,39 @@ function generatePdfDoc(quote: QuoteForPdf, items: QuoteItemForPdf[]): PDFKit.PD
   doc.moveTo(50, y).lineTo(545, y).stroke("#cccccc");
   y += 6;
 
-  doc.font("Helvetica").fontSize(9);
+  // Group items by bundleId for tree structure
+  const seenBundles = new Set<number>();
+  let lineNum = 0;
   for (const item of items) {
-    doc.text(item.productName, colX[0], y, { width: 195 });
+    const bid = item.bundleId ? Number(item.bundleId) : null;
+
+    // Bundle header row
+    if (bid && !seenBundles.has(bid)) {
+      seenBundles.add(bid);
+      lineNum++;
+      const bundleChildren = items.filter(i => i.bundleId && Number(i.bundleId) === bid);
+      const bundleTotal = bundleChildren.reduce((s, i) => s + Number(i.total), 0);
+      const bundleDisc = Number(bundleChildren[0]?.discount ?? 0);
+      const bundleName = item.bundleName ?? "Bundle";
+      if (y > 680) { doc.addPage(); y = 50; }
+      // Gray background for bundle header
+      doc.rect(50, y - 2, 495, 16).fill("#f0f0f0").stroke("#cccccc");
+      doc.fillColor("#000000");
+      doc.font("Helvetica-Bold").fontSize(8.5);
+      doc.text(`${lineNum}. [Bundle] ${bundleName}`, colX[0], y, { width: 195 });
+      doc.text(`${bundleChildren.length} items`, colX[1], y, { width: 60, align: "right" });
+      doc.text(bundleDisc > 0 ? `${bundleDisc}% off` : "", colX[3], y, { width: 60, align: "right" });
+      doc.text(`£${bundleTotal.toFixed(2)}`, colX[4], y, { width: 85, align: "right" });
+      y += 18;
+    }
+
+    // Item row (indented if part of bundle)
+    const indent = bid ? 16 : 0;
+    if (y > 700) { doc.addPage(); y = 50; }
+    if (!bid) lineNum++;
+    doc.font("Helvetica").fontSize(9).fillColor("#000000");
+    if (!bid) doc.text(`${lineNum}.`, colX[0], y, { width: 14 });
+    doc.text(item.productName, colX[0] + indent + (bid ? 0 : 14), y, { width: 195 - indent - (bid ? 0 : 14) });
     doc.text(Number(item.quantity).toString(), colX[1], y, { width: 60, align: "right" });
     doc.text(`£${Number(item.unitPrice).toFixed(2)}`, colX[2], y, { width: 60, align: "right" });
     doc.text(`${Number(item.discount)}%`, colX[3], y, { width: 60, align: "right" });
@@ -250,23 +312,23 @@ function pdfToBuffer(doc: PDFKit.PDFDocument): Promise<Buffer> {
   });
 }
 
-async function isLatestVersion(quoteId: number, parentQuoteId: number | null): Promise<boolean> {
+async function isLatestVersion(quoteId: number, parentQuoteId: number | null, orgId: number): Promise<boolean> {
   const rootId = parentQuoteId ?? quoteId;
   const [maxRow] = await db
     .select({ maxVer: sql<number>`max(${quotesTable.version})` })
     .from(quotesTable)
-    .where(sql`${quotesTable.parentQuoteId} = ${rootId} OR ${quotesTable.id} = ${rootId}`);
-  const [current] = await db.select({ version: quotesTable.version }).from(quotesTable).where(eq(quotesTable.id, quoteId));
+    .where(and(sql`${quotesTable.parentQuoteId} = ${rootId} OR ${quotesTable.id} = ${rootId}`, eq(quotesTable.orgId, orgId)));
+  const [current] = await db.select({ version: quotesTable.version }).from(quotesTable).where(and(eq(quotesTable.id, quoteId), eq(quotesTable.orgId, orgId)));
   return current?.version === maxRow?.maxVer;
 }
 
 router.get("/quotes", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const { opportunityId, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
+    const orgId = req.orgId as number;
 
     const baseQuery = db
       .select(quoteFields)
@@ -276,20 +338,22 @@ router.get("/quotes", async (req, res) => {
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id));
 
     const listWhere = opportunityId
-      ? and(eq(quotesTable.orgId, orgId), eq(quotesTable.opportunityId, parseInt(opportunityId)))
+      ? and(eq(quotesTable.opportunityId, parseInt(opportunityId)), eq(quotesTable.orgId, orgId))
       : eq(quotesTable.orgId, orgId);
 
     const rawData = await baseQuery.where(listWhere).orderBy(desc(quotesTable.createdAt)).limit(limitNum).offset(offset);
 
     const quoteIds = rawData.map(q => q.id);
     const allItems = quoteIds.length > 0
-      ? await db.select().from(quoteItemsTable).where(inArray(quoteItemsTable.quoteId, quoteIds))
+      ? (await db.execute(sql`SELECT * FROM quote_items WHERE quote_id IN (${sql.join(quoteIds.map(id => sql`${id}`), sql`, `)})`)).rows as any[]
       : [];
 
     const itemsByQuote = new Map<number, ReturnType<typeof formatItem>[]>();
-    for (const item of allItems) {
-      if (!itemsByQuote.has(item.quoteId)) itemsByQuote.set(item.quoteId, []);
-      itemsByQuote.get(item.quoteId)!.push(formatItem(item));
+    for (const rawItem of allItems) {
+      const item = formatItem(rawItem);
+      const qid = Number(item.quoteId);
+      if (!itemsByQuote.has(qid)) itemsByQuote.set(qid, []);
+      itemsByQuote.get(qid)!.push(item);
     }
 
     // Batched lookup of clone-source quote numbers / names
@@ -298,7 +362,7 @@ router.get("/quotes", async (req, res) => {
     ));
     const sourceRows = sourceIds.length > 0
       ? await db.select({ id: quotesTable.id, quoteNumber: quotesTable.quoteNumber, name: quotesTable.name })
-          .from(quotesTable).where(inArray(quotesTable.id, sourceIds))
+          .from(quotesTable).where(and(inArray(quotesTable.id, sourceIds), eq(quotesTable.orgId, orgId)))
       : [];
     const sourceById = new Map(sourceRows.map(r => [r.id, r]));
 
@@ -308,7 +372,7 @@ router.get("/quotes", async (req, res) => {
       ? await db
           .select({ id: quotesTable.id, parentQuoteId: quotesTable.parentQuoteId, version: quotesTable.version })
           .from(quotesTable)
-          .where(or(inArray(quotesTable.parentQuoteId, rootIds), inArray(quotesTable.id, rootIds)))
+          .where(and(or(inArray(quotesTable.parentQuoteId, rootIds), inArray(quotesTable.id, rootIds)), eq(quotesTable.orgId, orgId)))
       : [];
     const maxVersionByRoot = new Map<number, number>();
     for (const row of familyRows) {
@@ -341,11 +405,12 @@ router.get("/quotes", async (req, res) => {
 
 router.post("/quotes", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     let { items = [], ...quoteData } = req.body as {
       items?: Array<{ productId?: number; priceBookEntryId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
       [key: string]: unknown;
     };
+
+    const orgId = req.orgId as number;
 
     // Verify any referenced opportunity/contact/account actually belongs to this org —
     // otherwise a crafted request could pull another org's line items or attach this
@@ -364,7 +429,7 @@ router.post("/quotes", async (req, res) => {
 
     if (items.length === 0 && quoteData.opportunityId) {
       const oppItems = await db.select().from(opportunityItemsTable)
-        .where(eq(opportunityItemsTable.opportunityId, quoteData.opportunityId as number));
+        .where(and(eq(opportunityItemsTable.opportunityId, quoteData.opportunityId as number), eq(opportunityItemsTable.orgId, orgId)));
       if (oppItems.length > 0) {
         items = oppItems.map(oi => ({
           productId: oi.productId ?? undefined,
@@ -377,7 +442,7 @@ router.post("/quotes", async (req, res) => {
       }
     }
 
-    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable);
+    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable).where(eq(quotesTable.orgId, orgId));
     const nextNum = (maxQuote?.maxNum && maxQuote.maxNum > 0) ? maxQuote.maxNum + 1 : 1001;
     const quoteNumber = `QT-${nextNum}`;
 
@@ -390,12 +455,12 @@ router.post("/quotes", async (req, res) => {
     const total = subtotal * (1 - discountPct / 100) * (1 + taxPct / 100);
 
     const insertData = {
-      orgId,
+      orgId: req.orgId as number,
       name: (quoteData.name as string) ?? "",
       opportunityId: (quoteData.opportunityId as number | null) ?? null,
       contactId: (quoteData.contactId as number | null) ?? null,
       accountId: (quoteData.accountId as number | null) ?? null,
-      priceBookId: (quoteData.priceBookId as number | null) ?? (await getStandardPriceBookId()),
+      priceBookId: (quoteData.priceBookId as number | null) ?? (await getStandardPriceBookId(req.orgId as number)),
       status: (quoteData.status as string) ?? "draft",
       validUntil: quoteData.validUntil ? new Date(quoteData.validUntil as string) : null,
       discount: (quoteData.discount as string) ?? "0",
@@ -413,16 +478,24 @@ router.post("/quotes", async (req, res) => {
     const [quote] = await db.insert(quotesTable).values(insertData).returning();
 
     if (items.length > 0) {
-      await db.insert(quoteItemsTable).values(items.map(item => ({
-        quoteId: quote.id,
-        productId: item.productId ?? null,
-        priceBookEntryId: item.priceBookEntryId ?? null,
-        productName: item.productName,
-        quantity: item.quantity.toString(),
-        unitPrice: item.unitPrice.toString(),
-        discount: (item.discount ?? 0).toString(),
-        total: (item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100)).toString(),
-      })));
+      const costByProduct = await resolveCostPrices(items);
+      await db.insert(quoteItemsTable).values(items.map(item => {
+        const cost = item.productId ? costByProduct.get(item.productId) ?? null : null;
+        const margin = calcMarginPct(item.unitPrice, item.discount ?? 0, cost);
+        return {
+          orgId,
+          quoteId: quote.id,
+          productId: item.productId ?? null,
+          priceBookEntryId: item.priceBookEntryId ?? null,
+          productName: item.productName,
+          quantity: item.quantity.toString(),
+          unitPrice: item.unitPrice.toString(),
+          discount: (item.discount ?? 0).toString(),
+          total: (item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100)).toString(),
+          costPrice: cost != null ? cost.toString() : null,
+          marginPct: margin != null ? margin.toString() : null,
+        };
+      }));
     }
 
     triggerQuoteApprovals(req, quote);
@@ -435,9 +508,9 @@ router.post("/quotes", async (req, res) => {
 
 router.get("/quotes/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const orgId = req.orgId as number;
     const [quote] = await db
       .select(quoteFields)
       .from(quotesTable)
@@ -451,15 +524,18 @@ router.get("/quotes/:id", async (req, res) => {
       return;
     }
 
-    const quoteItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+    const quoteItems = (await db.execute(sql`SELECT * FROM quote_items WHERE quote_id = ${id}`)).rows as any[];
 
     const versions = await db
       .select({ id: quotesTable.id, version: quotesTable.version, quoteNumber: quotesTable.quoteNumber, status: quotesTable.status, createdAt: quotesTable.createdAt })
       .from(quotesTable)
       .where(
-        quote.parentQuoteId
-          ? sql`${quotesTable.parentQuoteId} = ${quote.parentQuoteId} OR ${quotesTable.id} = ${quote.parentQuoteId}`
-          : sql`${quotesTable.parentQuoteId} = ${quote.id} OR ${quotesTable.id} = ${quote.id}`
+        and(
+          quote.parentQuoteId
+            ? sql`${quotesTable.parentQuoteId} = ${quote.parentQuoteId} OR ${quotesTable.id} = ${quote.parentQuoteId}`
+            : sql`${quotesTable.parentQuoteId} = ${quote.id} OR ${quotesTable.id} = ${quote.id}`,
+          eq(quotesTable.orgId, orgId),
+        )
       )
       .orderBy(quotesTable.version);
 
@@ -472,7 +548,7 @@ router.get("/quotes/:id", async (req, res) => {
       const [src] = await db
         .select({ quoteNumber: quotesTable.quoteNumber, name: quotesTable.name })
         .from(quotesTable)
-        .where(eq(quotesTable.id, quote.clonedFromQuoteId));
+        .where(and(eq(quotesTable.id, quote.clonedFromQuoteId), eq(quotesTable.orgId, orgId)));
       if (src) {
         clonedFromQuoteNumber = src.quoteNumber;
         clonedFromQuoteName = src.name;
@@ -492,13 +568,13 @@ router.get("/quotes/:id", async (req, res) => {
   }
 });
 
-const VALID_QUOTE_STATUSES = new Set(["draft", "sent", "accepted", "rejected", "expired"]);
+const VALID_QUOTE_STATUSES = new Set(["draft", "proposal", "sent", "accepted", "rejected", "expired"]);
 
 router.put("/quotes/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const orgId = req.orgId as number;
 
     if (req.body.status && !VALID_QUOTE_STATUSES.has(req.body.status)) {
       res.status(400).json({ error: `Invalid status. Must be one of: ${[...VALID_QUOTE_STATUSES].join(", ")}` });
@@ -508,14 +584,14 @@ router.put("/quotes/:id", async (req, res) => {
     const [existing] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Quote not found" }); return; }
 
-    const isLatest = await isLatestVersion(id, existing.parentQuoteId);
+    const isLatest = await isLatestVersion(id, existing.parentQuoteId, orgId);
     if (!isLatest) {
       res.status(403).json({ error: "Only the latest version of a quote can be edited. Create a new version instead." });
       return;
     }
 
     const { items, ...quoteData } = req.body as {
-      items?: Array<{ productId?: number | null; priceBookEntryId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
+      items?: Array<{ productId?: number | null; priceBookEntryId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number; bundleId?: number | null; bundleName?: string | null }>;
       [key: string]: unknown;
     };
 
@@ -544,31 +620,36 @@ router.put("/quotes/:id", async (req, res) => {
     }
     // If the price book was explicitly cleared, fall back to the Standard Price Book.
     if (updateData.priceBookId === null) {
-      updateData.priceBookId = await getStandardPriceBookId();
+      updateData.priceBookId = await getStandardPriceBookId(req.orgId as number);
     }
 
     if (items) {
-      await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      await db.delete(quoteItemsTable).where(and(eq(quoteItemsTable.quoteId, id), eq(quoteItemsTable.orgId, orgId)));
       if (items.length > 0) {
-        await db.insert(quoteItemsTable).values(items.map(item => ({
-          quoteId: id,
-          productId: item.productId ?? null,
-          priceBookEntryId: item.priceBookEntryId ?? null,
-          productName: item.productName,
-          quantity: item.quantity.toString(),
-          unitPrice: item.unitPrice.toString(),
-          discount: (item.discount ?? 0).toString(),
-          total: (item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100)).toString(),
-        })));
+        const costByProduct = await resolveCostPrices(items);
+        for (const item of items) {
+          const cost = item.productId ? costByProduct.get(item.productId) ?? null : null;
+          const margin = calcMarginPct(item.unitPrice, item.discount ?? 0, cost);
+          const total = item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100);
+          await db.execute(sql`
+            INSERT INTO quote_items (org_id, quote_id, product_id, price_book_entry_id, product_name, quantity, unit_price, discount, total, cost_price, margin_pct, bundle_id, bundle_name)
+            VALUES (
+              ${orgId}, ${id}, ${item.productId ?? null}, ${item.priceBookEntryId ?? null}, ${item.productName},
+              ${item.quantity.toString()}, ${item.unitPrice.toString()}, ${(item.discount ?? 0).toString()},
+              ${total.toString()}, ${cost != null ? cost.toString() : null}, ${margin != null ? margin.toString() : null},
+              ${item.bundleId ?? null}, ${item.bundleName ?? null}
+            )
+          `);
+        }
       }
     }
 
     const needsRecalc = items !== undefined || quoteData.discount !== undefined || quoteData.tax !== undefined;
     if (needsRecalc) {
-      const currentItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      const currentItems = (await db.execute(sql`SELECT * FROM quote_items WHERE quote_id = ${id}`)).rows as any[];
       let subtotal = 0;
       for (const item of currentItems) {
-        subtotal += Number(item.quantity) * Number(item.unitPrice) * (1 - Number(item.discount) / 100);
+        subtotal += Number(item.quantity) * Number(item.unit_price ?? item.unitPrice) * (1 - Number(item.discount) / 100);
       }
       const discountPct = Number(quoteData.discount ?? existing.discount) || 0;
       const taxPct = Number(quoteData.tax ?? existing.tax) || 0;
@@ -584,7 +665,7 @@ router.put("/quotes/:id", async (req, res) => {
     if (!quote) {
       res.status(404).json({ error: "Quote not found" });
     } else {
-      const updatedItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      const updatedItems = (await db.execute(sql`SELECT * FROM quote_items WHERE quote_id = ${id}`)).rows as any[];
       triggerQuoteApprovals(req, quote);
       res.json(formatQuote(quote, updatedItems.map(formatItem)));
     }
@@ -596,9 +677,9 @@ router.put("/quotes/:id", async (req, res) => {
 
 router.post("/quotes/:id/version", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [original] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
     if (!original) { res.status(404).json({ error: "Quote not found" }); return; }
@@ -608,10 +689,10 @@ router.post("/quotes/:id/version", async (req, res) => {
     const [maxVersionRow] = await db
       .select({ maxVer: sql<number>`max(${quotesTable.version})` })
       .from(quotesTable)
-      .where(sql`${quotesTable.parentQuoteId} = ${rootId} OR ${quotesTable.id} = ${rootId}`);
+      .where(and(sql`${quotesTable.parentQuoteId} = ${rootId} OR ${quotesTable.id} = ${rootId}`, eq(quotesTable.orgId, orgId)));
     const nextVersion = (maxVersionRow?.maxVer ?? 1) + 1;
 
-    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable);
+    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable).where(eq(quotesTable.orgId, orgId));
     const nextNum = (maxQuote?.maxNum && maxQuote.maxNum > 0) ? maxQuote.maxNum + 1 : 1001;
     const quoteNumber = `QT-${nextNum}`;
 
@@ -637,9 +718,10 @@ router.post("/quotes/:id/version", async (req, res) => {
       createdByEmail: (req.session as any)?.user?.email ?? (req as any).user?.email ?? null,
     }).returning();
 
-    const originalItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+    const originalItems = (await db.execute(sql`SELECT * FROM quote_items WHERE quote_id = ${id}`)).rows as any[];
     if (originalItems.length > 0) {
       await db.insert(quoteItemsTable).values(originalItems.map(item => ({
+        orgId,
         quoteId: newQuote.id,
         productId: item.productId,
         priceBookEntryId: item.priceBookEntryId,
@@ -661,7 +743,6 @@ router.post("/quotes/:id/version", async (req, res) => {
 // Clone a quote to a different account; copies items and auto-populates contact from the new account
 router.post("/quotes/:id/clone", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
     const { accountId, name: nameInput } = req.body as { accountId?: number; name?: string };
@@ -671,6 +752,7 @@ router.post("/quotes/:id/clone", async (req, res) => {
     }
     const newAccountId = Number(accountId);
     const customName = typeof nameInput === "string" ? nameInput.trim() : "";
+    const orgId = req.orgId as number;
 
     const result = await db.transaction(async (tx) => {
       const [original] = await tx.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
@@ -681,7 +763,7 @@ router.post("/quotes/:id/clone", async (req, res) => {
 
       // Pick first contact of target account (deterministic: oldest contact wins)
       const accountContacts = await tx.select().from(contactsTable)
-        .where(eq(contactsTable.accountId, newAccountId))
+        .where(and(eq(contactsTable.accountId, newAccountId), eq(contactsTable.orgId, orgId)))
         .orderBy(contactsTable.id)
         .limit(1);
       const newContactId = accountContacts[0]?.id ?? null;
@@ -689,7 +771,7 @@ router.post("/quotes/:id/clone", async (req, res) => {
       // Try up to 3 times to allocate a unique quote number (handles concurrent clones)
       let inserted: typeof original | null = null;
       for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
-        const [maxQuote] = await tx.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable);
+        const [maxQuote] = await tx.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable).where(eq(quotesTable.orgId, orgId));
         const baseNum = (maxQuote?.maxNum && maxQuote.maxNum > 0) ? maxQuote.maxNum : 1000;
         const nextNum = baseNum + 1 + attempt;
         const quoteNumber = `QT-${nextNum}`;
@@ -724,9 +806,10 @@ router.post("/quotes/:id/clone", async (req, res) => {
       }
       if (!inserted) return { error: "Could not allocate quote number", status: 500 as const };
 
-      const originalItems = await tx.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      const originalItems = await tx.select().from(quoteItemsTable).where(and(eq(quoteItemsTable.quoteId, id), eq(quoteItemsTable.orgId, orgId)));
       if (originalItems.length > 0) {
         await tx.insert(quoteItemsTable).values(originalItems.map(item => ({
+          orgId,
           quoteId: inserted!.id,
           productId: item.productId,
           priceBookEntryId: item.priceBookEntryId,
@@ -753,9 +836,9 @@ router.post("/quotes/:id/clone", async (req, res) => {
 
 router.get("/quotes/:id/pdf", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [quote] = await db
       .select(quoteFields)
@@ -767,9 +850,10 @@ router.get("/quotes/:id/pdf", async (req, res) => {
 
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
 
-    const items = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+    const rawItems = (await db.execute(sql`SELECT * FROM quote_items WHERE quote_id = ${id}`)).rows as any[];
+    const items = rawItems.map(formatItem);
 
-    const doc = generatePdfDoc(quote, items);
+    const doc = generatePdfDoc(quote, items as any);
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${quote.quoteNumber}.pdf"`);
     doc.pipe(res);
@@ -782,9 +866,9 @@ router.get("/quotes/:id/pdf", async (req, res) => {
 
 router.post("/quotes/:id/send", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const orgId = req.orgId as number;
 
     const [quote] = await db
       .select(quoteFields)
@@ -797,7 +881,7 @@ router.post("/quotes/:id/send", async (req, res) => {
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
 
     const [rawQuote] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
-    const isLatest = await isLatestVersion(id, rawQuote?.parentQuoteId ?? null);
+    const isLatest = await isLatestVersion(id, rawQuote?.parentQuoteId ?? null, orgId);
     if (!isLatest) {
       res.status(403).json({ error: "Only the latest version of a quote can be sent. Create a new version instead." });
       return;
@@ -813,7 +897,7 @@ router.post("/quotes/:id/send", async (req, res) => {
       ? `${quote.contactFirstName} ${quote.contactLastName ?? ""}`.trim()
       : "Customer";
 
-    const items = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+    const items = (await db.execute(sql`SELECT * FROM quote_items WHERE quote_id = ${id}`)).rows as any[];
     const doc = generatePdfDoc(quote, items);
     const pdfBuffer = await pdfToBuffer(doc);
 
@@ -882,7 +966,7 @@ router.post("/quotes/:id/send", async (req, res) => {
 
     await db.update(quotesTable)
       .set({ status: "sent", updatedAt: new Date() })
-      .where(eq(quotesTable.id, id));
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
 
     res.json({
       success: true,
@@ -898,14 +982,94 @@ router.post("/quotes/:id/send", async (req, res) => {
 
 router.delete("/quotes/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const orgId = req.orgId as number;
     const [existing] = await db.select({ id: quotesTable.id }).from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
     if (!existing) { res.status(404).json({ error: "Quote not found" }); return; }
-    await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
-    await db.delete(quotesTable).where(eq(quotesTable.id, id));
+    await db.delete(quoteItemsTable).where(and(eq(quoteItemsTable.quoteId, id), eq(quoteItemsTable.orgId, orgId)));
+    await db.delete(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, orgId)));
     res.json({ success: true, id });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Quote Attachments ──────────────────────────────────────────────────────
+// Note: quote_attachments has no org_id column of its own, so every handler below
+// first verifies the parent quote belongs to the caller's org via the (already
+// org-scoped) quotesTable before touching the attachments row(s).
+router.get("/quotes/:id/attachments", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const [quote] = await db.select({ id: quotesTable.id }).from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId as number)));
+    if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
+    const rows = await db.execute(sql.raw(
+      `SELECT id, quote_id, file_name, file_size, file_type, uploaded_by_name, created_at FROM quote_attachments WHERE quote_id = ${id} ORDER BY created_at DESC`
+    ));
+    res.json({ data: rows.rows });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/quotes/:id/attachments", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
+    const [quote] = await db.select({ id: quotesTable.id }).from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId as number)));
+    if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
+    const actor = actorFromReq(req);
+    const { fileName, fileSize, fileType, fileData } = req.body as {
+      fileName: string; fileSize: number; fileType: string; fileData: string;
+    };
+    if (!fileName || !fileData) { res.status(400).json({ error: "fileName and fileData are required" }); return; }
+    const result = await db.execute(sql.raw(
+      `INSERT INTO quote_attachments (quote_id, file_name, file_size, file_type, file_data, uploaded_by_name)
+       VALUES (${id}, ${db.execute ? `'${fileName.replace(/'/g, "''")}'` : fileName}, ${fileSize ?? 0}, '${(fileType ?? "").replace(/'/g, "''")}', '${fileData.replace(/'/g, "''")}', '${(actor.name ?? "").replace(/'/g, "''")}')
+       RETURNING id, quote_id, file_name, file_size, file_type, uploaded_by_name, created_at`
+    ));
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/quotes/:id/attachments/:attachmentId/download", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    const attachmentId = parseId(req.params.attachmentId);
+    if (!id || !attachmentId) { res.status(400).json({ error: "Invalid ID" }); return; }
+    const [quote] = await db.select({ id: quotesTable.id }).from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId as number)));
+    if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
+    const result = await db.execute(sql.raw(
+      `SELECT file_name, file_type, file_data FROM quote_attachments WHERE id = ${attachmentId} AND quote_id = ${id}`
+    ));
+    const row = result.rows[0] as any;
+    if (!row) { res.status(404).json({ error: "Attachment not found" }); return; }
+    const buf = Buffer.from(row.file_data as string, "base64");
+    res.setHeader("Content-Disposition", `attachment; filename="${row.file_name}"`);
+    res.setHeader("Content-Type", row.file_type || "application/octet-stream");
+    res.send(buf);
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/quotes/:id/attachments/:attachmentId", async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    const attachmentId = parseId(req.params.attachmentId);
+    if (!id || !attachmentId) { res.status(400).json({ error: "Invalid ID" }); return; }
+    const [quote] = await db.select({ id: quotesTable.id }).from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId as number)));
+    if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
+    await db.execute(sql.raw(`DELETE FROM quote_attachments WHERE id = ${attachmentId} AND quote_id = ${id}`));
+    res.json({ success: true });
   } catch (err) {
     req.log.error(err);
     res.status(500).json({ error: "Internal server error" });

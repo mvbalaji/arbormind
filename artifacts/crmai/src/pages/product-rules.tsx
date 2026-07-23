@@ -519,7 +519,7 @@ export default function ProductRulesAdmin() {
 
   return (
     <Layout>
-      <div className="p-6 space-y-6 max-w-5xl mx-auto">
+      <div className="space-y-4 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>

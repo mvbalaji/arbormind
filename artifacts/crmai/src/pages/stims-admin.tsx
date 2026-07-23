@@ -80,7 +80,7 @@ export default function StimsAdmin() {
 
   const { data: attainments = [] } = useQuery<Attainment[]>({
     queryKey: ["stims-attainment", selectedPeriodId],
-    queryFn: () => fetch(`${API}/stims/attainment?period_id=${selectedPeriodId}`).then(r => r.json()),
+    queryFn: () => fetch(`${API}/stims/attainment?period_id=${selectedPeriodId}`).then(r => r.json()).then(d => Array.isArray(d) ? d : (d?.data ?? [])),
   });
 
   const { data: users = [] } = useQuery<Array<{ id: number; name: string; email: string }>>({
@@ -173,7 +173,7 @@ export default function StimsAdmin() {
 
   return (
     <Layout>
-      <div className="p-6 space-y-6 max-w-6xl mx-auto">
+      <div className="space-y-4 max-w-6xl mx-auto">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Settings className="h-6 w-6 text-primary" /> STIMS Administration
@@ -306,13 +306,10 @@ export default function StimsAdmin() {
           {/* Attainment */}
           <TabsContent value="attainment" className="space-y-3">
             <div className="flex items-center gap-3">
-              <Select
-                value={selectedPeriodId === "" ? "all" : selectedPeriodId}
-                onValueChange={(v) => setSelectedPeriodId(v === "all" ? "" : v)}
-              >
+              <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
                 <SelectTrigger className="w-52"><SelectValue placeholder="Filter by period" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All periods</SelectItem>
+                  <SelectItem value="">All periods</SelectItem>
                   {periods.map(p => <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>

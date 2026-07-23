@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -86,11 +86,11 @@ const MOCK_METRICS = [
 ];
 
 const MOCK_CREATIVES = [
-  { name: "Hero Banner - Q2 2025", type: "image", size: "1200×628", status: "active" },
-  { name: "Email Template - Outreach", type: "email", size: "600×auto", status: "active" },
+  { name: "Hero Banner - Q2 2025", type: "image", size: "1200Ã—628", status: "active" },
+  { name: "Email Template - Outreach", type: "email", size: "600Ã—auto", status: "active" },
   { name: "Social Ad Copy - LinkedIn", type: "text", size: "—", status: "active" },
   { name: "Landing Page Copy", type: "text", size: "—", status: "draft" },
-  { name: "Promo Video (30s)", type: "video", size: "1920×1080", status: "review" },
+  { name: "Promo Video (30s)", type: "video", size: "1920Ã—1080", status: "review" },
 ];
 
 const CREATIVE_ICONS: Record<string, React.ElementType> = {
@@ -166,7 +166,7 @@ export default function CampaignDetail() {
       const notifMsg = data.smtpConfigured
         ? data.notifiedCount > 0 ? `${data.notifiedCount} team member${data.notifiedCount !== 1 ? "s" : ""} notified by email.` : "No team members found to notify."
         : "SMTP not configured — team not emailed.";
-      toast({ title: "🚀 Campaign is live!", description: notifMsg });
+      toast({ title: "ðŸš€ Campaign is live!", description: notifMsg });
     },
     onError: (err) => toast({ title: "Launch failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" }),
   });
@@ -248,7 +248,7 @@ export default function CampaignDetail() {
     enabled: !!id && activeTab === "tracking",
   });
 
-  // ── Members tab state ────────────────────────────────
+  // â”€â”€ Members tab state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isImportCSVOpen, setIsImportCSVOpen] = useState(false);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
@@ -256,7 +256,7 @@ export default function CampaignDetail() {
   const [memberSearch, setMemberSearch] = useState("");
   const [memberStatusFilter, setMemberStatusFilter] = useState("");
 
-  // ── Inline section editing ────────────────────────────
+  // â”€â”€ Inline section editing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const [editingSection, setEditingSection] = useState<null | "info" | "budget" | "audience" | "team">(null);
   const [sectionForm, setSectionForm] = useState<Record<string, string>>({});
 
@@ -445,13 +445,13 @@ export default function CampaignDetail() {
     { id: "audience", label: "Audience & Targeting" },
     { id: "creatives", label: "Creatives / Assets" },
     { id: "team", label: "Campaign Team" },
-    { id: "tracking", label: "📡 Tracking & Channels" },
-    { id: "members", label: "👥 Members" },
+    { id: "tracking", label: "ðŸ“¡ Tracking & Channels" },
+    { id: "members", label: "ðŸ‘¥ Members" },
   ];
 
   return (
     <Layout>
-      <div className="flex flex-col gap-5 max-w-5xl mx-auto">
+      <div className="flex flex-col gap-5">
         {/* Back */}
         <div>
           <Link href="/campaigns">
@@ -630,7 +630,7 @@ export default function CampaignDetail() {
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="text-xs text-muted-foreground flex items-center gap-1">
-                          Type {isLocked && <span className="text-amber-400 text-[10px]">🔒 locked</span>}
+                          Type {isLocked && <span className="text-amber-400 text-[10px]">ðŸ”’ locked</span>}
                         </label>
                         <select className={isc} value={sectionForm.type} disabled={isLocked} onChange={e => setSectionForm(f => ({ ...f, type: e.target.value }))}>
                           {["email","social","event","webinar","content","paid","sms","whatsapp"].map(t => (
@@ -648,7 +648,7 @@ export default function CampaignDetail() {
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="text-xs text-muted-foreground flex items-center gap-1">
-                          Start Date {isLocked && <span className="text-amber-400 text-[10px]">🔒 locked</span>}
+                          Start Date {isLocked && <span className="text-amber-400 text-[10px]">ðŸ”’ locked</span>}
                         </label>
                         <input type="date" className={isc} value={sectionForm.startDate} disabled={isLocked} onChange={e => setSectionForm(f => ({ ...f, startDate: e.target.value }))} />
                       </div>
@@ -728,7 +728,7 @@ export default function CampaignDetail() {
                     <div className="grid grid-cols-3 gap-3">
                       <div className="flex flex-col gap-1">
                         <label className="text-xs text-muted-foreground flex items-center gap-1">
-                          Budget {isLocked && <span className="text-amber-400 text-[10px]">🔒</span>}
+                          Budget {isLocked && <span className="text-amber-400 text-[10px]">ðŸ”’</span>}
                         </label>
                         <input type="number" className={isc} value={sectionForm.budget} disabled={isLocked} placeholder="0" onChange={e => setSectionForm(f => ({ ...f, budget: e.target.value }))} />
                       </div>
@@ -850,7 +850,7 @@ export default function CampaignDetail() {
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-muted-foreground flex items-center gap-1">
-                        Channels {isLocked && <span className="text-amber-400 text-[10px]">🔒 locked</span>}
+                        Channels {isLocked && <span className="text-amber-400 text-[10px]">ðŸ”’ locked</span>}
                       </label>
                       <input
                         className={isc}
@@ -876,7 +876,7 @@ export default function CampaignDetail() {
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Target Audience Segment</p>
                       <p className="text-sm text-foreground leading-relaxed">
-                        {campaign.targetAudience ?? "B2B decision-makers in SaaS / Technology companies with 50–500 employees. Primarily VPs and Directors of Sales and Revenue Operations."}
+                        {campaign.targetAudience ?? "B2B decision-makers in SaaS / Technology companies with 50â€“500 employees. Primarily VPs and Directors of Sales and Revenue Operations."}
                       </p>
                     </div>
 
@@ -902,7 +902,7 @@ export default function CampaignDetail() {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {[
                           { label: "Industry", value: "SaaS / Tech" },
-                          { label: "Company Size", value: "50–500 employees" },
+                          { label: "Company Size", value: "50â€“500 employees" },
                           { label: "Job Level", value: "VP / Director" },
                           { label: "Region", value: "North America" },
                         ].map((d) => (
@@ -961,7 +961,7 @@ export default function CampaignDetail() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground">{asset.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{asset.type} · {asset.size}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{asset.type} Â· {asset.size}</p>
                       </div>
                       <Badge variant="outline" className={cn("text-xs capitalize", {
                         "text-green-600 border-green-500/30": asset.status === "active",
@@ -1130,7 +1130,7 @@ export default function CampaignDetail() {
           return (
             <div className="flex flex-col gap-5">
 
-              {/* ── Engagement KPIs ── */}
+              {/* â”€â”€ Engagement KPIs â”€â”€ */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "Total Events", value: stats?.totals.totalEvents ?? 0, icon: Activity, color: "text-purple-600 bg-purple-500/10" },
@@ -1153,7 +1153,7 @@ export default function CampaignDetail() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
-                {/* ── Channel Breakdown ── */}
+                {/* â”€â”€ Channel Breakdown â”€â”€ */}
                 <Card className="glass-panel border-border">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -1173,7 +1173,7 @@ export default function CampaignDetail() {
                             <div key={p.platform}>
                               <div className="flex justify-between text-xs mb-1">
                                 <span className="capitalize font-medium text-foreground">{p.platform}</span>
-                                <span className="text-muted-foreground">{p.count} events · score {p.totalScore}</span>
+                                <span className="text-muted-foreground">{p.count} events Â· score {p.totalScore}</span>
                               </div>
                               <div className="w-full bg-muted/50 rounded-full h-2">
                                 <div
@@ -1189,7 +1189,7 @@ export default function CampaignDetail() {
                   </CardContent>
                 </Card>
 
-                {/* ── Interest Distribution ── */}
+                {/* â”€â”€ Interest Distribution â”€â”€ */}
                 <Card className="glass-panel border-border">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -1209,7 +1209,7 @@ export default function CampaignDetail() {
                             <CIcon className="w-4 h-4 shrink-0" />
                             <div className="flex-1">
                               <div className="font-medium">{cfg.label}</div>
-                              <div className="text-xs opacity-70">{count} {count === 1 ? "event" : "events"} · score threshold: {cat === "hot" ? "≥15" : cat === "warm" ? "5–14" : "1–4"}</div>
+                              <div className="text-xs opacity-70">{count} {count === 1 ? "event" : "events"} Â· score threshold: {cat === "hot" ? "â‰¥15" : cat === "warm" ? "5â€“14" : "1â€“4"}</div>
                             </div>
                             <div className="font-bold text-lg">{engStatsQuery.isLoading ? "…" : count}</div>
                           </div>
@@ -1223,7 +1223,7 @@ export default function CampaignDetail() {
                 </Card>
               </div>
 
-              {/* ── UTM Link Generator ── */}
+              {/* â”€â”€ UTM Link Generator â”€â”€ */}
               <Card className="glass-panel border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -1255,7 +1255,7 @@ export default function CampaignDetail() {
                 </CardContent>
               </Card>
 
-              {/* ── Webhook Configuration ── */}
+              {/* â”€â”€ Webhook Configuration â”€â”€ */}
               <Card className="glass-panel border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -1298,7 +1298,7 @@ export default function CampaignDetail() {
                 </CardContent>
               </Card>
 
-              {/* ── Live Engagement Feed ── */}
+              {/* â”€â”€ Live Engagement Feed â”€â”€ */}
               <Card className="glass-panel border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -1329,7 +1329,7 @@ export default function CampaignDetail() {
                             <div className="flex-1 min-w-0">
                               <span className="text-xs font-medium text-foreground capitalize">{ev.eventType.replace(/_/g, " ")}</span>
                               <span className="text-xs text-muted-foreground ml-2 capitalize">{ev.platform}</span>
-                              {identity !== "Anonymous" && <span className="text-xs text-muted-foreground ml-2">· {identity}</span>}
+                              {identity !== "Anonymous" && <span className="text-xs text-muted-foreground ml-2">Â· {identity}</span>}
                             </div>
                             <span className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium shrink-0", cfg.color)}>
                               <CIcon className="w-3 h-3" />
@@ -1350,7 +1350,7 @@ export default function CampaignDetail() {
           );
         })()}
 
-        {/* ── Members tab ─────────────────────────────────── */}
+        {/* â”€â”€ Members tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {activeTab === "members" && (() => {
           const members = membersQuery.data?.data ?? [];
           const stats = membersQuery.data?.stats ?? { total: 0, pending: 0, sent: 0, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0 };
@@ -1730,7 +1730,7 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
             <Input required className="bg-muted border-border h-9" value={form.name} onChange={f("name")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Type {isLocked && <span className="text-amber-600 ml-1">🔒</span>}</Label>
+            <div className="space-y-1.5"><Label className="text-xs">Type {isLocked && <span className="text-amber-600 ml-1">ðŸ”’</span>}</Label>
               <select className={cn(sc, isLocked && "opacity-50 cursor-not-allowed")} value={form.type} onChange={f("type")} disabled={isLocked}>
                 {["email","social","webinar","event","content","ppc","other"].map(t => <option key={t} value={t} className="bg-card capitalize">{t}</option>)}
               </select>
@@ -1742,13 +1742,13 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Start Date {isLocked && <span className="text-amber-600 ml-1">🔒</span>}</Label><Input type="date" className="bg-muted border-border h-9 disabled:opacity-50 disabled:cursor-not-allowed" value={form.startDate} onChange={f("startDate")} disabled={isLocked} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Start Date {isLocked && <span className="text-amber-600 ml-1">ðŸ”’</span>}</Label><Input type="date" className="bg-muted border-border h-9 disabled:opacity-50 disabled:cursor-not-allowed" value={form.startDate} onChange={f("startDate")} disabled={isLocked} /></div>
             <div className="space-y-1.5"><Label className="text-xs">End Date</Label><Input type="date" className="bg-muted border-border h-9" value={form.endDate} onChange={f("endDate")} /></div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5"><Label className="text-xs">Budget (£) {isLocked && <span className="text-amber-600 ml-1">🔒</span>}</Label><Input type="number" className="bg-muted border-border h-9 disabled:opacity-50 disabled:cursor-not-allowed" value={form.budget} onChange={f("budget")} disabled={isLocked} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">Actual Cost (£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.actualCost} onChange={f("actualCost")} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">Expected Rev. (£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.expectedRevenue} onChange={f("expectedRevenue")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Budget (Â£) {isLocked && <span className="text-amber-600 ml-1">ðŸ”’</span>}</Label><Input type="number" className="bg-muted border-border h-9 disabled:opacity-50 disabled:cursor-not-allowed" value={form.budget} onChange={f("budget")} disabled={isLocked} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Actual Cost (Â£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.actualCost} onChange={f("actualCost")} /></div>
+            <div className="space-y-1.5"><Label className="text-xs">Expected Rev. (Â£)</Label><Input type="number" className="bg-muted border-border h-9" value={form.expectedRevenue} onChange={f("expectedRevenue")} /></div>
           </div>
 
           {/* Goals */}
@@ -1768,7 +1768,7 @@ function CampaignEditDialog({ open, onOpenChange, campaign, onSaved }: {
           </div>
 
           {/* Channels */}
-          <div className="space-y-1.5"><Label className="text-xs">Channels (comma-separated) {isLocked && <span className="text-amber-600 ml-1">🔒</span>}</Label>
+          <div className="space-y-1.5"><Label className="text-xs">Channels (comma-separated) {isLocked && <span className="text-amber-600 ml-1">ðŸ”’</span>}</Label>
             <Input className="bg-muted border-border h-9 disabled:opacity-50 disabled:cursor-not-allowed" placeholder="e.g. Email, LinkedIn, Google Ads" value={form.channels} onChange={f("channels")} disabled={isLocked} />
           </div>
 
@@ -1840,7 +1840,7 @@ function LaunchCampaignDialog({
               {[
                 ["Name", campaign.name],
                 ["Type", campaign.type.charAt(0).toUpperCase() + campaign.type.slice(1)],
-                ["Budget", campaign.budget ? `£${Number(campaign.budget).toLocaleString()}` : "Not set"],
+                ["Budget", campaign.budget ? `Â£${Number(campaign.budget).toLocaleString()}` : "Not set"],
                 ["Start Date", fmtDate(campaign.startDate)],
                 ["End Date", fmtDate(campaign.endDate)],
                 ["Channels", channels.length > 0 ? channels.join(", ") : "—"],
@@ -1914,7 +1914,7 @@ function LaunchCampaignDialog({
             <div className="flex items-center gap-2 font-medium text-amber-700 mb-1">
               <Webhook className="w-3.5 h-3.5" /> Webhook Setup
             </div>
-            Once live, go to the <strong className="text-foreground">📡 Tracking &amp; Channels</strong> tab to copy your webhook URLs and configure each platform. Engagements won't be tracked until webhooks are connected.
+            Once live, go to the <strong className="text-foreground">ðŸ“¡ Tracking &amp; Channels</strong> tab to copy your webhook URLs and configure each platform. Engagements won't be tracked until webhooks are connected.
           </div>
 
           {/* Lock notice */}
@@ -1945,9 +1945,9 @@ function LaunchCampaignDialog({
   );
 }
 
-/* ══════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    CAMPAIGN MEMBERS DIALOGS
-══════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 function AddMemberManuallyDialog({ open, onOpenChange, onAdd, isPending }: {
   open: boolean; onOpenChange: (v: boolean) => void;
@@ -2063,7 +2063,7 @@ function AddFromContactsDialog({ open, onOpenChange, onAdd, isPending }: {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-foreground truncate">{c.firstName} {c.lastName}</div>
-                  <div className="text-xs text-muted-foreground truncate">{c.email ?? "—"}{c.title ? ` · ${c.title}` : ""}</div>
+                  <div className="text-xs text-muted-foreground truncate">{c.email ?? "—"}{c.title ? ` Â· ${c.title}` : ""}</div>
                 </div>
                 {selected === c.id && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
               </button>
@@ -2137,7 +2137,7 @@ function AddFromLeadsDialog({ open, onOpenChange, onAdd, isPending }: {
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-foreground truncate">{l.firstName} {l.lastName}</div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {l.email ?? "—"}{l.company ? ` · ${l.company}` : ""}{l.title ? ` · ${l.title}` : ""}
+                    {l.email ?? "—"}{l.company ? ` Â· ${l.company}` : ""}{l.title ? ` Â· ${l.title}` : ""}
                   </div>
                 </div>
                 {selected === l.id && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
@@ -2273,3 +2273,4 @@ function ImportCSVDialog({ open, onOpenChange, onImport, isPending }: {
     </Dialog>
   );
 }
+

@@ -141,7 +141,7 @@ function OrganizationsPageContent() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3">
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground tracking-tight flex items-center gap-2">

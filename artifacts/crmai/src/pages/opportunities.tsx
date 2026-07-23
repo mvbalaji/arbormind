@@ -233,10 +233,10 @@ const OPPORTUNITY_TOGGLEABLE_COLS = [
 ];
 
 const OPPORTUNITIES_COL_KEYS = ["name","account","stage","amount","closeDate","owner","status","actions"] as const;
-const OPPORTUNITIES_COL_DEFAULTS: Record<typeof OPPORTUNITIES_COL_KEYS[number], number> = {"name":360,"account":160,"stage":140,"amount":120,"closeDate":130,"owner":140,"status":120,"actions":100};
+const OPPORTUNITIES_COL_DEFAULTS: Record<typeof OPPORTUNITIES_COL_KEYS[number], number> = {"name":160,"account":120,"stage":120,"amount":90,"closeDate":95,"owner":95,"status":85,"actions":52};
 
 export default function Opportunities() {
-  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:opportunities:v3", OPPORTUNITIES_COL_KEYS, OPPORTUNITIES_COL_DEFAULTS);
+  const { widths: colWidths, startResize: startColResize } = useColResize("col-widths:opportunities:v4", OPPORTUNITIES_COL_KEYS, OPPORTUNITIES_COL_DEFAULTS);
   const { data, isLoading } = useListOpportunities({ limit: 200 });
   const updateMutation = useUpdateOpportunity();
   const deleteMutation = useDeleteOpportunity();
@@ -247,8 +247,8 @@ export default function Opportunities() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [columns, setColumns] = useState<Record<string, Opportunity[]>>({});
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [sortField, setSortField] = useState<string>("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState<string>("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [activeViewId, setActiveViewId] = useState<ListViewId>("all");
@@ -324,6 +324,7 @@ export default function Opportunities() {
         case "stage": cmp = (a.stage ?? "").localeCompare(b.stage ?? ""); break;
         case "closeDate": cmp = (a.closeDate ? new Date(a.closeDate).getTime() : 0) - (b.closeDate ? new Date(b.closeDate).getTime() : 0); break;
         case "probability": cmp = (a.probability ?? 0) - (b.probability ?? 0); break;
+        case "createdAt": cmp = (a.createdAt ? new Date(a.createdAt).getTime() : 0) - (b.createdAt ? new Date(b.createdAt).getTime() : 0); break;
         default: cmp = 0;
       }
       return sortDir === "asc" ? cmp : -cmp;
@@ -689,7 +690,7 @@ export default function Opportunities() {
                             <td className="px-3 py-1">
                               <span
                                 className={cn(
-                                  "inline-flex items-center justify-center text-xs font-semibold pl-2.5 pr-4 py-1 whitespace-nowrap w-[130px]",
+                                  "inline-flex items-center justify-center text-xs font-semibold pl-2.5 pr-4 py-0 whitespace-nowrap w-[130px]",
                                   STAGE_BADGE_COLORS[opp.stage] ?? "bg-gray-500 text-white border-gray-500"
                                 )}
                                 style={{ clipPath: "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)" }}
@@ -726,25 +727,18 @@ export default function Opportunities() {
                               </Badge>
                             </td>
                           )}
-                          <td className="px-3 py-1">
-                            <div className="flex items-center justify-center gap-1">
-                              <Link href={`/opportunities/${opp.id}`}>
-                                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground">
-                                  <Pencil className="w-3.5 h-3.5" />
-                                  Edit
-                                </Button>
-                              </Link>
+                          <td className="px-2 py-1">
+                            <div className="flex items-center justify-center">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground" aria-label={`More actions for ${opp.name}`}>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted" aria-label={`Actions for ${opp.name}`}>
                                     <MoreHorizontal className="w-4 h-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-40">
                                   <DropdownMenuItem asChild>
                                     <Link href={`/opportunities/${opp.id}`} className="flex items-center gap-2 cursor-pointer">
-                                      <Eye className="w-4 h-4" />
-                                      View Details
+                                      <Eye className="w-4 h-4" /> View Details
                                     </Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
@@ -752,8 +746,7 @@ export default function Opportunities() {
                                     className="text-destructive focus:text-destructive cursor-pointer"
                                     onClick={() => handleDelete(opp.id, opp.name)}
                                   >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
+                                    <Trash2 className="w-4 h-4 mr-2" /> Delete
                                   </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
@@ -911,8 +904,8 @@ function NewDealDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Opportunity Name *</Label>
-            <Input required className="bg-muted border-border" value={form.name} onChange={f("name")} placeholder="e.g. Acme Corp — Enterprise Tier" />
+            <Label htmlFor="opp-name">Opportunity Name *</Label>
+            <Input id="opp-name" required className="bg-muted border-border" value={form.name} onChange={f("name")} placeholder="e.g. Acme Corp — Enterprise Tier" />
           </div>
 
           <div className="space-y-2">

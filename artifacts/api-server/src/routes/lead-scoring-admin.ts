@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { leadScoringRulesTable, leadScoreMilestonesTable, leadsTable } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
+import { and, eq, asc } from "drizzle-orm";
 import { FULL_ACCESS_ROLES } from "../lib/access-control";
 import { computeLeadScoreFromRules, recalculateLeadScore } from "../lib/lead-scoring";
 
@@ -25,7 +25,9 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 // GET /api/admin/lead-scoring/rules
 router.get("/admin/lead-scoring/rules", requireAdmin, async (req, res) => {
   try {
-    const rules = await db.select().from(leadScoringRulesTable).orderBy(asc(leadScoringRulesTable.sortOrder));
+    const rules = await db.select().from(leadScoringRulesTable)
+      .where(eq(leadScoringRulesTable.orgId, req.orgId as number))
+      .orderBy(asc(leadScoringRulesTable.sortOrder));
     res.json({ rules });
   } catch (err) {
     req.log?.error(err);
@@ -42,6 +44,7 @@ router.post("/admin/lead-scoring/rules", requireAdmin, async (req, res) => {
     };
     if (!ruleType || !key || !label) { res.status(400).json({ error: "ruleType, key, and label are required" }); return; }
     const [rule] = await db.insert(leadScoringRulesTable).values({
+      orgId: req.orgId as number,
       ruleType, key: key.toLowerCase().replace(/\s+/g, "_"), label,
       description: description ?? null, points: points ?? 0,
       params: params ?? null, sortOrder: 999,
@@ -63,7 +66,9 @@ router.put("/admin/lead-scoring/rules/:id", requireAdmin, async (req, res) => {
     const allowed = ["label", "description", "points", "isActive", "sortOrder"] as const;
     const update: Record<string, unknown> = { updatedAt: new Date() };
     for (const k of allowed) { if (k in req.body) update[k] = req.body[k]; }
-    const [rule] = await db.update(leadScoringRulesTable).set(update).where(eq(leadScoringRulesTable.id, id)).returning();
+    const [rule] = await db.update(leadScoringRulesTable).set(update)
+      .where(and(eq(leadScoringRulesTable.id, id), eq(leadScoringRulesTable.orgId, req.orgId as number)))
+      .returning();
     if (!rule) { res.status(404).json({ error: "Rule not found" }); return; }
     res.json({ rule });
   } catch (err) {
@@ -76,7 +81,8 @@ router.put("/admin/lead-scoring/rules/:id", requireAdmin, async (req, res) => {
 router.delete("/admin/lead-scoring/rules/:id", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.delete(leadScoringRulesTable).where(eq(leadScoringRulesTable.id, id));
+    await db.delete(leadScoringRulesTable)
+      .where(and(eq(leadScoringRulesTable.id, id), eq(leadScoringRulesTable.orgId, req.orgId as number)));
     res.json({ ok: true });
   } catch (err) {
     req.log?.error(err);
@@ -89,7 +95,9 @@ router.delete("/admin/lead-scoring/rules/:id", requireAdmin, async (req, res) =>
 // GET /api/admin/lead-scoring/milestones
 router.get("/admin/lead-scoring/milestones", requireAdmin, async (req, res) => {
   try {
-    const milestones = await db.select().from(leadScoreMilestonesTable).orderBy(asc(leadScoreMilestonesTable.sortOrder));
+    const milestones = await db.select().from(leadScoreMilestonesTable)
+      .where(eq(leadScoreMilestonesTable.orgId, req.orgId as number))
+      .orderBy(asc(leadScoreMilestonesTable.sortOrder));
     res.json({ milestones });
   } catch (err) {
     req.log?.error(err);
@@ -104,7 +112,9 @@ router.put("/admin/lead-scoring/milestones/:id", requireAdmin, async (req, res) 
     const allowed = ["label", "minScore", "maxScore", "color", "sortOrder"] as const;
     const update: Record<string, unknown> = { updatedAt: new Date() };
     for (const k of allowed) { if (k in req.body) update[k] = req.body[k]; }
-    const [milestone] = await db.update(leadScoreMilestonesTable).set(update).where(eq(leadScoreMilestonesTable.id, id)).returning();
+    const [milestone] = await db.update(leadScoreMilestonesTable).set(update)
+      .where(and(eq(leadScoreMilestonesTable.id, id), eq(leadScoreMilestonesTable.orgId, req.orgId as number)))
+      .returning();
     if (!milestone) { res.status(404).json({ error: "Milestone not found" }); return; }
     res.json({ milestone });
   } catch (err) {
@@ -118,10 +128,11 @@ router.put("/admin/lead-scoring/milestones/:id", requireAdmin, async (req, res) 
 // POST /api/admin/lead-scoring/recalculate
 router.post("/admin/lead-scoring/recalculate", requireAdmin, async (req, res) => {
   try {
-    const leads = await db.select({ id: leadsTable.id }).from(leadsTable);
+    const orgId = req.orgId as number;
+    const leads = await db.select({ id: leadsTable.id }).from(leadsTable).where(eq(leadsTable.orgId, orgId));
     let updated = 0;
     for (const lead of leads) {
-      const score = await recalculateLeadScore(lead.id);
+      const score = await recalculateLeadScore(lead.id, orgId);
       if (score >= 0) updated++;
     }
     res.json({ ok: true, updated });
@@ -138,7 +149,7 @@ router.get("/leads/:id/score-breakdown", requireAuth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-    const result = await computeLeadScoreFromRules(id);
+    const result = await computeLeadScoreFromRules(id, req.orgId as number);
     res.json(result);
   } catch (err) {
     req.log?.error(err);

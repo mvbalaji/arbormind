@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useParams, Link, useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUpdateAccount } from "@workspace/api-client-react";
@@ -393,7 +393,7 @@ export default function AccountDetail() {
 
   return (
     <Layout>
-      <div className="flex flex-col gap-5 max-w-5xl mx-auto">
+      <div className="flex flex-col gap-5">
         <div>
           <Link href="/accounts">
             <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground mb-3 hover:text-foreground">
@@ -831,7 +831,7 @@ export default function AccountDetail() {
               </>
             ) : (
               <>
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                   {[
                     { label: "Account Name", value: account.name },
                     { label: "Industry", value: account.industry },
@@ -857,9 +857,9 @@ export default function AccountDetail() {
                     { label: "Last Updated", value: format(new Date(account.updatedAt), "MMM d, yyyy") },
                   ].map(({ label, value }) =>
                     value ? (
-                      <div key={label}>
-                        <dt className="text-xs text-muted-foreground uppercase tracking-wide mb-0.5">{label}</dt>
-                        <dd className="text-sm text-foreground">{value}</dd>
+                      <div key={label} className="flex items-baseline gap-2">
+                        <dt className="text-xs text-muted-foreground w-28 flex-shrink-0">{label}</dt>
+                        <dd className="text-xs text-foreground font-medium">{value}</dd>
                       </div>
                     ) : null
                   )}
@@ -886,3 +886,4 @@ export default function AccountDetail() {
     </Layout>
   );
 }
+

@@ -8,6 +8,7 @@ import { usersTable } from "./users";
 
 export const campaignMembersTable = pgTable("campaign_members", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
   campaignId: integer("campaign_id").notNull().references(() => campaignsTable.id, { onDelete: "cascade" }),
   contactId: integer("contact_id").references(() => contactsTable.id, { onDelete: "set null" }),
   leadId: integer("lead_id").references(() => leadsTable.id, { onDelete: "set null" }),

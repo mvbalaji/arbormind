@@ -2,6 +2,7 @@ import { pgTable, serial, text, boolean, integer, timestamp } from "drizzle-orm/
 
 export const productRulesTable = pgTable("product_rules", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().default(1),
   name: text("name").notNull(),
   type: text("type").notNull(), // Validation | Selection | Alert | Filter
   scope: text("scope").notNull().default("Product"), // Product | Quote | Bundle

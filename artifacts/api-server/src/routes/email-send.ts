@@ -42,7 +42,14 @@ interface SessionUser { id: number; email?: string; name?: string }
 
 function getSessionUser(req: Request): SessionUser | null {
   const sess = req.session as unknown as { user?: SessionUser };
-  return sess?.user ?? null;
+  if (sess?.user) return sess.user;
+  // Dev bypass: when Google OAuth is not configured, return a synthetic admin user.
+  // Org context now comes from req.orgId (resolved by the org-context middleware),
+  // not a hardcoded orgId here.
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return { id: 0, email: "dev@crmai.local", name: "Dev Admin", role: "admin" } as SessionUser;
+  }
+  return null;
 }
 
 function escapeHtml(s: string): string {
@@ -56,6 +63,7 @@ function escapeHtml(s: string): string {
 router.post("/email/send", async (req, res) => {
   const user = getSessionUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const orgId = req.orgId as number;
 
   const { to, cc, subject, body, leadId, contactId, opportunityId, accountId, attachments } = req.body as SendBody;
   if (!to || !subject || !body) {
@@ -136,20 +144,29 @@ router.post("/email/send", async (req, res) => {
 
   // Insert activity as "pending" first (so tracking can link to it), then only mark
   // "completed" after SMTP succeeds. On failure, mark "failed" so audit history is honest.
-  const [activity] = await db.insert(activitiesTable).values({
-    type: "email",
-    subject,
-    status: "pending",
-    description: `To: ${to}${cc ? `\nCc: ${cc}` : ""}\n\n${body}`,
-    leadId: leadId ?? null,
-    contactId: contactId ?? null,
-    opportunityId: opportunityId ?? null,
-    accountId: accountId ?? null,
-    assignedTo: user.id,
-  }).returning();
+  let activity: typeof activitiesTable.$inferSelect;
+  try {
+    [activity] = await db.insert(activitiesTable).values({
+      orgId,
+      type: "email",
+      subject,
+      status: "pending",
+      description: `To: ${to}${cc ? `\nCc: ${cc}` : ""}\n\n${body}`,
+      leadId: leadId ?? null,
+      contactId: contactId ?? null,
+      opportunityId: opportunityId ?? null,
+      accountId: accountId ?? null,
+      assignedTo: null,
+    }).returning();
+  } catch (insertErr) {
+    req.log.error(insertErr, "[email-send] activity insert failed");
+    res.status(500).json({ error: "Failed to log email activity" });
+    return;
+  }
 
   const token = crypto.randomBytes(16).toString("hex");
   const [tracking] = await db.insert(emailTrackingTable).values({
+    orgId,
     activityId: activity.id,
     token,
     toEmail: to,
@@ -166,6 +183,7 @@ router.post("/email/send", async (req, res) => {
     for (const a of decodedAttachments) {
       const aToken = crypto.randomBytes(16).toString("hex");
       await db.insert(emailAttachmentsTable).values({
+        orgId,
         trackingId: tracking.id,
         token: aToken,
         filename: a.filename,
@@ -180,13 +198,16 @@ router.post("/email/send", async (req, res) => {
   try {
     const proto = (req.headers["x-forwarded-proto"] as string) || (req.secure ? "https" : "http");
     const host_hdr = (req.headers["x-forwarded-host"] as string) || (req.headers.host as string);
-    const trackingUrl = `${proto}://${host_hdr}/api/track/open/${token}.png`;
+    // Use APP_URL env var if set (required when server is behind NAT/localhost and emails
+    // are sent to real recipients — without it the tracking pixel URL won't be reachable).
+    const appBase = process.env.APP_URL?.replace(/\/+$/, "") || `${proto}://${host_hdr}`;
+    const trackingUrl = `${appBase}/api/track/open/${token}.png`;
     const attachmentLinksHtml = trackedAttachments.length > 0
       ? `<div style="margin-top:20px;padding-top:14px;border-top:1px solid #e5e7eb;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#374151;">` +
           `<div style="font-weight:600;margin-bottom:6px;color:#111827;">Attachments</div>` +
           trackedAttachments.map((a) =>
             `<div style="margin:4px 0;">📎 ${escapeHtml(a.filename)} &middot; ` +
-              `<a href="${proto}://${host_hdr}/api/track/attachment/${a.token}" ` +
+              `<a href="${appBase}/api/track/attachment/${a.token}" ` +
               `style="color:#2563eb;text-decoration:underline;">View online</a></div>`,
           ).join("") +
         `</div>`
@@ -256,6 +277,7 @@ router.post("/email/send", async (req, res) => {
           await db.update(activitiesTable)
             .set({ status: "completed", completedAt: new Date() })
             .where(and(
+              eq(activitiesTable.orgId, orgId),
               eq(activitiesTable.type, "task"),
               eq(activitiesTable.status, "pending"),
               recordCond,
@@ -281,6 +303,7 @@ router.post("/email/send", async (req, res) => {
         counterpartEmail: to,
       });
       const [task] = await db.insert(activitiesTable).values({
+        orgId,
         type: "task",
         subject: aiTitle,
         description: `Email sent to ${to}${cc ? ` (cc: ${cc})` : ""}\n\nSubject: ${subject}`,
@@ -290,7 +313,7 @@ router.post("/email/send", async (req, res) => {
         contactId: contactId ?? null,
         opportunityId: opportunityId ?? null,
         accountId: accountId ?? null,
-        assignedTo: user.id,
+        assignedTo: null,
       }).returning({ id: activitiesTable.id });
       taskId = task?.id ?? null;
     } catch (taskErr) {
@@ -409,6 +432,39 @@ router.get("/track/attachment/:token", async (req: Request, res: Response) => {
   } catch (err) {
     req.log.error(err, "attachment fetch failed");
     res.status(500).send("Internal error");
+  }
+});
+
+/* ============================================================
+ * POST /api/email/mark-opened/:activityId
+ * Dev/admin helper: simulate the tracking pixel being loaded for a specific
+ * outbound email activity. Useful when SMTP is configured but localhost
+ * is not publicly reachable so the pixel URL never fires.
+ * ========================================================== */
+router.post("/email/mark-opened/:activityId", async (req: Request, res: Response) => {
+  const user = getSessionUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const activityId = parseInt(req.params.activityId, 10);
+  if (isNaN(activityId)) { res.status(400).json({ error: "Invalid activityId" }); return; }
+  const orgId = req.orgId as number;
+
+  try {
+    const [row] = await db.update(emailTrackingTable)
+      .set({
+        openCount: sql`${emailTrackingTable.openCount} + 1`,
+        openedAt: sql`coalesce(${emailTrackingTable.openedAt}, now())`,
+        lastOpenedAt: new Date(),
+        lastUserAgent: "Manual/Admin",
+      })
+      .where(and(eq(emailTrackingTable.activityId, activityId), eq(emailTrackingTable.orgId, orgId)))
+      .returning({ openCount: emailTrackingTable.openCount });
+
+    if (!row) { res.status(404).json({ error: "No tracking record for this activity" }); return; }
+    res.json({ ok: true, openCount: row.openCount });
+  } catch (err) {
+    req.log.error(err, "mark-opened failed");
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
