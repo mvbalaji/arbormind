@@ -1,5 +1,6 @@
 import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable, emailTrackingTable } from "@workspace/db";
-import { eq, ilike, desc } from "drizzle-orm";
+import { eq, ilike, desc, sql } from "drizzle-orm";
+import { getDefaultOrgId } from "./lib/org-context";
 import { simpleParser } from "mailparser";
 import { maybeAutoReply } from "./auto-reply";
 import { generateEmailTaskTitle } from "./lib/ai-task-title";
@@ -124,9 +125,9 @@ const DEFAULT_IMAP = {
   password: process.env.IMAP_PASSWORD ?? "",
 };
 
-async function getSettings() {
-  const rows = await db.select().from(emailSettingsTable).limit(1);
-  return rows[0] ?? null;
+async function getSettings(orgId: number) {
+  const result = await db.execute(sql`SELECT * FROM email_settings WHERE org_id = ${orgId} LIMIT 1`);
+  return (result.rows[0] as Record<string, unknown> | undefined) ?? null;
 }
 
 async function getImapConfig(settings: Record<string, unknown> | null) {
@@ -151,12 +152,14 @@ async function getImapConfig(settings: Record<string, unknown> | null) {
   };
 }
 
-async function checkIfKnownCustomer(email: string) {
-  const [contact] = await db
-    .select({ id: contactsTable.id, accountId: contactsTable.accountId })
-    .from(contactsTable)
-    .where(ilike(contactsTable.email, email));
-  return contact ?? null;
+async function checkIfKnownCustomer(email: string, orgId: number) {
+  const result = await db.execute(sql`
+    SELECT id, account_id FROM contacts
+    WHERE org_id = ${orgId} AND lower(email) = lower(${email})
+    LIMIT 1
+  `);
+  const row = result.rows[0] as { id: number; account_id: number | null } | undefined;
+  return row ? { id: row.id, accountId: row.account_id } : null;
 }
 
 async function processEmail(
@@ -169,6 +172,7 @@ async function processEmail(
   messageId: string | null,
   inReplyTo: string | null,
   references: string[],
+  orgId: number,
 ) {
   // 1. Thread detection — if this is a reply to an outbound message we sent,
   // attach it to the same activity context (lead/contact/opportunity/account)
@@ -176,7 +180,7 @@ async function processEmail(
   // the full back-and-forth on a single record.
   const parent = await findThreadParent({ inReplyTo, references, fromEmail, subject });
 
-  const contact = parent ? null : await checkIfKnownCustomer(fromEmail);
+  const contact = parent ? null : await checkIfKnownCustomer(fromEmail, orgId);
 
   let relatedLeadId: number | undefined;
   let relatedOpportunityId: number | undefined;
@@ -194,68 +198,46 @@ async function processEmail(
     relatedContactId = contact.id;
     relatedAccountId = contact.accountId ?? undefined;
     const closeDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
-    const [opp] = await db
-      .insert(opportunitiesTable)
-      .values({
-        name: `Inquiry: ${subject}`,
-        description: body,
-        stage: "prospecting",
-        probability: 30,
-        amount: 0,
-        closeDate,
-        accountId: contact.accountId ?? undefined,
-      })
-      .returning();
-    relatedOpportunityId = opp?.id;
+    const oppResult = await db.execute(sql`
+      INSERT INTO opportunities (name, description, stage, probability, amount, close_date, account_id, org_id)
+      VALUES (${`Inquiry: ${subject}`}, ${body}, 'prospecting', 30, 0, ${closeDate}, ${contact.accountId ?? null}, ${orgId})
+      RETURNING id
+    `);
+    relatedOpportunityId = (oppResult.rows[0] as { id: number } | undefined)?.id;
     notes = "Auto-created Opportunity from inbound email";
   } else {
     const nameParts = (fromName || "").trim().split(/\s+/);
-    const [lead] = await db
-      .insert(leadsTable)
-      .values({
-        firstName: nameParts[0] || "Unknown",
-        lastName: nameParts.slice(1).join(" ") || "Unknown",
-        email: fromEmail,
-        source: "email_campaign",
-        status: "new",
-      })
-      .returning();
-    relatedLeadId = lead?.id;
+    const leadResult = await db.execute(sql`
+      INSERT INTO leads (first_name, last_name, email, source, status, org_id)
+      VALUES (${nameParts[0] || "Unknown"}, ${nameParts.slice(1).join(" ") || "Unknown"}, ${fromEmail}, 'email_campaign', 'new', ${orgId})
+      RETURNING id
+    `);
+    relatedLeadId = (leadResult.rows[0] as { id: number } | undefined)?.id;
     notes = "Auto-created Lead from inbound email";
   }
 
-  const [insertedEmail] = await db
-    .insert(emailsTable)
-    .values({
-      messageUid,
-      messageId,
-      inReplyTo,
-      fromEmail,
-      fromName: fromName || fromEmail,
-      subject,
-      message: body.slice(0, 8000),
-      bodyHtml: bodyHtml ? bodyHtml.slice(0, 100000) : null,
-      status: "new",
-      isKnownCustomer: parent ? "true" : contact ? "true" : "false",
-      relatedContactId,
-      relatedLeadId,
-      relatedOpportunityId,
-      notes,
-    })
-    .onConflictDoNothing({ target: emailsTable.messageUid })
-    .returning({ id: emailsTable.id });
+  const emailResult = await db.execute(sql`
+    INSERT INTO emails (message_uid, message_id, in_reply_to, from_email, from_name, subject, message, body_html, status, is_known_customer, related_contact_id, related_lead_id, related_opportunity_id, notes, org_id)
+    VALUES (
+      ${messageUid}, ${messageId}, ${inReplyTo}, ${fromEmail}, ${fromName || fromEmail},
+      ${subject}, ${body.slice(0, 8000)}, ${bodyHtml ? bodyHtml.slice(0, 100000) : null},
+      'new', ${parent ? "true" : contact ? "true" : "false"},
+      ${relatedContactId ?? null}, ${relatedLeadId ?? null}, ${relatedOpportunityId ?? null},
+      ${notes}, ${orgId}
+    )
+    ON CONFLICT (message_uid) DO NOTHING
+    RETURNING id
+  `);
+  const insertedEmailId = (emailResult.rows[0] as { id: number } | undefined)?.id;
 
-  await db.insert(activitiesTable).values({
-    type: "email",
-    subject: parent ? `Reply: ${subject}` : `Email: ${subject}`,
-    description: body.slice(0, 2000),
-    status: "completed",
-    leadId: relatedLeadId ?? null,
-    contactId: relatedContactId ?? null,
-    opportunityId: relatedOpportunityId ?? null,
-    accountId: relatedAccountId ?? null,
-    completedAt: new Date(),
-  });
+  await db.execute(sql`
+    INSERT INTO activities (type, subject, description, status, lead_id, contact_id, opportunity_id, account_id, completed_at, org_id)
+    VALUES (
+      'email', ${parent ? `Reply: ${subject}` : `Email: ${subject}`}, ${body.slice(0, 2000)},
+      'completed', ${relatedLeadId ?? null}, ${relatedContactId ?? null},
+      ${relatedOpportunityId ?? null}, ${relatedAccountId ?? null}, NOW(), ${orgId}
+    )
+  `);
 
   // Auto-create a follow-up task for the sales rep who owns the record this
   // email is attached to. Inbound emails always require a response, so this
@@ -300,32 +282,32 @@ async function processEmail(
       counterpartName: fromName,
       counterpartEmail: fromEmail,
     });
-    await db.insert(activitiesTable).values({
-      type: "task",
-      subject: aiTitle,
-      description: `New email from ${fromName || fromEmail} <${fromEmail}> — reply needed.\n\nSubject: ${subject}`,
-      status: "pending",
-      dueDate,
-      leadId: relatedLeadId ?? null,
-      contactId: relatedContactId ?? null,
-      opportunityId: relatedOpportunityId ?? null,
-      accountId: relatedAccountId ?? null,
-      assignedTo: ownerId,
-    });
+    await db.execute(sql`
+      INSERT INTO activities (type, subject, description, status, due_date, lead_id, contact_id, opportunity_id, account_id, assigned_to, org_id)
+      VALUES (
+        'task', ${aiTitle},
+        ${`New email from ${fromName || fromEmail} <${fromEmail}> — reply needed.\n\nSubject: ${subject}`},
+        'pending', ${dueDate},
+        ${relatedLeadId ?? null}, ${relatedContactId ?? null},
+        ${relatedOpportunityId ?? null}, ${relatedAccountId ?? null},
+        ${ownerId}, ${orgId}
+      )
+    `);
   } catch (taskErr) {
     // Task creation is non-critical — log and continue so the inbound email
     // is still recorded even if the bookkeeping insert fails.
     console.warn("[email-sync] follow-up task insert failed:", taskErr);
   }
 
-  return insertedEmail?.id;
+  return insertedEmailId;
 }
 
-export async function runEmailSync(): Promise<{ processed: number; error?: string }> {
+export async function runEmailSync(orgId?: number): Promise<{ processed: number; error?: string }> {
   if (isSyncing) return { processed: 0, error: "Sync already in progress" };
   isSyncing = true;
 
-  const settings = await getSettings();
+  const resolvedOrgId = orgId ?? await getDefaultOrgId();
+  const settings = await getSettings(resolvedOrgId);
   const imapConfig = await getImapConfig(settings);
 
   if (!imapConfig.user || !imapConfig.pass) {
@@ -354,12 +336,10 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
 
     const lock = await client.getMailboxLock("INBOX");
     try {
-      // Collect all UIDs already imported so we can skip them
-      const existingRows = await db
-        .select({ messageUid: emailsTable.messageUid })
-        .from(emailsTable);
+      // Collect all UIDs already imported for this org so we can skip them
+      const existingResult = await db.execute(sql`SELECT message_uid FROM emails WHERE org_id = ${resolvedOrgId} AND message_uid IS NOT NULL`);
       const importedUids = new Set(
-        existingRows.map((r) => r.messageUid).filter((u): u is string => !!u),
+        existingResult.rows.map((r) => (r as { message_uid: string }).message_uid).filter(Boolean),
       );
 
       for await (const msg of client.fetch("1:*", { envelope: true, source: true }, { uid: true })) {
@@ -418,6 +398,7 @@ export async function runEmailSync(): Promise<{ processed: number; error?: strin
           parsedMessageId,
           parsedInReplyTo,
           parsedReferences,
+          resolvedOrgId,
         );
         importedUids.add(uidKey);
         processed++;
@@ -487,7 +468,8 @@ export async function startEmailPoller() {
     syncTimer = null;
   }
 
-  const settings = await getSettings();
+  const orgId = await getDefaultOrgId();
+  const settings = await getSettings(orgId);
   const hasDbCreds = settings?.imapUser && settings?.imapPassword;
   const hasEnvCreds = DEFAULT_IMAP.user && DEFAULT_IMAP.password;
 
@@ -505,15 +487,15 @@ export async function startEmailPoller() {
   }
 
   const intervalMs = (settings?.syncIntervalMinutes ?? 15) * 60 * 1000;
-  console.log(`[EmailPoller] Starting — polling every ${settings?.syncIntervalMinutes ?? 15} min.`);
+  console.log(`[EmailPoller] org ${orgId}: Starting — polling every ${settings?.syncIntervalMinutes ?? 15} min.`);
 
   syncTimer = setInterval(async () => {
-    console.log("[EmailPoller] Running scheduled sync...");
-    const result = await runEmailSync();
+    console.log(`[EmailPoller] org ${orgId}: Running scheduled sync...`);
+    const result = await runEmailSync(orgId);
     if (result.error) {
-      console.error("[EmailPoller] Sync error:", result.error);
+      console.error(`[EmailPoller] org ${orgId}: Sync error:`, result.error);
     } else {
-      console.log(`[EmailPoller] Sync done — ${result.processed} email(s) processed.`);
+      console.log(`[EmailPoller] org ${orgId}: Sync done — ${result.processed} email(s) processed.`);
     }
   }, intervalMs);
 }
