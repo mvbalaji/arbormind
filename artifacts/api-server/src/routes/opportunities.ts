@@ -5,6 +5,7 @@ import { getStandardPriceBookId } from "../lib/pricing";
 import { eq, ilike, sql, and, isNull, asc, desc } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
+import { getOrgId } from "../lib/org-context";
 import { evaluateApprovalsForEntity } from "../lib/approvals-engine";
 
 function actorFromReq(req: any) {
@@ -55,6 +56,7 @@ function formatOpp(o: {
 
 router.get("/opportunities", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const { search, stage, accountId, assignedTo, page = "1", limit = "100" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -67,7 +69,7 @@ router.get("/opportunities", async (req, res) => {
       .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
       .leftJoin(contactsTable, eq(opportunitiesTable.contactId, contactsTable.id));
 
-    const conditions = [];
+    const conditions = [sql`"opportunities".org_id = ${orgId}`];
     if (search) conditions.push(ilike(opportunitiesTable.name, `%${search}%`));
     if (stage) conditions.push(eq(opportunitiesTable.stage, stage));
     if (accountId) conditions.push(eq(opportunitiesTable.accountId, parseInt(accountId)));
@@ -89,6 +91,7 @@ router.get("/opportunities", async (req, res) => {
 
 router.post("/opportunities", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const oppData = { ...req.body };
     // Default to the Standard Price Book when none was chosen.
     if (oppData.priceBookId == null) {
@@ -99,6 +102,7 @@ router.post("/opportunities", async (req, res) => {
       oppData.closeDate = new Date(oppData.closeDate + "T00:00:00Z");
     }
     const [opportunity] = await db.insert(opportunitiesTable).values(oppData).returning();
+    await db.execute(sql`UPDATE opportunities SET org_id = ${orgId} WHERE id = ${opportunity.id}`);
     await db.insert(opportunityStageHistoryTable).values({
       opportunityId: opportunity.id,
       stage: opportunity.stage,
@@ -112,13 +116,14 @@ router.post("/opportunities", async (req, res) => {
 
 router.get("/opportunities/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const [opportunity] = await db
       .select(oppFields)
       .from(opportunitiesTable)
       .leftJoin(usersTable, eq(opportunitiesTable.assignedTo, usersTable.id))
       .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
       .leftJoin(contactsTable, eq(opportunitiesTable.contactId, contactsTable.id))
-      .where(eq(opportunitiesTable.id, parseInt(req.params.id)));
+      .where(and(eq(opportunitiesTable.id, parseInt(req.params.id)), sql`"opportunities".org_id = ${orgId}`));
 
     if (!opportunity) {
       res.status(404).json({ error: "Opportunity not found" });
@@ -133,6 +138,7 @@ router.get("/opportunities/:id", async (req, res) => {
 
 router.put("/opportunities/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
     const { createdAt: _ca, updatedAt: _ua, id: _id, ...rawBody } = req.body ?? {};
     const patch: Record<string, unknown> = { ...rawBody };
@@ -144,11 +150,11 @@ router.put("/opportunities/:id", async (req, res) => {
       patch.priceBookId = await getStandardPriceBookId();
     }
     const opportunity = await db.transaction(async (tx) => {
-      const [prev] = await tx.select({ stage: opportunitiesTable.stage }).from(opportunitiesTable).where(eq(opportunitiesTable.id, id)).for("update");
+      const [prev] = await tx.select({ stage: opportunitiesTable.stage }).from(opportunitiesTable).where(and(eq(opportunitiesTable.id, id), sql`"opportunities".org_id = ${orgId}`)).for("update");
       if (!prev) return null;
       const [updated] = await tx.update(opportunitiesTable)
         .set({ ...patch, updatedAt: new Date() })
-        .where(eq(opportunitiesTable.id, id))
+        .where(and(eq(opportunitiesTable.id, id), sql`"opportunities".org_id = ${orgId}`))
         .returning();
       if (req.body.stage && prev.stage !== updated.stage) {
         const now = new Date();
@@ -231,8 +237,9 @@ router.get("/opportunities/:id/stage-history", async (req, res) => {
 
 router.delete("/opportunities/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
-    await db.delete(opportunitiesTable).where(eq(opportunitiesTable.id, id));
+    await db.execute(sql`DELETE FROM opportunities WHERE id = ${id} AND org_id = ${orgId}`);
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

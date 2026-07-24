@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable, insertEmailSchema, quotesTable } from "@workspace/db";
 import { eq, ilike, desc, sql } from "drizzle-orm";
 import { detectEmailApproval, processEmailApprovalDecision } from "./quote-workflow-rules";
+import { getDefaultOrgId, getOrgId } from "../lib/org-context";
 
 // Detect if an email body/subject is a quote rejection and extract reason
 function detectQuoteRejection(subject: string, body: string): { isRejection: boolean; reason: string } {
@@ -44,6 +45,7 @@ async function checkIfKnownCustomer(email: string) {
 // POST: Receive email via webhook (from email forwarding / Cloudflare Email Routing)
 router.post("/emails", async (req, res) => {
   try {
+    const orgId = await getDefaultOrgId();
     const parsed = insertEmailSchema.parse(req.body);
     const knownContact = await checkIfKnownCustomer(parsed.fromEmail);
     const isKnown = !!knownContact;
@@ -80,6 +82,7 @@ router.post("/emails", async (req, res) => {
           status: "new",
         })
         .returning();
+      if (lead) await db.execute(sql`UPDATE leads SET org_id = ${orgId} WHERE id = ${lead.id}`);
       relatedLeadId = lead?.id;
     }
 
@@ -98,8 +101,9 @@ router.post("/emails", async (req, res) => {
         notes: isKnown ? "Auto-created Opportunity" : "Auto-created Lead",
       })
       .returning();
+    if (email) await db.execute(sql`UPDATE emails SET org_id = ${orgId} WHERE id = ${email.id}`);
 
-    await db.insert(activitiesTable).values({
+    const [activity] = await db.insert(activitiesTable).values({
       type: "email",
       subject: `Inbound: ${parsed.subject}`,
       description: parsed.message?.substring(0, 500) || "",
@@ -108,7 +112,8 @@ router.post("/emails", async (req, res) => {
       leadId: relatedLeadId ?? null,
       opportunityId: relatedOpportunityId ?? null,
       accountId: relatedAccountId ?? null,
-    });
+    }).returning();
+    if (activity) await db.execute(sql`UPDATE activities SET org_id = ${orgId} WHERE id = ${activity.id}`);
 
     // Detect workflow approval decision from inbound email (reply-based)
     const approvalDetection = await detectEmailApproval(parsed.subject ?? "", parsed.message ?? "");
@@ -161,11 +166,9 @@ router.post("/emails", async (req, res) => {
 router.get("/emails", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const emails = await db
-      .select()
-      .from(emailsTable)
-      .orderBy(desc(emailsTable.createdAt));
-    res.json({ emails });
+    const orgId = getOrgId(req);
+    const result = await db.execute(sql`SELECT * FROM emails WHERE org_id = ${orgId} ORDER BY created_at DESC`);
+    res.json({ emails: result.rows });
   } catch (err) {
     console.error("Fetch emails error:", err);
     res.status(500).json({ error: "Failed to fetch emails" });

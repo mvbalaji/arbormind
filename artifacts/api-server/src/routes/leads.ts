@@ -4,6 +4,7 @@ import { leadsTable, usersTable, contactsTable, accountsTable, opportunitiesTabl
 import { eq, ilike, or, sql, and, desc } from "drizzle-orm";
 import { computeLeadScore } from "../lib/lead-scoring";
 import { requireScreenAccess } from "../lib/access-control";
+import { getOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 router.use("/leads", requireScreenAccess("leads"));
@@ -42,6 +43,7 @@ function formatLead(l: { annualRevenue: string | null; [key: string]: unknown })
 
 router.get("/leads", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const { search, status, assignedTo, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -52,7 +54,7 @@ router.get("/leads", async (req, res) => {
       .from(leadsTable)
       .leftJoin(usersTable, eq(leadsTable.assignedTo, usersTable.id));
 
-    const conditions = [];
+    const conditions = [sql`"leads".org_id = ${orgId}`];
     if (search) {
       conditions.push(or(
         ilike(leadsTable.firstName, `%${search}%`),
@@ -79,6 +81,7 @@ router.get("/leads", async (req, res) => {
 
 router.post("/leads", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const body = { ...req.body };
     // Auto-compute lead score unless caller explicitly supplied one (manual override).
     if (body.score == null || body.score === "") {
@@ -96,6 +99,7 @@ router.post("/leads", async (req, res) => {
       }).total;
     }
     const [lead] = await db.insert(leadsTable).values(body).returning();
+    await db.execute(sql`UPDATE leads SET org_id = ${orgId} WHERE id = ${lead.id}`);
     res.status(201).json(formatLead(lead));
   } catch (err) {
     req.log.error(err);
@@ -105,11 +109,12 @@ router.post("/leads", async (req, res) => {
 
 router.get("/leads/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const [lead] = await db
       .select(leadFields)
       .from(leadsTable)
       .leftJoin(usersTable, eq(leadsTable.assignedTo, usersTable.id))
-      .where(eq(leadsTable.id, parseInt(req.params.id)));
+      .where(and(eq(leadsTable.id, parseInt(req.params.id)), sql`"leads".org_id = ${orgId}`));
 
     if (!lead) {
       res.status(404).json({ error: "Lead not found" });
@@ -141,6 +146,7 @@ router.get("/leads/:id/stage-history", async (req, res) => {
 
 router.put("/leads/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const allowedFields = [
       "firstName", "lastName", "email", "phone", "website", "company", "title",
       "status", "source", "score", "assignedTo",
@@ -188,7 +194,7 @@ router.put("/leads/:id", async (req, res) => {
     const [prevLead] = await db.select({ status: leadsTable.status }).from(leadsTable).where(eq(leadsTable.id, leadId));
     const [lead] = await db.update(leadsTable)
       .set(updateData)
-      .where(eq(leadsTable.id, leadId))
+      .where(and(eq(leadsTable.id, leadId), sql`"leads".org_id = ${orgId}`))
       .returning();
     if (!lead) {
       res.status(404).json({ error: "Lead not found" });
@@ -208,13 +214,14 @@ router.put("/leads/:id", async (req, res) => {
 
 router.delete("/leads/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
     await db.transaction(async (tx) => {
       // Detach activities (nullable FK) so history is preserved.
       await tx.update(activitiesTable).set({ leadId: null }).where(eq(activitiesTable.leadId, id));
       // Remove junction rows that hard-reference the lead.
       await tx.delete(leadContactsTable).where(eq(leadContactsTable.leadId, id));
-      await tx.delete(leadsTable).where(eq(leadsTable.id, id));
+      await tx.execute(sql`DELETE FROM leads WHERE id = ${id} AND org_id = ${orgId}`);
     });
     res.json({ success: true, id });
   } catch (err) {

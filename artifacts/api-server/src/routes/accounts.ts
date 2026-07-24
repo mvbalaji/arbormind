@@ -5,6 +5,7 @@ import type { InsertAccount } from "@workspace/db";
 import { eq, ilike, sql, and, desc, inArray } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
+import { getOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 router.use("/accounts", requireScreenAccess("accounts"));
@@ -91,6 +92,7 @@ const ALLOWED_FIELDS = [
 
 router.get("/accounts", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const { search, industry, page = "1", limit = "50" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -101,7 +103,7 @@ router.get("/accounts", async (req, res) => {
       .from(accountsTable)
       .leftJoin(usersTable, eq(accountsTable.ownerId, usersTable.id));
 
-    const conditions = [];
+    const conditions = [sql`"accounts".org_id = ${orgId}`];
     if (search) conditions.push(ilike(accountsTable.name, `%${search}%`));
     if (industry) conditions.push(eq(accountsTable.industry, industry));
 
@@ -123,6 +125,7 @@ router.get("/accounts", async (req, res) => {
 
 router.post("/accounts", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const payload: Partial<InsertAccount> = {};
     for (const key of ALLOWED_FIELDS) {
       if (req.body[key] !== undefined) {
@@ -135,6 +138,7 @@ router.post("/accounts", async (req, res) => {
       payload.modifiedBy = sessionUser.id;
     }
     const [account] = await db.insert(accountsTable).values(payload as InsertAccount).returning();
+    await db.execute(sql`UPDATE accounts SET org_id = ${orgId} WHERE id = ${account.id}`);
     res.status(201).json({
       ...sanitizeAccount(account),
       contactCount: 0,
@@ -148,13 +152,14 @@ router.post("/accounts", async (req, res) => {
 
 router.get("/accounts/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const [account] = await db
       .select(accountFields)
       .from(accountsTable)
       .leftJoin(usersTable, eq(accountsTable.ownerId, usersTable.id))
-      .where(eq(accountsTable.id, id));
+      .where(and(eq(accountsTable.id, id), sql`"accounts".org_id = ${orgId}`));
 
     if (!account) {
       res.status(404).json({ error: "Account not found" });
@@ -179,6 +184,7 @@ router.get("/accounts/:id", async (req, res) => {
 
 router.put("/accounts/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid account ID" }); return; }
     const payload: Partial<InsertAccount> & { updatedAt: Date } = { updatedAt: new Date() };
@@ -191,7 +197,7 @@ router.put("/accounts/:id", async (req, res) => {
     if (sessionUser?.id) payload.modifiedBy = sessionUser.id;
     const [account] = await db.update(accountsTable)
       .set(payload)
-      .where(eq(accountsTable.id, id))
+      .where(and(eq(accountsTable.id, id), sql`"accounts".org_id = ${orgId}`))
       .returning();
     if (!account) {
       res.status(404).json({ error: "Account not found" });
@@ -210,9 +216,10 @@ router.put("/accounts/:id", async (req, res) => {
 
 router.delete("/accounts/:id", async (req, res) => {
   try {
+    const orgId = getOrgId(req);
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid account ID" }); return; }
-    await db.delete(accountsTable).where(eq(accountsTable.id, id));
+    await db.execute(sql`DELETE FROM accounts WHERE id = ${id} AND org_id = ${orgId}`);
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);
