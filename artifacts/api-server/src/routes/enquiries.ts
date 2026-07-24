@@ -6,12 +6,9 @@ const router = Router();
 router.post("/enquiries", async (req, res) => {
   try {
     const parsed = insertEnquirySchema.parse(req.body);
-    // Public contact-form endpoint — anonymous website visitors have no session,
-    // so req.orgId may be undefined. Fall back to the Default Organization
-    // (single-tenant marketing site scenario) rather than leaving orgId unset.
     const [enquiry] = await db
       .insert(enquiriesTable)
-      .values({ ...parsed, orgId: req.orgId ?? 1 })
+      .values(parsed)
       .returning();
     res.status(201).json({ success: true, enquiry });
     return;

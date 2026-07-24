@@ -33,13 +33,12 @@ function pickPerms(input: Record<string, unknown>) {
 }
 
 // GET /admin/record-access/matrix → { recordTypes, roles, matrix }
-router.get("/admin/record-access/matrix", async (req, res) => {
+router.get("/admin/record-access/matrix", async (_req, res) => {
   try {
-    const orgId = req.orgId as number;
     const [recordTypes, roles, rows] = await Promise.all([
-      db.select().from(recordTypesTable).where(eq(recordTypesTable.orgId, orgId)).orderBy(recordTypesTable.sortOrder, recordTypesTable.key),
-      db.select().from(rolesTable).where(eq(rolesTable.orgId, orgId)).orderBy(rolesTable.sortOrder, rolesTable.key),
-      db.select().from(recordAccessTable).where(eq(recordAccessTable.orgId, orgId)),
+      db.select().from(recordTypesTable).orderBy(recordTypesTable.sortOrder, recordTypesTable.key),
+      db.select().from(rolesTable).orderBy(rolesTable.sortOrder, rolesTable.key),
+      db.select().from(recordAccessTable),
     ]);
 
     const matrix: Record<string, Record<string, Record<PermColumn, boolean>>> = {};
@@ -79,7 +78,6 @@ router.get("/admin/record-access/matrix", async (req, res) => {
 // Body: { canView?, canReadOnly?, canEdit?, canCreate?, canDelete? }
 router.put("/admin/record-access/types/:recordTypeKey/roles/:roleKey", async (req, res) => {
   try {
-    const orgId = req.orgId as number;
     const { recordTypeKey, roleKey } = req.params;
     if (roleKey === "admin") {
       res.status(400).json({ error: "Administrator permissions cannot be modified" });
@@ -92,9 +90,9 @@ router.put("/admin/record-access/types/:recordTypeKey/roles/:roleKey", async (re
       return;
     }
 
-    const [recordType] = await db.select().from(recordTypesTable).where(and(eq(recordTypesTable.orgId, orgId), eq(recordTypesTable.key, recordTypeKey)));
+    const [recordType] = await db.select().from(recordTypesTable).where(eq(recordTypesTable.key, recordTypeKey));
     if (!recordType) { res.status(404).json({ error: "Record type not found" }); return; }
-    const [role] = await db.select().from(rolesTable).where(and(eq(rolesTable.orgId, orgId), eq(rolesTable.key, roleKey)));
+    const [role] = await db.select().from(rolesTable).where(eq(rolesTable.key, roleKey));
     if (!role) { res.status(404).json({ error: "Role not found" }); return; }
 
     const actor = (req.user || (req.session as any)?.user) as { id?: number; name?: string; email?: string } | undefined;
@@ -103,7 +101,7 @@ router.put("/admin/record-access/types/:recordTypeKey/roles/:roleKey", async (re
       const [existing] = await tx
         .select()
         .from(recordAccessTable)
-        .where(and(eq(recordAccessTable.orgId, orgId), eq(recordAccessTable.recordTypeKey, recordTypeKey), eq(recordAccessTable.roleKey, roleKey)));
+        .where(and(eq(recordAccessTable.recordTypeKey, recordTypeKey), eq(recordAccessTable.roleKey, roleKey)));
 
       const previous = existing
         ? {
@@ -123,10 +121,9 @@ router.put("/admin/record-access/types/:recordTypeKey/roles/:roleKey", async (re
         await tx
           .update(recordAccessTable)
           .set({ ...merged, updatedBy: actor?.id ?? null, updatedAt: new Date() })
-          .where(and(eq(recordAccessTable.id, existing.id), eq(recordAccessTable.orgId, orgId)));
+          .where(eq(recordAccessTable.id, existing.id));
       } else {
         await tx.insert(recordAccessTable).values({
-          orgId,
           recordTypeKey,
           roleKey,
           ...merged,
@@ -135,7 +132,6 @@ router.put("/admin/record-access/types/:recordTypeKey/roles/:roleKey", async (re
       }
 
       await tx.insert(recordAccessAuditLogTable).values({
-        orgId,
         recordTypeKey,
         roleKey,
         previousPermissions: previous,
@@ -167,7 +163,6 @@ router.get("/admin/record-access/audit", async (req, res) => {
     const rows = await db
       .select()
       .from(recordAccessAuditLogTable)
-      .where(eq(recordAccessAuditLogTable.orgId, req.orgId as number))
       .orderBy(desc(recordAccessAuditLogTable.createdAt))
       .limit(limit);
     res.json({ data: rows });

@@ -47,6 +47,7 @@ interface EntityApprovalsProps {
   entity: Entity;
   record: Record<string, unknown>;
   isAdmin?: boolean;
+  onDecision?: () => void;
 }
 
 interface Row {
@@ -156,7 +157,7 @@ function buildRows(requests: ApprovalRequest[]): Row[] {
   return rows;
 }
 
-export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProps) {
+export function EntityApprovals({ entity, record, isAdmin, onDecision }: EntityApprovalsProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const entityId = Number(record.id);
@@ -178,6 +179,14 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["approval-requests", entity, entityId] });
+
+  // After a decision, also refetch the parent entity so status/stage updates immediately
+  const invalidateEntity = () => {
+    const entityPath = `/api/${entity}s/${entityId}`;
+    void queryClient.invalidateQueries({ queryKey: [entityPath] });
+    void queryClient.invalidateQueries({ queryKey: [`${entity}-stage-history`, entityId] });
+    onDecision?.();
+  };
 
   const submitMutation = useMutation({
     mutationFn: async (comment: string) => {
@@ -204,7 +213,7 @@ export function EntityApprovals({ entity, record, isAdmin }: EntityApprovalsProp
       if (!res.ok) throw new Error((await res.json()).error ?? "Failed to record decision");
       return res.json();
     },
-    onSuccess: () => { setActionState(null); setActionComment(""); invalidate(); },
+    onSuccess: () => { setActionState(null); setActionComment(""); invalidate(); invalidateEntity(); },
   });
 
   const commentMutation = useMutation({

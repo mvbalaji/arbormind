@@ -3,7 +3,6 @@ import { leadsTable } from "./leads";
 
 export const leadInsightsTable = pgTable("lead_insights", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   leadId: integer("lead_id").notNull().references(() => leadsTable.id, { onDelete: "cascade" }),
   companySize: text("company_size"),
   industrySegment: text("industry_segment"),

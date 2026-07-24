@@ -7,7 +7,7 @@ const router = Router();
 
 router.get("/stims/fiscal-periods", async (req, res) => {
   try {
-    const r = await pool.query(`SELECT * FROM stims_fiscal_periods WHERE org_id=$1 ORDER BY start_date DESC`, [req.orgId]);
+    const r = await pool.query(`SELECT * FROM stims_fiscal_periods ORDER BY start_date DESC`);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -18,9 +18,9 @@ router.post("/stims/fiscal-periods", async (req, res) => {
   try {
     const { name, fiscal_year, period_type, start_date, end_date } = req.body;
     const r = await pool.query(
-      `INSERT INTO stims_fiscal_periods (org_id, name, fiscal_year, period_type, start_date, end_date)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [req.orgId, name, fiscal_year, period_type, start_date, end_date]
+      `INSERT INTO stims_fiscal_periods (name, fiscal_year, period_type, start_date, end_date)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [name, fiscal_year, period_type, start_date, end_date]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -33,8 +33,8 @@ router.patch("/stims/fiscal-periods/:id", async (req, res) => {
     const { name, fiscal_year, period_type, start_date, end_date, is_locked } = req.body;
     const r = await pool.query(
       `UPDATE stims_fiscal_periods SET name=$1, fiscal_year=$2, period_type=$3,
-       start_date=$4, end_date=$5, is_locked=$6, updated_at=NOW() WHERE id=$7 AND org_id=$8 RETURNING *`,
-      [name, fiscal_year, period_type, start_date, end_date, is_locked, req.params.id, req.orgId]
+       start_date=$4, end_date=$5, is_locked=$6, updated_at=NOW() WHERE id=$7 RETURNING *`,
+      [name, fiscal_year, period_type, start_date, end_date, is_locked, req.params.id]
     );
     res.json(r.rows[0]);
   } catch (err) {
@@ -44,7 +44,7 @@ router.patch("/stims/fiscal-periods/:id", async (req, res) => {
 
 router.delete("/stims/fiscal-periods/:id", async (req, res) => {
   try {
-    await pool.query(`DELETE FROM stims_fiscal_periods WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId]);
+    await pool.query(`DELETE FROM stims_fiscal_periods WHERE id=$1`, [req.params.id]);
     res.json({ ok: true });
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -61,9 +61,8 @@ router.get("/stims/target-cycles", async (req, res) => {
       FROM stims_target_cycles tc
       LEFT JOIN stims_fiscal_periods fp ON fp.id = tc.fiscal_period_id
       LEFT JOIN users u ON u.id = tc.created_by
-      WHERE tc.org_id = $1
       ORDER BY tc.created_at DESC
-    `, [req.orgId]);
+    `);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -76,9 +75,9 @@ router.post("/stims/target-cycles", async (req, res) => {
     const userId = (req as any).user?.id ?? null;
     const r = await pool.query(
       `INSERT INTO stims_target_cycles
-         (org_id, name, fiscal_period_id, metric, total_target, allocation_method, scope, currency, growth_pct, status, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'draft',$10) RETURNING *`,
-      [req.orgId, name, fiscal_period_id, metric, total_target, allocation_method ?? "equal", scope ?? "All", currency ?? "GBP", growth_pct ?? 0, userId]
+         (name, fiscal_period_id, metric, total_target, allocation_method, scope, currency, growth_pct, status, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'draft',$9) RETURNING *`,
+      [name, fiscal_period_id, metric, total_target, allocation_method ?? "equal", scope ?? "All", currency ?? "GBP", growth_pct ?? 0, userId]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -93,8 +92,8 @@ router.patch("/stims/target-cycles/:id", async (req, res) => {
       `UPDATE stims_target_cycles
        SET name=$1, metric=$2, total_target=$3, allocation_method=$4, scope=$5,
            currency=$6, growth_pct=$7, status=$8, updated_at=NOW()
-       WHERE id=$9 AND org_id=$10 RETURNING *`,
-      [name, metric, total_target, allocation_method, scope, currency, growth_pct, status, req.params.id, req.orgId]
+       WHERE id=$9 RETURNING *`,
+      [name, metric, total_target, allocation_method, scope, currency, growth_pct, status, req.params.id]
     );
     res.json(r.rows[0]);
   } catch (err) {
@@ -104,7 +103,7 @@ router.patch("/stims/target-cycles/:id", async (req, res) => {
 
 router.delete("/stims/target-cycles/:id", async (req, res) => {
   try {
-    await pool.query(`DELETE FROM stims_target_cycles WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId]);
+    await pool.query(`DELETE FROM stims_target_cycles WHERE id=$1`, [req.params.id]);
     res.json({ ok: true });
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -119,9 +118,9 @@ router.get("/stims/target-cycles/:cycleId/quotas", async (req, res) => {
       SELECT q.*, u.name AS user_name, u.email AS user_email
       FROM stims_quotas q
       LEFT JOIN users u ON u.id = q.user_id
-      WHERE q.cycle_id = $1 AND q.org_id = $2
+      WHERE q.cycle_id = $1
       ORDER BY u.name
-    `, [req.params.cycleId, req.orgId]);
+    `, [req.params.cycleId]);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -132,12 +131,12 @@ router.post("/stims/target-cycles/:cycleId/quotas", async (req, res) => {
   try {
     const { user_id, quota_amount, ramp_pct, period_breakdowns, is_new_hire } = req.body;
     const r = await pool.query(
-      `INSERT INTO stims_quotas (org_id, cycle_id, user_id, quota_amount, ramp_pct, period_breakdowns, is_new_hire)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO stims_quotas (cycle_id, user_id, quota_amount, ramp_pct, period_breakdowns, is_new_hire)
+       VALUES ($1,$2,$3,$4,$5,$6)
        ON CONFLICT (cycle_id, user_id) DO UPDATE
-         SET quota_amount=$4, ramp_pct=$5, period_breakdowns=$6, is_new_hire=$7, updated_at=NOW()
+         SET quota_amount=$3, ramp_pct=$4, period_breakdowns=$5, is_new_hire=$6, updated_at=NOW()
        RETURNING *`,
-      [req.orgId, req.params.cycleId, user_id, quota_amount, ramp_pct ?? 100, period_breakdowns ? JSON.stringify(period_breakdowns) : null, is_new_hire ?? false]
+      [req.params.cycleId, user_id, quota_amount, ramp_pct ?? 100, period_breakdowns ? JSON.stringify(period_breakdowns) : null, is_new_hire ?? false]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -148,7 +147,7 @@ router.post("/stims/target-cycles/:cycleId/quotas", async (req, res) => {
 router.post("/stims/target-cycles/:cycleId/distribute", async (req, res) => {
   try {
     const { user_ids, allocation_method } = req.body;
-    const cycleRow = await pool.query(`SELECT * FROM stims_target_cycles WHERE id=$1 AND org_id=$2`, [req.params.cycleId, req.orgId]);
+    const cycleRow = await pool.query(`SELECT * FROM stims_target_cycles WHERE id=$1`, [req.params.cycleId]);
     const cycle = cycleRow.rows[0] as Record<string, unknown>;
     if (!cycle) return res.status(404).json({ error: "Cycle not found" });
 
@@ -158,10 +157,10 @@ router.post("/stims/target-cycles/:cycleId/distribute", async (req, res) => {
 
     for (const uid of user_ids) {
       await pool.query(
-        `INSERT INTO stims_quotas (org_id, cycle_id, user_id, quota_amount, ramp_pct)
-         VALUES ($1,$2,$3,$4,100)
-         ON CONFLICT (cycle_id, user_id) DO UPDATE SET quota_amount=$4, updated_at=NOW()`,
-        [req.orgId, req.params.cycleId, uid, perRep]
+        `INSERT INTO stims_quotas (cycle_id, user_id, quota_amount, ramp_pct)
+         VALUES ($1,$2,$3,100)
+         ON CONFLICT (cycle_id, user_id) DO UPDATE SET quota_amount=$3, updated_at=NOW()`,
+        [req.params.cycleId, uid, perRep]
       );
     }
     res.json({ distributed: count, per_rep: perRep });
@@ -176,12 +175,11 @@ router.get("/stims/incentive-plans", async (req, res) => {
   try {
     const r = await pool.query(`
       SELECT p.*,
-        (SELECT json_agg(t ORDER BY t.from_pct) FROM stims_plan_tiers t WHERE t.plan_id = p.id AND t.org_id = $1) AS tiers,
-        (SELECT count(*) FROM stims_plan_assignments a WHERE a.plan_id = p.id AND a.org_id = $1) AS assignment_count
+        (SELECT json_agg(t ORDER BY t.from_pct) FROM stims_plan_tiers t WHERE t.plan_id = p.id) AS tiers,
+        (SELECT count(*) FROM stims_plan_assignments a WHERE a.plan_id = p.id) AS assignment_count
       FROM stims_incentive_plans p
-      WHERE p.org_id = $1
       ORDER BY p.created_at DESC
-    `, [req.orgId]);
+    `);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -191,14 +189,14 @@ router.get("/stims/incentive-plans", async (req, res) => {
 router.get("/stims/incentive-plans/:id", async (req, res) => {
   try {
     const [planRow, tiersRow, assignRow] = await Promise.all([
-      pool.query(`SELECT * FROM stims_incentive_plans WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId]),
-      pool.query(`SELECT * FROM stims_plan_tiers WHERE plan_id=$1 AND org_id=$2 ORDER BY from_pct`, [req.params.id, req.orgId]),
+      pool.query(`SELECT * FROM stims_incentive_plans WHERE id=$1`, [req.params.id]),
+      pool.query(`SELECT * FROM stims_plan_tiers WHERE plan_id=$1 ORDER BY from_pct`, [req.params.id]),
       pool.query(`
         SELECT a.*, u.name AS user_name, u.email
         FROM stims_plan_assignments a
         LEFT JOIN users u ON u.id = a.user_id
-        WHERE a.plan_id=$1 AND a.org_id=$2
-      `, [req.params.id, req.orgId]),
+        WHERE a.plan_id=$1
+      `, [req.params.id]),
     ]);
     if (!planRow.rows[0]) return res.status(404).json({ error: "Not found" });
     res.json({ ...planRow.rows[0], tiers: tiersRow.rows, assignments: assignRow.rows });
@@ -215,19 +213,19 @@ router.post("/stims/incentive-plans", async (req, res) => {
     } = req.body;
     const planRow = await pool.query(
       `INSERT INTO stims_incentive_plans
-         (org_id, name, effective_start, effective_end, currency, base_variable_split, ote_amount,
+         (name, effective_start, effective_end, currency, base_variable_split, ote_amount,
           payout_frequency, threshold_pct, cap_pct, measure, notes, status, version)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'draft',1) RETURNING *`,
-      [req.orgId, name, effective_start, effective_end, currency ?? "GBP", base_variable_split ?? 30,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'draft',1) RETURNING *`,
+      [name, effective_start, effective_end, currency ?? "GBP", base_variable_split ?? 30,
        ote_amount, payout_frequency ?? "quarterly", threshold_pct ?? 70, cap_pct ?? null, measure ?? "revenue", notes ?? null]
     );
     const plan = planRow.rows[0] as Record<string, unknown>;
     if (tiers?.length) {
       for (const t of tiers) {
         await pool.query(
-          `INSERT INTO stims_plan_tiers (org_id, plan_id, from_pct, to_pct, rate_pct, label)
-           VALUES ($1,$2,$3,$4,$5,$6)`,
-          [req.orgId, plan.id, t.from_pct, t.to_pct ?? null, t.rate_pct, t.label ?? null]
+          `INSERT INTO stims_plan_tiers (plan_id, from_pct, to_pct, rate_pct, label)
+           VALUES ($1,$2,$3,$4,$5)`,
+          [plan.id, t.from_pct, t.to_pct ?? null, t.rate_pct, t.label ?? null]
         );
       }
     }
@@ -247,17 +245,17 @@ router.patch("/stims/incentive-plans/:id", async (req, res) => {
       `UPDATE stims_incentive_plans SET name=$1, effective_start=$2, effective_end=$3,
        currency=$4, base_variable_split=$5, ote_amount=$6, payout_frequency=$7,
        threshold_pct=$8, cap_pct=$9, measure=$10, notes=$11, status=$12, updated_at=NOW()
-       WHERE id=$13 AND org_id=$14 RETURNING *`,
+       WHERE id=$13 RETURNING *`,
       [name, effective_start, effective_end, currency, base_variable_split,
-       ote_amount, payout_frequency, threshold_pct, cap_pct, measure, notes, status, req.params.id, req.orgId]
+       ote_amount, payout_frequency, threshold_pct, cap_pct, measure, notes, status, req.params.id]
     );
     if (tiers) {
-      await pool.query(`DELETE FROM stims_plan_tiers WHERE plan_id=$1 AND org_id=$2`, [req.params.id, req.orgId]);
+      await pool.query(`DELETE FROM stims_plan_tiers WHERE plan_id=$1`, [req.params.id]);
       for (const t of tiers) {
         await pool.query(
-          `INSERT INTO stims_plan_tiers (org_id, plan_id, from_pct, to_pct, rate_pct, label)
-           VALUES ($1,$2,$3,$4,$5,$6)`,
-          [req.orgId, req.params.id, t.from_pct, t.to_pct ?? null, t.rate_pct, t.label ?? null]
+          `INSERT INTO stims_plan_tiers (plan_id, from_pct, to_pct, rate_pct, label)
+           VALUES ($1,$2,$3,$4,$5)`,
+          [req.params.id, t.from_pct, t.to_pct ?? null, t.rate_pct, t.label ?? null]
         );
       }
     }
@@ -269,7 +267,7 @@ router.patch("/stims/incentive-plans/:id", async (req, res) => {
 
 router.delete("/stims/incentive-plans/:id", async (req, res) => {
   try {
-    await pool.query(`DELETE FROM stims_incentive_plans WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId]);
+    await pool.query(`DELETE FROM stims_incentive_plans WHERE id=$1`, [req.params.id]);
     res.json({ ok: true });
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -283,11 +281,11 @@ router.post("/stims/incentive-plans/:id/assign", async (req, res) => {
     const results = [];
     for (const uid of user_ids) {
       const r = await pool.query(
-        `INSERT INTO stims_plan_assignments (org_id, plan_id, user_id, effective_start, effective_end)
-         VALUES ($1,$2,$3,$4,$5)
-         ON CONFLICT (plan_id, user_id) DO UPDATE SET effective_start=$4, effective_end=$5, updated_at=NOW()
+        `INSERT INTO stims_plan_assignments (plan_id, user_id, effective_start, effective_end)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (plan_id, user_id) DO UPDATE SET effective_start=$3, effective_end=$4, updated_at=NOW()
          RETURNING *`,
-        [req.orgId, req.params.id, uid, effective_start, effective_end ?? null]
+        [req.params.id, uid, effective_start, effective_end ?? null]
       );
       results.push(r.rows[0]);
     }
@@ -300,8 +298,8 @@ router.post("/stims/incentive-plans/:id/assign", async (req, res) => {
 // Simulate plan payout for a given attainment %
 router.post("/stims/incentive-plans/:id/simulate", async (req, res) => {
   try {
-    const planRow = await pool.query(`SELECT * FROM stims_incentive_plans WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId]);
-    const tiersRow = await pool.query(`SELECT * FROM stims_plan_tiers WHERE plan_id=$1 AND org_id=$2 ORDER BY from_pct`, [req.params.id, req.orgId]);
+    const planRow = await pool.query(`SELECT * FROM stims_incentive_plans WHERE id=$1`, [req.params.id]);
+    const tiersRow = await pool.query(`SELECT * FROM stims_plan_tiers WHERE plan_id=$1 ORDER BY from_pct`, [req.params.id]);
     const plan = planRow.rows[0] as Record<string, unknown>;
     if (!plan) return res.status(404).json({ error: "Not found" });
 
@@ -352,9 +350,9 @@ router.get("/stims/attainment", async (req, res) => {
       SELECT a.*, u.name AS user_name, u.email
       FROM stims_attainment a
       LEFT JOIN users u ON u.id = a.user_id
-      WHERE a.org_id = $1 AND ($2::int IS NULL OR a.fiscal_period_id = $2)
+      WHERE ($1::int IS NULL OR a.fiscal_period_id = $1)
       ORDER BY u.name
-    `, [req.orgId, period_id ?? null]);
+    `, [period_id ?? null]);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -365,12 +363,12 @@ router.post("/stims/attainment", async (req, res) => {
   try {
     const { user_id, fiscal_period_id, actual_amount, source } = req.body;
     const r = await pool.query(
-      `INSERT INTO stims_attainment (org_id, user_id, fiscal_period_id, actual_amount, source)
-       VALUES ($1,$2,$3,$4,$5)
+      `INSERT INTO stims_attainment (user_id, fiscal_period_id, actual_amount, source)
+       VALUES ($1,$2,$3,$4)
        ON CONFLICT (user_id, fiscal_period_id) DO UPDATE
-         SET actual_amount=$4, source=$5, updated_at=NOW()
+         SET actual_amount=$3, source=$4, updated_at=NOW()
        RETURNING *`,
-      [req.orgId, user_id, fiscal_period_id, actual_amount, source ?? "manual"]
+      [user_id, fiscal_period_id, actual_amount, source ?? "manual"]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -387,9 +385,8 @@ router.get("/stims/calc-runs", async (req, res) => {
       FROM stims_calc_runs cr
       LEFT JOIN stims_fiscal_periods fp ON fp.id = cr.fiscal_period_id
       LEFT JOIN users u ON u.id = cr.approved_by
-      WHERE cr.org_id = $1
       ORDER BY cr.run_at DESC
-    `, [req.orgId]);
+    `);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -403,15 +400,15 @@ router.get("/stims/calc-runs/:id", async (req, res) => {
         SELECT cr.*, fp.name AS period_name
         FROM stims_calc_runs cr
         LEFT JOIN stims_fiscal_periods fp ON fp.id = cr.fiscal_period_id
-        WHERE cr.id = $1 AND cr.org_id = $2
-      `, [req.params.id, req.orgId]),
+        WHERE cr.id = $1
+      `, [req.params.id]),
       pool.query(`
         SELECT pl.*, u.name AS user_name, u.email
         FROM stims_payout_lines pl
         LEFT JOIN users u ON u.id = pl.user_id
-        WHERE pl.run_id = $1 AND pl.org_id = $2
+        WHERE pl.run_id = $1
         ORDER BY u.name
-      `, [req.params.id, req.orgId]),
+      `, [req.params.id]),
     ]);
     if (!runRow.rows[0]) return res.status(404).json({ error: "Not found" });
     res.json({ ...runRow.rows[0], lines: linesRow.rows });
@@ -423,25 +420,24 @@ router.get("/stims/calc-runs/:id", async (req, res) => {
 router.post("/stims/calc-runs", async (req, res) => {
   try {
     const { fiscal_period_id, cycle_id } = req.body;
-    const orgId = req.orgId as number;
 
     // Create the run record
     const runRow = await pool.query(
-      `INSERT INTO stims_calc_runs (org_id, fiscal_period_id, cycle_id, status) VALUES ($1,$2,$3,'draft') RETURNING *`,
-      [orgId, fiscal_period_id, cycle_id]
+      `INSERT INTO stims_calc_runs (fiscal_period_id, cycle_id, status) VALUES ($1,$2,'draft') RETURNING *`,
+      [fiscal_period_id, cycle_id]
     );
     const run = runRow.rows[0] as Record<string, unknown>;
 
     // Fetch quotas for this cycle
     const quotasRow = await pool.query(
-      `SELECT q.*, u.id AS uid FROM stims_quotas q JOIN users u ON u.id = q.user_id WHERE q.cycle_id = $1 AND q.org_id = $2`,
-      [cycle_id, orgId]
+      `SELECT q.*, u.id AS uid FROM stims_quotas q JOIN users u ON u.id = q.user_id WHERE q.cycle_id = $1`,
+      [cycle_id]
     );
 
     // Fetch attainment for this period
     const attainRow = await pool.query(
-      `SELECT * FROM stims_attainment WHERE fiscal_period_id = $1 AND org_id = $2`,
-      [fiscal_period_id, orgId]
+      `SELECT * FROM stims_attainment WHERE fiscal_period_id = $1`,
+      [fiscal_period_id]
     );
     const attainMap = new Map<number, number>();
     for (const a of attainRow.rows as Array<Record<string, unknown>>) {
@@ -461,23 +457,23 @@ router.post("/stims/calc-runs", async (req, res) => {
       const planAssignRow = await pool.query(`
         SELECT pa.plan_id FROM stims_plan_assignments pa
         JOIN stims_incentive_plans p ON p.id = pa.plan_id
-        WHERE pa.user_id = $1 AND p.status = 'active' AND pa.org_id = $2
+        WHERE pa.user_id = $1 AND p.status = 'active'
         ORDER BY pa.created_at DESC LIMIT 1
-      `, [userId, orgId]);
+      `, [userId]);
 
       if (!planAssignRow.rows[0]) {
         exceptions.push(`User ${userId}: no active incentive plan assigned`);
         await pool.query(
-          `INSERT INTO stims_payout_lines (org_id, run_id, user_id, quota, actual, attainment_pct, gross_payout, net_payout, exception_note)
-           VALUES ($1,$2,$3,$4,$5,$6,0,0,$7)`,
-          [orgId, run.id, userId, quota, actual, attainPct, "No active plan"]
+          `INSERT INTO stims_payout_lines (run_id, user_id, quota, actual, attainment_pct, gross_payout, net_payout, exception_note)
+           VALUES ($1,$2,$3,$4,$5,0,0,$6)`,
+          [run.id, userId, quota, actual, attainPct, "No active plan"]
         );
         continue;
       }
 
       const planId = (planAssignRow.rows[0] as Record<string, unknown>).plan_id;
-      const planRow = await pool.query(`SELECT * FROM stims_incentive_plans WHERE id=$1 AND org_id=$2`, [planId, orgId]);
-      const tiersRow = await pool.query(`SELECT * FROM stims_plan_tiers WHERE plan_id=$1 AND org_id=$2 ORDER BY from_pct`, [planId, orgId]);
+      const planRow = await pool.query(`SELECT * FROM stims_incentive_plans WHERE id=$1`, [planId]);
+      const tiersRow = await pool.query(`SELECT * FROM stims_plan_tiers WHERE plan_id=$1 ORDER BY from_pct`, [planId]);
       const plan = planRow.rows[0] as Record<string, unknown>;
       const tiers = tiersRow.rows as Array<Record<string, unknown>>;
 
@@ -513,13 +509,13 @@ router.post("/stims/calc-runs", async (req, res) => {
       totalPayout += grossPayout;
 
       await pool.query(
-        `INSERT INTO stims_payout_lines (org_id, run_id, user_id, quota, actual, attainment_pct, gross_payout, net_payout, breakdown)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$7,$8)`,
-        [orgId, run.id, userId, quota, actual, attainPct, grossPayout, breakdown]
+        `INSERT INTO stims_payout_lines (run_id, user_id, quota, actual, attainment_pct, gross_payout, net_payout, breakdown)
+         VALUES ($1,$2,$3,$4,$5,$6,$6,$7)`,
+        [run.id, userId, quota, actual, attainPct, grossPayout, breakdown]
       );
     }
 
-    await pool.query(`UPDATE stims_calc_runs SET total_payout=$1 WHERE id=$2 AND org_id=$3`, [totalPayout, run.id, orgId]);
+    await pool.query(`UPDATE stims_calc_runs SET total_payout=$1 WHERE id=$2`, [totalPayout, run.id]);
 
     res.status(201).json({
       run_id: run.id,
@@ -536,8 +532,8 @@ router.patch("/stims/calc-runs/:id", async (req, res) => {
   try {
     const { status, approved_by } = req.body;
     const r = await pool.query(
-      `UPDATE stims_calc_runs SET status=$1, approved_by=$2, updated_at=NOW() WHERE id=$3 AND org_id=$4 RETURNING *`,
-      [status, approved_by ?? null, req.params.id, req.orgId]
+      `UPDATE stims_calc_runs SET status=$1, approved_by=$2, updated_at=NOW() WHERE id=$3 RETURNING *`,
+      [status, approved_by ?? null, req.params.id]
     );
     res.json(r.rows[0]);
   } catch (err) {
@@ -549,14 +545,14 @@ router.patch("/stims/calc-runs/:id", async (req, res) => {
 router.patch("/stims/payout-lines/:id", async (req, res) => {
   try {
     const { adjustment, adjustment_reason } = req.body;
-    const lineRow = await pool.query(`SELECT * FROM stims_payout_lines WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId]);
+    const lineRow = await pool.query(`SELECT * FROM stims_payout_lines WHERE id=$1`, [req.params.id]);
     const line = lineRow.rows[0] as Record<string, unknown>;
     if (!line) return res.status(404).json({ error: "Not found" });
     const net = (Number(line.gross_payout) + Number(adjustment)).toFixed(2);
     const r = await pool.query(
       `UPDATE stims_payout_lines SET adjustment=$1, adjustment_reason=$2, net_payout=$3, updated_at=NOW()
-       WHERE id=$4 AND org_id=$5 RETURNING *`,
-      [adjustment, adjustment_reason, net, req.params.id, req.orgId]
+       WHERE id=$4 RETURNING *`,
+      [adjustment, adjustment_reason, net, req.params.id]
     );
     res.json(r.rows[0]);
   } catch (err) {
@@ -572,9 +568,9 @@ router.get("/stims/calc-runs/:id/export", async (req, res) => {
              pl.gross_payout, pl.adjustment, pl.net_payout, pl.breakdown, pl.exception_note
       FROM stims_payout_lines pl
       LEFT JOIN users u ON u.id = pl.user_id
-      WHERE pl.run_id = $1 AND pl.org_id = $2
+      WHERE pl.run_id = $1
       ORDER BY u.name
-    `, [req.params.id, req.orgId]);
+    `, [req.params.id]);
 
     const headers = ["Rep Name","Email","Quota","Actual","Attainment %","Gross Payout","Adjustment","Net Payout","Notes","Exception"];
     const rows = (r.rows as Array<Record<string, unknown>>).map(row =>
@@ -600,9 +596,8 @@ router.get("/stims/disputes", async (req, res) => {
       FROM stims_disputes d
       LEFT JOIN users u ON u.id = d.user_id
       LEFT JOIN stims_payout_lines pl ON pl.id = d.payout_line_id
-      WHERE d.org_id = $1
       ORDER BY d.created_at DESC
-    `, [req.orgId]);
+    `);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -613,9 +608,9 @@ router.post("/stims/disputes", async (req, res) => {
   try {
     const { payout_line_id, user_id, description } = req.body;
     const r = await pool.query(
-      `INSERT INTO stims_disputes (org_id, payout_line_id, user_id, description, status)
-       VALUES ($1,$2,$3,$4,'open') RETURNING *`,
-      [req.orgId, payout_line_id, user_id, description]
+      `INSERT INTO stims_disputes (payout_line_id, user_id, description, status)
+       VALUES ($1,$2,$3,'open') RETURNING *`,
+      [payout_line_id, user_id, description]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -628,8 +623,8 @@ router.patch("/stims/disputes/:id", async (req, res) => {
     const { status, resolution } = req.body;
     const r = await pool.query(
       `UPDATE stims_disputes SET status=$1, resolution=$2, resolved_at=NOW(), updated_at=NOW()
-       WHERE id=$3 AND org_id=$4 RETURNING *`,
-      [status, resolution, req.params.id, req.orgId]
+       WHERE id=$3 RETURNING *`,
+      [status, resolution, req.params.id]
     );
     res.json(r.rows[0]);
   } catch (err) {
@@ -641,7 +636,7 @@ router.patch("/stims/disputes/:id", async (req, res) => {
 
 router.get("/stims/ramp-templates", async (req, res) => {
   try {
-    const r = await pool.query(`SELECT * FROM stims_ramp_templates WHERE org_id=$1 ORDER BY name`, [req.orgId]);
+    const r = await pool.query(`SELECT * FROM stims_ramp_templates ORDER BY name`);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -652,8 +647,8 @@ router.post("/stims/ramp-templates", async (req, res) => {
   try {
     const { name, months_schedule } = req.body;
     const r = await pool.query(
-      `INSERT INTO stims_ramp_templates (org_id, name, months_schedule) VALUES ($1,$2,$3) RETURNING *`,
-      [req.orgId, name, JSON.stringify(months_schedule)]
+      `INSERT INTO stims_ramp_templates (name, months_schedule) VALUES ($1,$2) RETURNING *`,
+      [name, JSON.stringify(months_schedule)]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) {
@@ -663,7 +658,7 @@ router.post("/stims/ramp-templates", async (req, res) => {
 
 router.delete("/stims/ramp-templates/:id", async (req, res) => {
   try {
-    await pool.query(`DELETE FROM stims_ramp_templates WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId]);
+    await pool.query(`DELETE FROM stims_ramp_templates WHERE id=$1`, [req.params.id]);
     res.json({ ok: true });
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });
@@ -688,10 +683,10 @@ router.get("/stims/performance-summary", async (req, res) => {
              ELSE 0 END AS gap_to_target
       FROM stims_quotas q
       JOIN users u ON u.id = q.user_id
-      LEFT JOIN stims_attainment a ON a.user_id = q.user_id AND a.fiscal_period_id = $1::int AND a.org_id = $2
-      WHERE q.org_id = $2 AND ($3::int IS NULL OR q.cycle_id = $3)
+      LEFT JOIN stims_attainment a ON a.user_id = q.user_id AND a.fiscal_period_id = $1::int
+      WHERE ($2::int IS NULL OR q.cycle_id = $2)
       ORDER BY attainment_pct DESC
-    `, [fiscal_period_id ?? null, req.orgId, cycle_id ?? null]);
+    `, [fiscal_period_id ?? null, cycle_id ?? null]);
     res.json(r.rows);
   } catch (err) {
     req.log.error(err); res.status(500).json({ error: "Internal server error" });

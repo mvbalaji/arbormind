@@ -7,7 +7,6 @@ import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { setupPassport } from "./routes/auth";
-import { resolveOrgId } from "./lib/org-context";
 
 setupPassport();
 
@@ -83,13 +82,6 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-// Resolve the current tenant once per request so every route downstream can
-// read req.orgId instead of re-deriving it from the session.
-app.use(async (req, _res, next) => {
-  req.orgId = await resolveOrgId(req);
-  next();
-});
 
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));

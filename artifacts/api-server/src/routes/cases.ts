@@ -52,7 +52,7 @@ router.get("/cases", async (req, res) => {
       .leftJoin(contactsTable, eq(casesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(casesTable.accountId, accountsTable.id));
 
-    const conditions = [eq(casesTable.orgId, req.orgId as number)];
+    const conditions = [];
     if (search) conditions.push(ilike(casesTable.subject, `%${search}%`));
     if (status) conditions.push(eq(casesTable.status, status));
     if (priority) conditions.push(eq(casesTable.priority, priority));
@@ -60,11 +60,12 @@ router.get("/cases", async (req, res) => {
     if (accountId) conditions.push(eq(casesTable.accountId, parseInt(accountId)));
     if (assignedTo) conditions.push(eq(casesTable.assignedTo, parseInt(assignedTo)));
 
-    const data = await baseQuery
-      .where(conditions.length === 1 ? conditions[0] : and(...conditions))
-      .orderBy(desc(casesTable.createdAt)).limit(limitNum).offset(offset);
+    const data = await (conditions.length > 0
+      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      : baseQuery
+    ).orderBy(desc(casesTable.createdAt)).limit(limitNum).offset(offset);
 
-    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
+    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(casesTable).where(whereClause);
     res.json({ data: data.map(formatCase), total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
@@ -75,23 +76,11 @@ router.get("/cases", async (req, res) => {
 
 router.post("/cases", async (req, res) => {
   try {
-    const orgId = req.orgId as number;
-    if (req.body?.contactId != null) {
-      const [contact] = await db.select({ id: contactsTable.id }).from(contactsTable)
-        .where(and(eq(contactsTable.id, req.body.contactId), eq(contactsTable.orgId, orgId)));
-      if (!contact) { res.status(400).json({ error: "Contact not found" }); return; }
-    }
-    if (req.body?.accountId != null) {
-      const [account] = await db.select({ id: accountsTable.id }).from(accountsTable)
-        .where(and(eq(accountsTable.id, req.body.accountId), eq(accountsTable.orgId, orgId)));
-      if (!account) { res.status(400).json({ error: "Account not found" }); return; }
-    }
-
-    const [maxCase] = await db.select({ maxNum: sql<string>`max(case_number)` }).from(casesTable).where(eq(casesTable.orgId, orgId));
+    const [maxCase] = await db.select({ maxNum: sql<string>`max(case_number)` }).from(casesTable);
     const nextNum = maxCase?.maxNum ? parseInt(maxCase.maxNum.replace("CASE-", "")) + 1 : 1001;
     const caseNumber = `CASE-${nextNum}`;
 
-    const [caseRecord] = await db.insert(casesTable).values({ ...req.body, orgId, caseNumber }).returning();
+    const [caseRecord] = await db.insert(casesTable).values({ ...req.body, caseNumber }).returning();
     res.status(201).json({
       ...caseRecord,
       contactName: null,
@@ -112,7 +101,7 @@ router.get("/cases/:id", async (req, res) => {
       .leftJoin(usersTable, eq(casesTable.assignedTo, usersTable.id))
       .leftJoin(contactsTable, eq(casesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(casesTable.accountId, accountsTable.id))
-      .where(and(eq(casesTable.id, parseInt(req.params.id)), eq(casesTable.orgId, req.orgId as number)));
+      .where(eq(casesTable.id, parseInt(req.params.id)));
 
     if (!caseRecord) {
       res.status(404).json({ error: "Case not found" });
@@ -127,20 +116,9 @@ router.get("/cases/:id", async (req, res) => {
 
 router.put("/cases/:id", async (req, res) => {
   try {
-    const orgId = req.orgId as number;
-    if (req.body?.contactId != null) {
-      const [contact] = await db.select({ id: contactsTable.id }).from(contactsTable)
-        .where(and(eq(contactsTable.id, req.body.contactId), eq(contactsTable.orgId, orgId)));
-      if (!contact) { res.status(400).json({ error: "Contact not found" }); return; }
-    }
-    if (req.body?.accountId != null) {
-      const [account] = await db.select({ id: accountsTable.id }).from(accountsTable)
-        .where(and(eq(accountsTable.id, req.body.accountId), eq(accountsTable.orgId, orgId)));
-      if (!account) { res.status(400).json({ error: "Account not found" }); return; }
-    }
     const [caseRecord] = await db.update(casesTable)
       .set({ ...req.body, updatedAt: new Date() })
-      .where(and(eq(casesTable.id, parseInt(req.params.id)), eq(casesTable.orgId, orgId)))
+      .where(eq(casesTable.id, parseInt(req.params.id)))
       .returning();
     if (!caseRecord) {
       res.status(404).json({ error: "Case not found" });
@@ -156,7 +134,7 @@ router.put("/cases/:id", async (req, res) => {
 router.delete("/cases/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.delete(casesTable).where(and(eq(casesTable.id, id), eq(casesTable.orgId, req.orgId as number)));
+    await db.delete(casesTable).where(eq(casesTable.id, id));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

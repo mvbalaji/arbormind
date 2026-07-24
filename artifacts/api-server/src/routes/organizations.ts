@@ -3,7 +3,6 @@ import { db } from "@workspace/db";
 import { organizationsTable, allowedUsersTable } from "@workspace/db";
 import { eq, and, or, inArray } from "drizzle-orm";
 import { getOrgId } from "../lib/org-context";
-import { seedOrgDefaults } from "../lib/org-seed";
 
 const router: IRouter = Router();
 
@@ -53,7 +52,7 @@ const ADMIN_ROLES = ["admin", "super_admin"];
 router.get("/organizations/current", async (req, res) => {
   if (!requireAuth(req, res)) return;
   try {
-    const orgId = req.orgId ?? getOrgId(req);
+    const orgId = getOrgId(req);
     const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.id, orgId));
     if (!org) { res.status(404).json({ error: "Organization not found" }); return; }
     res.json({ organization: org });
@@ -66,7 +65,7 @@ router.get("/organizations/current", async (req, res) => {
 router.put("/organizations/current", async (req, res) => {
   if (!requireOrgAdmin(req, res)) return;
   try {
-    const orgId = req.orgId ?? getOrgId(req);
+    const orgId = getOrgId(req);
     const { name } = req.body as { name?: string };
     if (!name || !name.trim()) {
       res.status(400).json({ error: "name is required" });
@@ -134,7 +133,6 @@ router.post("/admin/organizations", async (req, res) => {
     if (existing) slug = `${slug}-${Date.now().toString(36)}`;
 
     const [org] = await db.insert(organizationsTable).values({ name: name.trim(), slug }).returning();
-    await seedOrgDefaults(org.id);
 
     let admin = null;
     if (adminEmail && adminEmail.trim()) {

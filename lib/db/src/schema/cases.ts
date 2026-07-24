@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -7,8 +7,7 @@ import { accountsTable } from "./accounts";
 
 export const casesTable = pgTable("cases", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
-  caseNumber: text("case_number").notNull(),
+  caseNumber: text("case_number").notNull().unique(),
   subject: text("subject").notNull(),
   description: text("description"),
   status: text("status").notNull().default("new"),
@@ -22,9 +21,7 @@ export const casesTable = pgTable("cases", {
   resolvedAt: timestamp("resolved_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (t) => ({
-  orgCaseNumberUnique: uniqueIndex("cases_org_case_number_unique").on(t.orgId, t.caseNumber),
-}));
+});
 
 export const insertCaseSchema = createInsertSchema(casesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCase = z.infer<typeof insertCaseSchema>;

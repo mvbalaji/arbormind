@@ -47,17 +47,17 @@ const REP_VIEW_ONLY = new Set(["reports", "users", "products", "price-books", "c
 // Roles that always have full edit access to everything.
 export const FULL_ACCESS_ROLES = new Set(["admin", "super_admin"]);
 
-const seededOrgs = new Set<number>();
-export async function seedAccessControl(orgId: number): Promise<void> {
-  if (seededOrgs.has(orgId)) return;
+let seeded = false;
+export async function seedAccessControl(): Promise<void> {
+  if (seeded) return;
   try {
-    await db.insert(rolesTable).values(SEED_ROLES.map((r) => ({ ...r, orgId }))).onConflictDoNothing();
-    await db.insert(screensTable).values(SEED_SCREENS.map((s) => ({ ...s, orgId }))).onConflictDoNothing();
+    await db.insert(rolesTable).values(SEED_ROLES).onConflictDoNothing();
+    await db.insert(screensTable).values(SEED_SCREENS).onConflictDoNothing();
 
     // super_admin and admin → edit everywhere (including any future screens)
     const fullAccessRows = SEED_SCREENS.flatMap((s) =>
       ["super_admin", "admin"].map((roleKey) => ({
-        orgId, screenKey: s.key, roleKey, accessLevel: "edit" as const,
+        screenKey: s.key, roleKey, accessLevel: "edit" as const,
       }))
     );
     await db.insert(screenAccessTable).values(fullAccessRows).onConflictDoNothing();
@@ -71,13 +71,13 @@ export async function seedAccessControl(orgId: number): Promise<void> {
         .map((s) => {
           let accessLevel: "view" | "edit" = "edit";
           if (roleKey === "sales_rep" && REP_VIEW_ONLY.has(s.key)) accessLevel = "view";
-          return { orgId, screenKey: s.key, roleKey, accessLevel };
+          return { screenKey: s.key, roleKey, accessLevel };
         }),
     );
     if (nonAdminRows.length > 0) {
       await db.insert(screenAccessTable).values(nonAdminRows).onConflictDoNothing();
     }
-    seededOrgs.add(orgId);
+    seeded = true;
   } catch (err) {
     console.error("[AccessControl] Seed failed:", err);
   }
@@ -107,7 +107,7 @@ function normalizeRole(role: string): string {
   }
 }
 
-export async function getScreenAccessForRole(role: string, orgId: number | undefined): Promise<Record<string, AccessLevel>> {
+export async function getScreenAccessForRole(role: string): Promise<Record<string, AccessLevel>> {
   const normalized = normalizeRole(role);
   // super_admin and admin always have full edit access regardless of stored rules.
   if (FULL_ACCESS_ROLES.has(normalized)) {
@@ -115,11 +115,10 @@ export async function getScreenAccessForRole(role: string, orgId: number | undef
     for (const s of SEED_SCREENS) out[s.key] = "edit";
     return out;
   }
-  if (orgId == null) return {};
   const rows = await db.select({
     screenKey: screenAccessTable.screenKey,
     accessLevel: screenAccessTable.accessLevel,
-  }).from(screenAccessTable).where(and(eq(screenAccessTable.orgId, orgId), eq(screenAccessTable.roleKey, normalized)));
+  }).from(screenAccessTable).where(eq(screenAccessTable.roleKey, normalized));
   const out: Record<string, AccessLevel> = {};
   for (const r of rows) {
     if (isValidAccessLevel(r.accessLevel)) out[r.screenKey] = r.accessLevel;
@@ -128,14 +127,13 @@ export async function getScreenAccessForRole(role: string, orgId: number | undef
 }
 
 export async function userHasScreenAccess(
-  role: string, screenKey: string, required: AccessLevel, orgId: number | undefined
+  role: string, screenKey: string, required: AccessLevel
 ): Promise<boolean> {
   const normalized = normalizeRole(role);
   if (FULL_ACCESS_ROLES.has(normalized)) return true;
-  if (orgId == null) return false;
   const [row] = await db.select({ accessLevel: screenAccessTable.accessLevel })
     .from(screenAccessTable)
-    .where(and(eq(screenAccessTable.orgId, orgId), eq(screenAccessTable.roleKey, normalized), eq(screenAccessTable.screenKey, screenKey)));
+    .where(and(eq(screenAccessTable.roleKey, normalized), eq(screenAccessTable.screenKey, screenKey)));
   const lvl = (row?.accessLevel ?? "none") as AccessLevel;
   return levelMeets(isValidAccessLevel(lvl) ? lvl : "none", required);
 }
@@ -156,7 +154,7 @@ export function requireScreenAccess(screenKey: string, required: AccessLevel = "
     const isMutation = method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE";
     const effectiveRequired: AccessLevel = isMutation ? "edit" : required;
     try {
-      const ok = await userHasScreenAccess(u.role, screenKey, effectiveRequired, req.orgId);
+      const ok = await userHasScreenAccess(u.role, screenKey, effectiveRequired);
       if (!ok) {
         res.status(403).json({
           error: "Forbidden",

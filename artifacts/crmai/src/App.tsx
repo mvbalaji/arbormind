@@ -45,6 +45,7 @@ import CampaignDetail from "./pages/campaign-detail";
 import Approvals from "./pages/approvals";
 import ApprovalsList from "./pages/approvals-list";
 import AccessControl from "./pages/access-control";
+import Integrations from "./pages/integrations";
 import Organizations from "./pages/organizations";
 import WebsiteVisitors from "./pages/website-visitors";
 import ProductRulesAdmin from "./pages/product-rules";
@@ -66,6 +67,7 @@ import CpqProductConfigurator from "./pages/cpq-product-configurator";
 import CpqQle from "./pages/cpq-qle";
 import CpqPricing from "./pages/cpq-pricing";
 import CpqAdmin from "./pages/cpq-admin";
+import QuoteWorkflowAdmin from "./pages/quote-workflow-admin";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -112,8 +114,10 @@ function CRMRoutes() {
       <Route path="/ai-assistant" component={AIAssistant} />
       <Route path="/admin/approvals" component={Approvals} />
       <Route path="/admin/access-control" component={AccessControl} />
+      <Route path="/admin/integrations" component={Integrations} />
       <Route path="/admin/organizations" component={Organizations} />
       <Route path="/admin/product-rules" component={ProductRulesAdmin} />
+      <Route path="/admin/quote-workflow" component={QuoteWorkflowAdmin} />
       <Route path="/approvals" component={ApprovalsList} />
       {/* CLM */}
       <Route path="/clm/templates" component={ClmTemplates} />

@@ -8,7 +8,6 @@ import { priceBooksTable } from "./price-books";
 
 export const opportunitiesTable = pgTable("opportunities", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   name: text("name").notNull(),
   accountId: integer("account_id").references(() => accountsTable.id),
   contactId: integer("contact_id").references(() => contactsTable.id),

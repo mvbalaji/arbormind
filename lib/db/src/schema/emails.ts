@@ -6,7 +6,6 @@ export const emailsTable = pgTable(
   "emails",
   {
     id: serial("id").primaryKey(),
-    orgId: integer("org_id").notNull().default(1),
     messageUid: text("message_uid"),
     // RFC 5322 Message-ID of this inbound message and the parent it replies to.
     // Used to thread replies back to the outbound activity that started the conversation.
@@ -32,7 +31,7 @@ export const emailsTable = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    messageUidUnique: uniqueIndex("emails_message_uid_unique").on(table.orgId, table.messageUid),
+    messageUidUnique: uniqueIndex("emails_message_uid_unique").on(table.messageUid),
   }),
 );
 

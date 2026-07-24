@@ -1,6 +1,24 @@
 import { Router } from "express";
-import { db, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable, insertEmailSchema } from "@workspace/db";
-import { eq, and, ilike, desc } from "drizzle-orm";
+import { db, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable, insertEmailSchema, quotesTable } from "@workspace/db";
+import { eq, ilike, desc, sql } from "drizzle-orm";
+import { detectEmailApproval, processEmailApprovalDecision } from "./quote-workflow-rules";
+
+// Detect if an email body/subject is a quote rejection and extract reason
+function detectQuoteRejection(subject: string, body: string): { isRejection: boolean; reason: string } {
+  const text = `${subject} ${body}`.toLowerCase();
+  const rejectionKeywords = ["reject", "decline", "not interested", "no thank you", "not proceeding", "won't be moving forward", "will not be moving forward", "pass on this", "going with another", "chosen another", "not accepting"];
+  const isRejection = rejectionKeywords.some(kw => text.includes(kw));
+  if (!isRejection) return { isRejection: false, reason: "" };
+  // Extract a concise reason — take first 300 chars of body stripped of whitespace runs
+  const reason = body.replace(/\s+/g, " ").trim().substring(0, 300);
+  return { isRejection: true, reason };
+}
+
+// Extract quote number from email subject/body (e.g. QT-1004)
+function extractQuoteNumber(subject: string, body: string): string | null {
+  const match = `${subject} ${body}`.match(/QT-\d+/i);
+  return match ? match[0].toUpperCase() : null;
+}
 
 const router = Router();
 
@@ -15,24 +33,19 @@ function requireAdmin(req: any, res: any): boolean {
   return true;
 }
 
-async function checkIfKnownCustomer(orgId: number, email: string) {
+async function checkIfKnownCustomer(email: string) {
   const [contact] = await db
     .select({ id: contactsTable.id, accountId: contactsTable.accountId })
     .from(contactsTable)
-    .where(and(ilike(contactsTable.email, email), eq(contactsTable.orgId, orgId)));
+    .where(ilike(contactsTable.email, email));
   return contact ?? null;
 }
 
 // POST: Receive email via webhook (from email forwarding / Cloudflare Email Routing)
-// NO AUTH — hit directly by the inbound mail provider, so there's no session to
-// resolve an org from. There is currently no per-domain/per-mailbox routing key
-// to determine which tenant this message belongs to, so we fall back to the
-// Default Organization. Known limitation until inbound webhook routing is added.
 router.post("/emails", async (req, res) => {
   try {
-    const orgId = req.orgId ?? 1;
     const parsed = insertEmailSchema.parse(req.body);
-    const knownContact = await checkIfKnownCustomer(orgId, parsed.fromEmail);
+    const knownContact = await checkIfKnownCustomer(parsed.fromEmail);
     const isKnown = !!knownContact;
 
     let relatedLeadId: number | undefined;
@@ -46,7 +59,6 @@ router.post("/emails", async (req, res) => {
       const [opportunity] = await db
         .insert(opportunitiesTable)
         .values({
-          orgId,
           name: `Inquiry: ${parsed.subject}`,
           description: parsed.message,
           stage: "prospecting",
@@ -61,7 +73,6 @@ router.post("/emails", async (req, res) => {
       const [lead] = await db
         .insert(leadsTable)
         .values({
-          orgId,
           firstName: nameParts[0] || "Unknown",
           lastName: nameParts.slice(1).join(" ") || "Unknown",
           email: parsed.fromEmail,
@@ -75,7 +86,6 @@ router.post("/emails", async (req, res) => {
     const [email] = await db
       .insert(emailsTable)
       .values({
-        orgId,
         fromEmail: parsed.fromEmail,
         fromName: parsed.fromName,
         subject: parsed.subject,
@@ -90,7 +100,6 @@ router.post("/emails", async (req, res) => {
       .returning();
 
     await db.insert(activitiesTable).values({
-      orgId,
       type: "email",
       subject: `Inbound: ${parsed.subject}`,
       description: parsed.message?.substring(0, 500) || "",
@@ -101,9 +110,43 @@ router.post("/emails", async (req, res) => {
       accountId: relatedAccountId ?? null,
     });
 
+    // Detect workflow approval decision from inbound email (reply-based)
+    const approvalDetection = await detectEmailApproval(parsed.subject ?? "", parsed.message ?? "");
+    if (approvalDetection.approvalId && approvalDetection.decision) {
+      await processEmailApprovalDecision(
+        approvalDetection.approvalId,
+        approvalDetection.decision,
+        approvalDetection.reason,
+        parsed.fromEmail,
+      );
+    }
+
+    // Detect quote rejection from inbound email
+    let quoteRejected = false;
+    const { isRejection, reason } = detectQuoteRejection(parsed.subject ?? "", parsed.message ?? "");
+    if (isRejection) {
+      const quoteNumber = extractQuoteNumber(parsed.subject ?? "", parsed.message ?? "");
+      if (quoteNumber) {
+        const [targetQuote] = await db.select({ id: quotesTable.id, status: quotesTable.status })
+          .from(quotesTable).where(eq(quotesTable.quoteNumber, quoteNumber));
+        if (targetQuote && targetQuote.status !== "rejected") {
+          await db.execute(sql`
+            UPDATE quotes SET status = 'rejected', rejection_reason = ${reason}, updated_at = NOW()
+            WHERE id = ${targetQuote.id}
+          `);
+          // Track in stage history
+          const now = new Date();
+          await db.execute(sql`UPDATE quote_stage_history SET left_at = ${now} WHERE quote_id = ${targetQuote.id} AND stage = ${targetQuote.status} AND left_at IS NULL`);
+          await db.execute(sql`INSERT INTO quote_stage_history (quote_id, stage, entered_at) VALUES (${targetQuote.id}, 'rejected', ${now})`);
+          quoteRejected = true;
+        }
+      }
+    }
+
     res.status(201).json({
       success: true,
       email,
+      quoteRejected,
       message: isKnown
         ? "New product inquiry — our sales team will get in touch shortly."
         : "Thank you for your inquiry — our sales team will get in touch shortly.",
@@ -121,7 +164,6 @@ router.get("/emails", async (req, res) => {
     const emails = await db
       .select()
       .from(emailsTable)
-      .where(eq(emailsTable.orgId, req.orgId as number))
       .orderBy(desc(emailsTable.createdAt));
     res.json({ emails });
   } catch (err) {
@@ -144,7 +186,7 @@ router.patch("/emails/:id", async (req, res) => {
         notes: notes ?? undefined,
         updatedAt: new Date(),
       })
-      .where(and(eq(emailsTable.id, emailId), eq(emailsTable.orgId, req.orgId as number)))
+      .where(eq(emailsTable.id, emailId))
       .returning();
 
     res.json({ success: true, email });

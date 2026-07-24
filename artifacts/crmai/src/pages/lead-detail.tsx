@@ -223,6 +223,12 @@ export default function LeadDetail() {
     enabled: !!id,
   });
 
+  const { data: stageHistoryData } = useQuery<{ data: Array<{ stage: string; enteredAt: string; leftAt: string | null }> }>({
+    queryKey: ["lead-stage-history", id],
+    queryFn: () => fetch(`/api/leads/${id}/stage-history`, { credentials: "include" }).then(r => r.json()),
+    enabled: !!id,
+  });
+
   const { data: activitiesData, refetch: refetchActivities } = useQuery<{ data: LeadActivity[] }>({
     queryKey: ["lead-activities", id],
     queryFn: async () => {
@@ -656,8 +662,16 @@ export default function LeadDetail() {
               ? [...baseStages, { id: "unqualified", label: "Unqualified" }]
               : [...baseStages, { id: "converted", label: "Converted" }];
             const currentTone = lead.status === "unqualified" ? "red" as const : "blue" as const;
-            const stageDate = (stageId: string): Date | null =>
-              stageId === "new" && lead.createdAt ? new Date(lead.createdAt) : null;
+            const history = stageHistoryData?.data ?? [];
+            const stageInfo = (stageId: string) => {
+              const rows = history.filter(h => h.stage === stageId);
+              if (rows.length === 0) return { enteredAt: null, days: null };
+              const latest = rows[rows.length - 1];
+              const enteredAt = new Date(latest.enteredAt);
+              const end = latest.leftAt ? new Date(latest.leftAt) : new Date();
+              const days = Math.max(0, Math.floor((end.getTime() - enteredAt.getTime()) / 86400000));
+              return { enteredAt, days };
+            };
             const canAdvance = advanceStageIdx >= 0 && advanceStageIdx < ADVANCE_STAGES.length - 1;
             const isQualified = lead.status === "qualified";
             const advance = canAdvance
@@ -673,7 +687,7 @@ export default function LeadDetail() {
               <div className="px-5 py-3">
                 <StagePipeline
                   ariaLabel="Lead pipeline stage"
-                  stages={stages.map((s) => ({ ...s, enteredAt: stageDate(s.id) }))}
+                  stages={stages.map((s) => { const info = stageInfo(s.id); return { ...s, enteredAt: info.enteredAt, days: info.days }; })}
                   currentId={lead.status}
                   currentTone={currentTone}
                   advance={advance}

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db, emailSettingsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import { runEmailSync, startEmailPoller, stopEmailPoller } from "../email-sync";
 import { previewAutoReply } from "../auto-reply";
+import { getSmtpConfig } from "../lib/smtp-config";
 
 const router = Router();
 
@@ -21,13 +21,10 @@ function requireAdmin(req: any, res: any): boolean {
 router.get("/admin/email-settings", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const orgId = req.orgId as number;
-    // email_settings is now per-org (one row per org, unique on org_id) rather
-    // than a single global row.
-    const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, orgId)).limit(1);
+    const rows = await db.select().from(emailSettingsTable).limit(1);
     let row = rows[0];
     if (!row) {
-      const [created] = await db.insert(emailSettingsTable).values({ orgId }).returning();
+      const [created] = await db.insert(emailSettingsTable).values({}).returning();
       row = created;
     }
     // Mask password in response
@@ -43,7 +40,6 @@ router.get("/admin/email-settings", async (req, res) => {
 router.post("/admin/email-settings", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const orgId = req.orgId as number;
     const {
       imapHost, imapPort, imapUser, imapPassword,
       imapSecure, smtpHost, smtpPort, smtpUser,
@@ -51,7 +47,7 @@ router.post("/admin/email-settings", async (req, res) => {
       syncEnabled, syncIntervalMinutes,
     } = req.body as Record<string, any>;
 
-    const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, orgId)).limit(1);
+    const rows = await db.select().from(emailSettingsTable).limit(1);
     const existing = rows[0];
 
     const update: Record<string, any> = {
@@ -78,9 +74,10 @@ router.post("/admin/email-settings", async (req, res) => {
 
     let row;
     if (existing) {
+      const { eq } = await import("drizzle-orm");
       [row] = await db.update(emailSettingsTable).set(update).where(eq(emailSettingsTable.id, existing.id)).returning();
     } else {
-      [row] = await db.insert(emailSettingsTable).values({ ...update, orgId }).returning();
+      [row] = await db.insert(emailSettingsTable).values(update).returning();
     }
 
     // Restart/stop the poller based on new settings
@@ -101,8 +98,7 @@ router.post("/admin/email-settings", async (req, res) => {
 router.post("/admin/email-settings/test", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const orgId = req.orgId as number;
-    const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, orgId)).limit(1);
+    const rows = await db.select().from(emailSettingsTable).limit(1);
     const settings = rows[0];
     if (!settings?.imapUser || !settings?.imapPassword) {
       return res.status(400).json({ success: false, error: "IMAP credentials not configured" });
@@ -124,6 +120,31 @@ router.post("/admin/email-settings/test", async (req, res) => {
     res.json({ success: true, messages: status.messages, unseen: status.unseen });
   } catch (err: any) {
     res.json({ success: false, error: err?.message ?? "Connection failed" });
+  }
+});
+
+// POST /api/admin/email-settings/test-smtp
+// Verifies the outbound (SMTP) mailer can connect and authenticate — does NOT send an email.
+router.post("/admin/email-settings/test-smtp", async (req, res) => {
+  if (!requireAdmin(req, res)) return;
+  try {
+    const smtp = await getSmtpConfig({ defaultFromName: "arbormind.in" });
+    if (!smtp) {
+      return res.status(400).json({ success: false, error: "SMTP credentials not configured" });
+    }
+
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.createTransport({
+      host: smtp.host,
+      port: smtp.port,
+      secure: smtp.secure,
+      auth: { user: smtp.user, pass: smtp.pass },
+    });
+
+    await transporter.verify();
+    res.json({ success: true, host: smtp.host, port: smtp.port, user: smtp.user });
+  } catch (err: any) {
+    res.json({ success: false, error: err?.message ?? "SMTP connection failed" });
   }
 });
 

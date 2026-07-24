@@ -1,10 +1,9 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { appModulesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { FULL_ACCESS_ROLES } from "../lib/access-control";
-import { getDefaultOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 
@@ -18,16 +17,12 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 // GET /admin/app-modules — list all modules with their current state
-router.get("/admin/app-modules", requireAdmin, async (req, res) => {
+router.get("/admin/app-modules", requireAdmin, async (_req, res) => {
   try {
-    const modules = await db
-      .select()
-      .from(appModulesTable)
-      .where(eq(appModulesTable.orgId, req.orgId as number))
-      .orderBy(appModulesTable.sortOrder);
+    const modules = await db.select().from(appModulesTable).orderBy(appModulesTable.sortOrder);
     res.json({ modules });
   } catch (err) {
-    req.log?.error(err);
+    _req.log?.error(err);
     res.status(500).json({ error: "Failed to load modules" });
   }
 });
@@ -43,8 +38,7 @@ router.put("/admin/app-modules/:key", requireAdmin, async (req, res) => {
   }
 
   try {
-    const orgId = req.orgId as number;
-    const [existing] = await db.select().from(appModulesTable).where(and(eq(appModulesTable.orgId, orgId), eq(appModulesTable.key, key)));
+    const [existing] = await db.select().from(appModulesTable).where(eq(appModulesTable.key, key));
     if (!existing) {
       res.status(404).json({ error: "Module not found" });
       return;
@@ -57,14 +51,14 @@ router.put("/admin/app-modules/:key", requireAdmin, async (req, res) => {
     const [updated] = await db
       .update(appModulesTable)
       .set({ isEnabled, updatedAt: new Date() })
-      .where(and(eq(appModulesTable.orgId, orgId), eq(appModulesTable.key, key)))
+      .where(eq(appModulesTable.key, key))
       .returning();
 
     // Keep admin_settings in sync for CPQ feature flag
     if (key === "cpq") {
       await db.execute(sql`
-        INSERT INTO admin_settings (org_id, key, value) VALUES (${orgId}, 'cpq_enabled', ${String(isEnabled)})
-        ON CONFLICT (org_id, key) DO UPDATE SET value = ${String(isEnabled)}, updated_at = NOW()
+        INSERT INTO admin_settings (key, value) VALUES ('cpq_enabled', ${String(isEnabled)})
+        ON CONFLICT (key) DO UPDATE SET value = ${String(isEnabled)}, updated_at = NOW()
       `);
     }
 
@@ -76,13 +70,12 @@ router.put("/admin/app-modules/:key", requireAdmin, async (req, res) => {
 });
 
 // Public endpoint — used by unauthenticated fallback if needed, but primarily returns module state
-router.get("/app-modules/public", async (req, res) => {
+router.get("/app-modules/public", async (_req, res) => {
   try {
-    const orgId = req.orgId ?? (await getDefaultOrgId());
     const modules = await db.select({
       key: appModulesTable.key,
       isEnabled: appModulesTable.isEnabled,
-    }).from(appModulesTable).where(eq(appModulesTable.orgId, orgId));
+    }).from(appModulesTable);
     const enabledModules: Record<string, boolean> = {};
     for (const m of modules) enabledModules[m.key] = m.isEnabled;
     enabledModules["crm_sales"] = true; // always on

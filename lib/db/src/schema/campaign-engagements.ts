@@ -44,7 +44,6 @@ export const campaignEngagementsTable = pgTable(
   "campaign_engagements",
   {
     id: serial("id").primaryKey(),
-    orgId: integer("org_id").notNull().default(1),
 
     // Campaign attribution (nullable — some events may come in before campaign is linked)
     campaignId: integer("campaign_id").references(() => campaignsTable.id, { onDelete: "set null" }),

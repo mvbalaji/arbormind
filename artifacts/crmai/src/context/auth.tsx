@@ -9,7 +9,6 @@ export interface AuthUser {
   role: string;
   avatarUrl?: string | null;
   username?: string;
-  orgId?: number;
   organizationName?: string | null;
   screenAccess?: Record<string, ScreenAccessLevel>;
   enabledModules?: Record<string, boolean>;
@@ -43,7 +42,6 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   refetch: () => Promise<void>;
   signIn: (credentials?: { username: string; password: string }) => Promise<boolean>;
-  signInAndGoToDashboard: (credentials?: { username: string; password: string }) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -53,7 +51,6 @@ const AuthContext = createContext<AuthContextValue>({
   logout: async () => {},
   refetch: async () => {},
   signIn: async () => false,
-  signInAndGoToDashboard: async () => false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -72,7 +69,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             prev.email === data.user.email &&
             prev.role === data.user.role &&
             prev.name === data.user.name &&
-            prev.orgId === data.user.orgId &&
             prev.organizationName === data.user.organizationName
           ) {
             return prev;
@@ -120,17 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  const signInAndGoToDashboard = async (credentials?: { username: string; password: string }) => {
-    const ok = await signIn(credentials);
-    if (ok) {
-      await fetchUser();
-      window.location.href = "/#/dashboard";
-    }
-    return ok;
-  };
-
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, logout, refetch: fetchUser, signIn, signInAndGoToDashboard }}>
+    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, logout, refetch: fetchUser, signIn }}>
       {children}
     </AuthContext.Provider>
   );

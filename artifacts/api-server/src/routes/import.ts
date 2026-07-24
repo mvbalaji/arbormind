@@ -141,36 +141,34 @@ router.post("/import/:entity", async (req, res) => {
   try {
     const BATCH = 100;
 
-    const orgId = req.orgId as number;
-
     if (entity === "leads") {
       const valid = records.map((r, i) => { const v = buildLead(r); if (!v) skipped.push(i + 1); return v; }).filter(Boolean) as ReturnType<typeof buildLead>[];
       if (!valid.length) { res.status(400).json({ error: "No valid leads", skipped }); return; }
-      for (let i = 0; i < valid.length; i += BATCH) await db.insert(leadsTable).values(valid.slice(i, i + BATCH).map((v) => ({ ...v!, orgId })));
+      for (let i = 0; i < valid.length; i += BATCH) await db.insert(leadsTable).values(valid.slice(i, i + BATCH));
       inserted = valid.length;
 
     } else if (entity === "contacts") {
       const valid = records.map((r, i) => { const v = buildContact(r); if (!v) skipped.push(i + 1); return v; }).filter(Boolean) as ReturnType<typeof buildContact>[];
       if (!valid.length) { res.status(400).json({ error: "No valid contacts", skipped }); return; }
-      for (let i = 0; i < valid.length; i += BATCH) await db.insert(contactsTable).values(valid.slice(i, i + BATCH).map((v) => ({ ...v!, orgId })));
+      for (let i = 0; i < valid.length; i += BATCH) await db.insert(contactsTable).values(valid.slice(i, i + BATCH));
       inserted = valid.length;
 
     } else if (entity === "accounts") {
       const valid = records.map((r, i) => { const v = buildAccount(r); if (!v) skipped.push(i + 1); return v; }).filter(Boolean) as ReturnType<typeof buildAccount>[];
       if (!valid.length) { res.status(400).json({ error: "No valid accounts", skipped }); return; }
-      for (let i = 0; i < valid.length; i += BATCH) await db.insert(accountsTable).values(valid.slice(i, i + BATCH).map((v) => ({ ...v!, orgId })));
+      for (let i = 0; i < valid.length; i += BATCH) await db.insert(accountsTable).values(valid.slice(i, i + BATCH));
       inserted = valid.length;
 
     } else if (entity === "opportunities") {
       const valid = records.map((r, i) => { const v = buildOpportunity(r); if (!v) skipped.push(i + 1); return v; }).filter(Boolean) as ReturnType<typeof buildOpportunity>[];
       if (!valid.length) { res.status(400).json({ error: "No valid opportunities", skipped }); return; }
-      for (let i = 0; i < valid.length; i += BATCH) await db.insert(opportunitiesTable).values(valid.slice(i, i + BATCH).map((v) => ({ ...v!, orgId })));
+      for (let i = 0; i < valid.length; i += BATCH) await db.insert(opportunitiesTable).values(valid.slice(i, i + BATCH));
       inserted = valid.length;
 
     } else if (entity === "campaigns") {
       const valid = records.map((r, i) => { const v = buildCampaign(r); if (!v) skipped.push(i + 1); return v; }).filter(Boolean) as ReturnType<typeof buildCampaign>[];
       if (!valid.length) { res.status(400).json({ error: "No valid campaigns", skipped }); return; }
-      for (let i = 0; i < valid.length; i += BATCH) await db.insert(campaignsTable).values(valid.slice(i, i + BATCH).map((v) => ({ ...v!, orgId })));
+      for (let i = 0; i < valid.length; i += BATCH) await db.insert(campaignsTable).values(valid.slice(i, i + BATCH));
       inserted = valid.length;
 
     } else {

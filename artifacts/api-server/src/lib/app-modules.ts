@@ -1,6 +1,5 @@
 import { db } from "@workspace/db";
 import { appModulesTable, type AppModule } from "@workspace/db";
-import { eq } from "drizzle-orm";
 
 export const SEED_MODULES: Array<{
   key: string; label: string; description: string;
@@ -60,30 +59,27 @@ export const MODULE_SCREENS: Record<string, string[]> = {
   contracts: ["contracts"],
 };
 
-const seededOrgs = new Set<number>();
-export async function seedAppModules(orgId: number): Promise<void> {
-  if (seededOrgs.has(orgId)) return;
+let seeded = false;
+export async function seedAppModules(): Promise<void> {
+  if (seeded) return;
   try {
-    await db.insert(appModulesTable)
-      .values(SEED_MODULES.map((m) => ({ ...m, orgId })))
-      .onConflictDoNothing();
-    seededOrgs.add(orgId);
+    await db.insert(appModulesTable).values(SEED_MODULES).onConflictDoNothing();
+    seeded = true;
   } catch (err) {
     console.error("[AppModules] Seed failed:", err);
   }
 }
 
-export async function getEnabledModules(orgId: number | undefined): Promise<Record<string, boolean>> {
+export async function getEnabledModules(): Promise<Record<string, boolean>> {
   try {
-    if (orgId == null) throw new Error("no org context");
-    const rows = await db.select().from(appModulesTable).where(eq(appModulesTable.orgId, orgId));
+    const rows = await db.select().from(appModulesTable);
     const out: Record<string, boolean> = {};
     for (const r of rows) out[r.key] = r.isEnabled;
     // Ensure core module is always shown as enabled
     out["crm_sales"] = true;
     return out;
   } catch {
-    // Fallback — if table doesn't exist yet (or no org context) return all enabled
+    // Fallback — if table doesn't exist yet return all enabled
     return { crm_sales: true, quotes: true, orders: true, contracts: true };
   }
 }

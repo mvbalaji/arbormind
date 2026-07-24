@@ -13,7 +13,6 @@ export const socialMessagesTable = pgTable(
   "social_messages",
   {
     id: serial("id").primaryKey(),
-    orgId: integer("org_id").notNull().default(1),
 
     // CRM entity links
     leadId: integer("lead_id").references(() => leadsTable.id, { onDelete: "cascade" }),

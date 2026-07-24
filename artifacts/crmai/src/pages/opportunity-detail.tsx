@@ -1009,12 +1009,16 @@ export default function OpportunityDetail() {
                             style={!isLast ? { clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%, 10px 50%)" } : { clipPath: "polygon(0 0, 100% 0, 100% 100%, 0 100%, 10px 50%)" }}
                           >
                             {done ? (
-                              <>
+                              <div className="flex flex-col items-center gap-0.5">
                                 <span aria-hidden="true" className="flex items-center justify-center w-5 h-5 rounded-full bg-white/20"><Check className="w-3.5 h-3.5" /></span>
+                                {info.days != null && <span className="text-[9px] leading-none opacity-90 font-normal">{info.days}d</span>}
                                 <span className="sr-only">{label}</span>
-                              </>
+                              </div>
                             ) : (
-                              <span className="truncate max-w-full">{label}</span>
+                              <div className="flex flex-col items-center gap-0.5 min-w-0 w-full">
+                                <span className="truncate max-w-full text-center">{label}</span>
+                                {info.days != null && current && <span className="text-[9px] leading-none opacity-80 font-normal">{info.days}d so far</span>}
+                              </div>
                             )}
                           </li>
                             </TooltipTrigger>

@@ -43,11 +43,9 @@ interface SessionUser { id: number; email?: string; name?: string }
 function getSessionUser(req: Request): SessionUser | null {
   const sess = req.session as unknown as { user?: SessionUser };
   if (sess?.user) return sess.user;
-  // Dev bypass: when Google OAuth is not configured, return a synthetic admin user.
-  // Org context now comes from req.orgId (resolved by the org-context middleware),
-  // not a hardcoded orgId here.
+  // Dev bypass: when Google OAuth is not configured, return a synthetic admin user
   if (!process.env.GOOGLE_CLIENT_ID) {
-    return { id: 0, email: "dev@crmai.local", name: "Dev Admin", role: "admin" } as SessionUser;
+    return { id: 0, email: "dev@crmai.local", name: "Dev Admin", role: "admin", orgId: 1 } as SessionUser;
   }
   return null;
 }
@@ -63,7 +61,6 @@ function escapeHtml(s: string): string {
 router.post("/email/send", async (req, res) => {
   const user = getSessionUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const orgId = req.orgId as number;
 
   const { to, cc, subject, body, leadId, contactId, opportunityId, accountId, attachments } = req.body as SendBody;
   if (!to || !subject || !body) {
@@ -147,7 +144,6 @@ router.post("/email/send", async (req, res) => {
   let activity: typeof activitiesTable.$inferSelect;
   try {
     [activity] = await db.insert(activitiesTable).values({
-      orgId,
       type: "email",
       subject,
       status: "pending",
@@ -166,7 +162,6 @@ router.post("/email/send", async (req, res) => {
 
   const token = crypto.randomBytes(16).toString("hex");
   const [tracking] = await db.insert(emailTrackingTable).values({
-    orgId,
     activityId: activity.id,
     token,
     toEmail: to,
@@ -183,7 +178,6 @@ router.post("/email/send", async (req, res) => {
     for (const a of decodedAttachments) {
       const aToken = crypto.randomBytes(16).toString("hex");
       await db.insert(emailAttachmentsTable).values({
-        orgId,
         trackingId: tracking.id,
         token: aToken,
         filename: a.filename,
@@ -277,7 +271,6 @@ router.post("/email/send", async (req, res) => {
           await db.update(activitiesTable)
             .set({ status: "completed", completedAt: new Date() })
             .where(and(
-              eq(activitiesTable.orgId, orgId),
               eq(activitiesTable.type, "task"),
               eq(activitiesTable.status, "pending"),
               recordCond,
@@ -303,7 +296,6 @@ router.post("/email/send", async (req, res) => {
         counterpartEmail: to,
       });
       const [task] = await db.insert(activitiesTable).values({
-        orgId,
         type: "task",
         subject: aiTitle,
         description: `Email sent to ${to}${cc ? ` (cc: ${cc})` : ""}\n\nSubject: ${subject}`,
@@ -447,7 +439,6 @@ router.post("/email/mark-opened/:activityId", async (req: Request, res: Response
 
   const activityId = parseInt(req.params.activityId, 10);
   if (isNaN(activityId)) { res.status(400).json({ error: "Invalid activityId" }); return; }
-  const orgId = req.orgId as number;
 
   try {
     const [row] = await db.update(emailTrackingTable)
@@ -457,7 +448,7 @@ router.post("/email/mark-opened/:activityId", async (req: Request, res: Response
         lastOpenedAt: new Date(),
         lastUserAgent: "Manual/Admin",
       })
-      .where(and(eq(emailTrackingTable.activityId, activityId), eq(emailTrackingTable.orgId, orgId)))
+      .where(eq(emailTrackingTable.activityId, activityId))
       .returning({ openCount: emailTrackingTable.openCount });
 
     if (!row) { res.status(404).json({ error: "No tracking record for this activity" }); return; }

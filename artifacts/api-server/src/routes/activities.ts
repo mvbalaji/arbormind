@@ -51,7 +51,7 @@ router.get("/activities", async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [eq(activitiesTable.orgId, req.orgId as number)];
+    const conditions = [];
     if (leadId) conditions.push(eq(activitiesTable.leadId, parseInt(leadId)));
     if (contactId) conditions.push(eq(activitiesTable.contactId, parseInt(contactId)));
     if (opportunityId) conditions.push(eq(activitiesTable.opportunityId, parseInt(opportunityId)));
@@ -84,8 +84,9 @@ router.get("/activities", async (req, res) => {
 router.post("/activities", async (req, res) => {
   try {
     const body = { ...req.body } as Record<string, unknown>;
-    const orgId = req.orgId as number;
-    // Use raw SQL to ensure org_id is always included
+    const sessionUser = (req as any).session?.user ?? (req as any).user ?? null;
+    const orgId = (body.orgId as number) ?? sessionUser?.orgId ?? 1;
+    // Use raw SQL to ensure org_id (not in Drizzle schema) is always included
     const result = await db.execute(sql`
       INSERT INTO activities (
         type, subject, description, status, due_date, completed_at,
@@ -108,7 +109,7 @@ router.post("/activities", async (req, res) => {
     const activity = result.rows[0] as any;
     // Trigger lead score recalculation when a completed activity is logged
     if (activity.lead_id && (activity.status === "completed" || activity.type === "note")) {
-      void recalculateLeadScore(activity.lead_id, orgId).catch(() => {});
+      void recalculateLeadScore(activity.lead_id).catch(() => {});
     }
     res.status(201).json({ ...activity, contactName: null, opportunityName: null, accountName: null, assignedToName: null });
   } catch (err) {
@@ -126,7 +127,7 @@ router.get("/activities/:id", async (req, res) => {
       .leftJoin(contactsTable, eq(activitiesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(activitiesTable.accountId, accountsTable.id))
       .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id))
-      .where(and(eq(activitiesTable.id, parseInt(req.params.id)), eq(activitiesTable.orgId, req.orgId as number)));
+      .where(eq(activitiesTable.id, parseInt(req.params.id)));
 
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
@@ -143,14 +144,14 @@ router.put("/activities/:id", async (req, res) => {
   try {
     const [activity] = await db.update(activitiesTable)
       .set({ ...req.body, updatedAt: new Date() })
-      .where(and(eq(activitiesTable.id, parseInt(req.params.id)), eq(activitiesTable.orgId, req.orgId as number)))
+      .where(eq(activitiesTable.id, parseInt(req.params.id)))
       .returning();
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
     } else {
       // Trigger lead score recalculation if activity is completed and linked to a lead
       if (activity.leadId && (activity.status === "completed" || req.body?.status === "completed")) {
-        void recalculateLeadScore(activity.leadId, activity.orgId).catch(() => {});
+        void recalculateLeadScore(activity.leadId).catch(() => {});
       }
       res.json({ ...activity, contactName: null, opportunityName: null, accountName: null, assignedToName: null });
     }
@@ -175,7 +176,7 @@ router.get("/activities/:id/email-body", async (req, res) => {
     const [activity] = await db
       .select()
       .from(activitiesTable)
-      .where(and(eq(activitiesTable.id, id), eq(activitiesTable.orgId, req.orgId as number)));
+      .where(eq(activitiesTable.id, id));
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
       return;
@@ -189,7 +190,7 @@ router.get("/activities/:id/email-body", async (req, res) => {
     const [tracking] = await db
       .select()
       .from(emailTrackingTable)
-      .where(and(eq(emailTrackingTable.activityId, id), eq(emailTrackingTable.orgId, req.orgId as number)))
+      .where(eq(emailTrackingTable.activityId, id))
       .limit(1);
     if (tracking) {
       // Attachment open-tracking metadata (no file bytes — these are kept
@@ -238,7 +239,6 @@ router.get("/activities/:id/email-body", async (req, res) => {
     if (activity.contactId != null) linkConditions.push(eq(emailsTable.relatedContactId, activity.contactId));
     if (activity.opportunityId != null) linkConditions.push(eq(emailsTable.relatedOpportunityId, activity.opportunityId));
 
-    linkConditions.push(eq(emailsTable.orgId, req.orgId as number));
     const candidates = await db
       .select()
       .from(emailsTable)
@@ -293,7 +293,7 @@ router.get("/activities/:id/email-body", async (req, res) => {
 router.delete("/activities/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.delete(activitiesTable).where(and(eq(activitiesTable.id, id), eq(activitiesTable.orgId, req.orgId as number)));
+    await db.delete(activitiesTable).where(eq(activitiesTable.id, id));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

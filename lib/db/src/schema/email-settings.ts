@@ -1,8 +1,7 @@
-import { pgTable, serial, text, timestamp, boolean, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 
 export const emailSettingsTable = pgTable("email_settings", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   imapHost: text("imap_host").notNull().default("mail.spacemail.com"),
   imapPort: integer("imap_port").notNull().default(993),
   imapUser: text("imap_user"),
@@ -22,8 +21,6 @@ export const emailSettingsTable = pgTable("email_settings", {
   emailsProcessed: integer("emails_processed").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (t) => ({
-  orgUnique: uniqueIndex("email_settings_org_unique").on(t.orgId),
-}));
+});
 
 export type EmailSettings = typeof emailSettingsTable.$inferSelect;

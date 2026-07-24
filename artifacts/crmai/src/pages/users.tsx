@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import {
   Settings, Shield, UserPlus, Trash2, Loader2, Users as UsersIcon, Upload,
   Mail, RefreshCw, CheckCircle, XCircle, Wifi, WifiOff, Clock, Play, UserCog, ShieldCheck,
-  Pencil, Crown, Star, Building2,
+  Pencil, Crown, Star, Building2, GitBranch, Settings2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -26,6 +26,9 @@ import { AppManagementInline } from "./app-management";
 import { LeadScoringAdmin } from "@/components/lead-scoring-admin";
 import { ProductRulesAdmin } from "@/components/product-rules-admin";
 import { OrganizationSettingsInline } from "@/components/organization-settings-inline";
+import { QuoteWorkflowAdminInline } from "@/pages/quote-workflow-admin";
+import { QuoteStagesAdmin } from "@/components/quote-stages-admin";
+import { IntegrationsInline } from "./integrations";
 
 interface AppUser {
   id: number;
@@ -123,13 +126,22 @@ export default function Users() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("sales_rep");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail" | "apps" | "scoring" | "product-rules" | "organization">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail" | "apps" | "scoring" | "product-rules" | "organization" | "quote-workflow" | "integrations">("team");
 
   // Edit dialog state
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [editSaving, setEditSaving] = useState(false);
+
+  // Add Member (CRM team) dialog state
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [memberName, setMemberName] = useState("");
+  const [memberEmail, setMemberEmail] = useState("");
+  const [memberPassword, setMemberPassword] = useState("");
+  const [memberRole, setMemberRole] = useState("sales_rep");
+  const [memberTeam, setMemberTeam] = useState("");
+  const [memberSaving, setMemberSaving] = useState(false);
 
   // Mail settings state
   const [mailSettings, setMailSettings] = useState<MailSettings>(defaultSettings);
@@ -215,6 +227,30 @@ export default function Users() {
       }
     } finally {
       setRemoveId(null);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!memberEmail || !memberPassword) return;
+    setMemberSaving(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: memberEmail, password: memberPassword, name: memberName || undefined, role: memberRole, team: memberTeam || undefined }),
+      });
+      if (res.ok) {
+        toast({ title: "Member added", description: `${memberName || memberEmail} has been added to the team.` });
+        setAddMemberOpen(false);
+        setMemberName(""); setMemberEmail(""); setMemberPassword(""); setMemberRole("sales_rep"); setMemberTeam("");
+        void fetchAppUsers();
+      } else {
+        const err = await res.json() as { error?: string };
+        toast({ title: "Error", description: err.error ?? "Failed to add member", variant: "destructive" });
+      }
+    } finally {
+      setMemberSaving(false);
     }
   };
 
@@ -340,6 +376,8 @@ export default function Users() {
             { id: "approvals", label: "Approval Config", icon: ShieldCheck },
             { id: "scoring", label: "Lead Scoring", icon: Star },
             { id: "product-rules", label: "Product Rules", icon: ShieldCheck },
+            { id: "quote-workflow", label: "Quote Workflow", icon: GitBranch },
+            { id: "integrations", label: "Admin Integration", icon: Settings2 },
             { id: "import", label: "Data Import", icon: Upload },
             { id: "mail", label: "Mail Settings", icon: Mail },
           ] as const).map((tab) => (
@@ -374,8 +412,14 @@ export default function Users() {
         {/* Lead Scoring Tab */}
         {activeTab === "scoring" && <LeadScoringAdmin />}
 
+        {/* Admin Integration Tab */}
+        {activeTab === "integrations" && <IntegrationsInline />}
+
         {/* Product Rules Tab */}
         {activeTab === "product-rules" && <ProductRulesAdmin />}
+
+        {/* Quote Workflow Tab (includes Stage Config sub-tab) */}
+        {activeTab === "quote-workflow" && <QuoteWorkflowAdminInline />}
 
         {/* Data Import Tab */}
         {activeTab === "import" && <DataImport />}
@@ -527,10 +571,7 @@ export default function Users() {
                 <Button
                   size="sm"
                   className="rounded-xl bg-gradient-to-r from-primary to-accent border-0 text-foreground hover:opacity-90"
-                  onClick={() => {
-                    // TODO: open add CRM team member dialog
-                    toast({ title: "Coming soon", description: "Add team member from the CRM users endpoint." });
-                  }}
+                  onClick={() => setAddMemberOpen(true)}
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Add Member
@@ -617,6 +658,52 @@ export default function Users() {
               </table>
             </div>
           </Card>
+
+          {/* Add Member Dialog */}
+          <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Add Team Member</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="member-name">Full Name</Label>
+                  <Input id="member-name" placeholder="Jane Smith" value={memberName} onChange={e => setMemberName(e.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="member-email">Email <span className="text-destructive">*</span></Label>
+                  <Input id="member-email" type="email" placeholder="jane@company.com" value={memberEmail} onChange={e => setMemberEmail(e.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="member-password">Password <span className="text-destructive">*</span></Label>
+                  <Input id="member-password" type="password" placeholder="Temporary password" value={memberPassword} onChange={e => setMemberPassword(e.target.value)} />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="member-role">Role</Label>
+                  <Select value={memberRole} onValueChange={setMemberRole}>
+                    <SelectTrigger id="member-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ALL_ROLES.filter(r => isSuperAdmin || r.value !== "super_admin").map(r => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="member-team">Team</Label>
+                  <Input id="member-team" placeholder="e.g. North America Sales" value={memberTeam} onChange={e => setMemberTeam(e.target.value)} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddMemberOpen(false)}>Cancel</Button>
+                <Button onClick={handleAddMember} disabled={memberSaving || !memberEmail || !memberPassword}>
+                  {memberSaving ? "Adding..." : "Add Member"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>}
 
         {/* Mail Settings Tab */}

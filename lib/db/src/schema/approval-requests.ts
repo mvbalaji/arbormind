@@ -6,7 +6,6 @@ import { approvalRolesTable, approvalCriteriaTable } from "./approvals";
 
 export const approvalRequestsTable = pgTable("approval_requests", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   entity: text("entity").notNull(),
   entityId: integer("entity_id").notNull(),
   status: text("status").notNull().default("open"),
@@ -28,7 +27,6 @@ export const approvalRequestsTable = pgTable("approval_requests", {
 
 export const approvalAuditEventsTable = pgTable("approval_audit_events", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   requestId: integer("request_id").notNull().references(() => approvalRequestsTable.id, { onDelete: "cascade" }),
   event: text("event").notNull(),
   actorUserId: integer("actor_user_id").references(() => usersTable.id, { onDelete: "set null" }),

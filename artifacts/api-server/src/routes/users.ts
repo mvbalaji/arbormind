@@ -12,7 +12,7 @@ router.get("/users", async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [eq(usersTable.orgId, req.orgId as number)];
+    const conditions = [];
     if (search) {
       conditions.push(or(ilike(usersTable.name, `%${search}%`), ilike(usersTable.email, `%${search}%`))!);
     }
@@ -20,9 +20,13 @@ router.get("/users", async (req, res) => {
       conditions.push(eq(usersTable.role, role));
     }
 
-    const data = await db.select().from(usersTable).where(and(...conditions)).limit(limitNum).offset(offset);
+    const data = await (conditions.length > 0
+      ? db.select().from(usersTable).where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      : db.select().from(usersTable)
+    ).limit(limitNum).offset(offset);
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(and(...conditions));
+    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(usersTable).where(whereClause);
     res.json({ data, total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
     req.log.error(err);
@@ -32,7 +36,7 @@ router.get("/users", async (req, res) => {
 
 router.post("/users", async (req, res) => {
   try {
-    const [user] = await db.insert(usersTable).values({ ...req.body, orgId: req.orgId as number }).returning();
+    const [user] = await db.insert(usersTable).values(req.body).returning();
     res.status(201).json(user);
   } catch (err) {
     req.log.error(err);
@@ -42,7 +46,7 @@ router.post("/users", async (req, res) => {
 
 router.get("/users/:id", async (req, res) => {
   try {
-    const [user] = await db.select().from(usersTable).where(and(eq(usersTable.id, parseInt(req.params.id)), eq(usersTable.orgId, req.orgId as number)));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.id, parseInt(req.params.id)));
     if (!user) {
       res.status(404).json({ error: "User not found" });
     } else {
@@ -58,7 +62,7 @@ router.put("/users/:id", async (req, res) => {
   try {
     const [user] = await db.update(usersTable)
       .set({ ...req.body, updatedAt: new Date() })
-      .where(and(eq(usersTable.id, parseInt(req.params.id)), eq(usersTable.orgId, req.orgId as number)))
+      .where(eq(usersTable.id, parseInt(req.params.id)))
       .returning();
     if (!user) {
       res.status(404).json({ error: "User not found" });
@@ -74,7 +78,7 @@ router.put("/users/:id", async (req, res) => {
 router.delete("/users/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.delete(usersTable).where(and(eq(usersTable.id, id), eq(usersTable.orgId, req.orgId as number)));
+    await db.delete(usersTable).where(eq(usersTable.id, id));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

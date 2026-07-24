@@ -1,8 +1,7 @@
-import { pgTable, serial, text, boolean, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp } from "drizzle-orm/pg-core";
 
 export const allowedUsersTable = pgTable("allowed_users", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   email: text("email").notNull().unique(),
   name: text("name"),
   role: text("role").notNull().default("sales"),

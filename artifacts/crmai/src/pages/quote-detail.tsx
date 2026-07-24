@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
+import { QUOTE_STAGES } from "@/lib/quote-stages";
 import { useRoute, useLocation } from "wouter";
 import {
   useGetQuote, useUpdateQuote, useCreateQuoteVersion, useSendQuote, useDeleteQuote,
@@ -90,6 +91,11 @@ export default function QuoteDetail() {
   const products = productsData?.data ?? [];
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { data: stageHistoryData } = useQuery<{ data: Array<{ stage: string; enteredAt: string; leftAt: string | null }> }>({
+    queryKey: ["quote-stage-history", quoteId],
+    queryFn: () => fetch(`/api/quotes/${quoteId}/stage-history`, { credentials: "include" }).then(r => r.json()),
+    enabled: quoteId > 0,
+  });
   const { format: fmtMoney } = useCurrency();
   const { data: oppsData } = useListOpportunities({ limit: 200 });
   const opportunities = oppsData?.data ?? [];
@@ -194,6 +200,24 @@ export default function QuoteDetail() {
   const [bundleSearch, setBundleSearch] = useState("");
 
   // CPQ Product Configurator
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const handleCustomerRejection = async () => {
+    if (!rejectReason.trim()) return;
+    try {
+      await updateMutation.mutateAsync({ id: quoteId, data: { status: "rejected" as UpdateQuoteInputStatus, rejectionReason: rejectReason } as any });
+      void queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
+      void queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+      void queryClient.invalidateQueries({ queryKey: ["quote-stage-history", quoteId] });
+      toast({ title: "Quote rejected", description: "Rejection reason captured. Sales team can now revise and re-present." });
+      setRejectDialogOpen(false);
+      setRejectReason("");
+    } catch {
+      toast({ title: "Error", description: "Failed to update quote status.", variant: "destructive" });
+    }
+  };
+
   const [cpqOpen, setCpqOpen] = useState(false);
   const [cpqLaunchOpen, setCpqLaunchOpen] = useState(
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("cpqPrompt") === "1"
@@ -392,6 +416,7 @@ export default function QuoteDetail() {
     try {
       await updateMutation.mutateAsync({ id: quoteId, data: { status: newStatus as UpdateQuoteInputStatus } });
       toast({ title: "Status updated", description: `Quote status changed to ${newStatus}` });
+      void queryClient.invalidateQueries({ queryKey: ["quote-stage-history", quoteId] });
       invalidate();
     } catch {
       toast({ title: "Error", description: "Could not update status.", variant: "destructive" });
@@ -778,6 +803,16 @@ export default function QuoteDetail() {
               <Copy className="w-4 h-4 mr-2" /> Revise Quote
             </Button>
           )}
+          {quote.status === "presented" && (
+            <Button size="sm" variant="outline" onClick={() => setRejectDialogOpen(true)} className="border-red-500/40 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
+              <XCircle className="w-4 h-4 mr-2" /> Customer Rejected
+            </Button>
+          )}
+          {quote.status === "rejected" && (
+            <Button size="sm" onClick={handleCreateVersion} disabled={versionMutation.isPending} className="bg-amber-600 hover:bg-amber-700 text-white">
+              <RotateCw className="w-4 h-4 mr-2" /> Revise Quote
+            </Button>
+          )}
           {quote.status === "accepted" && (
             <>
               <Button size="sm" onClick={() => navigate(`/orders?fromQuote=${quoteId}`)} className="bg-primary hover:bg-primary/90 text-foreground">
@@ -803,6 +838,45 @@ export default function QuoteDetail() {
             <Trash2 className="w-4 h-4 mr-2" /> Delete
           </Button>
         </div>
+
+        {/* Customer Rejection Dialog */}
+        <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+          <DialogContent className="bg-card border-border text-foreground max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-red-600">
+                <XCircle className="w-5 h-5" /> Customer Rejected Quote
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col gap-3 mt-2">
+              <p className="text-sm text-muted-foreground">
+                Capture the rejection reason so the sales team can revise and re-present.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs font-medium text-foreground">Rejection Reason *</Label>
+                <Textarea
+                  value={rejectReason}
+                  onChange={e => setRejectReason(e.target.value)}
+                  placeholder="e.g. Price too high, competitor offered better terms, budget cut for the quarter..."
+                  className="min-h-[100px] text-sm resize-none"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2 justify-end mt-1">
+                <Button variant="outline" size="sm" onClick={() => { setRejectDialogOpen(false); setRejectReason(""); }}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={!rejectReason.trim() || updateMutation.isPending}
+                  onClick={handleCustomerRejection}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  {updateMutation.isPending ? "Saving…" : "Confirm Rejection"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
           <AlertDialogContent className="bg-card border-border text-foreground">
@@ -867,6 +941,11 @@ export default function QuoteDetail() {
             entity="quote"
             record={quote as unknown as Record<string, unknown>}
             isAdmin={isAdmin}
+            onDecision={() => {
+              void queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
+              void queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+              void queryClient.invalidateQueries({ queryKey: ["quote-stage-history", quoteId] });
+            }}
           />
         )}
 
@@ -953,44 +1032,47 @@ export default function QuoteDetail() {
           {(() => {
             // Map legacy statuses to new pipeline stages
             const statusAlias: Record<string, string> = {
-              proposal: "needs_review", sent: "presented",
+              proposal: "needs_review", sent: "presented", denied: "rejected",
             };
             const currentStatus = statusAlias[quote.status] ?? quote.status;
-            const stages = [
-              { id: "draft", label: "Draft" },
-              { id: "needs_review", label: "Needs Review" },
-              { id: "in_review", label: "In Review" },
-              { id: "approved", label: "Approved" },
-              { id: "rejected", label: "Rejected" },
-              { id: "presented", label: "Presented" },
-              { id: "accepted", label: "Accepted" },
-              { id: "denied", label: "Denied" },
-            ];
+            const stages = QUOTE_STAGES;
             const idx = stages.findIndex((s) => s.id === currentStatus);
             const currentTone =
-              currentStatus === "rejected" || currentStatus === "denied" ? "red" as const :
+              currentStatus === "rejected" ? "red" as const :
               currentStatus === "accepted" ? "emerald" as const :
               "blue" as const;
-            const stageDate = (stageId: string): Date | null =>
-              stageId === "draft" && quote.createdAt ? new Date(quote.createdAt) : null;
+            const history = stageHistoryData?.data ?? [];
+            const stageInfo = (stageId: string) => {
+              const rows = history.filter(h => h.stage === stageId);
+              if (rows.length === 0) return { enteredAt: null, days: null };
+              const latest = rows[rows.length - 1];
+              const enteredAt = new Date(latest.enteredAt);
+              const end = latest.leftAt ? new Date(latest.leftAt) : new Date();
+              const days = Math.max(0, Math.floor((end.getTime() - enteredAt.getTime()) / 86400000));
+              return { enteredAt, days };
+            };
             const nextStageMap: Record<string, string> = {
               draft: "needs_review", needs_review: "in_review", in_review: "approved",
               approved: "presented", presented: "accepted",
             };
             const nextStage = nextStageMap[currentStatus];
+            const advanceLabel: Record<string, string> = {
+              draft: "Submit for Review", needs_review: "Send to In Review",
+              in_review: "Approve", approved: "Present to Customer", presented: "Mark Accepted",
+            };
             const advance = nextStage
               ? {
-                  label: "Mark Status as Complete",
-                  icon: CheckCircle,
+                  label: advanceLabel[currentStatus] ?? "Mark Status as Complete",
+                  icon: currentStatus === "presented" ? CheckCircle : CheckCircle,
                   onClick: () => void handleStatusChange(nextStage as any),
                   disabled: updateMutation.isPending,
-                  tone: "blue" as const,
+                  tone: (currentStatus === "presented" ? "emerald" : "blue") as "emerald" | "blue",
                 }
               : null;
             return (
               <StagePipeline
                 ariaLabel="Quote status"
-                stages={stages.map((s) => ({ ...s, enteredAt: stageDate(s.id) }))}
+                stages={stages.map((s) => { const info = stageInfo(s.id); return { ...s, enteredAt: info.enteredAt, days: info.days }; })}
                 currentId={currentStatus}
                 currentTone={currentTone}
                 advance={advance}
@@ -998,6 +1080,17 @@ export default function QuoteDetail() {
             );
           })()}
         </Card>
+
+        {/* Rejection reason banner */}
+        {quote.status === "rejected" && (quote as any).rejectionReason && (
+          <Card className="glass-panel border-red-500/30 bg-red-500/5 px-4 py-3 flex gap-3 items-start">
+            <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-red-600 mb-0.5">Customer Rejection Reason</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{(quote as any).rejectionReason}</p>
+            </div>
+          </Card>
+        )}
 
         {editingSection === "parties" ? (
           /* Edit mode — clean labeled grid */

@@ -1,38 +1,52 @@
 import React, { useState, useEffect } from "react";
-import { Sun, Moon, Zap, BarChart3, Users, Shield, Star, CheckCircle, Globe, Twitter, Linkedin, Github, Youtube } from "lucide-react";
+import { Sun, Moon, Zap, BarChart3, Users, Shield, Star, CheckCircle, Globe, Twitter, Linkedin, Github, Youtube, Megaphone, FileSignature, Workflow } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/context/auth";
 
 const FEATURES = [
   {
     icon: Users,
     title: "360° Customer View",
-    description: "Unified contacts, accounts, leads and activity timeline in one intelligent workspace.",
+    description: "Unified contacts, accounts, leads and full activity timeline — calls, emails, meetings and notes — in one intelligent workspace.",
   },
   {
     icon: BarChart3,
     title: "Pipeline Intelligence",
-    description: "Kanban deals board, revenue forecasting, and AI-powered win probability scoring.",
+    description: "Drag-and-drop Kanban deals board, stage-by-stage revenue forecasting, and AI-powered win-probability scoring on every opportunity.",
   },
   {
     icon: Zap,
     title: "AI Assistant",
-    description: "Built-in AI copilot that drafts emails, summarises deals, and surfaces next best actions.",
+    description: "A floating AI copilot that answers questions about your live CRM data, drafts emails, summarises deals, and surfaces next-best actions.",
+  },
+  {
+    icon: Star,
+    title: "Quotes, Orders & CPQ",
+    description: "Configure-price-quote with guided selling and bundle line items, versioned quotes with PDF generation, and orders tracked from acceptance to delivery.",
+  },
+  {
+    icon: FileSignature,
+    title: "Contract Lifecycle Management",
+    description: "Templates, renewal tracking, approval workflows and automated notifications keep every contract on schedule — nothing falls through the cracks.",
+  },
+  {
+    icon: Megaphone,
+    title: "Campaigns & Website Visitors",
+    description: "Plan and track marketing campaigns with budget and ROI reporting, and capture inbound website visitors as leads automatically.",
+  },
+  {
+    icon: Workflow,
+    title: "Approvals & Automation",
+    description: "Configurable approval chains for quotes and deals, product rules, workflow automation, and an integration studio for connecting external systems.",
   },
   {
     icon: Shield,
     title: "Role-Based Access",
-    description: "Admin and sales roles with granular permissions. SSO via Google for your entire team.",
+    description: "Granular admin, manager and sales-rep permissions per screen, with Google SSO and user impersonation for support and onboarding.",
   },
   {
     icon: Globe,
     title: "Reports & Analytics",
-    description: "Real-time dashboards, pipeline reports and custom metrics to drive data-backed decisions.",
-  },
-  {
-    icon: Star,
-    title: "Quotes & Cases",
-    description: "Generate professional quotes and manage support cases — all within the same platform.",
+    description: "Real-time dashboards, pipeline-by-stage and lead-source reports, revenue forecasts and case management — all driven by live data, no spreadsheets.",
   },
 ];
 
@@ -345,7 +359,6 @@ const TESTIMONIALS = [
 type Theme = "dark" | "light";
 
 export default function Landing() {
-  const { signInAndGoToDashboard } = useAuth();
   const [, setLocation] = useLocation();
   const [theme, setTheme] = useState<Theme>(() => {
     const stored = localStorage.getItem("arbormind-theme");
@@ -395,9 +408,6 @@ export default function Landing() {
   }, [theme]);
 
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
-  const handleDemoLogin = async () => {
-    await signInAndGoToDashboard({ username: "demo@arbormind.in", password: "demo1234" });
-  };
 
   const isDark = theme === "dark";
 
@@ -572,7 +582,7 @@ export default function Landing() {
               Everything your sales team needs
             </h2>
             <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
-              A complete platform that replaces five separate tools — built for the modern AI-first sales workflow.
+              From first touch to signed contract — a complete quote-to-cash platform that replaces half a dozen point tools, built for the modern AI-first sales workflow.
             </p>
           </div>
 

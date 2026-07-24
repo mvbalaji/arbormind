@@ -20,8 +20,7 @@ export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
 
 export const contractsTable = pgTable("contracts", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
-  contractNumber: text("contract_number").notNull(),
+  contractNumber: text("contract_number").notNull().unique(),
   name: text("name").notNull(),
   accountId: integer("account_id").references(() => accountsTable.id),
   contactId: integer("contact_id").references(() => contactsTable.id),
@@ -49,13 +48,10 @@ export const contractsTable = pgTable("contracts", {
   createdByUserId: integer("created_by_user_id").references(() => usersTable.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (t) => ({
-  orgContractNumberUnique: uniqueIndex("contracts_org_contract_number_unique").on(t.orgId, t.contractNumber),
-}));
+});
 
 export const contractLineItemsTable = pgTable("contract_line_items", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   contractId: integer("contract_id").notNull().references(() => contractsTable.id),
   productId: integer("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   productName: text("product_name").notNull(),
@@ -69,7 +65,6 @@ export const contractLineItemsTable = pgTable("contract_line_items", {
 
 export const contractDocumentsTable = pgTable("contract_documents", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   contractId: integer("contract_id").notNull().references(() => contractsTable.id),
   version: integer("version").notNull(),
   title: text("title"),

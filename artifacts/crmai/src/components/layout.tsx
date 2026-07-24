@@ -45,6 +45,7 @@ import {
   Settings2,
   Grid3x3,
   X as XIcon,
+  Plug,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AIChatbot } from "@/components/ai-chatbot";
@@ -92,6 +93,7 @@ const BASE_NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?
   { label: "Approvals", href: "/approvals", icon: ShieldCheck, screenKey: "approvals" },
   { label: "Support", href: "/support", icon: Mail, screenKey: "support" },
   { label: "Product Rules", href: "/admin/product-rules", icon: Sliders, screenKey: "products", adminOnly: true },
+  { label: "Integration Studio", href: "/admin/integrations", icon: Plug, adminOnly: true },
   { label: "System Admin", href: "/users", icon: Settings, screenKey: "users" },
   // STIMS — Sales Performance
   { label: "Sales Performance", href: "/stims/dashboard", icon: BarChart3 },
@@ -451,6 +453,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       <Link href="/cpq/admin" className="flex items-center gap-2">
                         <Cpu className="w-4 h-4" />
                         CPQ Settings
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {(user?.role === "admin" || user?.role === "super_admin") && (
+                    <DropdownMenuItem className="cursor-pointer" asChild>
+                      <Link href="/admin/integrations" className="flex items-center gap-2">
+                        <Plug className="w-4 h-4" />
+                        Integrations
                       </Link>
                     </DropdownMenuItem>
                   )}

@@ -488,6 +488,10 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         )}
+
+        <div className="text-center text-xs text-muted-foreground py-2">
+          arbormind.in v{__APP_VERSION__} · Deployed {format(new Date(__BUILD_DATE__), "MMM d, yyyy 'at' h:mm a")}
+        </div>
       </div>
     </Layout>
   );

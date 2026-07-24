@@ -1,9 +1,8 @@
 import { db, emailSettingsTable, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable, emailTrackingTable } from "@workspace/db";
-import { eq, and, ilike, desc } from "drizzle-orm";
+import { eq, ilike, desc } from "drizzle-orm";
 import { simpleParser } from "mailparser";
 import { maybeAutoReply } from "./auto-reply";
 import { generateEmailTaskTitle } from "./lib/ai-task-title";
-import { getDefaultOrgId } from "./lib/org-context";
 
 // Normalises a Message-ID for header comparison: trims whitespace, removes angle brackets,
 // and lowercases the domain. Returns null for empty input. Equivalent values from different
@@ -44,7 +43,6 @@ interface ThreadParent {
 // recipient when no header match is found (handles clients that drop In-Reply-To
 // on quoted-text-only replies).
 async function findThreadParent(opts: {
-  orgId: number;
   inReplyTo: string | null;
   references: string[];
   fromEmail: string;
@@ -73,7 +71,7 @@ async function findThreadParent(opts: {
       })
       .from(emailTrackingTable)
       .innerJoin(activitiesTable, eq(activitiesTable.id, emailTrackingTable.activityId))
-      .where(and(eq(emailTrackingTable.messageId, mid), eq(emailTrackingTable.orgId, opts.orgId)))
+      .where(eq(emailTrackingTable.messageId, mid))
       .limit(1);
     if (hit) return hit;
   }
@@ -94,7 +92,7 @@ async function findThreadParent(opts: {
     })
     .from(emailTrackingTable)
     .innerJoin(activitiesTable, eq(activitiesTable.id, emailTrackingTable.activityId))
-    .where(and(ilike(emailTrackingTable.toEmail, opts.fromEmail), eq(emailTrackingTable.orgId, opts.orgId)))
+    .where(ilike(emailTrackingTable.toEmail, opts.fromEmail))
     .orderBy(desc(emailTrackingTable.sentAt))
     .limit(50);
   for (const row of recent) {
@@ -111,8 +109,8 @@ async function findThreadParent(opts: {
   return null;
 }
 
-const syncTimers = new Map<number, ReturnType<typeof setInterval>>();
-const syncingOrgs = new Set<number>();
+let syncTimer: ReturnType<typeof setInterval> | null = null;
+let isSyncing = false;
 
 // IMAP credentials come from environment / admin-configured DB row only.
 // The password MUST be supplied via the IMAP_PASSWORD secret (or the email_settings DB row) —
@@ -126,15 +124,15 @@ const DEFAULT_IMAP = {
   password: process.env.IMAP_PASSWORD ?? "",
 };
 
-async function getSettings(orgId: number) {
-  const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, orgId)).limit(1);
+async function getSettings() {
+  const rows = await db.select().from(emailSettingsTable).limit(1);
   return rows[0] ?? null;
 }
 
-async function getImapConfig(orgId: number, settings: Record<string, unknown> | null) {
+async function getImapConfig(settings: Record<string, unknown> | null) {
   // Per-tenant DB-stored credentials are used when an admin has explicitly configured them via
-  // the email_settings UI. Otherwise, the shared env-var mailbox (IMAP_PASSWORD secret) is only
-  // available to the Default Organization — every other org needs its own DB-configured inbox.
+  // the email_settings UI. Otherwise, fall back to env-var credentials (IMAP_PASSWORD secret).
+  // There is NO hardcoded password fallback — see DEFAULT_IMAP above.
   if (settings?.imapUser && settings?.imapPassword) {
     return {
       host: settings.imapHost,
@@ -143,10 +141,6 @@ async function getImapConfig(orgId: number, settings: Record<string, unknown> | 
       user: settings.imapUser,
       pass: settings.imapPassword,
     };
-  }
-  const defaultOrgId = await getDefaultOrgId();
-  if (orgId !== defaultOrgId) {
-    return { host: "", port: 0, secure: true, user: "", pass: "" };
   }
   return {
     host: DEFAULT_IMAP.host,
@@ -157,16 +151,15 @@ async function getImapConfig(orgId: number, settings: Record<string, unknown> | 
   };
 }
 
-async function checkIfKnownCustomer(orgId: number, email: string) {
+async function checkIfKnownCustomer(email: string) {
   const [contact] = await db
     .select({ id: contactsTable.id, accountId: contactsTable.accountId })
     .from(contactsTable)
-    .where(and(ilike(contactsTable.email, email), eq(contactsTable.orgId, orgId)));
+    .where(ilike(contactsTable.email, email));
   return contact ?? null;
 }
 
 async function processEmail(
-  orgId: number,
   messageUid: string,
   fromEmail: string,
   fromName: string,
@@ -181,9 +174,9 @@ async function processEmail(
   // attach it to the same activity context (lead/contact/opportunity/account)
   // instead of creating a brand new lead or opportunity. Sales reps then see
   // the full back-and-forth on a single record.
-  const parent = await findThreadParent({ orgId, inReplyTo, references, fromEmail, subject });
+  const parent = await findThreadParent({ inReplyTo, references, fromEmail, subject });
 
-  const contact = parent ? null : await checkIfKnownCustomer(orgId, fromEmail);
+  const contact = parent ? null : await checkIfKnownCustomer(fromEmail);
 
   let relatedLeadId: number | undefined;
   let relatedOpportunityId: number | undefined;
@@ -204,7 +197,6 @@ async function processEmail(
     const [opp] = await db
       .insert(opportunitiesTable)
       .values({
-        orgId,
         name: `Inquiry: ${subject}`,
         description: body,
         stage: "prospecting",
@@ -221,7 +213,6 @@ async function processEmail(
     const [lead] = await db
       .insert(leadsTable)
       .values({
-        orgId,
         firstName: nameParts[0] || "Unknown",
         lastName: nameParts.slice(1).join(" ") || "Unknown",
         email: fromEmail,
@@ -236,7 +227,6 @@ async function processEmail(
   const [insertedEmail] = await db
     .insert(emailsTable)
     .values({
-      orgId,
       messageUid,
       messageId,
       inReplyTo,
@@ -252,11 +242,10 @@ async function processEmail(
       relatedOpportunityId,
       notes,
     })
-    .onConflictDoNothing({ target: [emailsTable.orgId, emailsTable.messageUid] })
+    .onConflictDoNothing({ target: emailsTable.messageUid })
     .returning({ id: emailsTable.id });
 
   await db.insert(activitiesTable).values({
-    orgId,
     type: "email",
     subject: parent ? `Reply: ${subject}` : `Email: ${subject}`,
     description: body.slice(0, 2000),
@@ -281,21 +270,21 @@ async function processEmail(
       const [opp] = await db
         .select({ assignedTo: opportunitiesTable.assignedTo })
         .from(opportunitiesTable)
-        .where(and(eq(opportunitiesTable.id, relatedOpportunityId), eq(opportunitiesTable.orgId, orgId)));
+        .where(eq(opportunitiesTable.id, relatedOpportunityId));
       ownerId = opp?.assignedTo ?? null;
     }
     if (ownerId == null && relatedLeadId) {
       const [lead] = await db
         .select({ assignedTo: leadsTable.assignedTo })
         .from(leadsTable)
-        .where(and(eq(leadsTable.id, relatedLeadId), eq(leadsTable.orgId, orgId)));
+        .where(eq(leadsTable.id, relatedLeadId));
       ownerId = lead?.assignedTo ?? null;
     }
     if (ownerId == null && relatedContactId) {
       const [c] = await db
         .select({ ownerId: contactsTable.ownerId })
         .from(contactsTable)
-        .where(and(eq(contactsTable.id, relatedContactId), eq(contactsTable.orgId, orgId)));
+        .where(eq(contactsTable.id, relatedContactId));
       ownerId = c?.ownerId ?? null;
     }
   } catch (ownerErr) {
@@ -312,7 +301,6 @@ async function processEmail(
       counterpartEmail: fromEmail,
     });
     await db.insert(activitiesTable).values({
-      orgId,
       type: "task",
       subject: aiTitle,
       description: `New email from ${fromName || fromEmail} <${fromEmail}> — reply needed.\n\nSubject: ${subject}`,
@@ -333,15 +321,15 @@ async function processEmail(
   return insertedEmail?.id;
 }
 
-export async function runEmailSync(orgId: number): Promise<{ processed: number; error?: string }> {
-  if (syncingOrgs.has(orgId)) return { processed: 0, error: "Sync already in progress" };
-  syncingOrgs.add(orgId);
+export async function runEmailSync(): Promise<{ processed: number; error?: string }> {
+  if (isSyncing) return { processed: 0, error: "Sync already in progress" };
+  isSyncing = true;
 
-  const settings = await getSettings(orgId);
-  const imapConfig = await getImapConfig(orgId, settings);
+  const settings = await getSettings();
+  const imapConfig = await getImapConfig(settings);
 
   if (!imapConfig.user || !imapConfig.pass) {
-    syncingOrgs.delete(orgId);
+    isSyncing = false;
     return { processed: 0, error: "IMAP credentials not configured" };
   }
 
@@ -369,8 +357,7 @@ export async function runEmailSync(orgId: number): Promise<{ processed: number; 
       // Collect all UIDs already imported so we can skip them
       const existingRows = await db
         .select({ messageUid: emailsTable.messageUid })
-        .from(emailsTable)
-        .where(eq(emailsTable.orgId, orgId));
+        .from(emailsTable);
       const importedUids = new Set(
         existingRows.map((r) => r.messageUid).filter((u): u is string => !!u),
       );
@@ -422,7 +409,6 @@ export async function runEmailSync(orgId: number): Promise<{ processed: number; 
 
         const emailBody = bodyText || "(no body)";
         const emailId = await processEmail(
-          orgId,
           uidKey,
           fromEmail,
           fromName,
@@ -472,7 +458,7 @@ export async function runEmailSync(orgId: number): Promise<{ processed: number; 
           emailsProcessed: (settings.emailsProcessed ?? 0) + processed,
           updatedAt: new Date(),
         })
-        .where(and(eq(emailSettingsTable.id, settingsId), eq(emailSettingsTable.orgId, orgId)));
+        .where(eq(emailSettingsTable.id, settingsId));
     }
   } catch (err: unknown) {
     errorMsg = err instanceof Error ? err.message : "Unknown IMAP error";
@@ -486,73 +472,56 @@ export async function runEmailSync(orgId: number): Promise<{ processed: number; 
           lastSyncMessage: errorMsg,
           updatedAt: new Date(),
         })
-        .where(and(eq(emailSettingsTable.id, settingsId), eq(emailSettingsTable.orgId, orgId)));
+        .where(eq(emailSettingsTable.id, settingsId));
     }
   } finally {
-    syncingOrgs.delete(orgId);
+    isSyncing = false;
   }
 
   return { processed, error: errorMsg };
 }
 
-/** Starts (or restarts) the polling timer for a single org. */
-export async function startEmailPoller(orgId: number) {
-  const existing = syncTimers.get(orgId);
-  if (existing) {
-    clearInterval(existing);
-    syncTimers.delete(orgId);
+export async function startEmailPoller() {
+  if (syncTimer) {
+    clearInterval(syncTimer);
+    syncTimer = null;
   }
 
-  const settings = await getSettings(orgId);
-  const defaultOrgId = await getDefaultOrgId();
+  const settings = await getSettings();
   const hasDbCreds = settings?.imapUser && settings?.imapPassword;
-  const hasEnvCreds = orgId === defaultOrgId && DEFAULT_IMAP.user && DEFAULT_IMAP.password;
+  const hasEnvCreds = DEFAULT_IMAP.user && DEFAULT_IMAP.password;
 
   if (!hasDbCreds && !hasEnvCreds) {
     console.warn(
-      `[EmailPoller] org ${orgId}: No IMAP credentials configured — skipping. ` +
-        "Set the IMAP_PASSWORD secret (and optionally IMAP_USER / IMAP_HOST) or configure per-org credentials to enable inbox sync.",
+      "[EmailPoller] No IMAP credentials configured — skipping. " +
+        "Set the IMAP_PASSWORD secret (and optionally IMAP_USER / IMAP_HOST) to enable inbox sync.",
     );
     return;
   }
 
   if (settings && settings.syncEnabled === false) {
-    console.log(`[EmailPoller] org ${orgId}: Sync explicitly disabled by admin — skipping.`);
+    console.log("[EmailPoller] Sync explicitly disabled by admin — skipping.");
     return;
   }
 
   const intervalMs = (settings?.syncIntervalMinutes ?? 15) * 60 * 1000;
-  console.log(`[EmailPoller] org ${orgId}: Starting — polling every ${settings?.syncIntervalMinutes ?? 15} min.`);
+  console.log(`[EmailPoller] Starting — polling every ${settings?.syncIntervalMinutes ?? 15} min.`);
 
-  const timer = setInterval(async () => {
-    console.log(`[EmailPoller] org ${orgId}: Running scheduled sync...`);
-    const result = await runEmailSync(orgId);
+  syncTimer = setInterval(async () => {
+    console.log("[EmailPoller] Running scheduled sync...");
+    const result = await runEmailSync();
     if (result.error) {
-      console.error(`[EmailPoller] org ${orgId}: Sync error:`, result.error);
+      console.error("[EmailPoller] Sync error:", result.error);
     } else {
-      console.log(`[EmailPoller] org ${orgId}: Sync done — ${result.processed} email(s) processed.`);
+      console.log(`[EmailPoller] Sync done — ${result.processed} email(s) processed.`);
     }
   }, intervalMs);
-  syncTimers.set(orgId, timer);
 }
 
-export function stopEmailPoller(orgId: number) {
-  const existing = syncTimers.get(orgId);
-  if (existing) {
-    clearInterval(existing);
-    syncTimers.delete(orgId);
-    console.log(`[EmailPoller] org ${orgId}: Stopped.`);
-  }
-}
-
-/** Starts a poller for every organization that has email sync configured.
- *  Called once at server boot instead of the old single-tenant startEmailPoller(). */
-export async function startAllEmailPollers() {
-  const { organizationsTable } = await import("@workspace/db");
-  const orgs = await db.select({ id: organizationsTable.id }).from(organizationsTable);
-  for (const org of orgs) {
-    await startEmailPoller(org.id).catch((err) => {
-      console.error(`[EmailPoller] org ${org.id}: failed to start:`, err);
-    });
+export async function stopEmailPoller() {
+  if (syncTimer) {
+    clearInterval(syncTimer);
+    syncTimer = null;
+    console.log("[EmailPoller] Stopped.");
   }
 }

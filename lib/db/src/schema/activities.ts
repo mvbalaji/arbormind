@@ -9,7 +9,6 @@ import { leadsTable } from "./leads";
 
 export const activitiesTable = pgTable("activities", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   type: text("type").notNull(),
   subject: text("subject").notNull(),
   description: text("description"),

@@ -47,3 +47,28 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# TLS certs
+cert/
+*.pem
+
+# Logs
+*.log
+
+# Data dumps (may contain real customer/lead PII — never commit)
+crmai_dump_*.sql
+
+# Office lock files
+~$*.docx
+~$*.xlsx
+~$*.pptx
+
+# Playwright test artifacts (may contain live session cookies)
+tests/.auth/
+tests/test-results/
+tests/playwright-report/

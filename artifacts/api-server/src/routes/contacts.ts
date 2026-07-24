@@ -43,7 +43,7 @@ router.get("/contacts", async (req, res) => {
       .leftJoin(usersTable, eq(contactsTable.ownerId, usersTable.id))
       .leftJoin(accountsTable, eq(contactsTable.accountId, accountsTable.id));
 
-    const conditions = [eq(contactsTable.orgId, req.orgId as number)];
+    const conditions = [];
     if (search) {
       conditions.push(or(
         ilike(contactsTable.firstName, `%${search}%`),
@@ -55,11 +55,12 @@ router.get("/contacts", async (req, res) => {
       conditions.push(eq(contactsTable.accountId, parseInt(accountId)));
     }
 
-    const data = await baseQuery
-      .where(conditions.length === 1 ? conditions[0] : and(...conditions))
-      .orderBy(desc(contactsTable.createdAt)).limit(limitNum).offset(offset);
+    const data = await (conditions.length > 0
+      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      : baseQuery
+    ).orderBy(desc(contactsTable.createdAt)).limit(limitNum).offset(offset);
 
-    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
+    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
     const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(contactsTable).where(whereClause);
     res.json({ data, total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
@@ -70,13 +71,7 @@ router.get("/contacts", async (req, res) => {
 
 router.post("/contacts", async (req, res) => {
   try {
-    const orgId = req.orgId as number;
-    if (req.body?.accountId != null) {
-      const [account] = await db.select({ id: accountsTable.id }).from(accountsTable)
-        .where(and(eq(accountsTable.id, req.body.accountId), eq(accountsTable.orgId, orgId)));
-      if (!account) { res.status(400).json({ error: "Account not found" }); return; }
-    }
-    const [contact] = await db.insert(contactsTable).values({ ...req.body, orgId }).returning();
+    const [contact] = await db.insert(contactsTable).values(req.body).returning();
     res.status(201).json(contact);
   } catch (err) {
     req.log.error(err);
@@ -91,7 +86,7 @@ router.get("/contacts/:id", async (req, res) => {
       .from(contactsTable)
       .leftJoin(usersTable, eq(contactsTable.ownerId, usersTable.id))
       .leftJoin(accountsTable, eq(contactsTable.accountId, accountsTable.id))
-      .where(and(eq(contactsTable.id, parseInt(req.params.id)), eq(contactsTable.orgId, req.orgId as number)));
+      .where(eq(contactsTable.id, parseInt(req.params.id)));
 
     if (!contact) {
       res.status(404).json({ error: "Contact not found" });
@@ -106,15 +101,9 @@ router.get("/contacts/:id", async (req, res) => {
 
 router.put("/contacts/:id", async (req, res) => {
   try {
-    const orgId = req.orgId as number;
-    if (req.body?.accountId != null) {
-      const [account] = await db.select({ id: accountsTable.id }).from(accountsTable)
-        .where(and(eq(accountsTable.id, req.body.accountId), eq(accountsTable.orgId, orgId)));
-      if (!account) { res.status(400).json({ error: "Account not found" }); return; }
-    }
     const [contact] = await db.update(contactsTable)
       .set({ ...req.body, updatedAt: new Date() })
-      .where(and(eq(contactsTable.id, parseInt(req.params.id)), eq(contactsTable.orgId, orgId)))
+      .where(eq(contactsTable.id, parseInt(req.params.id)))
       .returning();
     if (!contact) {
       res.status(404).json({ error: "Contact not found" });
@@ -130,7 +119,7 @@ router.put("/contacts/:id", async (req, res) => {
 router.delete("/contacts/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.delete(contactsTable).where(and(eq(contactsTable.id, id), eq(contactsTable.orgId, req.orgId as number)));
+    await db.delete(contactsTable).where(eq(contactsTable.id, id));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);
@@ -146,7 +135,7 @@ router.get("/contacts/:id/activities", async (req, res) => {
       .select()
       .from(activitiesTable)
       .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id))
-      .where(and(eq(activitiesTable.contactId, contactId), eq(activitiesTable.orgId, req.orgId as number)))
+      .where(eq(activitiesTable.contactId, contactId))
       .orderBy(activitiesTable.dueDate);
     res.json({ data: data.map((r) => ({ ...r.activities, opportunityName: r.opportunities?.name ?? null })) });
   } catch (err) {
@@ -163,7 +152,7 @@ router.get("/contacts/:id/opportunities", async (req, res) => {
       .select()
       .from(opportunitiesTable)
       .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
-      .where(and(eq(opportunitiesTable.contactId, contactId), eq(opportunitiesTable.orgId, req.orgId as number)));
+      .where(eq(opportunitiesTable.contactId, contactId));
     res.json({ data: data.map((r) => ({ ...r.opportunities, accountName: r.accounts?.name ?? null })) });
   } catch (err) {
     req.log.error(err);

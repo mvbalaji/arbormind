@@ -5,7 +5,6 @@ export const emailTrackingTable = pgTable(
   "email_tracking",
   {
     id: serial("id").primaryKey(),
-    orgId: integer("org_id").notNull().default(1),
     activityId: integer("activity_id").notNull().references(() => activitiesTable.id, { onDelete: "cascade" }),
     token: text("token").notNull().unique(),
     // RFC 5322 Message-ID of the outbound email (as returned by nodemailer, including angle brackets).

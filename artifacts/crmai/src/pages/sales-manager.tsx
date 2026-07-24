@@ -472,41 +472,131 @@ export default function SalesManager() {
               <div className="flex flex-col gap-3">
                 {/* Gauges side by side */}
                 <div className="grid grid-cols-2 gap-3 flex-1">
+                  {/* ── Quota Attainment DrillCard ── */}
                   <DrillCard title="% Quota attainment" icon={Target} color="#16a34a"
                     drill={
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between text-muted-foreground"><span>Won Revenue</span><span className="font-semibold text-foreground">{fmt(wonPipelineValue)}</span></div>
-                        <div className="flex justify-between text-muted-foreground"><span>Target (est.)</span><span className="font-semibold text-foreground">{fmt(quotaTarget)}</span></div>
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden"><div className="h-full bg-emerald-500 rounded-full" style={{ width: `${quotaAttained}%` }} /></div>
-                        <p className="text-[10px] text-muted-foreground">Top closed won deals:</p>
-                        {(wonOpps as any)?.opportunities?.slice(0,3).map((o: any) => (
-                          <div key={o.id} className="flex justify-between">
-                            <Link href={`/opportunities/${o.id}`} className="text-blue-600 hover:underline truncate max-w-[120px]">{o.name}</Link>
-                            <span className="font-medium">{fmt(o.amount ?? 0)}</span>
+                      <div className="space-y-3 text-xs">
+                        {/* Summary bar */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Won Revenue</span><span className="font-bold text-emerald-600">{fmt(wonPipelineValue)}</span>
                           </div>
-                        )) ?? <span className="text-muted-foreground">No won deals yet</span>}
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Quota Target</span><span className="font-semibold text-foreground">{fmt(quotaTarget)}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>Remaining gap</span><span className="font-semibold text-orange-500">{fmt(Math.max(0, quotaTarget - wonPipelineValue))}</span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden mt-1">
+                            <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${Math.min(quotaAttained, 100)}%` }} />
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">{quotaAttained}% of target achieved this period</p>
+                        </div>
+                        {/* Stage pipeline value breakdown */}
+                        <div>
+                          <p className="text-[10px] font-semibold text-foreground mb-1.5 uppercase tracking-wide">Pipeline by stage</p>
+                          {stages.filter(s => s.value > 0).map((s, i) => {
+                            const pct = totalPipelineValue > 0 ? Math.round((s.value / totalPipelineValue) * 100) : 0;
+                            const stageColors = ["bg-blue-400","bg-indigo-400","bg-violet-400","bg-amber-400","bg-emerald-500","bg-red-400"];
+                            return (
+                              <div key={i} className="flex items-center gap-2 mb-1">
+                                <span className="text-muted-foreground w-20 truncate text-[10px]">{s.label}</span>
+                                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full ${stageColors[i] ?? "bg-blue-400"}`} style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="text-[10px] font-medium text-foreground w-10 text-right">{fmt(s.value)}</span>
+                                <span className="text-[10px] text-muted-foreground w-7 text-right">{pct}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {/* Top won deals */}
+                        <div>
+                          <p className="text-[10px] font-semibold text-foreground mb-1.5 uppercase tracking-wide">Top won deals</p>
+                          {((wonOpps as any)?.opportunities ?? []).filter((o:any) => o.stage === "closed_won").slice(0, 4).length > 0
+                            ? ((wonOpps as any)?.opportunities ?? []).filter((o:any) => o.stage === "closed_won").slice(0, 4).map((o: any) => (
+                              <div key={o.id} className="flex justify-between items-center py-0.5 border-b border-border last:border-0">
+                                <Link href={`/opportunities/${o.id}`} className="text-blue-600 hover:underline truncate max-w-[130px] text-[10px]">{o.name}</Link>
+                                <span className="font-semibold text-emerald-600 text-[10px]">{fmt(o.amount ?? 0)}</span>
+                              </div>
+                            ))
+                            : <p className="text-[10px] text-muted-foreground">No closed-won deals yet this period</p>
+                          }
+                        </div>
+                        <Link href="/opportunities" className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 pt-1">
+                          View all opportunities <ArrowRight className="w-2.5 h-2.5" />
+                        </Link>
                       </div>
                     }>
                     <div className="flex flex-col items-center justify-center pt-1">
                       <Gauge value={quotaAttained || 80} color="#16a34a" />
                     </div>
                   </DrillCard>
+
+                  {/* ── Conversion Rate DrillCard ── */}
                   <DrillCard title="% Conversion rate" icon={TrendingUp} color="#6b7280"
                     drill={
-                      <div className="space-y-1.5 text-xs">
-                        {stages.map((s, i) => {
-                          const next = stages[i + 1];
-                          if (!next) return null;
-                          const rate = Math.round((next.count / (s.count || 1)) * 100);
-                          return (
-                            <div key={i} className="flex items-center gap-2">
-                              <span className="text-muted-foreground truncate flex-1">{s.label} → {next.label}</span>
-                              <div className="h-1.5 w-16 bg-muted rounded-full overflow-hidden"><div className="h-full bg-blue-500 rounded-full" style={{ width: `${rate}%` }} /></div>
-                              <span className="font-semibold text-blue-600 w-7 text-right">{rate}%</span>
-                            </div>
-                          );
-                        })}
-                        <p className="text-[10px] text-muted-foreground pt-1">Overall: {stages[0]?.count ? Math.round(((stages.find(s=>s.label==="Closed Won")?.count??0)/stages[0].count)*100) : wonRate}% from prospect to won</p>
+                      <div className="space-y-3 text-xs">
+                        {/* Overall rate */}
+                        <div className="flex items-center justify-between bg-muted/40 rounded px-2 py-1.5">
+                          <span className="text-[10px] text-muted-foreground">Overall (Prospect → Won)</span>
+                          <span className="font-bold text-blue-600 text-sm">{stages[0]?.count ? Math.round(((stages.find(s=>s.label==="Closed Won")?.count??0)/stages[0].count)*100) : wonRate}%</span>
+                        </div>
+                        {/* Stage-by-stage funnel */}
+                        <div>
+                          <p className="text-[10px] font-semibold text-foreground mb-1.5 uppercase tracking-wide">Stage funnel</p>
+                          <table className="w-full text-[10px]">
+                            <thead>
+                              <tr className="text-muted-foreground border-b border-border">
+                                <th className="text-left pb-1 font-medium">Stage</th>
+                                <th className="text-right pb-1 font-medium">Deals</th>
+                                <th className="text-right pb-1 font-medium">Value</th>
+                                <th className="text-right pb-1 font-medium">→ Next</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stages.map((s, i) => {
+                                const next = stages[i + 1];
+                                const toNext = next ? Math.round((next.count / (s.count || 1)) * 100) : null;
+                                const isWon = s.label === "Closed Won";
+                                return (
+                                  <tr key={i} className="border-b border-border last:border-0">
+                                    <td className={`py-1 pr-2 ${isWon ? "text-emerald-600 font-semibold" : "text-foreground"}`}>{s.label}</td>
+                                    <td className="py-1 text-right font-medium">{s.count}</td>
+                                    <td className="py-1 text-right text-muted-foreground">{s.value > 0 ? fmt(s.value) : "—"}</td>
+                                    <td className="py-1 text-right">
+                                      {toNext !== null ? (
+                                        <span className={`font-semibold ${toNext >= 50 ? "text-emerald-600" : toNext >= 25 ? "text-amber-500" : "text-red-500"}`}>{toNext}%</span>
+                                      ) : <span className="text-muted-foreground">—</span>}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        {/* Drop-off insight */}
+                        <div>
+                          <p className="text-[10px] font-semibold text-foreground mb-1 uppercase tracking-wide">Biggest drop-off</p>
+                          {(() => {
+                            let worst = { label: "—", rate: 100 };
+                            stages.forEach((s, i) => {
+                              const next = stages[i + 1];
+                              if (!next) return;
+                              const rate = Math.round((next.count / (s.count || 1)) * 100);
+                              if (rate < worst.rate) worst = { label: `${s.label} → ${next.label}`, rate };
+                            });
+                            return (
+                              <div className="flex items-center justify-between bg-red-500/8 rounded px-2 py-1.5">
+                                <span className="text-muted-foreground truncate">{worst.label}</span>
+                                <span className="font-bold text-red-500 ml-2">{worst.rate}%</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        <Link href="/opportunities" className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 pt-1">
+                          Analyse pipeline <ArrowRight className="w-2.5 h-2.5" />
+                        </Link>
                       </div>
                     }>
                     <div className="flex flex-col items-center justify-center pt-1">

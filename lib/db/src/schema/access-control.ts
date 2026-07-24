@@ -1,53 +1,35 @@
-import { pgTable, serial, text, integer, timestamp, uniqueIndex, primaryKey, foreignKey } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const screensTable = pgTable("screens", {
-  orgId: integer("org_id").notNull().default(1),
-  key: text("key").notNull(),
+  key: text("key").primaryKey(),
   name: text("name").notNull(),
   category: text("category").notNull().default("general"),
   sortOrder: integer("sort_order").notNull().default(100),
-}, (t) => ({
-  pk: primaryKey({ columns: [t.orgId, t.key] }),
-}));
+});
 
 export const rolesTable = pgTable("roles", {
-  orgId: integer("org_id").notNull().default(1),
-  key: text("key").notNull(),
+  key: text("key").primaryKey(),
   label: text("label").notNull(),
   sortOrder: integer("sort_order").notNull().default(100),
-}, (t) => ({
-  pk: primaryKey({ columns: [t.orgId, t.key] }),
-}));
+});
 
 export const screenAccessTable = pgTable(
   "screen_access",
   {
     id: serial("id").primaryKey(),
-    orgId: integer("org_id").notNull().default(1),
-    screenKey: text("screen_key").notNull(),
-    roleKey: text("role_key").notNull(),
+    screenKey: text("screen_key").notNull().references(() => screensTable.key, { onDelete: "cascade" }),
+    roleKey: text("role_key").notNull().references(() => rolesTable.key, { onDelete: "cascade" }),
     accessLevel: text("access_level").notNull().default("none"),
     updatedBy: integer("updated_by"),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
-    screenRoleUnique: uniqueIndex("screen_access_screen_role_unique").on(t.orgId, t.screenKey, t.roleKey),
-    screenFk: foreignKey({
-      columns: [t.orgId, t.screenKey],
-      foreignColumns: [screensTable.orgId, screensTable.key],
-      name: "screen_access_screen_fk",
-    }).onDelete("cascade"),
-    roleFk: foreignKey({
-      columns: [t.orgId, t.roleKey],
-      foreignColumns: [rolesTable.orgId, rolesTable.key],
-      name: "screen_access_role_fk",
-    }).onDelete("cascade"),
+    screenRoleUnique: uniqueIndex("screen_access_screen_role_unique").on(t.screenKey, t.roleKey),
   })
 );
 
 export const accessAuditLogTable = pgTable("access_audit_log", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   screenKey: text("screen_key").notNull(),
   roleKey: text("role_key").notNull(),
   previousLevel: text("previous_level"),

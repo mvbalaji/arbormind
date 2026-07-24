@@ -13,6 +13,7 @@ export interface PipelineStage {
   id: string;
   label: string;
   enteredAt?: Date | null;
+  days?: number | null;
   note?: string;
 }
 
@@ -102,17 +103,29 @@ export function StagePipeline({
                     style={{ clipPath: isLast ? CHEVRON_LAST : CHEVRON_MID }}
                   >
                     {done ? (
-                      <>
+                      <div className="flex flex-col items-center gap-0.5">
                         <span
                           aria-hidden="true"
-                          className="flex items-center justify-center w-5 h-5 rounded-full bg-white/20"
+                          className="flex items-center justify-center w-4 h-4 rounded-full bg-white/20"
                         >
-                          <Check className="w-3.5 h-3.5" />
+                          <Check className="w-3 h-3" />
                         </span>
+                        {s.days != null && (
+                          <span className="text-[9px] leading-none opacity-90 font-normal">
+                            {s.days}d
+                          </span>
+                        )}
                         <span className="sr-only">{s.label}</span>
-                      </>
+                      </div>
                     ) : (
-                      <span className="truncate max-w-full">{s.label}</span>
+                      <div className="flex flex-col items-center gap-0.5 min-w-0 w-full">
+                        <span className="truncate max-w-full text-center">{s.label}</span>
+                        {s.days != null && current && (
+                          <span className="text-[9px] leading-none opacity-80 font-normal">
+                            {s.days}d so far
+                          </span>
+                        )}
+                      </div>
                     )}
                   </li>
                 </TooltipTrigger>
@@ -137,6 +150,13 @@ export function StagePipeline({
                     {s.enteredAt && (
                       <div className="opacity-80">
                         Entered: {format(s.enteredAt, "MMM d, yyyy")}
+                      </div>
+                    )}
+                    {s.days != null && (
+                      <div className="mt-0.5">
+                        {current ? `${s.days} day${s.days === 1 ? "" : "s"} in this stage so far`
+                          : done ? `Spent ${s.days} day${s.days === 1 ? "" : "s"} here`
+                          : ""}
                       </div>
                     )}
                     {s.note && <div className="mt-1 opacity-80">{s.note}</div>}

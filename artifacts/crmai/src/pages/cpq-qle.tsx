@@ -27,6 +27,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock,
+  ExternalLink,
 } from "lucide-react";
 
 interface LineItem {
@@ -61,6 +62,7 @@ export default function CpqQle() {
   const [location, navigate] = useLocation();
   const params = useParams<{ quoteId?: string }>();
   const fromQuote = new URLSearchParams(window.location.search).get("from") === "quote";
+  const fromGuided = new URLSearchParams(window.location.search).get("from") === "guided";
   const queryClient = useQueryClient();
   const { format: fmtMoney } = useCurrency();
   const { user } = useAuth();
@@ -146,6 +148,32 @@ export default function CpqQle() {
     setLineItems(items);
     setSelectedRows(new Set());
   }, [selectedQuoteData]);
+
+  // Bootstrap line items from Guided Selling when arriving with ?from=guided
+  useEffect(() => {
+    if (!fromGuided) return;
+    const raw = sessionStorage.getItem("cpq_guided_products");
+    if (!raw) return;
+    try {
+      const guidedProducts: any[] = JSON.parse(raw);
+      if (!guidedProducts.length) return;
+      const items: LineItem[] = guidedProducts.map((p: any) => ({
+        id: `guided-${Date.now()}-${p.id}`,
+        productId: p.id,
+        productName: p.name,
+        productCode: p.sku ?? "",
+        groupLabel: p.category ?? "Guided Selection",
+        qty: 1,
+        listPrice: parseFloat(p.unitPrice) || 0,
+        discountPct: 0,
+        costPrice: parseFloat(p.costPrice) || 0,
+      }));
+      setLineItems(prev => [...prev, ...items]);
+      sessionStorage.removeItem("cpq_guided_products");
+      sessionStorage.removeItem("cpq_guided_answers");
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromGuided]);
 
   const saveMutation = useMutation({
     mutationFn: async (quoteName?: string) => {
@@ -353,10 +381,19 @@ export default function CpqQle() {
           <a href={`/quotes/${selectedQuoteId}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Quote
           </a>
+        ) : fromGuided ? (
+          <a href="/cpq/guided-selling" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Guided Selling
+          </a>
         ) : (
           <a href="/cpq" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to CPQ
           </a>
+        )}
+        {fromGuided && lineItems.length > 0 && (
+          <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-4 py-2.5 mb-4 text-sm text-blue-800">
+            <span className="font-semibold">Guided Selling</span> — {lineItems.length} product{lineItems.length !== 1 ? "s" : ""} pre-loaded from your wizard selections. Review, adjust quantities and discounts, then save as a new quote.
+          </div>
         )}
 
         {/* Header */}
@@ -640,6 +677,12 @@ export default function CpqQle() {
                   <Save className="w-4 h-4" />
                   {saveMutation.isPending ? "Saving…" : selectedQuoteId ? "Save Quote" : "Create Quote"}
                 </Button>
+                {selectedQuoteId && (
+                  <Button variant="outline" className="w-full gap-2 text-sm border-blue-300 text-blue-700 hover:bg-blue-50"
+                    onClick={() => navigate(`/quotes/${selectedQuoteId}`)}>
+                    <ExternalLink className="w-4 h-4" /> View Quote Details
+                  </Button>
+                )}
                 <Button variant="outline" className="w-full gap-2 text-sm" disabled={!selectedQuoteId}
                   onClick={() => {
                     if (!selectedQuoteId) return;

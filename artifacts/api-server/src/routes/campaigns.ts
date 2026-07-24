@@ -30,7 +30,7 @@ router.get("/campaigns", async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [eq(campaignsTable.orgId, req.orgId as number)];
+    const conditions = [];
     if (search) {
       conditions.push(or(
         ilike(campaignsTable.name, `%${search}%`),
@@ -39,7 +39,7 @@ router.get("/campaigns", async (req, res) => {
     }
     if (status) conditions.push(eq(campaignsTable.status, status));
 
-    const whereClause = and(...conditions);
+    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
 
     const [data, countResult] = await Promise.all([
       db.select().from(campaignsTable).where(whereClause).limit(limitNum).offset(offset).orderBy(sql`created_at desc`),
@@ -73,7 +73,7 @@ function coerceCampaignBody(input: Record<string, unknown>): Record<string, unkn
 router.post("/campaigns", async (req, res) => {
   try {
     const body = coerceCampaignBody(req.body);
-    const [campaign] = await db.insert(campaignsTable).values({ ...body, orgId: req.orgId as number } as typeof campaignsTable.$inferInsert).returning();
+    const [campaign] = await db.insert(campaignsTable).values(body as typeof campaignsTable.$inferInsert).returning();
     res.status(201).json(formatCampaign(campaign));
   } catch (err) {
     req.log.error(err);
@@ -83,7 +83,7 @@ router.post("/campaigns", async (req, res) => {
 
 router.get("/campaigns/:id", async (req, res) => {
   try {
-    const [campaign] = await db.select().from(campaignsTable).where(and(eq(campaignsTable.id, parseInt(req.params.id)), eq(campaignsTable.orgId, req.orgId as number)));
+    const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, parseInt(req.params.id)));
     if (!campaign) {
       res.status(404).json({ error: "Campaign not found" });
     } else {
@@ -100,7 +100,7 @@ router.put("/campaigns/:id", async (req, res) => {
     const body = { ...coerceCampaignBody(req.body), updatedAt: new Date() };
     const [campaign] = await db.update(campaignsTable)
       .set(body)
-      .where(and(eq(campaignsTable.id, parseInt(req.params.id)), eq(campaignsTable.orgId, req.orgId as number)))
+      .where(eq(campaignsTable.id, parseInt(req.params.id)))
       .returning();
     if (!campaign) {
       res.status(404).json({ error: "Campaign not found" });
@@ -116,7 +116,7 @@ router.put("/campaigns/:id", async (req, res) => {
 router.delete("/campaigns/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.delete(campaignsTable).where(and(eq(campaignsTable.id, id), eq(campaignsTable.orgId, req.orgId as number)));
+    await db.delete(campaignsTable).where(eq(campaignsTable.id, id));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);
@@ -137,9 +137,8 @@ router.post("/campaigns/:id/launch", async (req, res) => {
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    const orgId = req.orgId as number;
     const campaignId = parseInt(req.params.id);
-    const [campaign] = await db.select().from(campaignsTable).where(and(eq(campaignsTable.id, campaignId), eq(campaignsTable.orgId, orgId)));
+    const [campaign] = await db.select().from(campaignsTable).where(eq(campaignsTable.id, campaignId));
 
     if (!campaign) { res.status(404).json({ error: "Campaign not found" }); return; }
     if (!["planning", "paused"].includes(campaign.status)) {
@@ -152,7 +151,7 @@ router.post("/campaigns/:id/launch", async (req, res) => {
     // 1. Atomically update status
     const [updated] = await db.update(campaignsTable)
       .set({ status: "active", launchedAt: now, updatedAt: now })
-      .where(and(eq(campaignsTable.id, campaignId), eq(campaignsTable.orgId, orgId)))
+      .where(eq(campaignsTable.id, campaignId))
       .returning();
 
     // 2. Log activity (best-effort)
@@ -170,7 +169,6 @@ router.post("/campaigns/:id/launch", async (req, res) => {
     ].join("\n");
 
     await db.insert(activitiesTable).values({
-      orgId,
       type: "note",
       subject: `🚀 Campaign Launched: ${campaign.name}`,
       description: activityDesc,
@@ -188,7 +186,7 @@ router.post("/campaigns/:id/launch", async (req, res) => {
       .map((n) => n.trim())
       .filter(Boolean);
 
-    const allUsers = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email }).from(usersTable).where(eq(usersTable.orgId, orgId));
+    const allUsers = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email }).from(usersTable);
 
     const matched: Array<{ id: number; name: string; email: string }> = [];
     for (const tName of teamNames) {

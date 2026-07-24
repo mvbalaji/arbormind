@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { leadsTable, activitiesTable, leadScoringRulesTable, leadScoreMilestonesTable } from "@workspace/db";
-import { and, eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 // ── Legacy sync API (kept for backward compat — used by leads.ts middleware) ─
 
@@ -258,8 +258,8 @@ function matchRule(
   }
 }
 
-export async function computeLeadScoreFromRules(leadId: number, orgId: number): Promise<ScoreBreakdownResult> {
-  const [lead] = await db.select().from(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.orgId, orgId)));
+export async function computeLeadScoreFromRules(leadId: number): Promise<ScoreBreakdownResult> {
+  const [lead] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId));
   if (!lead) throw new Error("Lead not found");
 
   const activities = await db
@@ -270,7 +270,7 @@ export async function computeLeadScoreFromRules(leadId: number, orgId: number): 
   const rules = await db
     .select()
     .from(leadScoringRulesTable)
-    .where(and(eq(leadScoringRulesTable.orgId, orgId), eq(leadScoringRulesTable.isActive, true)))
+    .where(eq(leadScoringRulesTable.isActive, true))
     .orderBy(leadScoringRulesTable.sortOrder);
 
   const scoredRules: ScoredRule[] = rules.map(rule => {
@@ -299,34 +299,57 @@ export async function computeLeadScoreFromRules(leadId: number, orgId: number): 
   score = Math.max(0, Math.min(100, Math.round(score)));
   breakdown.total = score;
 
-  const milestones = await db.select().from(leadScoreMilestonesTable)
-    .where(eq(leadScoreMilestonesTable.orgId, orgId))
-    .orderBy(leadScoreMilestonesTable.sortOrder);
+  const milestones = await db.select().from(leadScoreMilestonesTable).orderBy(leadScoreMilestonesTable.sortOrder);
   const milestone = milestones.find(m => score >= m.minScore && score <= m.maxScore) ?? null;
 
   return { score, rules: scoredRules, milestone, breakdown };
 }
 
-export async function recalculateLeadScore(leadId: number, orgId: number): Promise<number> {
+export async function recalculateLeadScore(leadId: number): Promise<number> {
   try {
-    const [anyRule] = await db.select({ id: leadScoringRulesTable.id })
-      .from(leadScoringRulesTable).where(eq(leadScoringRulesTable.orgId, orgId)).limit(1);
+    const [anyRule] = await db.select({ id: leadScoringRulesTable.id }).from(leadScoringRulesTable).limit(1);
     if (!anyRule) return 0;
-    const { score } = await computeLeadScoreFromRules(leadId, orgId);
-    await db.update(leadsTable).set({ score, updatedAt: new Date() })
-      .where(and(eq(leadsTable.id, leadId), eq(leadsTable.orgId, orgId)));
+    const { score } = await computeLeadScoreFromRules(leadId);
+    await db.update(leadsTable).set({ score, updatedAt: new Date() }).where(eq(leadsTable.id, leadId));
     return score;
   } catch {
     return 0;
   }
 }
 
-export async function seedDefaultScoringRules(orgId: number): Promise<void> {
+export async function seedDefaultScoringRules(): Promise<void> {
   try {
-    const [existing] = await db.select({ id: leadScoringRulesTable.id })
-      .from(leadScoringRulesTable).where(eq(leadScoringRulesTable.orgId, orgId)).limit(1);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS lead_scoring_rules (
+        id SERIAL PRIMARY KEY,
+        rule_type TEXT NOT NULL,
+        key TEXT NOT NULL UNIQUE,
+        label TEXT NOT NULL,
+        description TEXT,
+        points INTEGER NOT NULL DEFAULT 0,
+        params JSONB,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS lead_score_milestones (
+        id SERIAL PRIMARY KEY,
+        label TEXT NOT NULL,
+        min_score INTEGER NOT NULL,
+        max_score INTEGER NOT NULL,
+        color TEXT NOT NULL DEFAULT 'gray',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    const [existing] = await db.select({ id: leadScoringRulesTable.id }).from(leadScoringRulesTable).limit(1);
     if (!existing) {
-      const rules = [
+      await db.insert(leadScoringRulesTable).values([
         { ruleType: "activity", key: "call_completed",   label: "Completed Phone Call",       description: "A phone call was logged and completed",             points: 10, sortOrder: 10 },
         { ruleType: "activity", key: "email_sent",       label: "Email Activity Logged",       description: "An email was sent or received",                     points: 5,  sortOrder: 11 },
         { ruleType: "activity", key: "meeting_held",     label: "Meeting Completed",           description: "A meeting was held with the lead",                  points: 15, sortOrder: 12 },
@@ -359,18 +382,16 @@ export async function seedDefaultScoringRules(orgId: number): Promise<void> {
         { ruleType: "revenue", key: "revenue_100k_1m",     label: "Revenue $100K–$1M",  description: "Annual revenue $100K to $1M",   points: 4,  params: { min: 100000,    max: 999999  }, sortOrder: 51 },
         { ruleType: "revenue", key: "revenue_1m_10m",      label: "Revenue $1M–$10M",   description: "Annual revenue $1M to $10M",    points: 7,  params: { min: 1000000,   max: 9999999 }, sortOrder: 52 },
         { ruleType: "revenue", key: "revenue_10m_plus",    label: "Revenue > $10M",     description: "Annual revenue over $10M",      points: 10, params: { min: 10000000,  max: 999999999 }, sortOrder: 53 },
-      ];
-      await db.insert(leadScoringRulesTable).values(rules.map((r) => ({ ...r, orgId })));
+      ]);
     }
 
-    const [existingMilestone] = await db.select({ id: leadScoreMilestonesTable.id })
-      .from(leadScoreMilestonesTable).where(eq(leadScoreMilestonesTable.orgId, orgId)).limit(1);
+    const [existingMilestone] = await db.select({ id: leadScoreMilestonesTable.id }).from(leadScoreMilestonesTable).limit(1);
     if (!existingMilestone) {
       await db.insert(leadScoreMilestonesTable).values([
-        { orgId, label: "Cold",      minScore: 0,  maxScore: 25,  color: "blue",   sortOrder: 0 },
-        { orgId, label: "Warm",      minScore: 26, maxScore: 50,  color: "yellow", sortOrder: 1 },
-        { orgId, label: "Hot",       minScore: 51, maxScore: 75,  color: "orange", sortOrder: 2 },
-        { orgId, label: "Qualified", minScore: 76, maxScore: 100, color: "green",  sortOrder: 3 },
+        { label: "Cold",      minScore: 0,  maxScore: 25,  color: "blue",   sortOrder: 0 },
+        { label: "Warm",      minScore: 26, maxScore: 50,  color: "yellow", sortOrder: 1 },
+        { label: "Hot",       minScore: 51, maxScore: 75,  color: "orange", sortOrder: 2 },
+        { label: "Qualified", minScore: 76, maxScore: 100, color: "green",  sortOrder: 3 },
       ]);
     }
   } catch (err) {

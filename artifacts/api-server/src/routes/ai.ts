@@ -317,14 +317,13 @@ async function runTool(
   name: string,
   input: ToolInput,
   user: SessionUser,
-  orgId: number,
 ): Promise<unknown> {
   const limit = Math.min(Number(input.limit ?? 10) || 10, 50);
 
   switch (name) {
     case "search_leads": {
       const q = typeof input.query === "string" ? input.query.trim() : "";
-      const conds = [eq(leadsTable.orgId, orgId)];
+      const conds = [];
       if (q) {
         conds.push(
           or(
@@ -353,7 +352,7 @@ async function runTool(
 
     case "search_opportunities": {
       const q = typeof input.query === "string" ? input.query.trim() : "";
-      const conds = [eq(opportunitiesTable.orgId, orgId)];
+      const conds = [];
       if (q) {
         conds.push(
           or(ilike(opportunitiesTable.name, `%${q}%`), ilike(opportunitiesTable.description, `%${q}%`)),
@@ -382,7 +381,7 @@ async function runTool(
 
     case "search_accounts": {
       const q = typeof input.query === "string" ? input.query.trim() : "";
-      const conds = [eq(accountsTable.orgId, orgId)];
+      const conds = [];
       if (q) {
         conds.push(
           or(
@@ -412,7 +411,7 @@ async function runTool(
 
     case "search_contacts": {
       const q = typeof input.query === "string" ? input.query.trim() : "";
-      const conds = [eq(contactsTable.orgId, orgId)];
+      const conds = [];
       if (q) {
         conds.push(
           or(
@@ -442,23 +441,23 @@ async function runTool(
       if (!id) return { error: "Invalid id" };
       switch (type) {
         case "lead": {
-          const [row] = await db.select().from(leadsTable).where(and(eq(leadsTable.id, id), eq(leadsTable.orgId, orgId))).limit(1);
+          const [row] = await db.select().from(leadsTable).where(eq(leadsTable.id, id)).limit(1);
           return row ?? { error: "Lead not found" };
         }
         case "opportunity": {
-          const [row] = await db.select().from(opportunitiesTable).where(and(eq(opportunitiesTable.id, id), eq(opportunitiesTable.orgId, orgId))).limit(1);
+          const [row] = await db.select().from(opportunitiesTable).where(eq(opportunitiesTable.id, id)).limit(1);
           return row ? { ...row, amountFormatted: gbp(row.amount) } : { error: "Opportunity not found" };
         }
         case "account": {
-          const [row] = await db.select().from(accountsTable).where(and(eq(accountsTable.id, id), eq(accountsTable.orgId, orgId))).limit(1);
+          const [row] = await db.select().from(accountsTable).where(eq(accountsTable.id, id)).limit(1);
           return row ? { ...row, annualRevenueFormatted: gbp(row.annualRevenue) } : { error: "Account not found" };
         }
         case "contact": {
-          const [row] = await db.select().from(contactsTable).where(and(eq(contactsTable.id, id), eq(contactsTable.orgId, orgId))).limit(1);
+          const [row] = await db.select().from(contactsTable).where(eq(contactsTable.id, id)).limit(1);
           return row ?? { error: "Contact not found" };
         }
         case "activity": {
-          const [row] = await db.select().from(activitiesTable).where(and(eq(activitiesTable.id, id), eq(activitiesTable.orgId, orgId))).limit(1);
+          const [row] = await db.select().from(activitiesTable).where(eq(activitiesTable.id, id)).limit(1);
           return row ?? { error: "Activity not found" };
         }
         default:
@@ -467,7 +466,7 @@ async function runTool(
     }
 
     case "list_my_activities": {
-      const conds = [eq(activitiesTable.assignedTo, user.id), eq(activitiesTable.orgId, orgId)];
+      const conds = [eq(activitiesTable.assignedTo, user.id)];
       if (input.overdueOnly === true) {
         conds.push(eq(activitiesTable.status, "planned"));
         conds.push(lte(activitiesTable.dueDate, new Date()));
@@ -496,7 +495,7 @@ async function runTool(
           total: sql<number>`coalesce(sum(amount), 0)`,
         })
         .from(opportunitiesTable)
-        .where(and(sql`stage NOT IN ('closed_won', 'closed_lost')`, eq(opportunitiesTable.orgId, orgId)))
+        .where(sql`stage NOT IN ('closed_won', 'closed_lost')`)
         .groupBy(opportunitiesTable.stage);
       const grandTotal = rows.reduce((s, r) => s + Number(r.total), 0);
       return {
@@ -516,7 +515,6 @@ async function runTool(
           converted: sql<number>`count(*) filter (where is_converted = true)`,
         })
         .from(leadsTable)
-        .where(eq(leadsTable.orgId, orgId))
         .groupBy(leadsTable.source);
       return rows.map((r) => ({
         source: r.source ?? "(unknown)",
@@ -537,7 +535,7 @@ async function runTool(
         const q = Math.floor(now.getMonth() / 3);
         since = new Date(now.getFullYear(), q * 3, 1);
       } else if (period === "year") since = new Date(now.getFullYear(), 0, 1);
-      const conds = [eq(opportunitiesTable.stage, "closed_won"), eq(opportunitiesTable.orgId, orgId)];
+      const conds = [eq(opportunitiesTable.stage, "closed_won")];
       if (since) conds.push(gte(opportunitiesTable.closeDate, since));
       const [row] = await db
         .select({
@@ -562,7 +560,7 @@ async function runTool(
           probability: opportunitiesTable.probability, closeDate: opportunitiesTable.closeDate,
         })
         .from(opportunitiesTable)
-        .where(and(sql`stage NOT IN ('closed_won', 'closed_lost')`, eq(opportunitiesTable.orgId, orgId)))
+        .where(sql`stage NOT IN ('closed_won', 'closed_lost')`)
         .orderBy(sql`amount desc nulls last`)
         .limit(limit);
       return rows.map((r) => ({ ...r, amountFormatted: gbp(r.amount) }));
@@ -573,18 +571,18 @@ async function runTool(
         leadsC, contactsC, accountsC, oppsC, activitiesC, casesC, quotesC, ordersC,
         pipeline, won,
       ] = await Promise.all([
-        db.select({ c: sql<number>`count(*)` }).from(leadsTable).where(eq(leadsTable.orgId, orgId)),
-        db.select({ c: sql<number>`count(*)` }).from(contactsTable).where(eq(contactsTable.orgId, orgId)),
-        db.select({ c: sql<number>`count(*)` }).from(accountsTable).where(eq(accountsTable.orgId, orgId)),
-        db.select({ c: sql<number>`count(*)` }).from(opportunitiesTable).where(eq(opportunitiesTable.orgId, orgId)),
-        db.select({ c: sql<number>`count(*)` }).from(activitiesTable).where(eq(activitiesTable.orgId, orgId)),
-        db.select({ c: sql<number>`count(*)` }).from(casesTable).where(eq(casesTable.orgId, orgId)),
-        db.select({ c: sql<number>`count(*)` }).from(quotesTable).where(eq(quotesTable.orgId, orgId)),
-        db.select({ c: sql<number>`count(*)` }).from(ordersTable).where(eq(ordersTable.orgId, orgId)),
+        db.select({ c: sql<number>`count(*)` }).from(leadsTable),
+        db.select({ c: sql<number>`count(*)` }).from(contactsTable),
+        db.select({ c: sql<number>`count(*)` }).from(accountsTable),
+        db.select({ c: sql<number>`count(*)` }).from(opportunitiesTable),
+        db.select({ c: sql<number>`count(*)` }).from(activitiesTable),
+        db.select({ c: sql<number>`count(*)` }).from(casesTable),
+        db.select({ c: sql<number>`count(*)` }).from(quotesTable),
+        db.select({ c: sql<number>`count(*)` }).from(ordersTable),
         db.select({ t: sql<number>`coalesce(sum(amount), 0)` }).from(opportunitiesTable)
-          .where(and(sql`stage NOT IN ('closed_won', 'closed_lost')`, eq(opportunitiesTable.orgId, orgId))),
+          .where(sql`stage NOT IN ('closed_won', 'closed_lost')`),
         db.select({ c: sql<number>`count(*)`, r: sql<number>`coalesce(sum(amount), 0)` })
-          .from(opportunitiesTable).where(and(eq(opportunitiesTable.stage, "closed_won"), eq(opportunitiesTable.orgId, orgId))),
+          .from(opportunitiesTable).where(eq(opportunitiesTable.stage, "closed_won")),
       ]);
       return {
         counts: {
@@ -604,7 +602,6 @@ async function runTool(
     /* ---------- WRITE TOOLS ---------- */
     case "create_lead": {
       const [row] = await db.insert(leadsTable).values({
-        orgId,
         firstName: String(input.firstName),
         lastName: String(input.lastName),
         email: input.email ? String(input.email) : null,
@@ -632,14 +629,13 @@ async function runTool(
       if (typeof input.company === "string") patch.company = input.company;
       if (typeof input.title === "string") patch.title = input.title;
       if (typeof input.description === "string") patch.description = input.description;
-      const [row] = await db.update(leadsTable).set(patch).where(and(eq(leadsTable.id, id), eq(leadsTable.orgId, orgId))).returning();
+      const [row] = await db.update(leadsTable).set(patch).where(eq(leadsTable.id, id)).returning();
       if (!row) return { error: "Lead not found" };
       return { ok: true, updated: "lead", lead: row };
     }
 
     case "create_contact": {
       const [row] = await db.insert(contactsTable).values({
-        orgId,
         firstName: String(input.firstName),
         lastName: String(input.lastName),
         email: input.email ? String(input.email) : null,
@@ -655,7 +651,6 @@ async function runTool(
 
     case "create_opportunity": {
       const [row] = await db.insert(opportunitiesTable).values({
-        orgId,
         name: String(input.name),
         accountId: typeof input.accountId === "number" ? input.accountId : null,
         contactId: typeof input.contactId === "number" ? input.contactId : null,
@@ -679,14 +674,13 @@ async function runTool(
       if (typeof input.probability === "number") patch.probability = input.probability;
       if (typeof input.closeDate === "string") patch.closeDate = new Date(input.closeDate);
       if (typeof input.nextStep === "string") patch.nextStep = input.nextStep;
-      const [row] = await db.update(opportunitiesTable).set(patch).where(and(eq(opportunitiesTable.id, id), eq(opportunitiesTable.orgId, orgId))).returning();
+      const [row] = await db.update(opportunitiesTable).set(patch).where(eq(opportunitiesTable.id, id)).returning();
       if (!row) return { error: "Opportunity not found" };
       return { ok: true, updated: "opportunity", opportunity: row };
     }
 
     case "create_activity": {
       const [row] = await db.insert(activitiesTable).values({
-        orgId,
         type: String(input.type),
         subject: String(input.subject),
         description: input.description ? String(input.description) : null,
@@ -706,7 +700,7 @@ async function runTool(
       if (!id) return { error: "id required" };
       const [row] = await db.update(activitiesTable)
         .set({ status: "completed", completedAt: new Date(), updatedAt: new Date() })
-        .where(and(eq(activitiesTable.id, id), eq(activitiesTable.orgId, orgId)))
+        .where(eq(activitiesTable.id, id))
         .returning();
       if (!row) return { error: "Activity not found" };
       return { ok: true, updated: "activity", activity: row };
@@ -736,7 +730,6 @@ interface AnthropicMessage {
 router.post("/ai/chat", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const user = getSessionUser(req)!;
-  const orgId = req.orgId as number;
 
   if (!anthropicConfigured) {
     res.status(503).json({ error: "AI assistant not configured. Set AI_INTEGRATIONS_ANTHROPIC_API_KEY to enable it." });
@@ -812,7 +805,7 @@ Guidelines:
       const toolResults = await Promise.all(
         toolUses.map(async (tu) => {
           try {
-            const result = await runTool(tu.name, tu.input ?? {}, user, orgId);
+            const result = await runTool(tu.name, tu.input ?? {}, user);
             return { tool_use_id: tu.id, content: JSON.stringify(result).slice(0, 12000) };
           } catch (err) {
             req.log.error({ err, tool: tu.name }, "tool execution failed");
@@ -853,7 +846,6 @@ router.post("/ai/summary", async (req, res) => {
   }
 
   try {
-    const orgId = req.orgId as number;
     const { entityType, context } = req.body as { entityType: string; context?: string };
     if (!entityType || typeof entityType !== "string") {
       res.status(400).json({ error: "entityType is required" });
@@ -870,21 +862,20 @@ router.post("/ai/summary", async (req, res) => {
           contactedCount: sql<number>`count(*) filter (where status = 'contacted')`,
           qualifiedCount: sql<number>`count(*) filter (where status = 'qualified')`,
           avgScore: sql<number>`coalesce(avg(score), 0)`,
-        }).from(leadsTable).where(eq(leadsTable.orgId, orgId));
+        }).from(leadsTable);
         dataContext = `Leads: ${stats[0].total} total, ${stats[0].newCount} new, ${stats[0].contactedCount} contacted, ${stats[0].qualifiedCount} qualified. Average score: ${Math.round(Number(stats[0].avgScore))}.`;
         break;
       }
       case "contacts": {
-        const stats = await db.select({ total: sql<number>`count(*)` }).from(contactsTable).where(eq(contactsTable.orgId, orgId));
-        const withAccount = await db.select({ count: sql<number>`count(*)` }).from(contactsTable)
-          .where(and(sql`account_id is not null`, eq(contactsTable.orgId, orgId)));
+        const stats = await db.select({ total: sql<number>`count(*)` }).from(contactsTable);
+        const withAccount = await db.select({ count: sql<number>`count(*)` }).from(contactsTable).where(sql`account_id is not null`);
         dataContext = `Contacts: ${stats[0].total} total, ${withAccount[0].count} linked to accounts.`;
         break;
       }
       case "accounts": {
         const stats = await db.select({
           total: sql<number>`count(*)`,
-        }).from(accountsTable).where(eq(accountsTable.orgId, orgId));
+        }).from(accountsTable);
         dataContext = `Accounts: ${stats[0].total} total.`;
         break;
       }
@@ -896,7 +887,7 @@ router.post("/ai/summary", async (req, res) => {
           lostCount: sql<number>`count(*) filter (where stage = 'closed_lost')`,
           totalPipeline: sql<number>`coalesce(sum(case when stage not in ('closed_won', 'closed_lost') then amount else 0 end), 0)`,
           avgProbability: sql<number>`coalesce(avg(probability), 0)`,
-        }).from(opportunitiesTable).where(eq(opportunitiesTable.orgId, orgId));
+        }).from(opportunitiesTable);
         const s = stats[0];
         const winRate = (Number(s.wonCount) + Number(s.lostCount)) > 0
           ? Math.round(Number(s.wonCount) / (Number(s.wonCount) + Number(s.lostCount)) * 100)
@@ -909,7 +900,7 @@ router.post("/ai/summary", async (req, res) => {
           total: sql<number>`count(*)`,
           planned: sql<number>`count(*) filter (where status = 'planned')`,
           completed: sql<number>`count(*) filter (where status = 'completed')`,
-        }).from(activitiesTable).where(eq(activitiesTable.orgId, orgId));
+        }).from(activitiesTable);
         dataContext = `Activities: ${stats[0].total} total, ${stats[0].planned} planned, ${stats[0].completed} completed.`;
         break;
       }
@@ -920,7 +911,7 @@ router.post("/ai/summary", async (req, res) => {
           sent: sql<number>`count(*) filter (where status = 'sent')`,
           accepted: sql<number>`count(*) filter (where status = 'accepted')`,
           totalValue: sql<number>`coalesce(sum(total), 0)`,
-        }).from(quotesTable).where(eq(quotesTable.orgId, orgId));
+        }).from(quotesTable);
         dataContext = `Quotes: ${stats[0].total} total, ${stats[0].draft} draft, ${stats[0].sent} sent, ${stats[0].accepted} accepted. Total value: £${Number(stats[0].totalValue).toLocaleString()}.`;
         break;
       }
@@ -957,7 +948,6 @@ router.post("/ai/summary", async (req, res) => {
 router.post("/ai/next-actions", async (req, res) => {
   if (!requireAuth(req, res)) return;
   const user = getSessionUser(req)!;
-  const orgId = req.orgId as number;
   try {
     const { entityType, id } = req.body as { entityType?: string; id?: number };
     if (!entityType || !id || !["lead","opportunity","contact","account"].includes(entityType)) {
@@ -970,33 +960,33 @@ router.post("/ai/next-actions", async (req, res) => {
     let recentActs: Array<{ type: string; subject: string; status: string; dueDate: Date | null; completedAt: Date | null; createdAt: Date }> = [];
 
     if (entityType === "lead") {
-      const [row] = await db.select().from(leadsTable).where(and(eq(leadsTable.id, id), eq(leadsTable.orgId, orgId))).limit(1);
+      const [row] = await db.select().from(leadsTable).where(eq(leadsTable.id, id)).limit(1);
       entity = row as unknown as Record<string, unknown>;
       recentActs = await db.select({
         type: activitiesTable.type, subject: activitiesTable.subject, status: activitiesTable.status,
         dueDate: activitiesTable.dueDate, completedAt: activitiesTable.completedAt, createdAt: activitiesTable.createdAt,
-      }).from(activitiesTable).where(and(eq(activitiesTable.leadId, id), eq(activitiesTable.orgId, orgId))).orderBy(desc(activitiesTable.createdAt)).limit(10);
+      }).from(activitiesTable).where(eq(activitiesTable.leadId, id)).orderBy(desc(activitiesTable.createdAt)).limit(10);
     } else if (entityType === "opportunity") {
-      const [row] = await db.select().from(opportunitiesTable).where(and(eq(opportunitiesTable.id, id), eq(opportunitiesTable.orgId, orgId))).limit(1);
+      const [row] = await db.select().from(opportunitiesTable).where(eq(opportunitiesTable.id, id)).limit(1);
       entity = row as unknown as Record<string, unknown>;
       recentActs = await db.select({
         type: activitiesTable.type, subject: activitiesTable.subject, status: activitiesTable.status,
         dueDate: activitiesTable.dueDate, completedAt: activitiesTable.completedAt, createdAt: activitiesTable.createdAt,
-      }).from(activitiesTable).where(and(eq(activitiesTable.opportunityId, id), eq(activitiesTable.orgId, orgId))).orderBy(desc(activitiesTable.createdAt)).limit(10);
+      }).from(activitiesTable).where(eq(activitiesTable.opportunityId, id)).orderBy(desc(activitiesTable.createdAt)).limit(10);
     } else if (entityType === "contact") {
-      const [row] = await db.select().from(contactsTable).where(and(eq(contactsTable.id, id), eq(contactsTable.orgId, orgId))).limit(1);
+      const [row] = await db.select().from(contactsTable).where(eq(contactsTable.id, id)).limit(1);
       entity = row as unknown as Record<string, unknown>;
       recentActs = await db.select({
         type: activitiesTable.type, subject: activitiesTable.subject, status: activitiesTable.status,
         dueDate: activitiesTable.dueDate, completedAt: activitiesTable.completedAt, createdAt: activitiesTable.createdAt,
-      }).from(activitiesTable).where(and(eq(activitiesTable.contactId, id), eq(activitiesTable.orgId, orgId))).orderBy(desc(activitiesTable.createdAt)).limit(10);
+      }).from(activitiesTable).where(eq(activitiesTable.contactId, id)).orderBy(desc(activitiesTable.createdAt)).limit(10);
     } else if (entityType === "account") {
-      const [row] = await db.select().from(accountsTable).where(and(eq(accountsTable.id, id), eq(accountsTable.orgId, orgId))).limit(1);
+      const [row] = await db.select().from(accountsTable).where(eq(accountsTable.id, id)).limit(1);
       entity = row as unknown as Record<string, unknown>;
       recentActs = await db.select({
         type: activitiesTable.type, subject: activitiesTable.subject, status: activitiesTable.status,
         dueDate: activitiesTable.dueDate, completedAt: activitiesTable.completedAt, createdAt: activitiesTable.createdAt,
-      }).from(activitiesTable).where(and(eq(activitiesTable.accountId, id), eq(activitiesTable.orgId, orgId))).orderBy(desc(activitiesTable.createdAt)).limit(10);
+      }).from(activitiesTable).where(eq(activitiesTable.accountId, id)).orderBy(desc(activitiesTable.createdAt)).limit(10);
     }
 
     if (!entity) {

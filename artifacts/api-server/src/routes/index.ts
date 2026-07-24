@@ -42,12 +42,16 @@ import productBundlesRouter from "./product-bundles";
 import socialMessagesRouter from "./social-messages";
 import cpqSettingsRouter from "./cpq-settings";
 import quoteTeamRouter from "./quote-team";
+import quoteWorkflowRulesRouter from "./quote-workflow-rules";
+import quoteStagesAdminRouter from "./quote-stages-admin";
+import integrationsRouter from "./integrations";
+import integrationWebhooksRouter from "./integration-webhooks";
+import integrationWebToLeadRouter from "./integration-web-to-lead";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 import { seedStandardPricing } from "../lib/pricing";
 import { seedAppModules } from "../lib/app-modules";
 import { seedDefaultScoringRules } from "../lib/lead-scoring";
-import { getDefaultOrgId } from "../lib/org-context";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
@@ -96,20 +100,59 @@ router.use(productBundlesRouter);
 router.use(socialMessagesRouter);
 router.use(cpqSettingsRouter);
 router.use(quoteTeamRouter);
+router.use(quoteWorkflowRulesRouter);
+router.use(quoteStagesAdminRouter);
+router.use(integrationsRouter);
+router.use(integrationWebhooksRouter);
+router.use(integrationWebToLeadRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
-// access on startup — scoped to the pre-multitenancy Default Organization.
-// New orgs are seeded on creation via seedOrgDefaults() in routes/organizations.ts.
+// access on startup.
+void seedAccessControl();
+void seedRecordAccess();
+void seedStandardPricing();
+void seedAppModules();
+void seedDefaultScoringRules();
+
+// app_modules table — recreate with correct schema matching Drizzle (key as PK, no id column)
 void (async () => {
   try {
-    const defaultOrgId = await getDefaultOrgId();
-    await seedAccessControl(defaultOrgId);
-    await seedRecordAccess(defaultOrgId);
-    await seedStandardPricing(defaultOrgId);
-    await seedAppModules(defaultOrgId);
-    await seedDefaultScoringRules(defaultOrgId);
+    // Drop old table if it has the wrong schema (id SERIAL PK instead of key TEXT PK)
+    await db.execute(sql`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'app_modules' AND column_name = 'id'
+        ) THEN
+          DROP TABLE app_modules;
+        END IF;
+      END $$
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS app_modules (
+        key TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        is_core BOOLEAN NOT NULL DEFAULT FALSE,
+        sort_order INTEGER NOT NULL DEFAULT 100,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    // Seed default modules
+    await db.execute(sql`
+      INSERT INTO app_modules (key, label, description, is_enabled, is_core, sort_order) VALUES
+        ('crm_sales',  'CRM Sales',                  'Core CRM features: Leads, Contacts, Accounts, Opportunities, Activities, Campaigns, Reports and AI Assistant. Always active.',                                      TRUE,  TRUE,  10),
+        ('quotes',     'Quote Management',            'Create, configure and send pricing quotes. Includes approval workflows and PDF generation.',                                                                         TRUE,  FALSE, 20),
+        ('orders',     'Order Management',            'Track customer orders from placement to fulfilment. Syncs with Quotes and Opportunities.',                                                                           TRUE,  FALSE, 30),
+        ('contracts',  'Contract Management',         'Full contract lifecycle management — Draft, Under Review, Active, Expired and Terminated. Enabling this module activates the complete lifecycle workflow.',          TRUE,  FALSE, 40),
+        ('cpq',        'CPQ (Configure-Price-Quote)', 'Advanced guided selling, product configurator, quote line editor, pricing rules and CPQ dashboard. Enable for customers who need Salesforce-style CPQ workflows.',  FALSE, FALSE, 50)
+      ON CONFLICT (key) DO NOTHING
+    `);
+    console.log("[Migrate] app_modules table ready");
   } catch (err) {
-    console.error("[Migrate] default-org seed:", err);
+    console.error("[Migrate] app_modules:", err);
   }
 })();
 
@@ -125,38 +168,19 @@ void (async () => {
   }
 })();
 
-// admin_settings table + CPQ seed (idempotent) — org-scoped: composite (org_id, key) PK
+// admin_settings table + CPQ seed (idempotent)
 void (async () => {
   try {
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS admin_settings (
-        org_id INTEGER NOT NULL DEFAULT 1,
-        key TEXT NOT NULL,
+        key TEXT PRIMARY KEY,
         value TEXT NOT NULL DEFAULT '',
-        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (org_id, key)
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
-    await db.execute(sql`ALTER TABLE admin_settings ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
     await db.execute(sql`
-      DO $$
-      BEGIN
-        IF EXISTS (
-          SELECT 1 FROM information_schema.table_constraints
-          WHERE table_name = 'admin_settings' AND constraint_type = 'PRIMARY KEY' AND constraint_name = 'admin_settings_pkey'
-        ) AND NOT EXISTS (
-          SELECT 1 FROM information_schema.key_column_usage
-          WHERE table_name = 'admin_settings' AND constraint_name = 'admin_settings_pkey' AND column_name = 'org_id'
-        ) THEN
-          ALTER TABLE admin_settings DROP CONSTRAINT admin_settings_pkey;
-          ALTER TABLE admin_settings ADD PRIMARY KEY (org_id, key);
-        END IF;
-      END $$
-    `);
-    const defaultOrgId = await getDefaultOrgId();
-    await db.execute(sql`
-      INSERT INTO admin_settings (org_id, key, value) VALUES (${defaultOrgId}, 'cpq_enabled', 'false')
-      ON CONFLICT (org_id, key) DO NOTHING
+      INSERT INTO admin_settings (key, value) VALUES ('cpq_enabled', 'false')
+      ON CONFLICT (key) DO NOTHING
     `);
     console.log("[Migrate] admin_settings table ready");
   } catch (err) {
@@ -280,9 +304,6 @@ void (async () => {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
-    for (const t of ["clm_templates", "clm_reviews", "clm_signers", "clm_redlines", "clm_workflow_rules", "clm_notification_rules"]) {
-      await db.execute(sql.raw(`ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`));
-    }
     // Extend contracts table with CLM fields (idempotent column additions)
     const clmColumns = [
       `ALTER TABLE contracts ADD COLUMN IF NOT EXISTS contract_type TEXT`,
@@ -475,13 +496,6 @@ void (async () => {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
-    for (const t of [
-      "stims_fiscal_periods", "stims_target_cycles", "stims_quotas", "stims_incentive_plans",
-      "stims_plan_tiers", "stims_plan_assignments", "stims_attainment", "stims_calc_runs",
-      "stims_payout_lines", "stims_disputes", "stims_ramp_templates",
-    ]) {
-      await db.execute(sql.raw(`ALTER TABLE ${t} ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`));
-    }
     console.log("[Migrate] STIMS tables ready");
   } catch (err) {
     console.error("[Migrate] STIMS:", err);
@@ -514,8 +528,6 @@ void (async () => {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
-    await db.execute(sql`ALTER TABLE product_bundles ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
-    await db.execute(sql`ALTER TABLE product_bundle_items ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
     console.log("[Migrate] product_bundles tables ready");
   } catch (err) {
     console.error("[Migrate] product_bundles:", err);
@@ -588,7 +600,6 @@ void (async () => {
       )
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS qa_quote_id_idx ON quote_attachments(quote_id)`);
-    await db.execute(sql`ALTER TABLE quote_attachments ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
     console.log("[Migrate] quote_attachments table ready");
   } catch (err) {
     console.error("[Migrate] quote_attachments:", err);
@@ -622,7 +633,6 @@ void (async () => {
       )
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS la_lead_id_idx ON lead_attachments(lead_id)`);
-    await db.execute(sql`ALTER TABLE lead_attachments ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
     console.log("[Migrate] lead_attachments table ready");
   } catch (err) {
     console.error("[Migrate] lead_attachments:", err);
@@ -665,10 +675,188 @@ void (async () => {
       )
     `);
     await db.execute(sql`CREATE INDEX IF NOT EXISTS oa_opp_id_idx ON opportunity_attachments(opportunity_id)`);
-    await db.execute(sql`ALTER TABLE opportunity_attachments ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1`);
     console.log("[Migrate] opportunity_attachments table ready");
   } catch (err) {
     console.error("[Migrate] opportunity_attachments:", err);
+  }
+})();
+
+// Quote stage history migration (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS quote_stage_history (
+        id SERIAL PRIMARY KEY,
+        quote_id INTEGER NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+        stage TEXT NOT NULL,
+        entered_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        left_at TIMESTAMP
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS qsh_quote_id_idx ON quote_stage_history(quote_id)`);
+    console.log("[Migrate] quote_stage_history table ready");
+  } catch (err) {
+    console.error("[Migrate] quote_stage_history:", err);
+  }
+})();
+
+// Lead stage history migration (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS lead_stage_history (
+        id SERIAL PRIMARY KEY,
+        lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+        stage TEXT NOT NULL,
+        entered_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        left_at TIMESTAMP
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS lsh_lead_id_idx ON lead_stage_history(lead_id)`);
+    console.log("[Migrate] lead_stage_history table ready");
+  } catch (err) {
+    console.error("[Migrate] lead_stage_history:", err);
+  }
+})();
+
+// Quote workflow rules table (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS quote_workflow_rules (
+        id SERIAL PRIMARY KEY,
+        stage TEXT NOT NULL,
+        rule_type TEXT NOT NULL CHECK (rule_type IN ('activity','approval')),
+        activity_type TEXT,
+        activity_title TEXT,
+        activity_due_days INTEGER DEFAULT 1,
+        assign_to_role TEXT,
+        assign_to_user_id INTEGER,
+        approval_required BOOLEAN DEFAULT FALSE,
+        approval_email_subject TEXT,
+        approval_email_body TEXT,
+        approver_role TEXT,
+        approver_user_id INTEGER,
+        advance_to_stage TEXT,
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS qwr_stage_idx ON quote_workflow_rules(stage)`);
+    console.log("[Migrate] quote_workflow_rules table ready");
+  } catch (err) { console.error("[Migrate] quote_workflow_rules:", err); }
+})();
+
+// Add rejection_reason column to quotes table (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS rejection_reason TEXT`);
+    console.log("[Migrate] quotes.rejection_reason column ready");
+  } catch (err) {
+    console.error("[Migrate] quotes.rejection_reason:", err);
+  }
+})();
+
+// Quote stage config table — dynamic stage management
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS quote_stage_config (
+        id SERIAL PRIMARY KEY,
+        stage_id TEXT NOT NULL UNIQUE,
+        label TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        position INTEGER NOT NULL DEFAULT 100,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        is_system BOOLEAN NOT NULL DEFAULT FALSE,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    // Seed default system stages (idempotent)
+    await db.execute(sql`
+      INSERT INTO quote_stage_config (stage_id, label, description, position, is_active, is_system) VALUES
+        ('draft',        'Draft',        'Initial draft, not yet submitted',  10,  TRUE, TRUE),
+        ('needs_review', 'Needs Review', 'Submitted for internal review',     20,  TRUE, TRUE),
+        ('in_review',   'In Review',    'Being reviewed by manager',          30,  TRUE, TRUE),
+        ('approved',    'Approved',     'Internally approved',                40,  TRUE, TRUE),
+        ('presented',   'Presented',    'Sent to customer',                   50,  TRUE, TRUE),
+        ('accepted',    'Accepted',     'Customer accepted',                  60,  TRUE, TRUE),
+        ('rejected',    'Rejected',     'Customer rejected',                  70,  TRUE, TRUE)
+      ON CONFLICT (stage_id) DO NOTHING
+    `);
+    console.log("[Migrate] quote_stage_config table ready");
+  } catch (err) {
+    console.error("[Migrate] quote_stage_config:", err);
+  }
+})();
+
+// Integration Framework tables (idempotent) — partner profiles, versioned
+// mapping templates, run log, audit log.
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS integration_partners (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        slug TEXT NOT NULL UNIQUE,
+        description TEXT NOT NULL DEFAULT '',
+        webhook_secret_encrypted TEXT NOT NULL,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_by INTEGER,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS integration_mapping_templates (
+        id SERIAL PRIMARY KEY,
+        partner_id INTEGER NOT NULL REFERENCES integration_partners(id) ON DELETE CASCADE,
+        entity_type TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'draft',
+        definition JSONB NOT NULL,
+        created_by INTEGER,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        activated_at TIMESTAMP
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS imt_partner_entity_idx ON integration_mapping_templates(partner_id, entity_type)`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS integration_run_log (
+        id SERIAL PRIMARY KEY,
+        partner_id INTEGER REFERENCES integration_partners(id) ON DELETE SET NULL,
+        template_id INTEGER,
+        entity_type TEXT NOT NULL,
+        status TEXT NOT NULL,
+        request_payload JSONB,
+        mapped_output JSONB,
+        errors JSONB,
+        crm_entity_id INTEGER,
+        duration_ms INTEGER NOT NULL DEFAULT 0,
+        correlation_id TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS irl_partner_idx ON integration_run_log(partner_id)`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS irl_created_at_idx ON integration_run_log(created_at)`);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS integration_audit_log (
+        id SERIAL PRIMARY KEY,
+        actor_id INTEGER,
+        actor_name TEXT,
+        action TEXT NOT NULL,
+        resource_type TEXT NOT NULL,
+        resource_id TEXT NOT NULL,
+        before_state JSONB,
+        after_state JSONB,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`ALTER TABLE integration_partners ADD COLUMN IF NOT EXISTS allow_public_form BOOLEAN NOT NULL DEFAULT FALSE`);
+    console.log("[Migrate] integration framework tables ready");
+  } catch (err) {
+    console.error("[Migrate] integration framework:", err);
   }
 })();
 

@@ -2,7 +2,6 @@ import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
 
 export const leadScoreMilestonesTable = pgTable("lead_score_milestones", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   label: text("label").notNull(),
   minScore: integer("min_score").notNull(),
   maxScore: integer("max_score").notNull(),

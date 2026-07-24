@@ -115,6 +115,7 @@ async function sendApprovalEmail(opts: {
   level: number;
   isMultiLevelNext: boolean;
   actor: ActorInfo;
+  requestId?: number;
   appUrl?: string;
 }) {
   if (opts.to.length === 0) return { sent: false, reason: "no recipients" };
@@ -125,12 +126,17 @@ async function sendApprovalEmail(opts: {
     host: smtp.host, port: smtp.port, secure: smtp.secure,
     auth: { user: smtp.user, pass: smtp.pass },
   });
-  const subject = `${opts.isMultiLevelNext ? "Next-level " : ""}Approval needed — ${opts.summary.title} (L${opts.level})`;
+  const approvalRef = opts.requestId != null ? ` [APPROVAL-${opts.requestId}]` : "";
+  const subject = `${opts.isMultiLevelNext ? "Next-level " : ""}Approval needed — ${opts.summary.title} (L${opts.level})${approvalRef}`;
   const detailRows = opts.summary.details
     .map(([k, v]) => `<tr><td style="padding:6px 10px;color:#666;border-bottom:1px solid #eee;">${k}</td><td style="padding:6px 10px;font-weight:600;border-bottom:1px solid #eee;">${v}</td></tr>`)
     .join("");
   const actorLine = opts.actor.name || opts.actor.email
     ? `<p style="margin:0 0 8px;color:#444;">Requested by <strong>${opts.actor.name ?? opts.actor.email}</strong>.</p>`
+    : "";
+  const replyInstructions = opts.requestId != null
+    ? `<hr style="margin:16px 0;border:none;border-top:1px solid #eee;">
+       <p style="color:#444;font-size:13px;"><strong>To respond by email:</strong> Reply with <code>APPROVE</code> to approve, or <code>REJECT: your reason</code> to reject.<br>Ref: <code>[APPROVAL-${opts.requestId}]</code></p>`
     : "";
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;color:#222;">
@@ -139,6 +145,7 @@ async function sendApprovalEmail(opts: {
       ${actorLine}
       <table style="width:100%;border-collapse:collapse;margin:12px 0;">${detailRows}</table>
       <p style="margin:16px 0 0;color:#444;">Open the CRM and go to the Approvals tab on the ${opts.summary.entity} to approve or reject this request.</p>
+      ${replyInstructions}
       <p style="color:#888;font-size:12px;margin-top:24px;">— arbormind.in CRM</p>
     </div>`;
   try {
@@ -248,6 +255,7 @@ export async function evaluateApprovalsForEntity(
         level: stepToOpen.level,
         isMultiLevelNext: false,
         actor,
+        requestId: reqRow.id,
       });
       if (result.sent) emailed++;
     }
@@ -322,6 +330,7 @@ export async function advanceMultiLevelApproval(
       level: next.level,
       isMultiLevelNext: true,
       actor,
+      requestId: created.id,
     });
 
     return { advanced: true, nextRequestId: created.id };

@@ -4,31 +4,28 @@ import { z } from "zod/v4";
 
 export const approvalRolesTable = pgTable("approval_roles", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   name: text("name").notNull(),
   level: integer("level").notNull().default(1),
   description: text("description"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => ({
-  nameIdx: uniqueIndex("approval_roles_name_idx").on(t.orgId, t.name),
+  nameIdx: uniqueIndex("approval_roles_name_idx").on(t.name),
 }));
 
 export const approvalConfigsTable = pgTable("approval_configs", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   entity: text("entity").notNull(),
   multiLevel: boolean("multi_level").notNull().default(false),
   enabled: boolean("enabled").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => ({
-  entityIdx: uniqueIndex("approval_configs_entity_idx").on(t.orgId, t.entity),
+  entityIdx: uniqueIndex("approval_configs_entity_idx").on(t.entity),
 }));
 
 export const approvalCriteriaTable = pgTable("approval_criteria", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
   entity: text("entity").notNull(),
   name: text("name").notNull(),
   field: text("field").notNull(),
