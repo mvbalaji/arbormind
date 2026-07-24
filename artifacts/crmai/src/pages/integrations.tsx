@@ -489,7 +489,7 @@ function IntegrationDashboard({
     for (const r of runs) {
       const s = map.get(r.partner_id);
       if (!s) continue;
-      s[r.status as keyof typeof s] = (s[r.status as keyof typeof s] as number) + 1;
+      (s as unknown as Record<string, number>)[r.status] = ((s as unknown as Record<string, number>)[r.status] ?? 0) + 1;
       if (!s.lastRun || r.created_at > s.lastRun) { s.lastRun = r.created_at; s.lastStatus = r.status; }
     }
     return map;

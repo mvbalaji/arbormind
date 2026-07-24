@@ -224,7 +224,7 @@ export function QuoteWorkflowAdminInline() {
             </h2>
             <Badge variant="outline" className="text-xs">{shownRules.length}</Badge>
           </div>
-          <Button size="sm" onClick={() => activeTab !== "stages" && openNew(activeTab)}
+          <Button size="sm" onClick={() => openNew(activeTab as RuleType)}
             className={activeTab === "activity" ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-amber-500 hover:bg-amber-600 text-white"}>
             <Plus className="w-3.5 h-3.5 mr-1" /> Add Rule
           </Button>
@@ -237,7 +237,7 @@ export function QuoteWorkflowAdminInline() {
               ? <ListTodo className="w-8 h-8 text-muted-foreground/40" />
               : <Mail className="w-8 h-8 text-muted-foreground/40" />}
             <p className="text-sm text-muted-foreground">No {activeTab === "activity" ? "activity" : "approval"} rules yet.</p>
-            <Button size="sm" variant="outline" onClick={() => activeTab !== "stages" && openNew(activeTab)}>
+            <Button size="sm" variant="outline" onClick={() => openNew(activeTab as RuleType)}>
               <Plus className="w-3.5 h-3.5 mr-1" /> Add your first rule
             </Button>
           </Card>
@@ -285,6 +285,7 @@ export function QuoteWorkflowAdminInline() {
             <RuleForm
               rule={editing}
               users={users}
+              stages={STAGES}
               onChange={setEditing}
               onSave={() => saveMutation.mutate(editing)}
               onCancel={() => { setDialogOpen(false); setEditing(null); }}
@@ -362,8 +363,9 @@ function RuleRow({ rule, users, onEdit, onDelete, onToggle, activeTab }: {
   );
 }
 
-function RuleForm({ rule, users, onChange, onSave, onCancel, saving }: {
+function RuleForm({ rule, users, stages, onChange, onSave, onCancel, saving }: {
   rule: Partial<Rule>; users: { id: number; name: string; role: string }[];
+  stages: { id: string; label: string; desc: string }[];
   onChange: (r: Partial<Rule>) => void; onSave: () => void; onCancel: () => void; saving: boolean;
 }) {
   const set = (patch: Partial<Rule>) => onChange({ ...rule, ...patch });
@@ -377,7 +379,7 @@ function RuleForm({ rule, users, onChange, onSave, onCancel, saving }: {
         <Select value={rule.stage ?? ""} onValueChange={v => set({ stage: v })}>
           <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select stage…" /></SelectTrigger>
           <SelectContent>
-            {STAGES.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+            {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">This rule fires when a quote enters this stage.</p>
@@ -471,7 +473,7 @@ function RuleForm({ rule, users, onChange, onSave, onCancel, saving }: {
               <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="No auto-advance…" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none">— No auto-advance —</SelectItem>
-                {STAGES.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                {stages.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">When the approver replies APPROVE, quote moves to this stage automatically.</p>
