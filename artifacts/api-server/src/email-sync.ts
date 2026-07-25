@@ -134,13 +134,13 @@ async function getImapConfig(settings: Record<string, unknown> | null) {
   // Per-tenant DB-stored credentials are used when an admin has explicitly configured them via
   // the email_settings UI. Otherwise, fall back to env-var credentials (IMAP_PASSWORD secret).
   // There is NO hardcoded password fallback — see DEFAULT_IMAP above.
-  if (settings?.imapUser && settings?.imapPassword) {
+  if (settings?.imap_user && settings?.imap_password) {
     return {
-      host: settings.imapHost,
-      port: settings.imapPort,
-      secure: settings.imapSecure,
-      user: settings.imapUser,
-      pass: settings.imapPassword,
+      host: settings.imap_host,
+      port: settings.imap_port,
+      secure: settings.imap_secure,
+      user: settings.imap_user,
+      pass: settings.imap_password,
     };
   }
   return {
@@ -470,7 +470,8 @@ export async function startEmailPoller() {
 
   const orgId = await getDefaultOrgId();
   const settings = await getSettings(orgId);
-  const hasDbCreds = settings?.imapUser && settings?.imapPassword;
+  // getSettings() returns raw SQL rows — keys are snake_case, not camelCase.
+  const hasDbCreds = settings?.imap_user && settings?.imap_password;
   const hasEnvCreds = DEFAULT_IMAP.user && DEFAULT_IMAP.password;
 
   if (!hasDbCreds && !hasEnvCreds) {
@@ -481,13 +482,26 @@ export async function startEmailPoller() {
     return;
   }
 
-  if (settings && settings.syncEnabled === false) {
+  if (settings && settings.sync_enabled === false) {
     console.log("[EmailPoller] Sync explicitly disabled by admin — skipping.");
     return;
   }
 
-  const intervalMs = (settings?.syncIntervalMinutes ?? 15) * 60 * 1000;
-  console.log(`[EmailPoller] org ${orgId}: Starting — polling every ${settings?.syncIntervalMinutes ?? 15} min.`);
+  const intervalMinutes = (settings?.sync_interval_minutes as number | undefined) ?? 15;
+  const intervalMs = intervalMinutes * 60 * 1000;
+  console.log(`[EmailPoller] org ${orgId}: Starting — polling every ${intervalMinutes} min.`);
+
+  // Run immediately on startup so there is no blind window after a server restart.
+  // The interval then keeps it running on schedule.
+  (async () => {
+    console.log(`[EmailPoller] org ${orgId}: Running initial sync on startup...`);
+    const result = await runEmailSync(orgId);
+    if (result.error) {
+      console.error(`[EmailPoller] org ${orgId}: Initial sync error:`, result.error);
+    } else {
+      console.log(`[EmailPoller] org ${orgId}: Initial sync done — ${result.processed} email(s) processed.`);
+    }
+  })();
 
   syncTimer = setInterval(async () => {
     console.log(`[EmailPoller] org ${orgId}: Running scheduled sync...`);
