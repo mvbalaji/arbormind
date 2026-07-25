@@ -98,8 +98,21 @@ router.post("/leads", async (req, res) => {
         annualRevenue: body.annualRevenue,
       }).total;
     }
-    const [lead] = await db.insert(leadsTable).values(body).returning();
-    await db.execute(sql`UPDATE leads SET org_id = ${orgId} WHERE id = ${lead.id}`);
+    // Use raw SQL so org_id (added via migration, not in Drizzle schema) is always included.
+    const result = await db.execute(sql`
+      INSERT INTO leads (
+        first_name, last_name, email, phone, website, company, title,
+        status, source, score, annual_revenue, employees, industry,
+        description, assigned_to, org_id
+      ) VALUES (
+        ${body.firstName ?? null}, ${body.lastName ?? null}, ${body.email ?? null},
+        ${body.phone ?? null}, ${body.website ?? null}, ${body.company ?? null}, ${body.title ?? null},
+        ${body.status ?? "new"}, ${body.source ?? null}, ${body.score ?? null},
+        ${body.annualRevenue ?? null}, ${body.employees ?? null}, ${body.industry ?? null},
+        ${body.description ?? null}, ${body.assignedTo ?? null}, ${orgId}
+      ) RETURNING *
+    `);
+    const lead = result.rows[0] as typeof leadsTable.$inferSelect;
     res.status(201).json(formatLead(lead));
   } catch (err) {
     req.log.error(err);

@@ -38,7 +38,7 @@ const MAX_ATTACH_TOTAL_BYTES = 18 * 1024 * 1024;
 const MAX_ATTACHMENTS = 10;
 const BASE64_RE = /^[A-Za-z0-9+/]+=*$/;
 
-interface SessionUser { id: number; email?: string; name?: string }
+interface SessionUser { id: number; email?: string; name?: string; orgId?: number }
 
 function getSessionUser(req: Request): SessionUser | null {
   const sess = req.session as unknown as { user?: SessionUser };
@@ -141,19 +141,17 @@ router.post("/email/send", async (req, res) => {
 
   // Insert activity as "pending" first (so tracking can link to it), then only mark
   // "completed" after SMTP succeeds. On failure, mark "failed" so audit history is honest.
+  // Use raw SQL so org_id (added via migration, not in Drizzle schema) is always included.
+  const orgId = user.orgId ?? 1;
   let activity: typeof activitiesTable.$inferSelect;
   try {
-    [activity] = await db.insert(activitiesTable).values({
-      type: "email",
-      subject,
-      status: "pending",
-      description: `To: ${to}${cc ? `\nCc: ${cc}` : ""}\n\n${body}`,
-      leadId: leadId ?? null,
-      contactId: contactId ?? null,
-      opportunityId: opportunityId ?? null,
-      accountId: accountId ?? null,
-      assignedTo: null,
-    }).returning();
+    const actResult = await db.execute(sql`
+      INSERT INTO activities (type, subject, status, description, lead_id, contact_id, opportunity_id, account_id, assigned_to, org_id)
+      VALUES ('email', ${subject}, 'pending', ${`To: ${to}${cc ? `\nCc: ${cc}` : ""}\n\n${body}`},
+              ${leadId ?? null}, ${contactId ?? null}, ${opportunityId ?? null}, ${accountId ?? null}, null, ${orgId})
+      RETURNING *
+    `);
+    activity = actResult.rows[0] as typeof activitiesTable.$inferSelect;
   } catch (insertErr) {
     req.log.error(insertErr, "[email-send] activity insert failed");
     res.status(500).json({ error: "Failed to log email activity" });
@@ -295,18 +293,13 @@ router.post("/email/send", async (req, res) => {
         body,
         counterpartEmail: to,
       });
-      const [task] = await db.insert(activitiesTable).values({
-        type: "task",
-        subject: aiTitle,
-        description: `Email sent to ${to}${cc ? ` (cc: ${cc})` : ""}\n\nSubject: ${subject}`,
-        status: "completed",
-        completedAt: new Date(),
-        leadId: leadId ?? null,
-        contactId: contactId ?? null,
-        opportunityId: opportunityId ?? null,
-        accountId: accountId ?? null,
-        assignedTo: null,
-      }).returning({ id: activitiesTable.id });
+      const taskResult = await db.execute(sql`
+        INSERT INTO activities (type, subject, description, status, completed_at, lead_id, contact_id, opportunity_id, account_id, assigned_to, org_id)
+        VALUES ('task', ${aiTitle}, ${`Email sent to ${to}${cc ? ` (cc: ${cc})` : ""}\n\nSubject: ${subject}`},
+                'completed', now(), ${leadId ?? null}, ${contactId ?? null}, ${opportunityId ?? null}, ${accountId ?? null}, null, ${orgId})
+        RETURNING id
+      `);
+      const task = taskResult.rows[0] as { id: number } | undefined;
       taskId = task?.id ?? null;
     } catch (taskErr) {
       // Task creation is non-critical — log and continue so the user still
