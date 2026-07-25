@@ -108,6 +108,7 @@ export function setupPassport() {
             name: user.name ?? profile.displayName,
             role: user.role,
             avatarUrl: user.avatarUrl ?? profile.photos?.[0]?.value ?? null,
+            orgId: user.orgId ?? 1,
           });
         } catch (err) {
           return done(err as Error, undefined);
@@ -153,6 +154,7 @@ export function setupPassport() {
         name: user.name,
         role: user.role,
         avatarUrl: user.avatarUrl,
+        orgId: user.orgId ?? 1,
       };
 
       done(null, userData);

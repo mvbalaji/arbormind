@@ -166,7 +166,15 @@ router.post("/emails", async (req, res) => {
 router.get("/emails", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const orgId = getOrgId(req);
+    let orgId: number;
+    try {
+      orgId = getOrgId(req);
+    } catch {
+      // OAuth sessions that pre-date the orgId fix don't have it in the token yet;
+      // fall back to the default org so the inbox still loads.
+      const { getDefaultOrgId } = await import("../lib/org-context");
+      orgId = await getDefaultOrgId();
+    }
     const result = await db.execute(sql`SELECT * FROM emails WHERE org_id = ${orgId} ORDER BY created_at DESC`);
     res.json({ emails: result.rows });
   } catch (err) {
