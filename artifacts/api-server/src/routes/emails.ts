@@ -175,7 +175,31 @@ router.get("/emails", async (req, res) => {
       const { getDefaultOrgId } = await import("../lib/org-context");
       orgId = await getDefaultOrgId();
     }
-    const result = await db.execute(sql`SELECT * FROM emails WHERE org_id = ${orgId} ORDER BY created_at DESC`);
+    const result = await db.execute(sql`
+      SELECT
+        id,
+        message_uid AS "messageUid",
+        message_id AS "messageId",
+        in_reply_to AS "inReplyTo",
+        from_email AS "fromEmail",
+        from_name AS "fromName",
+        subject,
+        message,
+        body_html AS "bodyHtml",
+        status,
+        related_contact_id AS "relatedContactId",
+        related_lead_id AS "relatedLeadId",
+        related_opportunity_id AS "relatedOpportunityId",
+        is_known_customer AS "isKnownCustomer",
+        notes,
+        auto_replied_at AS "autoRepliedAt",
+        created_at AS "createdAt",
+        updated_at AS "updatedAt",
+        org_id AS "orgId"
+      FROM emails
+      WHERE org_id = ${orgId}
+      ORDER BY created_at DESC
+    `);
     res.json({ emails: result.rows });
   } catch (err) {
     console.error("Fetch emails error:", err);

@@ -110,7 +110,7 @@ function CRMRoutes() {
       <Route path="/contracts/:id" component={ContractDetail} />
       <Route path="/reports" component={Reports} />
       <Route path="/users" component={Users} />
-      <Route path="/support" component={Support} />
+      <Route path="/support">{()=><RouteEB><Support /></RouteEB>}</Route>
       <Route path="/ai-assistant" component={AIAssistant} />
       <Route path="/admin/approvals" component={Approvals} />
       <Route path="/admin/access-control" component={AccessControl} />
