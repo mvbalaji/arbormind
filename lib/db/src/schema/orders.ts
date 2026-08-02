@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, timestamp } from "drizzle-orm/pg-core";
+﻿import { pgTable, serial, text, integer, numeric, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { quotesTable } from "./quotes";
@@ -7,9 +7,11 @@ import { contactsTable } from "./contacts";
 import { accountsTable } from "./accounts";
 import { productsTable } from "./products";
 import { usersTable } from "./users";
+import { organizationsTable } from "./organizations";
 
 export const ordersTable = pgTable("orders", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   orderNumber: text("order_number").notNull().unique(),
   quoteId: integer("quote_id").references(() => quotesTable.id),
   opportunityId: integer("opportunity_id").references(() => opportunitiesTable.id),
@@ -29,6 +31,7 @@ export const ordersTable = pgTable("orders", {
 
 export const orderItemsTable = pgTable("order_items", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   orderId: integer("order_id").notNull().references(() => ordersTable.id),
   productId: integer("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   productName: text("product_name").notNull(),
@@ -43,3 +46,4 @@ export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type Order = typeof ordersTable.$inferSelect;
 export type OrderItem = typeof orderItemsTable.$inferSelect;
+

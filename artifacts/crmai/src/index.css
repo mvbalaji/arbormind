@@ -242,3 +242,33 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ── Mobile responsiveness ── */
+/* Smooth horizontal scroll for tables on touch devices */
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure the app shell uses dynamic viewport height so mobile browser chrome
+   doesn't hide content behind the address bar */
+.h-screen {
+  height: 100dvh;
+}
+
+/* Minimum touch target sizes */
+@media (max-width: 767px) {
+  button, [role="button"], a {
+    min-height: 36px;
+  }
+
+  /* Make table container scroll-snap friendly on mobile */
+  .overflow-auto {
+    scroll-snap-type: x proximity;
+  }
+
+  /* Compact card padding on mobile */
+  .px-4.py-3 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}

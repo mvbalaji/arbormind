@@ -27,6 +27,7 @@ function currentActor(req: Request): { id: number | null; name: string } {
 }
 
 async function writeAudit(
+  orgId: number,
   actor: { id: number | null; name: string },
   action: string,
   resourceType: string,
@@ -35,9 +36,9 @@ async function writeAudit(
   afterState: unknown,
 ): Promise<void> {
   await pool.query(
-    `INSERT INTO integration_audit_log (actor_id, actor_name, action, resource_type, resource_id, before_state, after_state)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [actor.id, actor.name, action, resourceType, String(resourceId), JSON.stringify(beforeState ?? null), JSON.stringify(afterState ?? null)],
+    `INSERT INTO integration_audit_log (actor_id, actor_name, action, resource_type, resource_id, before_state, after_state, org_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [actor.id, actor.name, action, resourceType, String(resourceId), JSON.stringify(beforeState ?? null), JSON.stringify(afterState ?? null), orgId],
   );
 }
 
@@ -57,7 +58,8 @@ router.get("/admin/integrations/entity-types", (_req, res) => {
 router.get("/admin/integrations/partners", async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT id, name, slug, description, is_active, allow_public_form, created_at, updated_at FROM integration_partners ORDER BY created_at DESC`,
+      `SELECT id, name, slug, description, is_active, allow_public_form, created_at, updated_at FROM integration_partners WHERE org_id = $1 ORDER BY created_at DESC`,
+      [req.orgId!],
     );
     res.json({ partners: r.rows });
   } catch (err) {
@@ -81,12 +83,12 @@ router.post("/admin/integrations/partners", async (req, res) => {
     const encrypted = encryptSecret(plaintextSecret);
     const actor = currentActor(req);
     const r = await pool.query(
-      `INSERT INTO integration_partners (name, slug, description, webhook_secret_encrypted, created_by)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id, name, slug, description, is_active, allow_public_form, created_at, updated_at`,
-      [name, slug, description ?? "", encrypted, actor.id],
+      `INSERT INTO integration_partners (name, slug, description, webhook_secret_encrypted, created_by, org_id)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, name, slug, description, is_active, allow_public_form, created_at, updated_at`,
+      [name, slug, description ?? "", encrypted, actor.id, req.orgId!],
     );
     const partner = r.rows[0];
-    await writeAudit(actor, "CREATE", "partner", partner.id, null, partner);
+    await writeAudit(req.orgId!, actor, "CREATE", "partner", partner.id, null, partner);
     res.status(201).json({ partner, webhookSecret: plaintextSecret });
   } catch (err: any) {
     if (err?.code === "23505") {
@@ -103,7 +105,7 @@ router.patch("/admin/integrations/partners/:id", async (req, res) => {
     name?: string; description?: string; isActive?: boolean; allowPublicForm?: boolean;
   };
   try {
-    const [before] = (await pool.query(`SELECT * FROM integration_partners WHERE id=$1`, [req.params.id])).rows;
+    const [before] = (await pool.query(`SELECT * FROM integration_partners WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId!])).rows;
     if (!before) { res.status(404).json({ error: "Partner not found" }); return; }
 
     const r = await pool.query(
@@ -113,12 +115,12 @@ router.patch("/admin/integrations/partners/:id", async (req, res) => {
          is_active = COALESCE($3, is_active),
          allow_public_form = COALESCE($4, allow_public_form),
          updated_at = NOW()
-       WHERE id=$5
+       WHERE id=$5 AND org_id=$6
        RETURNING id, name, slug, description, is_active, allow_public_form, created_at, updated_at`,
-      [name ?? null, description ?? null, isActive ?? null, allowPublicForm ?? null, req.params.id],
+      [name ?? null, description ?? null, isActive ?? null, allowPublicForm ?? null, req.params.id, req.orgId!],
     );
     const partner = r.rows[0];
-    await writeAudit(currentActor(req), "UPDATE", "partner", partner.id, before, partner);
+    await writeAudit(req.orgId!, currentActor(req), "UPDATE", "partner", partner.id, before, partner);
     res.json({ partner });
   } catch (err) {
     req.log?.error(err);
@@ -128,12 +130,12 @@ router.patch("/admin/integrations/partners/:id", async (req, res) => {
 
 router.post("/admin/integrations/partners/:id/rotate-secret", async (req, res) => {
   try {
-    const [existing] = (await pool.query(`SELECT id FROM integration_partners WHERE id=$1`, [req.params.id])).rows;
+    const [existing] = (await pool.query(`SELECT id FROM integration_partners WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId!])).rows;
     if (!existing) { res.status(404).json({ error: "Partner not found" }); return; }
     const plaintextSecret = generateWebhookSecret();
     const encrypted = encryptSecret(plaintextSecret);
-    await pool.query(`UPDATE integration_partners SET webhook_secret_encrypted=$1, updated_at=NOW() WHERE id=$2`, [encrypted, req.params.id]);
-    await writeAudit(currentActor(req), "UPDATE", "partner_credential", req.params.id, null, null);
+    await pool.query(`UPDATE integration_partners SET webhook_secret_encrypted=$1, updated_at=NOW() WHERE id=$2 AND org_id=$3`, [encrypted, req.params.id, req.orgId!]);
+    await writeAudit(req.orgId!, currentActor(req), "UPDATE", "partner_credential", req.params.id, null, null);
     res.json({ webhookSecret: plaintextSecret });
   } catch (err) {
     req.log?.error(err);
@@ -143,10 +145,10 @@ router.post("/admin/integrations/partners/:id/rotate-secret", async (req, res) =
 
 router.delete("/admin/integrations/partners/:id", async (req, res) => {
   try {
-    const [before] = (await pool.query(`SELECT * FROM integration_partners WHERE id=$1`, [req.params.id])).rows;
+    const [before] = (await pool.query(`SELECT * FROM integration_partners WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId!])).rows;
     if (!before) { res.status(404).json({ error: "Partner not found" }); return; }
-    await pool.query(`DELETE FROM integration_partners WHERE id=$1`, [req.params.id]);
-    await writeAudit(currentActor(req), "DELETE", "partner", req.params.id, before, null);
+    await pool.query(`DELETE FROM integration_partners WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId!]);
+    await writeAudit(req.orgId!, currentActor(req), "DELETE", "partner", req.params.id, before, null);
     res.json({ ok: true });
   } catch (err) {
     req.log?.error(err);
@@ -160,8 +162,8 @@ router.get("/admin/integrations/partners/:id/templates", async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT id, partner_id, entity_type, version, status, definition, created_by, created_at, activated_at
-       FROM integration_mapping_templates WHERE partner_id=$1 ORDER BY entity_type, version DESC`,
-      [req.params.id],
+       FROM integration_mapping_templates WHERE partner_id=$1 AND org_id=$2 ORDER BY entity_type, version DESC`,
+      [req.params.id, req.orgId!],
     );
     res.json({ templates: r.rows });
   } catch (err) {
@@ -181,19 +183,21 @@ router.post("/admin/integrations/partners/:id/templates", async (req, res) => {
     return;
   }
   try {
+    const [partner] = (await pool.query(`SELECT id FROM integration_partners WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId!])).rows;
+    if (!partner) { res.status(404).json({ error: "Partner not found" }); return; }
     const nextVersionRow = (await pool.query(
-      `SELECT COALESCE(MAX(version), 0) + 1 AS next_version FROM integration_mapping_templates WHERE partner_id=$1 AND entity_type=$2`,
-      [req.params.id, entityType],
+      `SELECT COALESCE(MAX(version), 0) + 1 AS next_version FROM integration_mapping_templates WHERE partner_id=$1 AND entity_type=$2 AND org_id=$3`,
+      [req.params.id, entityType, req.orgId!],
     )).rows[0];
     const actor = currentActor(req);
     const r = await pool.query(
-      `INSERT INTO integration_mapping_templates (partner_id, entity_type, version, status, definition, created_by)
-       VALUES ($1,$2,$3,'draft',$4,$5)
+      `INSERT INTO integration_mapping_templates (partner_id, entity_type, version, status, definition, created_by, org_id)
+       VALUES ($1,$2,$3,'draft',$4,$5,$6)
        RETURNING id, partner_id, entity_type, version, status, definition, created_by, created_at, activated_at`,
-      [req.params.id, entityType, nextVersionRow.next_version, JSON.stringify(definition), actor.id],
+      [req.params.id, entityType, nextVersionRow.next_version, JSON.stringify(definition), actor.id, req.orgId!],
     );
     const template = r.rows[0];
-    await writeAudit(actor, "CREATE", "mapping_template", template.id, null, template);
+    await writeAudit(req.orgId!, actor, "CREATE", "mapping_template", template.id, null, template);
     res.status(201).json({ template });
   } catch (err) {
     req.log?.error(err);
@@ -205,8 +209,8 @@ router.get("/admin/integrations/templates/:id", async (req, res) => {
   try {
     const [template] = (await pool.query(
       `SELECT id, partner_id, entity_type, version, status, definition, created_by, created_at, activated_at
-       FROM integration_mapping_templates WHERE id=$1`,
-      [req.params.id],
+       FROM integration_mapping_templates WHERE id=$1 AND org_id=$2`,
+      [req.params.id, req.orgId!],
     )).rows;
     if (!template) { res.status(404).json({ error: "Template not found" }); return; }
     res.json({ template });
@@ -220,15 +224,15 @@ router.post("/admin/integrations/templates/:id/activate", async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const [template] = (await client.query(`SELECT * FROM integration_mapping_templates WHERE id=$1 FOR UPDATE`, [req.params.id])).rows;
+    const [template] = (await client.query(`SELECT * FROM integration_mapping_templates WHERE id=$1 AND org_id=$2 FOR UPDATE`, [req.params.id, req.orgId!])).rows;
     if (!template) {
       await client.query("ROLLBACK");
       res.status(404).json({ error: "Template not found" });
       return;
     }
     const [previouslyActive] = (await client.query(
-      `SELECT id FROM integration_mapping_templates WHERE partner_id=$1 AND entity_type=$2 AND status='active'`,
-      [template.partner_id, template.entity_type],
+      `SELECT id FROM integration_mapping_templates WHERE partner_id=$1 AND entity_type=$2 AND status='active' AND org_id=$3`,
+      [template.partner_id, template.entity_type, req.orgId!],
     )).rows;
     if (previouslyActive) {
       await client.query(`UPDATE integration_mapping_templates SET status='archived' WHERE id=$1`, [previouslyActive.id]);
@@ -239,7 +243,7 @@ router.post("/admin/integrations/templates/:id/activate", async (req, res) => {
     );
     await client.query("COMMIT");
     const activated = r.rows[0];
-    await writeAudit(currentActor(req), "PROMOTE", "mapping_template", activated.id, { previouslyActiveId: previouslyActive?.id ?? null }, activated);
+    await writeAudit(req.orgId!, currentActor(req), "PROMOTE", "mapping_template", activated.id, { previouslyActiveId: previouslyActive?.id ?? null }, activated);
     res.json({ template: activated });
   } catch (err) {
     await client.query("ROLLBACK");
@@ -257,7 +261,7 @@ router.post("/admin/integrations/templates/:id/test", async (req, res) => {
     return;
   }
   try {
-    const [template] = (await pool.query(`SELECT definition FROM integration_mapping_templates WHERE id=$1`, [req.params.id])).rows;
+    const [template] = (await pool.query(`SELECT definition FROM integration_mapping_templates WHERE id=$1 AND org_id=$2`, [req.params.id, req.orgId!])).rows;
     if (!template) { res.status(404).json({ error: "Template not found" }); return; }
     const result = runMappingPipeline(samplePayload, template.definition as MappingTemplateDefinition);
     res.json(result);
@@ -272,9 +276,9 @@ router.post("/admin/integrations/templates/:id/test", async (req, res) => {
 router.get("/admin/integrations/runs", async (req, res) => {
   const { partnerId, limit = "50", offset = "0" } = req.query as Record<string, string>;
   try {
-    const params: unknown[] = [];
-    let where = "";
-    if (partnerId) { params.push(partnerId); where = `WHERE r.partner_id = $${params.length}`; }
+    const params: unknown[] = [req.orgId!];
+    let where = "WHERE r.org_id = $1";
+    if (partnerId) { params.push(partnerId); where += ` AND r.partner_id = $${params.length}`; }
     params.push(Number(limit) || 50, Number(offset) || 0);
     const r = await pool.query(
       `SELECT r.id, r.partner_id, p.name AS partner_name, r.template_id, r.entity_type, r.status,
@@ -298,8 +302,8 @@ router.get("/admin/integrations/audit", async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT id, actor_id, actor_name, action, resource_type, resource_id, before_state, after_state, created_at
-       FROM integration_audit_log ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-      [Number(limit) || 50, Number(offset) || 0],
+       FROM integration_audit_log WHERE org_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+      [req.orgId!, Number(limit) || 50, Number(offset) || 0],
     );
     res.json({ entries: r.rows });
   } catch (err) {

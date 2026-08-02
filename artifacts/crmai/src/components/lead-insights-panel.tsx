@@ -121,20 +121,18 @@ function InfoChip({ icon: Icon, label, value, href }: {
   href?: string;
 }) {
   return (
-    <div className="flex items-start gap-2 p-2 rounded-lg bg-muted/30 border border-border">
-      <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
-      <div className="min-w-0">
-        <div className="text-[10px] text-muted-foreground">{label}</div>
-        {href && href !== "Unknown" ? (
-          <a href={href} target="_blank" rel="noopener noreferrer"
-            className="text-xs font-medium text-blue-500 hover:underline flex items-center gap-0.5 truncate">
-            {value}
-            <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
-          </a>
-        ) : (
-          <div className="text-xs font-medium text-foreground truncate">{value}</div>
-        )}
-      </div>
+    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-muted/30 border border-border">
+      <Icon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+      <span className="text-[10px] text-muted-foreground whitespace-nowrap">{label}:</span>
+      {href && href !== "Unknown" ? (
+        <a href={href} target="_blank" rel="noopener noreferrer"
+          className="text-[11px] font-medium text-blue-500 hover:underline flex items-center gap-0.5 truncate">
+          {value}
+          <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
+        </a>
+      ) : (
+        <span className="text-[11px] font-semibold text-foreground truncate">{value}</span>
+      )}
     </div>
   );
 }

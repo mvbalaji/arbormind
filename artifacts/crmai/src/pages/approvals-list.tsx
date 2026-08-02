@@ -230,7 +230,7 @@ export default function ApprovalsList() {
 
         {/* Table */}
         <Card className="border-0 overflow-hidden shadow-sm">
-          <div className="overflow-auto max-h-[calc(100vh-280px)]">
+          <div className="overflow-auto max-h-[calc(100dvh-280px)]">
           <Table>
             <TableHeader>
               <TableRow className="sticky top-0 z-10 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-blue-800 border-b border-blue-800 hover:bg-blue-700 [&_th]:text-white [&_th]:uppercase [&_th]:tracking-wide [&_th]:font-semibold [&_th]:text-xs">

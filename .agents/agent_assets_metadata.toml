@@ -41,9 +41,3 @@ id = "cyzaNAnT2mGcphcvL75S6"
 uri = "file://marketing/arbormind-crm-sales-email.md"
 type = "text"
 title = "ArborMind CRM — Sales Outreach Email Template"
-
-[[outputs]]
-id = "sOLLP3W7tZ4yIP2nw8MNe"
-uri = "file://.local/outputs/arbormind_production.pptx"
-type = "slides"
-title = "arbormind_production.pptx"

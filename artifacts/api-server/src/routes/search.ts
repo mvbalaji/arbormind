@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import {
   leadsTable, opportunitiesTable, accountsTable, contactsTable, campaignsTable,
 } from "@workspace/db";
-import { ilike, or, sql } from "drizzle-orm";
+import { ilike, or, sql, and, eq } from "drizzle-orm";
 import { userHasScreenAccess } from "../lib/access-control";
 
 const router: IRouter = Router();
@@ -35,53 +35,53 @@ router.get("/search", async (req, res) => {
       ? db.select({
           id: leadsTable.id, firstName: leadsTable.firstName, lastName: leadsTable.lastName,
           email: leadsTable.email, company: leadsTable.company, status: leadsTable.status,
-        }).from(leadsTable).where(or(
+        }).from(leadsTable).where(and(eq(leadsTable.orgId, req.orgId!), or(
           ilike(leadsTable.firstName, like),
           ilike(leadsTable.lastName, like),
           ilike(leadsTable.email, like),
           ilike(leadsTable.company, like),
           sql`${leadsTable.firstName} || ' ' || ${leadsTable.lastName} ILIKE ${like}`,
-        )).limit(limit)
+        ))).limit(limit)
       : Promise.resolve([] as Array<{ id: number; firstName: string; lastName: string; email: string | null; company: string | null; status: string }>);
 
     const oppsP = canOpps
       ? db.select({
           id: opportunitiesTable.id, name: opportunitiesTable.name,
           stage: opportunitiesTable.stage, amount: opportunitiesTable.amount,
-        }).from(opportunitiesTable).where(or(
+        }).from(opportunitiesTable).where(and(eq(opportunitiesTable.orgId, req.orgId!), or(
           ilike(opportunitiesTable.name, like),
           ilike(opportunitiesTable.nextStep, like),
-        )).limit(limit)
+        ))).limit(limit)
       : Promise.resolve([] as Array<{ id: number; name: string; stage: string; amount: string | null }>);
 
     const accountsP = canAccounts
       ? db.select({
           id: accountsTable.id, name: accountsTable.name,
           industry: accountsTable.industry, website: accountsTable.website,
-        }).from(accountsTable).where(or(
+        }).from(accountsTable).where(and(eq(accountsTable.orgId, req.orgId!), or(
           ilike(accountsTable.name, like),
           ilike(accountsTable.email, like),
           ilike(accountsTable.website, like),
-        )).limit(limit)
+        ))).limit(limit)
       : Promise.resolve([] as Array<{ id: number; name: string; industry: string | null; website: string | null }>);
 
     const contactsP = canContacts
       ? db.select({
           id: contactsTable.id, firstName: contactsTable.firstName, lastName: contactsTable.lastName,
           email: contactsTable.email, title: contactsTable.title,
-        }).from(contactsTable).where(or(
+        }).from(contactsTable).where(and(eq(contactsTable.orgId, req.orgId!), or(
           ilike(contactsTable.firstName, like),
           ilike(contactsTable.lastName, like),
           ilike(contactsTable.email, like),
           sql`${contactsTable.firstName} || ' ' || ${contactsTable.lastName} ILIKE ${like}`,
-        )).limit(limit)
+        ))).limit(limit)
       : Promise.resolve([] as Array<{ id: number; firstName: string; lastName: string; email: string | null; title: string | null }>);
 
     const campaignsP = canCampaigns
       ? db.select({
           id: campaignsTable.id, name: campaignsTable.name,
           status: campaignsTable.status, type: campaignsTable.type,
-        }).from(campaignsTable).where(ilike(campaignsTable.name, like)).limit(limit)
+        }).from(campaignsTable).where(and(eq(campaignsTable.orgId, req.orgId!), ilike(campaignsTable.name, like))).limit(limit)
       : Promise.resolve([] as Array<{ id: number; name: string; status: string; type: string | null }>);
 
     const [leads, opps, accounts, contacts, campaigns] = await Promise.all([

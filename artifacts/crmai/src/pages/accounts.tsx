@@ -183,8 +183,52 @@ export default function Accounts() {
           </Button>
         </ListPageHeader>
 
-        {/* Table */}
-        <div className="bg-card rounded-md overflow-hidden shadow-sm">
+        {/* Mobile card view */}
+        <div className="md:hidden space-y-2">
+          {isLoading ? (
+            <div className="text-center text-muted-foreground text-sm py-8">Loading accounts...</div>
+          ) : filteredAccounts.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-8">No accounts found.</div>
+          ) : (
+            filteredAccounts.map((acc) => (
+              <div key={acc.id} className="bg-card rounded-lg border border-border shadow-sm p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link href={`/accounts/${acc.id}`}>
+                      <span className="font-semibold text-sm text-primary hover:underline">{acc.name}</span>
+                    </Link>
+                    {acc.industry && <p className="text-xs text-muted-foreground">{acc.industry}</p>}
+                    {acc.city && <p className="text-xs text-muted-foreground">{acc.city}{acc.country ? `, ${acc.country}` : ""}</p>}
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground shrink-0">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-44">
+                      <DropdownMenuItem asChild>
+                        <Link href={`/accounts/${acc.id}`} className="flex items-center gap-2 cursor-pointer">
+                          <ExternalLink className="w-4 h-4" /> View Details
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setDeletingId(acc.id)} className="cursor-pointer text-sm text-destructive focus:text-destructive">
+                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  {acc.phone && <span>{acc.phone}</span>}
+                  {acc.email && <span className="truncate max-w-[180px]">{acc.email}</span>}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block bg-card rounded-md overflow-hidden shadow-sm">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
             <TablePagination
               variant="inline"
@@ -199,7 +243,7 @@ export default function Accounts() {
             />
             <ColumnsMenu columns={ACCOUNT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
           </div>
-          <div className="overflow-auto max-h-[calc(100vh-260px)]">
+          <div className="overflow-auto max-h-[calc(100dvh-260px)]">
             <table className="w-full text-sm min-w-[900px] [&_tbody_td]:whitespace-nowrap">
               <colgroup>
                 {colVis.isVisible("name") && <col data-col="name" style={{ width: `${colWidths.name}px` }} />}

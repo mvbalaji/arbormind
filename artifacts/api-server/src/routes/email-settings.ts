@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db, emailSettingsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { runEmailSync, startEmailPoller, stopEmailPoller } from "../email-sync";
 import { previewAutoReply } from "../auto-reply";
 import { getSmtpConfig } from "../lib/smtp-config";
@@ -21,10 +22,10 @@ function requireAdmin(req: any, res: any): boolean {
 router.get("/admin/email-settings", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const rows = await db.select().from(emailSettingsTable).limit(1);
+    const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, req.orgId!)).limit(1);
     let row = rows[0];
     if (!row) {
-      const [created] = await db.insert(emailSettingsTable).values({}).returning();
+      const [created] = await db.insert(emailSettingsTable).values({ orgId: req.orgId! }).returning();
       row = created;
     }
     // Mask password in response
@@ -47,7 +48,7 @@ router.post("/admin/email-settings", async (req, res) => {
       syncEnabled, syncIntervalMinutes,
     } = req.body as Record<string, any>;
 
-    const rows = await db.select().from(emailSettingsTable).limit(1);
+    const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, req.orgId!)).limit(1);
     const existing = rows[0];
 
     const update: Record<string, any> = {
@@ -74,10 +75,9 @@ router.post("/admin/email-settings", async (req, res) => {
 
     let row;
     if (existing) {
-      const { eq } = await import("drizzle-orm");
-      [row] = await db.update(emailSettingsTable).set(update).where(eq(emailSettingsTable.id, existing.id)).returning();
+      [row] = await db.update(emailSettingsTable).set(update).where(and(eq(emailSettingsTable.id, existing.id), eq(emailSettingsTable.orgId, req.orgId!))).returning();
     } else {
-      [row] = await db.insert(emailSettingsTable).values(update).returning();
+      [row] = await db.insert(emailSettingsTable).values({ ...update, orgId: req.orgId! }).returning();
     }
 
     // Restart/stop the poller based on new settings
@@ -98,7 +98,7 @@ router.post("/admin/email-settings", async (req, res) => {
 router.post("/admin/email-settings/test", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const rows = await db.select().from(emailSettingsTable).limit(1);
+    const rows = await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, req.orgId!)).limit(1);
     const settings = rows[0];
     if (!settings?.imapUser || !settings?.imapPassword) {
       return res.status(400).json({ success: false, error: "IMAP credentials not configured" });
@@ -128,7 +128,7 @@ router.post("/admin/email-settings/test", async (req, res) => {
 router.post("/admin/email-settings/test-smtp", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const smtp = await getSmtpConfig({ defaultFromName: "arbormind.in" });
+    const smtp = await getSmtpConfig({ defaultFromName: "arbormind.in" }, req.orgId!);
     if (!smtp) {
       return res.status(400).json({ success: false, error: "SMTP credentials not configured" });
     }

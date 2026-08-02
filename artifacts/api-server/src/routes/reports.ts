@@ -34,29 +34,29 @@ router.get("/reports/dashboard", async (req, res) => {
       upcomingActivities,
       recentLeads,
     ] = await Promise.all([
-      db.select({ count: sql<number>`count(*)` }).from(contactsTable),
-      db.select({ count: sql<number>`count(*)` }).from(leadsTable),
-      db.select({ count: sql<number>`count(*)` }).from(accountsTable),
+      db.select({ count: sql<number>`count(*)` }).from(contactsTable).where(eq(contactsTable.orgId, req.orgId!)),
+      db.select({ count: sql<number>`count(*)` }).from(leadsTable).where(eq(leadsTable.orgId, req.orgId!)),
+      db.select({ count: sql<number>`count(*)` }).from(accountsTable).where(eq(accountsTable.orgId, req.orgId!)),
       db.select({ count: sql<number>`count(*)` }).from(opportunitiesTable)
-        .where(sql`stage NOT IN ('closed_won', 'closed_lost')`),
+        .where(and(eq(opportunitiesTable.orgId, req.orgId!), sql`stage NOT IN ('closed_won', 'closed_lost')`)),
       db.select({ total: sql<number>`coalesce(sum(amount), 0)` }).from(opportunitiesTable)
-        .where(sql`stage NOT IN ('closed_won', 'closed_lost')`),
+        .where(and(eq(opportunitiesTable.orgId, req.orgId!), sql`stage NOT IN ('closed_won', 'closed_lost')`)),
       db.select({ count: sql<number>`count(*)`, revenue: sql<number>`coalesce(sum(amount), 0)` })
         .from(opportunitiesTable)
-        .where(and(eq(opportunitiesTable.stage, 'closed_won'), gte(opportunitiesTable.updatedAt, startOfMonth))),
+        .where(and(eq(opportunitiesTable.orgId, req.orgId!), eq(opportunitiesTable.stage, 'closed_won'), gte(opportunitiesTable.updatedAt, startOfMonth))),
       db.select({ count: sql<number>`count(*)` }).from(casesTable)
-        .where(sql`status NOT IN ('resolved', 'closed')`),
+        .where(and(eq(casesTable.orgId, req.orgId!), sql`status NOT IN ('resolved', 'closed')`)),
       db.select({ count: sql<number>`count(*)` }).from(activitiesTable)
-        .where(and(gte(activitiesTable.createdAt, startOfWeek), lt(activitiesTable.createdAt, endOfWeek))),
+        .where(and(eq(activitiesTable.orgId, req.orgId!), gte(activitiesTable.createdAt, startOfWeek), lt(activitiesTable.createdAt, endOfWeek))),
       db.select({ count: sql<number>`count(*)`, stage: opportunitiesTable.stage })
         .from(opportunitiesTable)
-        .where(sql`stage IN ('closed_won', 'closed_lost')`)
+        .where(and(eq(opportunitiesTable.orgId, req.orgId!), sql`stage IN ('closed_won', 'closed_lost')`))
         .groupBy(opportunitiesTable.stage),
-      db.select().from(activitiesTable).orderBy(sql`created_at desc`).limit(5),
+      db.select().from(activitiesTable).where(eq(activitiesTable.orgId, req.orgId!)).orderBy(sql`created_at desc`).limit(5),
       db.select().from(activitiesTable)
-        .where(and(sql`status = 'planned'`, sql`due_date > now()`))
+        .where(and(eq(activitiesTable.orgId, req.orgId!), sql`status = 'planned'`, sql`due_date > now()`))
         .orderBy(activitiesTable.dueDate).limit(5),
-      db.select().from(leadsTable).orderBy(sql`created_at desc`).limit(5),
+      db.select().from(leadsTable).where(eq(leadsTable.orgId, req.orgId!)).orderBy(sql`created_at desc`).limit(5),
     ]);
 
     const wonCount = winLossRes.find(r => r.stage === 'closed_won')?.count || 0;
@@ -95,12 +95,13 @@ router.get("/reports/pipeline", async (req, res) => {
         avgProbability: sql<number>`coalesce(avg(probability), 0)`,
       })
       .from(opportunitiesTable)
+      .where(eq(opportunitiesTable.orgId, req.orgId!))
       .groupBy(opportunitiesTable.stage);
 
     const [totals] = await db.select({
       totalValue: sql<number>`coalesce(sum(amount), 0)`,
       totalDeals: sql<number>`count(*)`,
-    }).from(opportunitiesTable);
+    }).from(opportunitiesTable).where(eq(opportunitiesTable.orgId, req.orgId!));
 
     res.json({
       stages: stages.map(s => ({
@@ -134,7 +135,7 @@ router.get("/reports/top-deals", async (req, res) => {
       })
       .from(opportunitiesTable)
       .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
-      .where(sql`${opportunitiesTable.stage} NOT IN ('closed_won', 'closed_lost')`)
+      .where(and(eq(opportunitiesTable.orgId, req.orgId!), sql`${opportunitiesTable.stage} NOT IN ('closed_won', 'closed_lost')`))
       .orderBy(sql`${opportunitiesTable.amount} DESC NULLS LAST`)
       .limit(5);
 
@@ -158,9 +159,10 @@ router.get("/reports/lead-sources", async (req, res) => {
         count: sql<number>`count(*)`,
       })
       .from(leadsTable)
+      .where(eq(leadsTable.orgId, req.orgId!))
       .groupBy(leadsTable.source);
 
-    const [total] = await db.select({ count: sql<number>`count(*)` }).from(leadsTable);
+    const [total] = await db.select({ count: sql<number>`count(*)` }).from(leadsTable).where(eq(leadsTable.orgId, req.orgId!));
     const totalNum = Number(total.count);
 
     res.json({
@@ -186,6 +188,7 @@ router.get("/reports/activities-summary", async (req, res) => {
         count: sql<number>`count(*)`,
       })
       .from(activitiesTable)
+      .where(eq(activitiesTable.orgId, req.orgId!))
       .groupBy(activitiesTable.type, activitiesTable.status);
 
     const types = ['call', 'email', 'meeting', 'task', 'note'];
@@ -198,7 +201,7 @@ router.get("/reports/activities-summary", async (req, res) => {
     const [totals] = await db.select({
       totalCompleted: sql<number>`count(*) filter (where status = 'completed')`,
       totalPlanned: sql<number>`count(*) filter (where status = 'planned')`,
-    }).from(activitiesTable);
+    }).from(activitiesTable).where(eq(activitiesTable.orgId, req.orgId!));
 
     res.json({
       byType: summary,
@@ -224,6 +227,7 @@ router.get("/reports/revenue-forecast", async (req, res) => {
         revenue: sql<number>`coalesce(sum(amount), 0)`,
       }).from(opportunitiesTable)
         .where(and(
+          eq(opportunitiesTable.orgId, req.orgId!),
           eq(opportunitiesTable.stage, 'closed_won'),
           gte(opportunitiesTable.updatedAt, d),
           lt(opportunitiesTable.updatedAt, nextD)
@@ -233,6 +237,7 @@ router.get("/reports/revenue-forecast", async (req, res) => {
         forecast: sql<number>`coalesce(sum(amount * probability / 100), 0)`,
       }).from(opportunitiesTable)
         .where(and(
+          eq(opportunitiesTable.orgId, req.orgId!),
           sql`stage NOT IN ('closed_won', 'closed_lost')`,
           gte(opportunitiesTable.closeDate, d),
           lt(opportunitiesTable.closeDate, nextD)
@@ -254,6 +259,7 @@ router.get("/reports/revenue-forecast", async (req, res) => {
         forecast: sql<number>`coalesce(sum(amount * probability / 100), 0)`,
       }).from(opportunitiesTable)
         .where(and(
+          eq(opportunitiesTable.orgId, req.orgId!),
           sql`stage NOT IN ('closed_won', 'closed_lost')`,
           gte(opportunitiesTable.closeDate, d),
           lt(opportunitiesTable.closeDate, nextD)

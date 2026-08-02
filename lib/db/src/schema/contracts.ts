@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, numeric, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+﻿import { pgTable, serial, text, integer, numeric, boolean, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
@@ -7,6 +7,7 @@ import { contactsTable } from "./contacts";
 import { opportunitiesTable } from "./opportunities";
 import { priceBooksTable } from "./price-books";
 import { productsTable } from "./products";
+import { organizationsTable } from "./organizations";
 
 export const CONTRACT_STATUSES = [
   "draft",
@@ -20,6 +21,7 @@ export type ContractStatus = (typeof CONTRACT_STATUSES)[number];
 
 export const contractsTable = pgTable("contracts", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   contractNumber: text("contract_number").notNull().unique(),
   name: text("name").notNull(),
   accountId: integer("account_id").references(() => accountsTable.id),
@@ -52,6 +54,7 @@ export const contractsTable = pgTable("contracts", {
 
 export const contractLineItemsTable = pgTable("contract_line_items", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   contractId: integer("contract_id").notNull().references(() => contractsTable.id),
   productId: integer("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   productName: text("product_name").notNull(),
@@ -65,12 +68,15 @@ export const contractLineItemsTable = pgTable("contract_line_items", {
 
 export const contractDocumentsTable = pgTable("contract_documents", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   contractId: integer("contract_id").notNull().references(() => contractsTable.id),
   version: integer("version").notNull(),
   title: text("title"),
   content: text("content").notNull(),
   changeSummary: text("change_summary"),
   createdByUserId: integer("created_by_user_id").references(() => usersTable.id),
+  // Only the newest version is active; inserting a new version clears the rest.
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => ({
   contractVersionUnique: uniqueIndex("contract_documents_contract_version_unique").on(t.contractId, t.version),
@@ -81,3 +87,5 @@ export type InsertContract = z.infer<typeof insertContractSchema>;
 export type Contract = typeof contractsTable.$inferSelect;
 export type ContractLineItem = typeof contractLineItemsTable.$inferSelect;
 export type ContractDocument = typeof contractDocumentsTable.$inferSelect;
+
+

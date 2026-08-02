@@ -2,9 +2,15 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "frontend",
+      "name": "api-server",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@workspace/crmai", "run", "dev"],
+      "runtimeArgs": ["-C", "artifacts/api-server", "run", "dev"],
+      "port": 8080
+    },
+    {
+      "name": "crmai",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["-C", "artifacts/crmai", "run", "dev"],
       "port": 5173
     }
   ]

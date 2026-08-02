@@ -1,9 +1,11 @@
-import { pgTable, serial, text, boolean, numeric, timestamp } from "drizzle-orm/pg-core";
+﻿import { pgTable, serial, text, integer, boolean, numeric, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { organizationsTable } from "./organizations";
 
 export const productsTable = pgTable("products", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   name: text("name").notNull(),
   code: text("code"),
   description: text("description"),
@@ -20,3 +22,4 @@ export const productsTable = pgTable("products", {
 export const insertProductSchema = createInsertSchema(productsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof productsTable.$inferSelect;
+

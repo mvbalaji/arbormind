@@ -4,9 +4,11 @@ import { z } from "zod/v4";
 import { opportunitiesTable } from "./opportunities";
 import { productsTable } from "./products";
 import { priceBookEntriesTable } from "./price-book-entries";
+import { organizationsTable } from "./organizations";
 
 export const opportunityItemsTable = pgTable("opportunity_items", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   opportunityId: integer("opportunity_id").notNull().references(() => opportunitiesTable.id),
   productId: integer("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   priceBookEntryId: integer("price_book_entry_id").references(() => priceBookEntriesTable.id, { onDelete: "set null" }),

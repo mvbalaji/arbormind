@@ -1,10 +1,12 @@
-import { pgTable, serial, text, integer, numeric, boolean, timestamp } from "drizzle-orm/pg-core";
+﻿import { pgTable, serial, text, integer, numeric, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+import { organizationsTable } from "./organizations";
 
 export const accountsTable = pgTable("accounts", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   name: text("name").notNull(),
   industry: text("industry"),
   website: text("website"),
@@ -36,3 +38,4 @@ export const accountsTable = pgTable("accounts", {
 export const insertAccountSchema = createInsertSchema(accountsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertAccount = z.infer<typeof insertAccountSchema>;
 export type Account = typeof accountsTable.$inferSelect;
+

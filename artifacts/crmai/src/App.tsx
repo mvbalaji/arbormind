@@ -14,6 +14,7 @@ import { ThemeProvider } from "@/context/theme";
 import { CurrencyProvider } from "@/context/currency";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
+import Contact from "@/pages/contact";
 
 import Dashboard from "./pages/dashboard";
 import SalesManager from "./pages/sales-manager";
@@ -68,6 +69,7 @@ import CpqQle from "./pages/cpq-qle";
 import CpqPricing from "./pages/cpq-pricing";
 import CpqAdmin from "./pages/cpq-admin";
 import QuoteWorkflowAdmin from "./pages/quote-workflow-admin";
+import WebLeadSlaAdmin from "./pages/web-lead-sla-admin";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,6 +83,7 @@ const queryClient = new QueryClient({
 function CRMRoutes() {
   return (
     <Switch>
+      <Route path="/contact" component={Contact} />
       <Route path="/login"><Redirect to="/dashboard" /></Route>
       <Route path="/" component={Dashboard} />
       <Route path="/dashboard" component={Dashboard} />
@@ -110,7 +113,7 @@ function CRMRoutes() {
       <Route path="/contracts/:id" component={ContractDetail} />
       <Route path="/reports" component={Reports} />
       <Route path="/users" component={Users} />
-      <Route path="/support">{()=><RouteEB><Support /></RouteEB>}</Route>
+      <Route path="/support" component={Support} />
       <Route path="/ai-assistant" component={AIAssistant} />
       <Route path="/admin/approvals" component={Approvals} />
       <Route path="/admin/access-control" component={AccessControl} />
@@ -118,6 +121,7 @@ function CRMRoutes() {
       <Route path="/admin/organizations" component={Organizations} />
       <Route path="/admin/product-rules" component={ProductRulesAdmin} />
       <Route path="/admin/quote-workflow" component={QuoteWorkflowAdmin} />
+      <Route path="/admin/web-lead-sla" component={WebLeadSlaAdmin} />
       <Route path="/approvals" component={ApprovalsList} />
       {/* CLM */}
       <Route path="/clm/templates" component={ClmTemplates} />
@@ -169,6 +173,7 @@ function AppContent() {
     return (
       <Switch>
         <Route path="/login" component={Login} />
+        <Route path="/contact" component={Contact} />
         <Route component={Landing} />
       </Switch>
     );

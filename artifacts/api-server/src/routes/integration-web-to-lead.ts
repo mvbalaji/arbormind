@@ -40,6 +40,7 @@ function isSafeRedirectUrl(url: string): boolean {
 }
 
 async function logRun(params: {
+  orgId: number;
   partnerId: number | null;
   templateId: number | null;
   status: "success" | "validation_error" | "error";
@@ -51,12 +52,12 @@ async function logRun(params: {
 }): Promise<void> {
   await pool.query(
     `INSERT INTO integration_run_log
-       (partner_id, template_id, entity_type, status, request_payload, mapped_output, errors, crm_entity_id, duration_ms, correlation_id)
-     VALUES ($1,$2,'lead',$3,$4,$5,$6,$7,$8,$9)`,
+       (partner_id, template_id, entity_type, status, request_payload, mapped_output, errors, crm_entity_id, duration_ms, correlation_id, org_id)
+     VALUES ($1,$2,'lead',$3,$4,$5,$6,$7,$8,$9,$10)`,
     [
       params.partnerId, params.templateId, params.status,
       JSON.stringify(params.requestPayload ?? null), JSON.stringify(params.mappedOutput ?? null), JSON.stringify(params.errors ?? null),
-      params.crmEntityId ?? null, params.durationMs, "web-to-lead",
+      params.crmEntityId ?? null, params.durationMs, "web-to-lead", params.orgId,
     ],
   );
 }
@@ -88,10 +89,10 @@ router.post("/integrations/web-to-lead/:slug", async (req, res) => {
     return;
   }
 
-  let partner: { id: number; is_active: boolean; allow_public_form: boolean } | undefined;
+  let partner: { id: number; is_active: boolean; allow_public_form: boolean; org_id: number } | undefined;
   try {
     const r = await pool.query(
-      `SELECT id, is_active, allow_public_form FROM integration_partners WHERE slug=$1`,
+      `SELECT id, is_active, allow_public_form, org_id FROM integration_partners WHERE slug=$1`,
       [slug],
     );
     partner = r.rows[0];
@@ -109,7 +110,7 @@ router.post("/integrations/web-to-lead/:slug", async (req, res) => {
   // Honeypot: real visitors never fill this hidden field. Pretend success so bots don't learn.
   if (typeof body[HONEYPOT_FIELD] === "string" && body[HONEYPOT_FIELD].trim() !== "") {
     await logRun({
-      partnerId: partner.id, templateId: null, status: "error",
+      orgId: partner.org_id, partnerId: partner.id, templateId: null, status: "error",
       requestPayload: body, errors: [{ message: "Honeypot field filled — likely spam" }],
       durationMs: Date.now() - started,
     });
@@ -134,7 +135,7 @@ router.post("/integrations/web-to-lead/:slug", async (req, res) => {
 
   if (!templateRow) {
     await logRun({
-      partnerId: partner.id, templateId: null, status: "error",
+      orgId: partner.org_id, partnerId: partner.id, templateId: null, status: "error",
       requestPayload: body, errors: [{ message: "No active lead mapping template configured" }],
       durationMs: Date.now() - started,
     });
@@ -146,7 +147,7 @@ router.post("/integrations/web-to-lead/:slug", async (req, res) => {
 
   if (!result.valid) {
     await logRun({
-      partnerId: partner.id, templateId: templateRow.id, status: "validation_error",
+      orgId: partner.org_id, partnerId: partner.id, templateId: templateRow.id, status: "validation_error",
       requestPayload: body, mappedOutput: result.output, errors: result.errors,
       durationMs: Date.now() - started,
     });
@@ -155,9 +156,9 @@ router.post("/integrations/web-to-lead/:slug", async (req, res) => {
   }
 
   try {
-    const { id } = await entityDescriptor.upsert(result.output);
+    const { id } = await entityDescriptor.upsert(result.output, partner.org_id);
     await logRun({
-      partnerId: partner.id, templateId: templateRow.id, status: "success",
+      orgId: partner.org_id, partnerId: partner.id, templateId: templateRow.id, status: "success",
       requestPayload: body, mappedOutput: result.output, crmEntityId: id,
       durationMs: Date.now() - started,
     });
@@ -165,7 +166,7 @@ router.post("/integrations/web-to-lead/:slug", async (req, res) => {
   } catch (err) {
     req.log?.error(err);
     await logRun({
-      partnerId: partner.id, templateId: templateRow.id, status: "error",
+      orgId: partner.org_id, partnerId: partner.id, templateId: templateRow.id, status: "error",
       requestPayload: body, mappedOutput: result.output,
       errors: [{ message: (err as Error).message }],
       durationMs: Date.now() - started,

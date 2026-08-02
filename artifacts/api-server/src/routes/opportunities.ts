@@ -5,7 +5,6 @@ import { getStandardPriceBookId } from "../lib/pricing";
 import { eq, ilike, sql, and, isNull, asc, desc } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
-import { getOrgId } from "../lib/org-context";
 import { evaluateApprovalsForEntity } from "../lib/approvals-engine";
 
 function actorFromReq(req: any) {
@@ -56,7 +55,6 @@ function formatOpp(o: {
 
 router.get("/opportunities", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const { search, stage, accountId, assignedTo, page = "1", limit = "100" } = req.query as Record<string, string>;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -69,19 +67,16 @@ router.get("/opportunities", async (req, res) => {
       .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
       .leftJoin(contactsTable, eq(opportunitiesTable.contactId, contactsTable.id));
 
-    const conditions = [sql`"opportunities".org_id = ${orgId}`];
+    const conditions = [eq(opportunitiesTable.orgId, req.orgId!)];
     if (search) conditions.push(ilike(opportunitiesTable.name, `%${search}%`));
     if (stage) conditions.push(eq(opportunitiesTable.stage, stage));
     if (accountId) conditions.push(eq(opportunitiesTable.accountId, parseInt(accountId)));
     if (assignedTo) conditions.push(eq(opportunitiesTable.assignedTo, parseInt(assignedTo)));
 
-    const data = await (conditions.length > 0
-      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
-      : baseQuery
-    ).orderBy(desc(opportunitiesTable.createdAt)).limit(limitNum).offset(offset);
+    const data = await baseQuery.where(and(...conditions))
+      .orderBy(desc(opportunitiesTable.createdAt)).limit(limitNum).offset(offset);
 
-    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opportunitiesTable).where(whereClause);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(opportunitiesTable).where(and(...conditions));
     res.json({ data: data.map(formatOpp), total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
     req.log.error(err);
@@ -91,19 +86,19 @@ router.get("/opportunities", async (req, res) => {
 
 router.post("/opportunities", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const oppData = { ...req.body };
     // Default to the Standard Price Book when none was chosen.
     if (oppData.priceBookId == null) {
-      oppData.priceBookId = await getStandardPriceBookId();
+      oppData.priceBookId = await getStandardPriceBookId(req.orgId!);
     }
     // Convert date-only string to full timestamp for the DB timestamp column
     if (oppData.closeDate && typeof oppData.closeDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(oppData.closeDate)) {
       oppData.closeDate = new Date(oppData.closeDate + "T00:00:00Z");
     }
+    oppData.orgId = req.orgId!;
     const [opportunity] = await db.insert(opportunitiesTable).values(oppData).returning();
-    await db.execute(sql`UPDATE opportunities SET org_id = ${orgId} WHERE id = ${opportunity.id}`);
     await db.insert(opportunityStageHistoryTable).values({
+      orgId: req.orgId!,
       opportunityId: opportunity.id,
       stage: opportunity.stage,
     });
@@ -116,14 +111,13 @@ router.post("/opportunities", async (req, res) => {
 
 router.get("/opportunities/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const [opportunity] = await db
       .select(oppFields)
       .from(opportunitiesTable)
       .leftJoin(usersTable, eq(opportunitiesTable.assignedTo, usersTable.id))
       .leftJoin(accountsTable, eq(opportunitiesTable.accountId, accountsTable.id))
       .leftJoin(contactsTable, eq(opportunitiesTable.contactId, contactsTable.id))
-      .where(and(eq(opportunitiesTable.id, parseInt(req.params.id)), sql`"opportunities".org_id = ${orgId}`));
+      .where(and(eq(opportunitiesTable.id, parseInt(req.params.id)), eq(opportunitiesTable.orgId, req.orgId!)));
 
     if (!opportunity) {
       res.status(404).json({ error: "Opportunity not found" });
@@ -138,7 +132,6 @@ router.get("/opportunities/:id", async (req, res) => {
 
 router.put("/opportunities/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
     const { createdAt: _ca, updatedAt: _ua, id: _id, ...rawBody } = req.body ?? {};
     const patch: Record<string, unknown> = { ...rawBody };
@@ -147,14 +140,14 @@ router.put("/opportunities/:id", async (req, res) => {
     }
     // If the price book was explicitly cleared, fall back to the Standard Price Book.
     if ("priceBookId" in patch && patch.priceBookId == null) {
-      patch.priceBookId = await getStandardPriceBookId();
+      patch.priceBookId = await getStandardPriceBookId(req.orgId!);
     }
     const opportunity = await db.transaction(async (tx) => {
-      const [prev] = await tx.select({ stage: opportunitiesTable.stage }).from(opportunitiesTable).where(and(eq(opportunitiesTable.id, id), sql`"opportunities".org_id = ${orgId}`)).for("update");
+      const [prev] = await tx.select({ stage: opportunitiesTable.stage }).from(opportunitiesTable).where(and(eq(opportunitiesTable.id, id), eq(opportunitiesTable.orgId, req.orgId!))).for("update");
       if (!prev) return null;
       const [updated] = await tx.update(opportunitiesTable)
         .set({ ...patch, updatedAt: new Date() })
-        .where(and(eq(opportunitiesTable.id, id), sql`"opportunities".org_id = ${orgId}`))
+        .where(and(eq(opportunitiesTable.id, id), eq(opportunitiesTable.orgId, req.orgId!)))
         .returning();
       if (req.body.stage && prev.stage !== updated.stage) {
         const now = new Date();
@@ -166,6 +159,7 @@ router.put("/opportunities/:id", async (req, res) => {
             isNull(opportunityStageHistoryTable.leftAt),
           ));
         await tx.insert(opportunityStageHistoryTable).values({
+          orgId: req.orgId!,
           opportunityId: id,
           stage: updated.stage,
           enteredAt: now,
@@ -178,7 +172,7 @@ router.put("/opportunities/:id", async (req, res) => {
       return;
     }
     // Fire-and-forget: evaluate approval rules against the updated opportunity.
-    const items = await db.select().from(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, id));
+    const items = await db.select().from(opportunityItemsTable).where(and(eq(opportunityItemsTable.opportunityId, id), eq(opportunityItemsTable.orgId, req.orgId!)));
     const maxItemDiscount = items.reduce((m, it) => Math.max(m, Number(it.discount) || 0), 0);
     void evaluateApprovalsForEntity(
       "opportunity",
@@ -203,7 +197,7 @@ router.put("/opportunities/:id", async (req, res) => {
 router.get("/opportunities/:id/stage-history", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const [opp] = await db.select({ stage: opportunitiesTable.stage, createdAt: opportunitiesTable.createdAt }).from(opportunitiesTable).where(eq(opportunitiesTable.id, id));
+    const [opp] = await db.select({ stage: opportunitiesTable.stage, createdAt: opportunitiesTable.createdAt }).from(opportunitiesTable).where(and(eq(opportunitiesTable.id, id), eq(opportunitiesTable.orgId, req.orgId!)));
     if (!opp) {
       res.status(404).json({ error: "Opportunity not found" });
       return;
@@ -221,6 +215,7 @@ router.get("/opportunities/:id/stage-history", async (req, res) => {
           .orderBy(asc(opportunityStageHistoryTable.enteredAt));
         if (existing.length > 0) return existing;
         const [inserted] = await tx.insert(opportunityStageHistoryTable).values({
+          orgId: req.orgId!,
           opportunityId: id,
           stage: opp.stage,
           enteredAt: opp.createdAt,
@@ -237,9 +232,8 @@ router.get("/opportunities/:id/stage-history", async (req, res) => {
 
 router.delete("/opportunities/:id", async (req, res) => {
   try {
-    const orgId = getOrgId(req);
     const id = parseInt(req.params.id);
-    await db.execute(sql`DELETE FROM opportunities WHERE id = ${id} AND org_id = ${orgId}`);
+    await db.delete(opportunitiesTable).where(and(eq(opportunitiesTable.id, id), eq(opportunitiesTable.orgId, req.orgId!)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);
@@ -254,7 +248,7 @@ router.get("/opportunities/:id/contacts", async (req, res) => {
     const [opp] = await db
       .select({ contactId: opportunitiesTable.contactId, accountId: opportunitiesTable.accountId })
       .from(opportunitiesTable)
-      .where(eq(opportunitiesTable.id, opportunityId));
+      .where(and(eq(opportunitiesTable.id, opportunityId), eq(opportunitiesTable.orgId, req.orgId!)));
 
     if (!opp) return res.status(404).json({ error: "Opportunity not found" });
 
@@ -296,7 +290,7 @@ router.get("/opportunities/:id/activities", async (req, res) => {
       .select()
       .from(activitiesTable)
       .leftJoin(contactsTable, eq(activitiesTable.contactId, contactsTable.id))
-      .where(eq(activitiesTable.opportunityId, opportunityId))
+      .where(and(eq(activitiesTable.opportunityId, opportunityId), eq(activitiesTable.orgId, req.orgId!)))
       .orderBy(activitiesTable.dueDate);
     res.json({
       data: data.map((r) => ({
@@ -317,7 +311,7 @@ router.get("/opportunities/:id/items", async (req, res) => {
       res.status(400).json({ error: "Invalid opportunity ID" });
       return;
     }
-    const items = await db.select().from(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, opportunityId));
+    const items = await db.select().from(opportunityItemsTable).where(and(eq(opportunityItemsTable.opportunityId, opportunityId), eq(opportunityItemsTable.orgId, req.orgId!)));
     res.json({
       data: items.map((item) => ({
         ...item,
@@ -341,7 +335,7 @@ router.put("/opportunities/:id/items", async (req, res) => {
       return;
     }
 
-    const [opp] = await db.select({ id: opportunitiesTable.id }).from(opportunitiesTable).where(eq(opportunitiesTable.id, opportunityId));
+    const [opp] = await db.select({ id: opportunitiesTable.id }).from(opportunitiesTable).where(and(eq(opportunitiesTable.id, opportunityId), eq(opportunitiesTable.orgId, req.orgId!)));
     if (!opp) { res.status(404).json({ error: "Opportunity not found" }); return; }
 
     const body = req.body as { items?: unknown };
@@ -351,10 +345,11 @@ router.put("/opportunities/:id/items", async (req, res) => {
     }
     const items = body.items as Array<{ productId?: number | null; priceBookEntryId?: number | null; productName: string; quantity: number; unitPrice: number; discount?: number }>;
 
-    await db.delete(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, opportunityId));
+    await db.delete(opportunityItemsTable).where(and(eq(opportunityItemsTable.opportunityId, opportunityId), eq(opportunityItemsTable.orgId, req.orgId!)));
 
     if (items && items.length > 0) {
       await db.insert(opportunityItemsTable).values(items.map((item) => ({
+        orgId: req.orgId!,
         opportunityId,
         productId: item.productId ?? null,
         priceBookEntryId: item.priceBookEntryId ?? null,
@@ -371,9 +366,9 @@ router.put("/opportunities/:id/items", async (req, res) => {
     }, 0);
     await db.update(opportunitiesTable)
       .set({ amount: totalAmount.toString(), updatedAt: new Date() })
-      .where(eq(opportunitiesTable.id, opportunityId));
+      .where(and(eq(opportunitiesTable.id, opportunityId), eq(opportunitiesTable.orgId, req.orgId!)));
 
-    const savedItems = await db.select().from(opportunityItemsTable).where(eq(opportunityItemsTable.opportunityId, opportunityId));
+    const savedItems = await db.select().from(opportunityItemsTable).where(and(eq(opportunityItemsTable.opportunityId, opportunityId), eq(opportunityItemsTable.orgId, req.orgId!)));
     res.json({
       data: savedItems.map((item) => ({
         ...item,
@@ -392,7 +387,7 @@ router.put("/opportunities/:id/items", async (req, res) => {
 // Opportunity attachments
 router.get("/opportunities/:id/attachments", async (req, res) => {
   try {
-    const result = await db.execute(sql`SELECT id, opportunity_id, file_name, file_size, file_type, uploaded_by_name, created_at FROM opportunity_attachments WHERE opportunity_id = ${parseInt(req.params.id)} ORDER BY created_at DESC`);
+    const result = await db.execute(sql`SELECT id, opportunity_id, file_name, file_size, file_type, uploaded_by_name, created_at FROM opportunity_attachments WHERE opportunity_id = ${parseInt(req.params.id)} AND org_id = ${req.orgId!} ORDER BY created_at DESC`);
     res.json({ data: result.rows });
   } catch (err) { req.log.error(err); res.status(500).json({ error: "Internal server error" }); }
 });
@@ -401,14 +396,14 @@ router.post("/opportunities/:id/attachments", async (req, res) => {
   try {
     const { fileName, fileSize, fileType, fileData } = req.body;
     const sessionUser = (req as any).session?.user ?? (req as any).user ?? null;
-    const result = await db.execute(sql`INSERT INTO opportunity_attachments (opportunity_id, file_name, file_size, file_type, file_data, uploaded_by_name) VALUES (${parseInt(req.params.id)}, ${fileName}, ${fileSize ?? 0}, ${fileType ?? ""}, ${fileData}, ${sessionUser?.name ?? null}) RETURNING id, opportunity_id, file_name, file_size, file_type, uploaded_by_name, created_at`);
+    const result = await db.execute(sql`INSERT INTO opportunity_attachments (org_id, opportunity_id, file_name, file_size, file_type, file_data, uploaded_by_name) VALUES (${req.orgId!}, ${parseInt(req.params.id)}, ${fileName}, ${fileSize ?? 0}, ${fileType ?? ""}, ${fileData}, ${sessionUser?.name ?? null}) RETURNING id, opportunity_id, file_name, file_size, file_type, uploaded_by_name, created_at`);
     res.status(201).json(result.rows[0]);
   } catch (err) { req.log.error(err); res.status(500).json({ error: "Internal server error" }); }
 });
 
 router.get("/opportunities/:id/attachments/:attId/download", async (req, res) => {
   try {
-    const result = await db.execute(sql`SELECT file_name, file_type, file_data FROM opportunity_attachments WHERE id = ${parseInt(req.params.attId)} AND opportunity_id = ${parseInt(req.params.id)}`);
+    const result = await db.execute(sql`SELECT file_name, file_type, file_data FROM opportunity_attachments WHERE id = ${parseInt(req.params.attId)} AND opportunity_id = ${parseInt(req.params.id)} AND org_id = ${req.orgId!}`);
     const att = result.rows[0] as any;
     if (!att) return res.status(404).json({ error: "Not found" });
     const buf = Buffer.from(att.file_data, "base64");
@@ -420,7 +415,7 @@ router.get("/opportunities/:id/attachments/:attId/download", async (req, res) =>
 
 router.delete("/opportunities/:id/attachments/:attId", async (req, res) => {
   try {
-    await db.execute(sql`DELETE FROM opportunity_attachments WHERE id = ${parseInt(req.params.attId)} AND opportunity_id = ${parseInt(req.params.id)}`);
+    await db.execute(sql`DELETE FROM opportunity_attachments WHERE id = ${parseInt(req.params.attId)} AND opportunity_id = ${parseInt(req.params.id)} AND org_id = ${req.orgId!}`);
     res.json({ success: true });
   } catch (err) { req.log.error(err); res.status(500).json({ error: "Internal server error" }); }
 });

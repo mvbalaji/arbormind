@@ -1,12 +1,14 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+﻿import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { contactsTable } from "./contacts";
 import { accountsTable } from "./accounts";
+import { organizationsTable } from "./organizations";
 
 export const casesTable = pgTable("cases", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   caseNumber: text("case_number").notNull().unique(),
   subject: text("subject").notNull(),
   description: text("description"),
@@ -26,3 +28,4 @@ export const casesTable = pgTable("cases", {
 export const insertCaseSchema = createInsertSchema(casesTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCase = z.infer<typeof insertCaseSchema>;
 export type Case = typeof casesTable.$inferSelect;
+

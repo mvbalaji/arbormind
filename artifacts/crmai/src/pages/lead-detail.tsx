@@ -23,7 +23,7 @@ import {
   CheckCircle2, Clock, ArrowRightLeft, Pencil, MapPin, DollarSign,
   Globe, Users, Briefcase, Star, Target, Send, ChevronDown, ChevronUp, ChevronRight,
   TrendingUp, ThumbsUp, ThumbsDown, MessageSquare, Plus, XCircle, CheckSquare, Save, X,
-  PhoneCall, ListTodo, CalendarPlus, RotateCw, Paperclip, Upload, Trash,
+  PhoneCall, ListTodo, CalendarPlus, RotateCw, Paperclip, Upload, Trash, Eye, Download,
 } from "lucide-react";
 import { LeadInsightsPanel } from "@/components/lead-insights-panel";
 import { SocialInbox } from "@/components/social-inbox";
@@ -197,7 +197,7 @@ export default function LeadDetail() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerActivityId, setViewerActivityId] = useState<number | null>(null);
   const [collapsedThreads, setCollapsedThreads] = useState<Set<number>>(new Set());
-  const [relatedTab, setRelatedTab] = useState<"activities" | "actions" | "contacts" | "accounts" | "social">("activities");
+  const [relatedTab, setRelatedTab] = useState<"activities" | "notes" | "email" | "actions" | "social">("activities");
   const [newActionTitle, setNewActionTitle] = useState("");
   const [newActionDue, setNewActionDue] = useState("");
   const createActivity = useCreateActivity();
@@ -516,10 +516,10 @@ export default function LeadDetail() {
     }
   };
 
-  const handleConvertSubmit = (convertData: ConvertLeadInput) => {
+  const handleConvertSubmit = (convertData: ConvertLeadInput & { newAccountName?: string; newContactFirstName?: string; newContactLastName?: string; newContactEmail?: string; newContactPhone?: string }) => {
     convertMutation.mutate({
       id: lead.id,
-      data: convertData,
+      data: convertData as ConvertLeadInput,
     }, {
       onSuccess: (result) => {
         toast({ title: "Lead Converted!", description: "Created Contact, Account and Opportunity." });
@@ -759,10 +759,10 @@ export default function LeadDetail() {
           )}
         </div>
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left column — Details */}
-          <div className="lg:col-span-1 flex flex-col gap-3">
+        {/* Two-column layout: Contact/Details | AI Summary */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Left column — Contact + Lead Details */}
+          <div className="flex flex-col gap-3">
             {/* Contact Information */}
             <CollapsibleSection
               title="Contact Information"
@@ -973,46 +973,42 @@ export default function LeadDetail() {
               )}
             </CollapsibleSection>
 
-            {/* Record Info */}
-            <CollapsibleSection title="Record Information" defaultOpen={false}>
-              <FieldRow label="Assigned To / Owner" value={lead.assignedToName ?? "Unassigned"} icon={User} />
-              <FieldRow label="Created By" value={lead.assignedToName ?? "System"} icon={User} />
-              <FieldRow label="Created" value={format(new Date(lead.createdAt), "MMM d, yyyy")} icon={Calendar} />
-              <FieldRow label="Days in CRM" value={`${daysSinceCreated} day${daysSinceCreated !== 1 ? "s" : ""}`} icon={Clock} />
-              <FieldRow label="Last Updated" value={formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })} icon={Clock} />
-            </CollapsibleSection>
           </div>
 
-          {/* Right column — AI Insights + Summary */}
-          <div className="lg:col-span-2 flex flex-col gap-3">
-            <LeadInsightsPanel
-              leadId={lead.id}
-              currentScore={lead.score}
-              buyerClassification={lead.buyerClassification}
-              insightsGeneratedAt={lead.insightsGeneratedAt}
-              onConvertClick={!lead.isConverted ? () => setIsConvertOpen(true) : undefined}
-              isConverted={lead.isConverted}
-            />
+          {/* Right column — AI Summary + Next Actions */}
+          <div className="flex flex-col gap-3">
             <AISummary entityType="lead" entityData={lead as unknown as Record<string, unknown>} />
             <AINextActions entityType="lead" entityId={lead.id} />
           </div>
         </div>
 
-        {/* Two-column: activities tabs + right sidebar */}
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-4">
-        <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden">
+        {/* Full-width: Market Intelligence / Lead Insights */}
+        <div className="mt-4">
+          <LeadInsightsPanel
+            leadId={lead.id}
+            currentScore={lead.score}
+            buyerClassification={lead.buyerClassification}
+            insightsGeneratedAt={lead.insightsGeneratedAt}
+            onConvertClick={!lead.isConverted ? () => setIsConvertOpen(true) : undefined}
+            isConverted={lead.isConverted}
+          />
+        </div>
+
+        {/* Activity tabs + Attachments sidebar */}
+        <div className="flex gap-3 items-start">
+        <div className="flex-1 min-w-0 bg-card border border-border rounded-md shadow-sm overflow-hidden">
           {/* Tab headers */}
-          <div className="flex border-b border-border bg-muted/30">
+          <div className="flex border-b border-border bg-muted/30 flex-wrap">
             {[
-              { key: "activities", label: "Activities", count: activities.length },
+              { key: "activities", label: "Activities", count: activities.filter((a) => a.type !== "email" && a.type !== "note").length },
+              { key: "notes", label: "Notes", count: activities.filter((a) => a.type === "note").length },
+              { key: "email", label: "Email", count: activities.filter((a) => a.type === "email").length },
               { key: "actions", label: "Actions", count: activities.filter((a) => a.type === "task").length },
               { key: "social", label: "Social", count: 0, badge: "NEW" },
-              { key: "contacts", label: "Contacts", count: linkedContacts.length || (lead.convertedContactId ? 1 : 0) },
-              { key: "accounts", label: "Accounts", count: lead.convertedAccountId ? 1 : 0 },
             ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setRelatedTab(tab.key as "activities" | "actions" | "contacts" | "accounts" | "social")}
+                onClick={() => setRelatedTab(tab.key as "activities" | "notes" | "email" | "actions" | "social")}
                 className={cn(
                   "px-3 py-1 text-xs font-semibold uppercase tracking-wide transition-colors flex items-center gap-1.5",
                   relatedTab === tab.key
@@ -1029,31 +1025,26 @@ export default function LeadDetail() {
               </button>
             ))}
             <div className="flex-1" />
-            {relatedTab === "activities" && (
+            {(relatedTab === "activities" || relatedTab === "email") && (
               <Button size="sm" variant="ghost" className="h-8 m-1 text-xs text-primary hover:bg-primary/5 gap-1" onClick={() => setIsEmailOpen(true)}>
                 <Send className="w-3 h-3" /> New Email
               </Button>
             )}
           </div>
 
-          {/* Activities tab */}
+          {/* Activities tab — calls, meetings, demos (excludes notes and emails) */}
           {relatedTab === "activities" && (
             <div>
               <div className="px-2 py-1 border-b border-border bg-muted/10">
                 <div className="flex gap-2 mb-2 flex-wrap">
                   {[
-                    { key: "note", label: "Note", icon: MessageSquare },
                     { key: "call", label: "Call", icon: Phone },
                     { key: "meeting", label: "Meeting", icon: Users },
                     { key: "task", label: "Task", icon: CheckSquare },
-                    { key: "email", label: "Email", icon: Mail },
                   ].map(({ key, label, icon: BtnIcon }) => (
                     <button
                       key={key}
-                      onClick={() => {
-                        if (key === "email") { setIsEmailOpen(true); return; }
-                        setActivityType(key);
-                      }}
+                      onClick={() => setActivityType(key)}
                       className={cn(
                         "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors",
                         activityType === key
@@ -1067,7 +1058,7 @@ export default function LeadDetail() {
                 </div>
                 <div className="flex gap-2">
                   <Textarea
-                    placeholder={activityType === "note" ? "Add a note or comment..." : `Log a ${activityType}...`}
+                    placeholder={`Log a ${activityType}...`}
                     className="h-8 text-sm resize-none flex-1 min-h-[36px]"
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
@@ -1079,222 +1070,221 @@ export default function LeadDetail() {
                 </div>
               </div>
               <div className="divide-y divide-border max-h-80 overflow-y-auto">
-                {activities.length === 0 ? (
-                  <div className="px-4 py-10 text-center">
-                    <Activity className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">
-                      No activities yet. Log a note, call, or meeting above.
-                    </p>
-                    <Button size="sm" variant="outline" className="mt-3 text-xs" onClick={() => setIsEmailOpen(true)}>
-                      <Mail className="w-3.5 h-3.5 mr-1.5" /> Log an email
-                    </Button>
-                  </div>
-                ) : (
-                  (() => {
-                    // Build a thread tree so replies render nested under their parent
-                    // outbound email instead of as flat sibling rows. Match by
-                    // normalised subject — strip "Reply:"/"Email:" prefixes added by
-                    // the inbound processor and any "Re:"/"Fwd:" etc. from the wire,
-                    // then pick the most recent prior email activity that matches.
-                    const normSubject = (s: string) =>
-                      s
-                        .replace(/^(Reply|Email):\s*/i, "")
-                        .replace(/^((re|fwd?|aw|sv|tr)\s*:\s*)+/i, "")
-                        .trim()
-                        .toLowerCase();
-                    const emailActs = activities
-                      .filter((x) => x.type === "email")
-                      .slice()
-                      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-                    const parentOf = new Map<number, number>();
-                    // Match each reply to the most recent prior NON-reply email
-                    // with the same normalised subject. Constraining the parent
-                    // to a non-reply guarantees every reply in a chain
-                    // (O1 → R1 → R2 …) anchors on the same outbound root, so
-                    // siblings render together and none get dropped.
-                    for (let i = 0; i < emailActs.length; i++) {
-                      const cur = emailActs[i];
-                      if (!/^Reply:/i.test(cur.subject)) continue;
-                      const target = normSubject(cur.subject);
-                      for (let j = i - 1; j >= 0; j--) {
-                        const cand = emailActs[j];
-                        if (/^Reply:/i.test(cand.subject)) continue;
-                        if (normSubject(cand.subject) === target) {
-                          parentOf.set(cur.id, cand.id);
-                          break;
-                        }
-                      }
-                    }
-                    const childrenOf = new Map<number, typeof emailActs>();
-                    parentOf.forEach((parentId, childId) => {
-                      const child = emailActs.find((x) => x.id === childId);
-                      if (!child) return;
-                      const arr = childrenOf.get(parentId) ?? [];
-                      arr.push(child);
-                      childrenOf.set(parentId, arr);
-                    });
-
-                    // Render newest-first so a freshly sent email shows at the
-                    // TOP of the timeline (not buried below older threads).
-                    // For each parent we still render its children right after
-                    // it so threads stay grouped — children inherit the parent
-                    // thread's position regardless of their own timestamps.
-                    const visible = [...activities]
-                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                      .slice(0, 15);
-                    const visibleIds = new Set(visible.map((v) => v.id));
-                    const flat: { act: typeof visible[number]; depth: number; childCount: number }[] = [];
-                    for (const act of visible) {
-                      const parentId = parentOf.get(act.id);
-                      if (parentId != null && visibleIds.has(parentId)) continue;
-                      const kids = childrenOf.get(act.id) ?? [];
-                      flat.push({ act, depth: 0, childCount: kids.length });
-                      if (!collapsedThreads.has(act.id)) {
-                        // Render children newest-first under each parent too,
-                        // so the most recent reply sits closest to the parent
-                        // row and older replies trail below it.
-                        const orderedKids = [...kids].sort(
-                          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-                        );
-                        for (const k of orderedKids) flat.push({ act: k, depth: 1, childCount: 0 });
-                      }
-                    }
-
-                    return flat.map(({ act, depth, childCount }) => {
-                    const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
-                    const isEmail = act.type === "email";
-                    const isReply = depth > 0;
-                    // Inbound emails are stamped with "Reply:" or "Email:" subject
-                    // prefixes by the inbound processor (see api-server email-sync).
-                    const isInbound = isEmail && /^(Reply|Email):/i.test(act.subject);
-                    const hasThread = isEmail && childCount > 0;
-                    const isCollapsed = collapsedThreads.has(act.id);
-                    const onActivityClick = isEmail
-                      ? () => { setViewerActivityId(act.id); setViewerOpen(true); }
-                      : undefined;
-                    const toggleThread = (e: React.MouseEvent | React.KeyboardEvent) => {
-                      e.stopPropagation();
-                      setCollapsedThreads((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(act.id)) next.delete(act.id);
-                        else next.add(act.id);
-                        return next;
-                      });
-                    };
-                    const a = act as typeof act & {
-                      emailOpenCount?: number | null;
-                      emailLastOpenedAt?: string | null;
-                      emailLastUserAgent?: string | null;
-                    };
-                    const opens = a.emailOpenCount ?? 0;
-                    const ua = a.emailLastUserAgent ?? "";
-                    // Gmail prefetches the tracking pixel ONCE and caches it forever, so the
-                    // counter cannot grow past 1 for Gmail recipients regardless of how many
-                    // times the message is reopened. Surface this honestly in the tooltip.
-                    const isGmailProxy = /GoogleImageProxy|ggpht\.com/i.test(ua);
-                    const opensTitle = isGmailProxy
-                      ? `Recipient uses Gmail, which prefetches the open-tracking pixel once and caches it. Real open count is at least ${opens} — Gmail does not report subsequent opens.${a.emailLastOpenedAt ? ` First opened ${format(new Date(a.emailLastOpenedAt), "MMM d, HH:mm")}.` : ""}`
-                      : a.emailLastOpenedAt
-                        ? `Last opened ${format(new Date(a.emailLastOpenedAt), "MMM d, HH:mm")}`
-                        : "";
-                    const badgeLabel = isEmail && (act.status === "completed" || act.status === "sent")
-                      ? (isInbound ? "Received" : "Sent")
-                      : act.status;
+                {(() => {
+                  const filtered = activities.filter((a) => a.type !== "email" && a.type !== "note");
+                  if (filtered.length === 0) {
                     return (
-                      <div
-                        key={act.id}
-                        className={cn(
-                          "px-2 py-1 flex items-start gap-3 hover:bg-muted/20 transition-colors",
-                          isEmail && "cursor-pointer hover:bg-primary/5",
-                          isReply && "ml-7 border-l-2 border-primary/30 pl-3 bg-muted/10",
-                        )}
-                        onClick={onActivityClick}
-                        role={isEmail ? "button" : undefined}
-                        tabIndex={isEmail ? 0 : undefined}
-                        onKeyDown={isEmail ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onActivityClick?.(); } } : undefined}
-                        title={isEmail ? "Click to read full email" : undefined}
-                      >
-                        {hasThread ? (
-                          <button
-                            type="button"
-                            onClick={toggleThread}
-                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleThread(e); } }}
-                            className="w-4 h-7 flex items-center justify-center flex-shrink-0 mt-0.5 text-muted-foreground hover:text-foreground"
-                            aria-label={isCollapsed ? `Show ${childCount} repl${childCount === 1 ? "y" : "ies"}` : "Hide replies"}
-                            title={isCollapsed ? `Show ${childCount} repl${childCount === 1 ? "y" : "ies"}` : "Hide replies"}
-                          >
-                            {isCollapsed
-                              ? <ChevronRight className="w-3.5 h-3.5" />
-                              : <ChevronDown className="w-3.5 h-3.5" />}
-                          </button>
-                        ) : (
-                          <div className="w-4 flex-shrink-0" aria-hidden />
-                        )}
-                        <div className={cn(
-                          "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
-                          isReply ? "bg-blue-100 text-blue-700" : "bg-primary/10 text-primary",
-                        )}>
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                              {isReply && (
-                                <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 px-1.5 py-0">
-                                  Reply
-                                </Badge>
-                              )}
-                              <span className="truncate">{act.subject}</span>
-                            </span>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              {isEmail && opens > 0 && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs bg-blue-50 text-blue-700 border-blue-200"
-                                  title={opensTitle}
-                                >
-                                  Opened {opens}{isGmailProxy ? "+" : ""}Ã—
-                                </Badge>
-                              )}
-                              {isEmail && opens === 0 && (act.status === "completed" || act.status === "sent") && (
-                                <Badge variant="outline" className="text-xs bg-slate-50 text-slate-600 border-slate-200">
-                                  Not yet opened
-                                </Badge>
-                              )}
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "text-xs capitalize",
-                                  isEmail
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                    : act.status === "completed"
-                                    ? "bg-green-50 text-green-700 border-green-200"
-                                    : "bg-blue-50 text-blue-700 border-blue-200"
-                                )}
-                              >
-                                {badgeLabel}
-                              </Badge>
+                      <div className="px-4 py-10 text-center">
+                        <Activity className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+                        <p className="text-sm text-muted-foreground">No activities yet. Log a call, meeting, or task above.</p>
+                      </div>
+                    );
+                  }
+                  return [...filtered]
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .map((act) => {
+                      const Icon = ACTIVITY_ICONS[act.type] ?? Activity;
+                      return (
+                        <div key={act.id} className="px-3 py-2 flex items-start gap-3 hover:bg-muted/20 transition-colors">
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Icon className="w-3.5 h-3.5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="text-sm font-medium text-foreground truncate">{act.subject}</span>
+                              <Badge variant="outline" className={cn("text-xs capitalize flex-shrink-0",
+                                act.status === "completed" ? "bg-green-50 text-green-700 border-green-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                              )}>{act.status}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-muted-foreground capitalize">{act.type}</span>
+                              <span className="text-xs text-muted-foreground">· {format(new Date(act.createdAt), "MMM d, h:mm a")}</span>
+                              {act.dueDate && <span className="text-xs text-muted-foreground">· Due {format(new Date(act.dueDate), "MMM d")}</span>}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-muted-foreground capitalize">{act.type}</span>
-                            {act.dueDate && (
-                              <span className="text-xs text-muted-foreground">
-                                Â· {format(new Date(act.dueDate), "MMM d")}
-                              </span>
-                            )}
-                            {isEmail && act.completedAt && (
-                              <span className="text-xs text-muted-foreground">
-                                Â· sent {format(new Date(act.completedAt), "MMM d, HH:mm")}
-                              </span>
-                            )}
+                        </div>
+                      );
+                    });
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* Notes tab — only type="note" activities */}
+          {relatedTab === "notes" && (
+            <div>
+              <div className="px-2 py-1 border-b border-border bg-muted/10">
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Add a note or comment..."
+                    className="h-8 text-sm resize-none flex-1 min-h-[36px]"
+                    value={newNote}
+                    onChange={(e) => { setActivityType("note"); setNewNote(e.target.value); }}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleAddActivity(); } }}
+                  />
+                  <Button size="sm" className="h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => { setActivityType("note"); void handleAddActivity(); }} disabled={isAddingNote || !newNote.trim()}>
+                    <Plus className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+              <div className="divide-y divide-border max-h-80 overflow-y-auto">
+                {(() => {
+                  const notes = activities.filter((a) => a.type === "note");
+                  if (notes.length === 0) {
+                    return (
+                      <div className="px-4 py-10 text-center">
+                        <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+                        <p className="text-sm text-muted-foreground">No notes yet. Add one above.</p>
+                      </div>
+                    );
+                  }
+                  return [...notes]
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .map((note) => (
+                      <div key={note.id} className="px-3 py-2.5 hover:bg-muted/20 transition-colors">
+                        <div className="flex items-start gap-3">
+                          <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <MessageSquare className="w-3.5 h-3.5 text-amber-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-foreground leading-relaxed">{note.subject}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{format(new Date(note.createdAt), "MMM d, yyyy · h:mm a")}</p>
                           </div>
                         </div>
                       </div>
+                    ));
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* Email tab — threaded email tree grouped by subject */}
+          {relatedTab === "email" && (
+            <div>
+              <div className="divide-y divide-border max-h-[500px] overflow-y-auto">
+                {(() => {
+                  const emailActs = activities
+                    .filter((x) => x.type === "email")
+                    .slice()
+                    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+                  if (emailActs.length === 0) {
+                    return (
+                      <div className="px-4 py-10 text-center">
+                        <Mail className="w-8 h-8 mx-auto mb-2 text-muted-foreground/40" />
+                        <p className="text-sm text-muted-foreground">No emails yet.</p>
+                        <Button size="sm" variant="outline" className="mt-3 text-xs" onClick={() => setIsEmailOpen(true)}>
+                          <Send className="w-3.5 h-3.5 mr-1.5" /> Send Email
+                        </Button>
+                      </div>
                     );
-                    });
-                  })()
-                )}
+                  }
+
+                  const normSubject = (s: string) =>
+                    s.replace(/^(Reply|Email):\s*/i, "").replace(/^((re|fwd?|aw|sv|tr)\s*:\s*)+/i, "").trim().toLowerCase();
+
+                  // Group emails into threads by normalised subject
+                  const threadMap = new Map<string, typeof emailActs>();
+                  const threadOrder: string[] = [];
+                  for (const act of emailActs) {
+                    const key = normSubject(act.subject);
+                    if (!threadMap.has(key)) { threadMap.set(key, []); threadOrder.push(key); }
+                    threadMap.get(key)!.push(act);
+                  }
+
+                  // Show newest thread first
+                  const sortedThreadKeys = [...threadOrder].sort((a, b) => {
+                    const aLatest = threadMap.get(a)!.at(-1)!.createdAt;
+                    const bLatest = threadMap.get(b)!.at(-1)!.createdAt;
+                    return new Date(bLatest).getTime() - new Date(aLatest).getTime();
+                  });
+
+                  return sortedThreadKeys.map((key) => {
+                    const thread = threadMap.get(key)!;
+                    const firstMsg = thread[0];
+                    const lastMsg = thread.at(-1)!;
+                    const sent = thread.filter((m) => !/^(Reply|Email):/i.test(m.subject));
+                    const received = thread.filter((m) => /^(Reply|Email):/i.test(m.subject));
+                    const isExpanded = !collapsedThreads.has(firstMsg.id);
+                    const displaySubject = normSubject(firstMsg.subject) || firstMsg.subject;
+                    const a = lastMsg as typeof lastMsg & { emailOpenCount?: number | null };
+                    const opens = a.emailOpenCount ?? 0;
+
+                    return (
+                      <div key={key} className="border-b border-border last:border-0">
+                        {/* Thread header */}
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2.5 flex items-start gap-3 hover:bg-muted/20 transition-colors"
+                          onClick={() => setCollapsedThreads((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(firstMsg.id)) next.delete(firstMsg.id);
+                            else next.add(firstMsg.id);
+                            return next;
+                          })}
+                        >
+                          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <Mail className="w-3.5 h-3.5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-foreground capitalize truncate">{displaySubject || firstMsg.subject}</span>
+                              <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">{thread.length} message{thread.length !== 1 ? "s" : ""}</span>
+                              {sent.length > 0 && <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 py-0">{sent.length} Sent</Badge>}
+                              {received.length > 0 && <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 border-blue-200 py-0">{received.length} Received</Badge>}
+                              {opens > 0 && <Badge variant="outline" className="text-[10px] bg-purple-50 text-purple-700 border-purple-200 py-0">Opened {opens}×</Badge>}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              Latest: {format(new Date(lastMsg.createdAt), "MMM d, h:mm a")}
+                              {" · "}{isExpanded ? "Click to collapse" : "Click to expand"}
+                            </div>
+                          </div>
+                          {isExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" /> : <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-1" />}
+                        </button>
+
+                        {/* Thread messages */}
+                        {isExpanded && (
+                          <div className="ml-10 border-l-2 border-primary/20 pl-3 pb-2 space-y-1">
+                            {thread.map((msg) => {
+                              const isInbound = /^(Reply|Email):/i.test(msg.subject);
+                              const ma = msg as typeof msg & { emailOpenCount?: number | null; emailLastOpenedAt?: string | null };
+                              return (
+                                <button
+                                  key={msg.id}
+                                  type="button"
+                                  className="w-full text-left px-2 py-1.5 rounded-md hover:bg-primary/5 transition-colors flex items-start gap-2"
+                                  onClick={() => { setViewerActivityId(msg.id); setViewerOpen(true); }}
+                                >
+                                  <div className={cn(
+                                    "w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5",
+                                    isInbound ? "bg-blue-100" : "bg-emerald-100"
+                                  )}>
+                                    <Mail className={cn("w-3 h-3", isInbound ? "text-blue-600" : "text-emerald-600")} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <Badge variant="outline" className={cn("text-[10px] py-0", isInbound ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-emerald-50 text-emerald-700 border-emerald-200")}>
+                                        {isInbound ? "Received" : "Sent"}
+                                      </Badge>
+                                      <span className="text-xs text-foreground truncate">{msg.subject}</span>
+                                    </div>
+                                    <span className="text-[10px] text-muted-foreground">{format(new Date(msg.createdAt), "MMM d, h:mm a")}</span>
+                                    {!isInbound && (ma.emailOpenCount ?? 0) > 0 && (
+                                      <span className="text-[10px] text-purple-600 ml-2">· Opened {ma.emailOpenCount}×</span>
+                                    )}
+                                    {!isInbound && (ma.emailOpenCount ?? 0) === 0 && (
+                                      <span className="text-[10px] text-muted-foreground ml-2">· Not yet opened</span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}
@@ -1479,195 +1469,97 @@ export default function LeadDetail() {
 
           {/* Social Inbox tab */}
           {relatedTab === "social" && (
-            <SocialInbox leadId={lead.id} leadName={`${lead.firstName} ${lead.lastName}`} />
-          )}
-
-          {/* Contacts tab */}
-          {relatedTab === "contacts" && (
-            <div className="p-4">
-              {linkedContacts.length > 0 ? (
-                <div className="space-y-2">
-                  {linkedContacts.map((contact) => (
-                    <Link key={contact.id} href={`/contacts/${contact.id}`}>
-                      <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
-                        <div className="w-10 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold flex-shrink-0">
-                          {contact.firstName?.[0] ?? ""}{contact.lastName?.[0] ?? ""}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-semibold text-primary group-hover:underline transition-colors">
-                            {contact.firstName} {contact.lastName}
-                          </div>
-                          {contact.title && <div className="text-xs text-muted-foreground">{contact.title}</div>}
-                          {contact.email && (
-                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                              <Mail className="w-3 h-3" /> {contact.email}
-                            </div>
-                          )}
-                        </div>
-                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Linked</Badge>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : lead.convertedContactId && convertedContactData ? (
-                <Link href={`/contacts/${lead.convertedContactId}`}>
-                  <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
-                    <div className="w-10 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold flex-shrink-0">
-                      {convertedContactData.firstName?.[0] ?? ""}{convertedContactData.lastName?.[0] ?? ""}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {convertedContactData.firstName} {convertedContactData.lastName}
-                      </div>
-                      {convertedContactData.title && <div className="text-xs text-muted-foreground">{convertedContactData.title}</div>}
-                      {convertedContactData.email && (
-                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <Mail className="w-3 h-3" /> {convertedContactData.email}
-                        </div>
-                      )}
-                    </div>
-                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Converted</Badge>
-                  </div>
-                </Link>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <User className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No contact linked yet.</p>
-                  <p className="text-xs mt-1">Convert this lead to create a contact record.</p>
-                </div>
-              )}
+            <div className="max-h-[580px] overflow-y-auto">
+              <SocialInbox leadId={lead.id} leadName={`${lead.firstName} ${lead.lastName}`} />
             </div>
           )}
 
-          {/* Accounts tab */}
-          {relatedTab === "accounts" && (
-            <div className="p-4">
-              {lead.convertedAccountId && convertedAccountData ? (
-                <Link href={`/accounts/${lead.convertedAccountId}`}>
-                  <div className="flex items-center gap-3 p-3 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer group">
-                    <div className="w-10 h-8 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <Building2 className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {convertedAccountData.name}
-                      </div>
-                      {convertedAccountData.industry && <div className="text-xs text-muted-foreground">{convertedAccountData.industry}</div>}
-                      {convertedAccountData.city && (
-                        <div className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3" /> {convertedAccountData.city}{convertedAccountData.country ? `, ${convertedAccountData.country}` : ""}
-                        </div>
-                      )}
-                    </div>
-                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">Converted</Badge>
-                  </div>
-                </Link>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Building2 className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">No account linked yet.</p>
-                  <p className="text-xs mt-1">Convert this lead to create an account record.</p>
-                </div>
-              )}
-            </div>
-          )}
+
         </div>
 
-        {/* Right sidebar: Activities quick-log + Attachments */}
-        <div className="flex flex-col gap-3">
-          {/* Activities quick-log */}
-          <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <Activity className="w-4 h-4 text-primary" /> Activities
-              </h3>
-              <button onClick={() => void refetchActivities()} className="p-1 rounded hover:bg-muted transition-colors">
-                <RotateCw className="w-3.5 h-3.5 text-muted-foreground" />
-              </button>
-            </div>
-            <div className="p-3 border-b border-border">
-              <div className="flex gap-1 mb-2">
-                {([{k:"call",i:PhoneCall},{k:"email",i:Mail},{k:"task",i:ListTodo},{k:"event",i:CalendarPlus}] as const).map(({k,i:Icon})=>(
-                  <button key={k} onClick={()=>setSideActivitySubTab(k as any)} className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${sideActivitySubTab===k?"bg-primary text-primary-foreground":"bg-muted/60 text-muted-foreground hover:bg-muted"}`}>
-                    <Icon className="w-3 h-3"/>{k.charAt(0).toUpperCase()+k.slice(1)}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  className="flex-1 h-8 px-2 rounded-md bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground"
-                  placeholder={`Recap the ${sideActivitySubTab}...`}
-                  value={sideActivityText}
-                  onChange={e=>setSideActivityText(e.target.value)}
-                  onKeyDown={async e=>{
-                    if(e.key==="Enter"&&sideActivityText.trim()){
-                      setIsAddingSideActivity(true);
-                      await fetch("/api/activities",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:sideActivitySubTab,subject:sideActivityText.slice(0,80),notes:sideActivityText,status:"completed",leadId:lead.id})});
-                      setSideActivityText(""); void refetchActivities(); setIsAddingSideActivity(false);
-                    }
-                  }}
-                />
-                <Button size="sm" className="h-8 bg-primary text-primary-foreground hover:bg-primary/90 px-3" disabled={isAddingSideActivity||!sideActivityText.trim()} onClick={async()=>{
-                  setIsAddingSideActivity(true);
-                  await fetch("/api/activities",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:sideActivitySubTab,subject:sideActivityText.slice(0,80),notes:sideActivityText,status:"completed",leadId:lead.id})});
-                  setSideActivityText(""); void refetchActivities(); setIsAddingSideActivity(false);
-                }}>Add</Button>
-              </div>
-            </div>
-            <div className="divide-y divide-border max-h-72 overflow-y-auto">
-              {activities.length===0?(
-                <div className="py-6 text-center text-muted-foreground text-xs">No activities yet.</div>
-              ):activities.slice(0,8).map((a:any)=>{
-                const Icon = ACTIVITY_ICONS[a.type] ?? Activity;
-                return (
-                  <div key={a.id} className="px-3 py-2 flex gap-2 items-start">
-                    <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mt-0.5 shrink-0">
-                      <Icon className="w-3 h-3 text-primary"/>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-foreground truncate">{a.subject}</p>
-                      <p className="text-[10px] text-muted-foreground">{a.type} · {a.createdAt ? format(new Date(a.createdAt),"MMM d, h:mm a") : ""}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Right-side Attachments panel */}
+        <div className="w-72 shrink-0 bg-card border border-border rounded-md shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
+            <Paperclip className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attachments</span>
+            {leadAttachments.length > 0 && (
+              <span className="ml-auto text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">{leadAttachments.length}</span>
+            )}
           </div>
-
-          {/* Attachments */}
-          <div className="bg-card border border-border rounded-md shadow-sm overflow-hidden">
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
-              <Paperclip className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground flex-1">Attachments</h3>
+          <div className="p-3 space-y-2">
+            <div
+              className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDraggingFile ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+              onDragOver={e => { e.preventDefault(); setIsDraggingFile(true); }}
+              onDragLeave={() => setIsDraggingFile(false)}
+              onDrop={e => { e.preventDefault(); setIsDraggingFile(false); Array.from(e.dataTransfer.files).forEach(uploadLeadFile); }}
+              onClick={() => { const inp = document.createElement("input"); inp.type = "file"; inp.multiple = true; inp.onchange = () => Array.from(inp.files ?? []).forEach(uploadLeadFile); inp.click(); }}
+            >
+              <Upload className="w-5 h-5 mx-auto mb-1.5 text-muted-foreground opacity-50" />
+              <p className="text-xs text-muted-foreground">Drag &amp; drop or click to upload</p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">PDF, Word, Excel, images</p>
             </div>
-            <div className="p-3 space-y-2">
-              <div
-                className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${isDraggingFile?"border-primary bg-primary/5":"border-border hover:border-primary/40"}`}
-                onDragOver={e=>{e.preventDefault();setIsDraggingFile(true);}}
-                onDragLeave={()=>setIsDraggingFile(false)}
-                onDrop={e=>{e.preventDefault();setIsDraggingFile(false);Array.from(e.dataTransfer.files).forEach(uploadLeadFile);}}
-                onClick={()=>{ const inp=document.createElement("input"); inp.type="file"; inp.multiple=true; inp.onchange=()=>Array.from(inp.files??[]).forEach(uploadLeadFile); inp.click(); }}
-              >
-                <Upload className="w-5 h-5 mx-auto mb-1 text-muted-foreground opacity-50" />
-                <p className="text-xs text-muted-foreground">Drag &amp; drop or click to upload</p>
-                <p className="text-[10px] text-muted-foreground/60 mt-0.5">PDF, Word, Excel, images</p>
-              </div>
-              {leadAttachments.map((att:any)=>(
-                <div key={att.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/40 border border-border group">
-                  <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0"/>
+            {leadAttachments.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-2">No files attached yet.</p>
+            ) : leadAttachments.map((att: any) => {
+              const isPreviewable = att.file_type?.startsWith("image/") || att.file_type === "application/pdf";
+              const viewUrl = `/api/leads/${id}/attachments/${att.id}/view`;
+              const downloadUrl = `/api/leads/${id}/attachments/${att.id}/download`;
+              return (
+                <div key={att.id} className="flex items-start gap-2 p-2 rounded-md bg-muted/40 border border-border group">
+                  <Paperclip className="w-3 h-3 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{att.file_name}</p>
-                    <p className="text-[10px] text-muted-foreground">{formatFileSize(att.file_size)}</p>
+                    <p className="text-xs font-medium truncate" title={att.file_name}>{att.file_name}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(att.file_size)}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {isPreviewable && (
+                        <a href={viewUrl} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                          <Eye className="w-3 h-3" /> Preview
+                        </a>
+                      )}
+                      <a href={downloadUrl}
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline">
+                        <Download className="w-3 h-3" /> Download
+                      </a>
+                    </div>
                   </div>
-                  <button onClick={()=>void deleteLeadAttachment(att.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 transition-all">
-                    <Trash className="w-3 h-3 text-destructive"/>
+                  <button onClick={() => void deleteLeadAttachment(att.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 transition-all shrink-0">
+                    <Trash className="w-3 h-3 text-destructive" />
                   </button>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
-        </div>{/* end two-column grid */}
+        </div>{/* end tabs+attachments row */}
+
+        {/* Record Information — bottom of page */}
+        <div className="mt-4">
+          <CollapsibleSection title="Record Information" defaultOpen={false}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-1">
+              <div className="flex items-center gap-1.5">
+                <User className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-xs text-muted-foreground">Owner</span>
+                <span className="text-xs font-medium text-foreground ml-1">{lead.assignedToName ?? "Unassigned"}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-xs text-muted-foreground">Created</span>
+                <span className="text-xs font-medium text-foreground ml-1">{format(new Date(lead.createdAt), "MMM d, yyyy")}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-xs text-muted-foreground">Days in CRM</span>
+                <span className="text-xs font-medium text-foreground ml-1">{daysSinceCreated}d</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                <span className="text-xs text-muted-foreground">Updated</span>
+                <span className="text-xs font-medium text-foreground ml-1">{formatDistanceToNow(new Date(lead.updatedAt), { addSuffix: true })}</span>
+              </div>
+            </div>
+          </CollapsibleSection>
+        </div>
       </div>
 
       {/* Email Compose */}
@@ -1695,7 +1587,7 @@ export default function LeadDetail() {
         onOpenChange={setIsConvertOpen}
         lead={lead}
         isPending={convertMutation.isPending}
-        onConvert={handleConvertSubmit}
+        onConvert={handleConvertSubmit as Parameters<typeof ConvertLeadDialog>[0]["onConvert"]}
       />
 
     </Layout>
@@ -1707,16 +1599,22 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
   onOpenChange: (v: boolean) => void;
   lead: LeadDetail;
   isPending: boolean;
-  onConvert: (data: ConvertLeadInput) => void;
+  onConvert: (data: ConvertLeadInput & { newAccountName?: string; newContactFirstName?: string; newContactLastName?: string; newContactEmail?: string; newContactPhone?: string }) => void;
 }) {
-  const [accountMode, setAccountMode] = useState<"new" | "existing">("new");
-  const [contactMode, setContactMode] = useState<"new" | "existing">("new");
+  const [accountMode, setAccountMode] = useState<"new" | "existing" | "skip">("new");
+  const [contactMode, setContactMode] = useState<"new" | "existing" | "skip">("new");
   const [existingAccountId, setExistingAccountId] = useState<string>("");
   const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
   const [oppName, setOppName] = useState("");
-  const [createOpp, setCreateOpp] = useState(true);
+  const [createOpp, setCreateOpp] = useState(false);
   const [accountSearch, setAccountSearch] = useState("");
   const [contactSearch, setContactSearch] = useState("");
+  // Inline creation fields
+  const [newAccountName, setNewAccountName] = useState("");
+  const [newContactFirstName, setNewContactFirstName] = useState("");
+  const [newContactLastName, setNewContactLastName] = useState("");
+  const [newContactEmail, setNewContactEmail] = useState("");
+  const [newContactPhone, setNewContactPhone] = useState("");
 
   const { data: accountsData } = useListAccounts({ limit: 100 });
   const { data: contactsData } = useListContacts({ limit: 100 });
@@ -1732,9 +1630,14 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
       setAccountSearch("");
       setContactSearch("");
       setOppName(`${fullName} Deal`);
-      setCreateOpp(true);
+      setCreateOpp(false);
+      setNewAccountName(lead.company ?? "");
+      setNewContactFirstName(lead.firstName);
+      setNewContactLastName(lead.lastName);
+      setNewContactEmail(lead.email ?? "");
+      setNewContactPhone(lead.phone ?? "");
     }
-  }, [open, fullName]);
+  }, [open, fullName, lead]);
 
   const toggleContactId = (id: number) => {
     setSelectedContactIds((prev) =>
@@ -1742,19 +1645,31 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
     );
   };
 
+  // Whether an account will exist after conversion (needed for opportunity)
+  const willHaveAccount =
+    (accountMode === "new" && newAccountName.trim().length > 0) ||
+    (accountMode === "existing" && !!existingAccountId);
+
   const handleSubmit = () => {
-    const data: ConvertLeadInput = {
-      createOpportunity: createOpp,
+    onConvert({
+      createOpportunity: createOpp && willHaveAccount,
       opportunityName: oppName || `${fullName} Deal`,
       opportunityAmount: 0,
-      createAccount: accountMode === "existing" ? false : !!lead.company,
-      createContact: contactMode === "existing" ? false : true,
+      createAccount: accountMode === "new",
+      createContact: contactMode === "new",
       existingAccountId: accountMode === "existing" && existingAccountId ? parseInt(existingAccountId) : undefined,
       existingContactIds: contactMode === "existing" && selectedContactIds.length > 0 ? selectedContactIds : undefined,
-    };
-
-    onConvert(data);
+      newAccountName: accountMode === "new" ? newAccountName.trim() : undefined,
+      newContactFirstName: contactMode === "new" ? newContactFirstName.trim() : undefined,
+      newContactLastName: contactMode === "new" ? newContactLastName.trim() : undefined,
+      newContactEmail: contactMode === "new" ? newContactEmail.trim() : undefined,
+      newContactPhone: contactMode === "new" ? newContactPhone.trim() : undefined,
+    } as ConvertLeadInput & { newAccountName?: string; newContactFirstName?: string; newContactLastName?: string; newContactEmail?: string; newContactPhone?: string });
   };
+
+  const canSubmit = !isPending &&
+    (accountMode === "skip" || (accountMode === "new" && newAccountName.trim()) || (accountMode === "existing" && existingAccountId)) &&
+    (contactMode === "skip" || (contactMode === "new" && newContactFirstName.trim() && newContactLastName.trim()) || (contactMode === "existing" && selectedContactIds.length > 0));
 
   interface AccountOption { id: number; name: string }
   interface ContactOption { id: number; firstName: string; lastName: string }
@@ -1767,167 +1682,168 @@ function ConvertLeadDialog({ open, onOpenChange, lead, isPending, onConvert }: {
     ? contacts.filter((c) => `${c.firstName} ${c.lastName}`.toLowerCase().includes(contactSearch.toLowerCase()))
     : contacts;
 
+  const inputCls = "w-full h-8 px-3 rounded-md bg-card border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader className="border-b border-border pb-3">
           <DialogTitle className="text-base font-semibold flex items-center gap-2">
-            <ArrowRightLeft className="w-4 h-4 text-primary" /> Convert Lead
+            <ArrowRightLeft className="w-4 h-4 text-primary" /> Convert Lead — {fullName}
           </DialogTitle>
         </DialogHeader>
-        <div className="py-4 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Converting <strong className="text-foreground">{fullName}</strong>
-          </p>
+        <div className="py-3 space-y-4">
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Account</Label>
-            <div className="flex gap-2 mb-2">
-              <Button
-                type="button" size="sm" variant={accountMode === "new" ? "default" : "outline"}
-                className="text-xs h-7 flex-1"
-                onClick={() => setAccountMode("new")}
-              >
-                Create New
-              </Button>
-              <Button
-                type="button" size="sm" variant={accountMode === "existing" ? "default" : "outline"}
-                className="text-xs h-7 flex-1"
-                onClick={() => setAccountMode("existing")}
-              >
-                Use Existing
-              </Button>
-            </div>
-            {accountMode === "new" ? (
-              <div className="flex items-center gap-2.5 p-2.5 rounded-md border border-border bg-muted/30">
-                <Building2 className="w-4 h-4 text-primary flex-shrink-0" />
-                <span className="text-sm text-foreground">{lead.company || "No company name"}</span>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <Input
-                  placeholder="Search accounts..."
-                  className="h-8 text-sm"
-                  value={accountSearch}
-                  onChange={(e) => { setAccountSearch(e.target.value); setExistingAccountId(""); }}
-                />
-                <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
-                  {filteredAccounts.length === 0 ? (
-                    <div className="px-3 py-1 text-xs text-muted-foreground">No accounts found</div>
-                  ) : filteredAccounts.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      className={`w-full text-left px-3 py-1 text-sm hover:bg-primary/10 transition-colors ${
-                        existingAccountId === String(a.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
-                      }`}
-                      onClick={() => { setExistingAccountId(String(a.id)); setAccountSearch(a.name); }}
-                    >
-                      {a.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</Label>
-            <div className="flex gap-2 mb-2">
-              <Button
-                type="button" size="sm" variant={contactMode === "new" ? "default" : "outline"}
-                className="text-xs h-7 flex-1"
-                onClick={() => setContactMode("new")}
-              >
-                Create New
-              </Button>
-              <Button
-                type="button" size="sm" variant={contactMode === "existing" ? "default" : "outline"}
-                className="text-xs h-7 flex-1"
-                onClick={() => setContactMode("existing")}
-              >
-                Use Existing
-              </Button>
-            </div>
-            {contactMode === "new" ? (
-              <div className="flex items-center gap-2.5 p-2.5 rounded-md border border-border bg-muted/30">
-                <User className="w-4 h-4 text-primary flex-shrink-0" />
-                <span className="text-sm text-foreground">{fullName}</span>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <Input
-                  placeholder="Search contacts..."
-                  className="h-8 text-sm"
-                  value={contactSearch}
-                  onChange={(e) => setContactSearch(e.target.value)}
-                />
-                {selectedContactIds.length > 0 && (
-                  <p className="text-xs text-muted-foreground">{selectedContactIds.length} contact(s) selected</p>
-                )}
-                <div className="max-h-32 overflow-y-auto border border-border rounded-md bg-card">
-                  {filteredContacts.length === 0 ? (
-                    <div className="px-3 py-1 text-xs text-muted-foreground">No contacts found</div>
-                  ) : filteredContacts.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className={`w-full text-left px-3 py-1 text-sm hover:bg-primary/10 transition-colors flex items-center gap-2 ${
-                        selectedContactIds.includes(c.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground"
-                      }`}
-                      onClick={() => toggleContactId(c.id)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedContactIds.includes(c.id)}
-                        readOnly
-                        className="rounded border-border pointer-events-none"
-                      />
-                      {c.firstName} {c.lastName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="createOpp"
-                checked={createOpp}
-                onChange={(e) => setCreateOpp(e.target.checked)}
-                className="rounded border-border"
-              />
-              <Label htmlFor="createOpp" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer">
-                Create Opportunity
+          {/* ── Account ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold uppercase tracking-wide text-foreground flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-primary" /> Account
               </Label>
+              <div className="flex gap-1">
+                {(["new", "existing", "skip"] as const).map((m) => (
+                  <button key={m} type="button" onClick={() => setAccountMode(m)}
+                    className={cn("px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
+                      accountMode === m ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    )}>
+                    {m === "new" ? "Create New" : m === "existing" ? "Use Existing" : "Skip"}
+                  </button>
+                ))}
+              </div>
             </div>
-            {createOpp && (
-              <Input
-                placeholder="Opportunity name"
-                className="h-8 text-sm"
-                value={oppName}
-                onChange={(e) => setOppName(e.target.value)}
-              />
+
+            {accountMode === "new" && (
+              <div className="bg-muted/30 rounded-md p-3 space-y-2">
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground font-medium">Company Name *</label>
+                  <input className={inputCls} value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} placeholder="Enter company name..." />
+                </div>
+              </div>
+            )}
+
+            {accountMode === "existing" && (
+              <div className="space-y-1">
+                <input className={inputCls} placeholder="Search accounts..." value={accountSearch}
+                  onChange={(e) => { setAccountSearch(e.target.value); setExistingAccountId(""); }} />
+                <div className="max-h-28 overflow-y-auto border border-border rounded-md bg-card">
+                  {filteredAccounts.length === 0
+                    ? <div className="px-3 py-2 text-xs text-muted-foreground">No accounts found</div>
+                    : filteredAccounts.map((a) => (
+                      <button key={a.id} type="button"
+                        className={cn("w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-primary/10",
+                          existingAccountId === String(a.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground")}
+                        onClick={() => { setExistingAccountId(String(a.id)); setAccountSearch(a.name); }}>
+                        {a.name}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {accountMode === "skip" && (
+              <p className="text-xs text-muted-foreground bg-muted/30 rounded-md px-3 py-2">No account will be created. Opportunity creation requires an account.</p>
             )}
           </div>
 
-          <div className="p-3 rounded-md bg-amber-50 border border-amber-200">
-            <p className="text-xs text-amber-700">
-              The lead will be marked as <strong>converted</strong> and linked to the selected records.
+          {/* ── Contact ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold uppercase tracking-wide text-foreground flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-primary" /> Contact
+              </Label>
+              <div className="flex gap-1">
+                {(["new", "existing", "skip"] as const).map((m) => (
+                  <button key={m} type="button" onClick={() => setContactMode(m)}
+                    className={cn("px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors",
+                      contactMode === m ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    )}>
+                    {m === "new" ? "Create New" : m === "existing" ? "Use Existing" : "Skip"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {contactMode === "new" && (
+              <div className="bg-muted/30 rounded-md p-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground font-medium">First Name *</label>
+                    <input className={inputCls} value={newContactFirstName} onChange={(e) => setNewContactFirstName(e.target.value)} placeholder="First name" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground font-medium">Last Name *</label>
+                    <input className={inputCls} value={newContactLastName} onChange={(e) => setNewContactLastName(e.target.value)} placeholder="Last name" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground font-medium">Email</label>
+                  <input className={inputCls} type="email" value={newContactEmail} onChange={(e) => setNewContactEmail(e.target.value)} placeholder="email@example.com" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground font-medium">Phone</label>
+                  <input className={inputCls} value={newContactPhone} onChange={(e) => setNewContactPhone(e.target.value)} placeholder="+91 9876543210" />
+                </div>
+              </div>
+            )}
+
+            {contactMode === "existing" && (
+              <div className="space-y-1">
+                <input className={inputCls} placeholder="Search contacts..." value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)} />
+                {selectedContactIds.length > 0 && (
+                  <p className="text-xs text-muted-foreground">{selectedContactIds.length} selected</p>
+                )}
+                <div className="max-h-28 overflow-y-auto border border-border rounded-md bg-card">
+                  {filteredContacts.length === 0
+                    ? <div className="px-3 py-2 text-xs text-muted-foreground">No contacts found</div>
+                    : filteredContacts.map((c) => (
+                      <button key={c.id} type="button"
+                        className={cn("w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 hover:bg-primary/10 transition-colors",
+                          selectedContactIds.includes(c.id) ? "bg-primary/15 text-primary font-medium" : "text-foreground")}
+                        onClick={() => toggleContactId(c.id)}>
+                        <input type="checkbox" checked={selectedContactIds.includes(c.id)} readOnly className="rounded border-border pointer-events-none" />
+                        {c.firstName} {c.lastName}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {contactMode === "skip" && (
+              <p className="text-xs text-muted-foreground bg-muted/30 rounded-md px-3 py-2">No contact will be created or linked.</p>
+            )}
+          </div>
+
+          {/* ── Opportunity ── */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="createOpp" checked={createOpp && willHaveAccount}
+                disabled={!willHaveAccount}
+                onChange={(e) => setCreateOpp(e.target.checked)}
+                className="rounded border-border disabled:opacity-40" />
+              <Label htmlFor="createOpp" className={cn("text-xs font-bold uppercase tracking-wide flex items-center gap-1.5",
+                willHaveAccount ? "text-foreground cursor-pointer" : "text-muted-foreground cursor-not-allowed")}>
+                <Briefcase className="w-3.5 h-3.5 text-primary" /> Create Opportunity
+              </Label>
+              {!willHaveAccount && (
+                <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">Requires an account</span>
+              )}
+            </div>
+            {createOpp && willHaveAccount && (
+              <input className={inputCls} placeholder="Opportunity name" value={oppName} onChange={(e) => setOppName(e.target.value)} />
+            )}
+          </div>
+
+          <div className="p-3 rounded-md bg-blue-50 border border-blue-200">
+            <p className="text-xs text-blue-700">
+              The lead will be marked as <strong>converted</strong> and linked to the records created above.
             </p>
           </div>
         </div>
         <DialogFooter className="border-t border-border pt-3 gap-2">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button
-            size="sm"
-            onClick={handleSubmit}
-            disabled={isPending || (accountMode === "existing" && !existingAccountId) || (contactMode === "existing" && selectedContactIds.length === 0)}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
+          <Button size="sm" onClick={handleSubmit} disabled={!canSubmit}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground">
             {isPending ? "Converting..." : "Convert Lead"}
           </Button>
         </DialogFooter>

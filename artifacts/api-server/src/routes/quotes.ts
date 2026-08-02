@@ -338,8 +338,8 @@ router.get("/quotes", async (req, res) => {
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id));
 
     const listWhere = opportunityId
-      ? and(eq(quotesTable.opportunityId, parseInt(opportunityId)))
-      : undefined;
+      ? and(eq(quotesTable.orgId, req.orgId!), eq(quotesTable.opportunityId, parseInt(opportunityId)))
+      : eq(quotesTable.orgId, req.orgId!);
 
     const rawData = await baseQuery.where(listWhere).orderBy(desc(quotesTable.createdAt)).limit(limitNum).offset(offset);
 
@@ -420,14 +420,14 @@ router.post("/quotes", async (req, res) => {
     ] as const) {
       const refId = quoteData[field];
       if (refId != null) {
-        const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, refId as number)));
+        const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, refId as number), eq(table.orgId, req.orgId!)));
         if (!row) { res.status(400).json({ error: `Invalid ${field}` }); return; }
       }
     }
 
     if (items.length === 0 && quoteData.opportunityId) {
       const oppItems = await db.select().from(opportunityItemsTable)
-        .where(eq(opportunityItemsTable.opportunityId, quoteData.opportunityId as number));
+        .where(and(eq(opportunityItemsTable.opportunityId, quoteData.opportunityId as number), eq(opportunityItemsTable.orgId, req.orgId!)));
       if (oppItems.length > 0) {
         items = oppItems.map(oi => ({
           productId: oi.productId ?? undefined,
@@ -440,7 +440,7 @@ router.post("/quotes", async (req, res) => {
       }
     }
 
-    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable);
+    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable).where(eq(quotesTable.orgId, req.orgId!));
     const nextNum = (maxQuote?.maxNum && maxQuote.maxNum > 0) ? maxQuote.maxNum + 1 : 1001;
     const quoteNumber = `QT-${nextNum}`;
 
@@ -453,12 +453,12 @@ router.post("/quotes", async (req, res) => {
     const total = subtotal * (1 - discountPct / 100) * (1 + taxPct / 100);
 
     const insertData = {
-      orgId: 1,
+      orgId: req.orgId!,
       name: (quoteData.name as string) ?? "",
       opportunityId: (quoteData.opportunityId as number | null) ?? null,
       contactId: (quoteData.contactId as number | null) ?? null,
       accountId: (quoteData.accountId as number | null) ?? null,
-      priceBookId: (quoteData.priceBookId as number | null) ?? (await getStandardPriceBookId()),
+      priceBookId: (quoteData.priceBookId as number | null) ?? (await getStandardPriceBookId(req.orgId!)),
       status: (quoteData.status as string) ?? "draft",
       validUntil: quoteData.validUntil ? new Date(quoteData.validUntil as string) : null,
       discount: (quoteData.discount as string) ?? "0",
@@ -481,6 +481,7 @@ router.post("/quotes", async (req, res) => {
         const cost = item.productId ? costByProduct.get(item.productId) ?? null : null;
         const margin = calcMarginPct(item.unitPrice, item.discount ?? 0, cost);
         return {
+          orgId: req.orgId!,
           quoteId: quote.id,
           productId: item.productId ?? null,
           priceBookEntryId: item.priceBookEntryId ?? null,
@@ -513,7 +514,7 @@ router.get("/quotes/:id", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
-      .where(and(eq(quotesTable.id, id)));
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
 
     if (!quote) {
       res.status(404).json({ error: "Quote not found" });
@@ -568,7 +569,7 @@ router.get("/quotes/:id/stage-history", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
     const [quote] = await db.select({ status: quotesTable.status, createdAt: quotesTable.createdAt })
-      .from(quotesTable).where(eq(quotesTable.id, id));
+      .from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
     let rows = (await db.execute(sql`SELECT * FROM quote_stage_history WHERE quote_id = ${id} ORDER BY entered_at ASC`)).rows as any[];
     if (rows.length === 0) {
@@ -594,7 +595,7 @@ router.put("/quotes/:id", async (req, res) => {
       return;
     }
 
-    const [existing] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id)));
+    const [existing] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
     if (!existing) { res.status(404).json({ error: "Quote not found" }); return; }
 
     const isLatest = await isLatestVersion(id, existing.parentQuoteId);
@@ -615,7 +616,7 @@ router.put("/quotes/:id", async (req, res) => {
     ] as const) {
       const refId = req.body[field];
       if (refId != null) {
-        const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, refId as number)));
+        const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, refId as number), eq(table.orgId, req.orgId!)));
         if (!row) { res.status(400).json({ error: `Invalid ${field}` }); return; }
       }
     }
@@ -635,11 +636,11 @@ router.put("/quotes/:id", async (req, res) => {
     const rejectionReason = (quoteData as any).rejectionReason as string | undefined;
     // If the price book was explicitly cleared, fall back to the Standard Price Book.
     if (updateData.priceBookId === null) {
-      updateData.priceBookId = await getStandardPriceBookId();
+      updateData.priceBookId = await getStandardPriceBookId(req.orgId!);
     }
 
     if (items) {
-      await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      await db.delete(quoteItemsTable).where(and(eq(quoteItemsTable.quoteId, id), eq(quoteItemsTable.orgId, req.orgId!)));
       if (items.length > 0) {
         const costByProduct = await resolveCostPrices(items);
         for (const item of items) {
@@ -647,9 +648,9 @@ router.put("/quotes/:id", async (req, res) => {
           const margin = calcMarginPct(item.unitPrice, item.discount ?? 0, cost);
           const total = item.quantity * item.unitPrice * (1 - (item.discount ?? 0) / 100);
           await db.execute(sql`
-            INSERT INTO quote_items (quote_id, product_id, price_book_entry_id, product_name, quantity, unit_price, discount, total, cost_price, margin_pct, bundle_id, bundle_name)
+            INSERT INTO quote_items (org_id, quote_id, product_id, price_book_entry_id, product_name, quantity, unit_price, discount, total, cost_price, margin_pct, bundle_id, bundle_name)
             VALUES (
-              ${id}, ${item.productId ?? null}, ${item.priceBookEntryId ?? null}, ${item.productName},
+              ${req.orgId!}, ${id}, ${item.productId ?? null}, ${item.priceBookEntryId ?? null}, ${item.productName},
               ${item.quantity.toString()}, ${item.unitPrice.toString()}, ${(item.discount ?? 0).toString()},
               ${total.toString()}, ${cost != null ? cost.toString() : null}, ${margin != null ? margin.toString() : null},
               ${item.bundleId ?? null}, ${item.bundleName ?? null}
@@ -676,7 +677,7 @@ router.put("/quotes/:id", async (req, res) => {
     const prevStatus = existing.status;
     const [quote] = await db.update(quotesTable)
       .set(updateData)
-      .where(and(eq(quotesTable.id, id)))
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)))
       .returning();
     if (!quote) {
       res.status(404).json({ error: "Quote not found" });
@@ -693,10 +694,10 @@ router.put("/quotes/:id", async (req, res) => {
           WHERE quote_id = ${id} AND stage = ${prevStatus} AND left_at IS NULL
         `);
         await db.execute(sql`
-          INSERT INTO quote_stage_history (quote_id, stage, entered_at) VALUES (${id}, ${updateData.status as string}, ${now})
+          INSERT INTO quote_stage_history (quote_id, stage, entered_at, org_id) VALUES (${id}, ${updateData.status as string}, ${now}, ${req.orgId!})
         `);
         void executeQuoteWorkflowRules(
-          id, updateData.status as string,
+          req.orgId!, id, updateData.status as string,
           { name: quote.name, quoteNumber: quote.quoteNumber, opportunityId: quote.opportunityId, contactId: quote.contactId, accountId: quote.accountId },
           actorFromReq(req), req.log,
         );
@@ -716,7 +717,7 @@ router.post("/quotes/:id/version", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
 
-    const [original] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id)));
+    const [original] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
     if (!original) { res.status(404).json({ error: "Quote not found" }); return; }
 
     const rootId = original.parentQuoteId ?? original.id;
@@ -727,12 +728,12 @@ router.post("/quotes/:id/version", async (req, res) => {
       .where(sql`${quotesTable.parentQuoteId} = ${rootId} OR ${quotesTable.id} = ${rootId}`);
     const nextVersion = (maxVersionRow?.maxVer ?? 1) + 1;
 
-    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable);
+    const [maxQuote] = await db.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable).where(eq(quotesTable.orgId, req.orgId!));
     const nextNum = (maxQuote?.maxNum && maxQuote.maxNum > 0) ? maxQuote.maxNum + 1 : 1001;
     const quoteNumber = `QT-${nextNum}`;
 
     const [newQuote] = await db.insert(quotesTable).values({
-      orgId: 1,
+      orgId: req.orgId!,
       quoteNumber,
       name: original.name,
       version: nextVersion,
@@ -756,6 +757,7 @@ router.post("/quotes/:id/version", async (req, res) => {
     const originalItems = (await db.execute(sql`SELECT * FROM quote_items WHERE quote_id = ${id}`)).rows as any[];
     if (originalItems.length > 0) {
       await db.insert(quoteItemsTable).values(originalItems.map(item => ({
+        orgId: req.orgId!,
         quoteId: newQuote.id,
         productId: item.product_id ?? item.productId ?? null,
         priceBookEntryId: item.price_book_entry_id ?? item.priceBookEntryId ?? null,
@@ -790,15 +792,15 @@ router.post("/quotes/:id/clone", async (req, res) => {
     const customName = typeof nameInput === "string" ? nameInput.trim() : "";
 
     const result = await db.transaction(async (tx) => {
-      const [original] = await tx.select().from(quotesTable).where(and(eq(quotesTable.id, id)));
+      const [original] = await tx.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
       if (!original) return { error: "Quote not found", status: 404 as const };
 
-      const [account] = await tx.select().from(accountsTable).where(and(eq(accountsTable.id, newAccountId)));
+      const [account] = await tx.select().from(accountsTable).where(and(eq(accountsTable.id, newAccountId), eq(accountsTable.orgId, req.orgId!)));
       if (!account) return { error: "Target account not found", status: 400 as const };
 
       // Pick first contact of target account (deterministic: oldest contact wins)
       const accountContacts = await tx.select().from(contactsTable)
-        .where(eq(contactsTable.accountId, newAccountId))
+        .where(and(eq(contactsTable.accountId, newAccountId), eq(contactsTable.orgId, req.orgId!)))
         .orderBy(contactsTable.id)
         .limit(1);
       const newContactId = accountContacts[0]?.id ?? null;
@@ -806,13 +808,13 @@ router.post("/quotes/:id/clone", async (req, res) => {
       // Try up to 3 times to allocate a unique quote number (handles concurrent clones)
       let inserted: typeof original | null = null;
       for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
-        const [maxQuote] = await tx.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable);
+        const [maxQuote] = await tx.select({ maxNum: sql<number>`max(CAST(REGEXP_REPLACE(quote_number, '[^0-9]', '', 'g') AS INTEGER)) FILTER (WHERE quote_number ~ '^QT-[0-9]+$')` }).from(quotesTable).where(eq(quotesTable.orgId, req.orgId!));
         const baseNum = (maxQuote?.maxNum && maxQuote.maxNum > 0) ? maxQuote.maxNum : 1000;
         const nextNum = baseNum + 1 + attempt;
         const quoteNumber = `QT-${nextNum}`;
         try {
           const [row] = await tx.insert(quotesTable).values({
-            orgId: 1,
+            orgId: req.orgId!,
             quoteNumber,
             name: customName || `${original.name} (Copy)`,
             version: 1,
@@ -841,9 +843,10 @@ router.post("/quotes/:id/clone", async (req, res) => {
       }
       if (!inserted) return { error: "Could not allocate quote number", status: 500 as const };
 
-      const originalItems = await tx.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
+      const originalItems = await tx.select().from(quoteItemsTable).where(and(eq(quoteItemsTable.quoteId, id), eq(quoteItemsTable.orgId, req.orgId!)));
       if (originalItems.length > 0) {
         await tx.insert(quoteItemsTable).values(originalItems.map(item => ({
+          orgId: req.orgId!,
           quoteId: inserted!.id,
           productId: item.productId,
           priceBookEntryId: item.priceBookEntryId,
@@ -879,7 +882,7 @@ router.get("/quotes/:id/pdf", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
-      .where(and(eq(quotesTable.id, id)));
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
 
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
 
@@ -908,11 +911,11 @@ router.post("/quotes/:id/send", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(quotesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(contactsTable, eq(quotesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(quotesTable.accountId, accountsTable.id))
-      .where(and(eq(quotesTable.id, id)));
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
 
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
 
-    const [rawQuote] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id)));
+    const [rawQuote] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
     const isLatest = await isLatestVersion(id, rawQuote?.parentQuoteId ?? null);
     if (!isLatest) {
       res.status(403).json({ error: "Only the latest version of a quote can be sent. Create a new version instead." });
@@ -942,7 +945,7 @@ router.post("/quotes/:id/send", async (req, res) => {
     }
 
     try {
-        const emailSettings = await getEmailSettingsRow();
+        const emailSettings = await getEmailSettingsRow(req.orgId!);
         const smtp = resolveSmtpConfig(emailSettings, { defaultFromName: "arbormind.in" });
 
         if (!smtp) {
@@ -998,7 +1001,7 @@ router.post("/quotes/:id/send", async (req, res) => {
 
     await db.update(quotesTable)
       .set({ status: "sent", updatedAt: new Date() })
-      .where(eq(quotesTable.id, id));
+      .where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
 
     res.json({
       success: true,
@@ -1016,10 +1019,10 @@ router.delete("/quotes/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
-    const [existing] = await db.select({ id: quotesTable.id }).from(quotesTable).where(and(eq(quotesTable.id, id)));
+    const [existing] = await db.select({ id: quotesTable.id }).from(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
     if (!existing) { res.status(404).json({ error: "Quote not found" }); return; }
-    await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, id));
-    await db.delete(quotesTable).where(eq(quotesTable.id, id));
+    await db.delete(quoteItemsTable).where(and(eq(quoteItemsTable.quoteId, id), eq(quoteItemsTable.orgId, req.orgId!)));
+    await db.delete(quotesTable).where(and(eq(quotesTable.id, id), eq(quotesTable.orgId, req.orgId!)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);
@@ -1032,9 +1035,10 @@ router.get("/quotes/:id/attachments", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid quote ID" }); return; }
-    const rows = await db.execute(sql.raw(
-      `SELECT id, quote_id, file_name, file_size, file_type, uploaded_by_name, created_at FROM quote_attachments WHERE quote_id = ${id} ORDER BY created_at DESC`
-    ));
+    const rows = await db.execute(sql`
+      SELECT id, quote_id, file_name, file_size, file_type, uploaded_by_name, created_at
+      FROM quote_attachments WHERE quote_id = ${id} AND org_id = ${req.orgId!} ORDER BY created_at DESC
+    `);
     res.json({ data: rows.rows });
   } catch (err) {
     req.log.error(err);
@@ -1051,11 +1055,13 @@ router.post("/quotes/:id/attachments", async (req, res) => {
       fileName: string; fileSize: number; fileType: string; fileData: string;
     };
     if (!fileName || !fileData) { res.status(400).json({ error: "fileName and fileData are required" }); return; }
-    const result = await db.execute(sql.raw(
-      `INSERT INTO quote_attachments (quote_id, file_name, file_size, file_type, file_data, uploaded_by_name)
-       VALUES (${id}, ${db.execute ? `'${fileName.replace(/'/g, "''")}'` : fileName}, ${fileSize ?? 0}, '${(fileType ?? "").replace(/'/g, "''")}', '${fileData.replace(/'/g, "''")}', '${(actor.name ?? "").replace(/'/g, "''")}')
-       RETURNING id, quote_id, file_name, file_size, file_type, uploaded_by_name, created_at`
-    ));
+    // Previously built via raw string concatenation (sql.raw + manual quote-escaping) —
+    // a real SQL injection risk. Switched to the parameterized tagged-template form.
+    const result = await db.execute(sql`
+      INSERT INTO quote_attachments (org_id, quote_id, file_name, file_size, file_type, file_data, uploaded_by_name)
+      VALUES (${req.orgId!}, ${id}, ${fileName}, ${fileSize ?? 0}, ${fileType ?? ""}, ${fileData}, ${actor.name ?? null})
+      RETURNING id, quote_id, file_name, file_size, file_type, uploaded_by_name, created_at
+    `);
     res.status(201).json(result.rows[0]);
   } catch (err) {
     req.log.error(err);
@@ -1068,9 +1074,10 @@ router.get("/quotes/:id/attachments/:attachmentId/download", async (req, res) =>
     const id = parseId(req.params.id);
     const attachmentId = parseId(req.params.attachmentId);
     if (!id || !attachmentId) { res.status(400).json({ error: "Invalid ID" }); return; }
-    const result = await db.execute(sql.raw(
-      `SELECT file_name, file_type, file_data FROM quote_attachments WHERE id = ${attachmentId} AND quote_id = ${id}`
-    ));
+    const result = await db.execute(sql`
+      SELECT file_name, file_type, file_data FROM quote_attachments
+      WHERE id = ${attachmentId} AND quote_id = ${id} AND org_id = ${req.orgId!}
+    `);
     const row = result.rows[0] as any;
     if (!row) { res.status(404).json({ error: "Attachment not found" }); return; }
     const buf = Buffer.from(row.file_data as string, "base64");
@@ -1088,7 +1095,7 @@ router.delete("/quotes/:id/attachments/:attachmentId", async (req, res) => {
     const id = parseId(req.params.id);
     const attachmentId = parseId(req.params.attachmentId);
     if (!id || !attachmentId) { res.status(400).json({ error: "Invalid ID" }); return; }
-    await db.execute(sql.raw(`DELETE FROM quote_attachments WHERE id = ${attachmentId} AND quote_id = ${id}`));
+    await db.execute(sql`DELETE FROM quote_attachments WHERE id = ${attachmentId} AND quote_id = ${id} AND org_id = ${req.orgId!}`);
     res.json({ success: true });
   } catch (err) {
     req.log.error(err);

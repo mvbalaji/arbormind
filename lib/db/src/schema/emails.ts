@@ -1,11 +1,13 @@
 import { pgTable, serial, text, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { organizationsTable } from "./organizations";
 
 export const emailsTable = pgTable(
   "emails",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
     messageUid: text("message_uid"),
     // RFC 5322 Message-ID of this inbound message and the parent it replies to.
     // Used to thread replies back to the outbound activity that started the conversation.
@@ -31,7 +33,9 @@ export const emailsTable = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    messageUidUnique: uniqueIndex("emails_message_uid_unique").on(table.messageUid),
+    // Widened to (org, uid): IMAP UIDs are only unique within a single mailbox,
+    // and different tenants' mailboxes can assign the same UID to different messages.
+    messageUidUnique: uniqueIndex("emails_message_uid_unique").on(table.orgId, table.messageUid),
   }),
 );
 

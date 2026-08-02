@@ -90,7 +90,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-xs text-white/20 mt-6">
-          © {new Date().getFullYear()} arbormind.in · All rights reserved
+          © 2025 arbormind.in · All rights reserved
         </p>
       </div>
     </div>

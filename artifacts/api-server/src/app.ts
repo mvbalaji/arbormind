@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import type { PoolClient } from "pg";
 import cors from "cors";
 import session from "express-session";
 import passport from "passport";
@@ -7,6 +8,8 @@ import path from "path";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { setupPassport } from "./routes/auth";
+import { getOrgId, getDefaultOrgId } from "./lib/org-context";
+import { runtimePool, requestDbContext, bindRequestClient } from "@workspace/db";
 
 setupPassport();
 
@@ -82,6 +85,67 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Resolve the current user's org once per request. Left undefined for
+// unauthenticated/public requests (e.g. web-to-lead, enquiries) — those
+// routes fall back to getDefaultOrgId() explicitly instead of relying on this.
+app.use(async (req, _res, next) => {
+  try {
+    req.orgId = getOrgId(req);
+  } catch {
+    // Dev bypass (no Google OAuth configured): requireScreenAccess grants admin
+    // access without ever populating a real session, so match that here too.
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      try {
+        req.orgId = await getDefaultOrgId();
+      } catch {
+        // org migration not run yet — leave req.orgId undefined
+      }
+    }
+  }
+  next();
+});
+
+// Lease an app_runtime (non-owner, RLS-enforced) connection for the lifetime of
+// this request and pin req.orgId onto it via `app.current_org_id`, so every
+// `db`/`pool` call any route file makes (no per-file changes needed — see
+// lib/db's AsyncLocalStorage-backed proxies) runs over a connection Postgres
+// itself will refuse to leak other tenants' rows through, independent of
+// whether the route code remembered to filter by org_id.
+//
+// Left inert (falls through to the owner connection) for requests with no
+// resolved org — public/unauthenticated endpoints (webhooks, web-to-lead) and
+// the dev bypass without GOOGLE_CLIENT_ID configured — matching today's
+// behavior exactly, and for environments that haven't provisioned
+// APP_DATABASE_URL / the app_runtime role yet.
+app.use(async (req, res, next) => {
+  if (req.orgId == null || !runtimePool) { next(); return; }
+
+  let client: PoolClient | undefined;
+  try {
+    client = await runtimePool.connect();
+    await client.query("SELECT set_config('app.current_org_id', $1, false)", [String(req.orgId)]);
+  } catch (err) {
+    logger.error({ err }, "[RLS] Failed to lease app_runtime connection — falling back to the owner connection for this request");
+    client?.release();
+    next();
+    return;
+  }
+
+  const leased = client;
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
+    leased.query("SELECT set_config('app.current_org_id', '', false)")
+      .catch(() => {})
+      .finally(() => leased.release());
+  };
+  res.on("finish", release);
+  res.on("close", release);
+
+  requestDbContext.run(bindRequestClient(leased), next);
+});
 
 app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));

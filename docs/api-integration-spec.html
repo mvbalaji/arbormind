@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CRM API Integration Layer — Enterprise Specification</title>
+<style>
+:root{
+  --ink:#0E1C2F;--ink2:#3A4D65;--ink3:#6B7F96;
+  --rule:#D1DBE8;--surface:#F4F7FB;--canvas:#FFFFFF;
+  --accent:#1758C4;--accent2:#0F3D80;--asoft:#E8EFFE;
+  --amber:#B45309;--ambsoft:#FEF3C7;
+  --green:#166534;--gsoft:#DCFCE7;
+  --red:#991B1B;--rsoft:#FEE2E2;
+  --mono:'Consolas','Courier New',monospace;
+  --serif:'Palatino Linotype','Book Antiqua','Georgia',serif;
+  --sans:'Trebuchet MS','Segoe UI',Arial,sans-serif;
+}
+@media(prefers-color-scheme:dark){
+  :root{--ink:#E2EAF4;--ink2:#A8BACF;--ink3:#607080;--rule:#1E2E44;--surface:#0D1824;--canvas:#111F31;--accent:#5B8FEE;--accent2:#93B4F5;--asoft:#0A1A35;--amber:#FCD34D;--ambsoft:#211800;--green:#86EFAC;--gsoft:#041A0E;--red:#FCA5A5;--rsoft:#1A0505;}
+}
+:root[data-theme=light]{--ink:#0E1C2F;--ink2:#3A4D65;--ink3:#6B7F96;--rule:#D1DBE8;--surface:#F4F7FB;--canvas:#FFFFFF;--accent:#1758C4;--accent2:#0F3D80;--asoft:#E8EFFE;--amber:#B45309;--ambsoft:#FEF3C7;--green:#166534;--gsoft:#DCFCE7;--red:#991B1B;--rsoft:#FEE2E2;}
+:root[data-theme=dark]{--ink:#E2EAF4;--ink2:#A8BACF;--ink3:#607080;--rule:#1E2E44;--surface:#0D1824;--canvas:#111F31;--accent:#5B8FEE;--accent2:#93B4F5;--asoft:#0A1A35;--amber:#FCD34D;--ambsoft:#211800;--green:#86EFAC;--gsoft:#041A0E;--red:#FCA5A5;--rsoft:#1A0505;}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px;scroll-behavior:smooth}
+body{font-family:var(--serif);background:var(--surface);color:var(--ink);line-height:1.75}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* Layout */
+.shell{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
+@media(max-width:860px){.shell{grid-template-columns:1fr}.sidebar{display:none}}
+
+/* Sidebar */
+.sidebar{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--canvas);border-right:1px solid var(--rule);padding:1.5rem 1rem;display:flex;flex-direction:column;gap:.15rem}
+.sb-brand{font-family:var(--sans);font-size:.6rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);padding-bottom:.75rem;border-bottom:1px solid var(--rule);margin-bottom:.5rem}
+.sb-cat{font-family:var(--sans);font-size:.57rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-top:.85rem;margin-bottom:.2rem;padding-left:.4rem}
+.sb-link{display:block;font-family:var(--sans);font-size:.72rem;color:var(--ink2);text-decoration:none;padding:.22rem .5rem;border-radius:3px;line-height:1.4;transition:background .1s,color .1s}
+.sb-link:hover{background:var(--asoft);color:var(--accent)}
+.sb-link.active{background:var(--asoft);color:var(--accent);font-weight:600}
+
+/* Main */
+.main{max-width:900px;padding:3rem 3.5rem 8rem}
+@media(max-width:1100px){.main{padding:2rem 1.5rem 5rem}}
+
+/* Cover */
+.cover{border-left:5px solid var(--accent);padding-left:1.75rem;margin-bottom:3.5rem}
+.cover-eye{font-family:var(--sans);font-size:.6rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:.65rem}
+.cover h1{font-family:var(--serif);font-size:2.2rem;font-weight:700;line-height:1.2;color:var(--ink);text-wrap:balance;margin-bottom:.6rem}
+.cover-sub{font-style:italic;color:var(--ink2);font-size:.95rem;max-width:580px;margin-bottom:1.25rem}
+.cover-meta{display:flex;flex-wrap:wrap;gap:1.25rem;font-family:var(--sans);font-size:.7rem;color:var(--ink3)}
+.cover-meta strong{color:var(--ink2)}
+
+/* Section */
+.section{margin-bottom:3.25rem}
+.sec-hdr{display:flex;align-items:baseline;gap:.85rem;border-bottom:2px solid var(--rule);padding-bottom:.55rem;margin-bottom:1.5rem}
+.sec-num{font-family:var(--sans);font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);white-space:nowrap}
+h2{font-family:var(--serif);font-size:1.3rem;font-weight:700;color:var(--ink)}
+h3{font-family:var(--sans);font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);margin-top:1.5rem;margin-bottom:.45rem;padding-bottom:.2rem;border-bottom:1px solid var(--rule)}
+h4{font-family:var(--sans);font-size:.82rem;font-weight:700;color:var(--ink2);margin-top:1rem;margin-bottom:.3rem}
+p{color:var(--ink2);font-size:.9rem;margin-bottom:.75rem}
+p:last-child{margin-bottom:0}
+ul,ol{padding-left:1.35rem;margin-bottom:.75rem}
+li{color:var(--ink2);font-size:.9rem;margin-bottom:.2rem}
+li::marker{color:var(--accent)}
+strong{color:var(--ink)}
+
+/* Callouts */
+.call{border-left:3px solid var(--accent);background:var(--asoft);padding:.75rem 1rem;border-radius:0 5px 5px 0;margin:.85rem 0;font-size:.85rem;color:var(--ink2)}
+.call.warn{border-color:var(--amber);background:var(--ambsoft)}
+.call.ok{border-color:var(--green);background:var(--gsoft)}
+.call.risk{border-color:var(--red);background:var(--rsoft)}
+.call-lbl{font-family:var(--sans);font-size:.57rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.25rem;color:var(--accent)}
+.call.warn .call-lbl{color:var(--amber)}.call.ok .call-lbl{color:var(--green)}.call.risk .call-lbl{color:var(--red)}
+
+/* Tables */
+.tw{overflow-x:auto;margin:.85rem 0}
+table{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:.75rem;min-width:480px}
+thead th{background:var(--accent);color:#fff;text-align:left;padding:.5rem .7rem;font-weight:700;letter-spacing:.02em}
+tbody tr:nth-child(even){background:var(--surface)}
+tbody tr:hover{background:var(--asoft)}
+tbody td{padding:.45rem .7rem;border-bottom:1px solid var(--rule);color:var(--ink2);vertical-align:top}
+tbody td:first-child{color:var(--ink);font-weight:600}
+td code,th code{font-family:var(--mono);font-size:.8em;background:rgba(0,0,0,.06);padding:.1em .3em;border-radius:3px}
+
+/* Code */
+.pre-lbl{font-family:var(--sans);font-size:.57rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:.3rem;margin-top:.85rem}
+pre{background:#0D1829;color:#CBD8EC;border-radius:7px;padding:1.1rem 1.25rem;font-family:var(--mono);font-size:.74rem;line-height:1.7;overflow-x:auto;margin:.3rem 0 .85rem}
+.k{color:#7EB3FF}.s{color:#7EE8A2}.n{color:#FFD97D}.c{color:#4A6178;font-style:italic}.kw{color:#F9A8D4}.p{color:#CBD8EC}
+
+/* Architecture layers */
+.arch{background:var(--canvas);border:1px solid var(--rule);border-radius:8px;padding:1.25rem;margin:.85rem 0}
+.arch-row{display:flex;align-items:center;gap:.5rem;padding:.55rem .85rem;border-radius:5px;margin-bottom:.3rem;position:relative}
+.arch-row:not(:last-child)::after{content:'▼';position:absolute;bottom:-.6rem;left:50%;transform:translateX(-50%);color:var(--ink3);font-size:.7rem;z-index:1}
+.al1{background:#0B2B60;color:#fff}.al2{background:var(--accent);color:#fff}.al3{background:var(--asoft);color:var(--accent2)}.al4{background:var(--surface);color:var(--ink2);border:1px solid var(--rule)}.al5{background:var(--gsoft);color:var(--green)}
+.arch-title{font-family:var(--sans);font-weight:700;font-size:.68rem;letter-spacing:.04em;flex:1}
+.arch-detail{font-size:.62rem;opacity:.8;text-align:right;flex-shrink:0}
+.arch-tags{display:flex;gap:.35rem;flex-wrap:wrap}
+.arch-tag{background:rgba(255,255,255,.15);border-radius:3px;padding:.15rem .4rem;font-size:.6rem;font-family:var(--sans)}
+
+/* Pills */
+.pill{display:inline-block;font-family:var(--sans);font-size:.58rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.12rem .4rem;border-radius:3px;margin:0 .1rem}
+.pb{background:var(--asoft);color:var(--accent)}
+.pa{background:var(--ambsoft);color:var(--amber)}
+.pg{background:var(--gsoft);color:var(--green)}
+.pr{background:var(--rsoft);color:var(--red)}
+
+/* Map flow */
+.mflow{display:flex;align-items:center;gap:.4rem;padding:.55rem .85rem;background:var(--canvas);border:1px solid var(--rule);border-radius:5px;margin-bottom:.35rem;flex-wrap:wrap;font-family:var(--mono);font-size:.71rem}
+.msrc{color:var(--accent);font-weight:600}
+.marr{color:var(--ink3);font-size:.85rem}
+.mdst{color:var(--green);font-weight:600}
+.mxfm{background:var(--ambsoft);color:var(--amber);padding:.08rem .35rem;border-radius:3px;font-size:.63rem;font-family:var(--sans);font-weight:600}
+.mval{background:var(--asoft);color:var(--accent);padding:.08rem .35rem;border-radius:3px;font-size:.63rem;font-family:var(--sans)}
+
+/* NFR grid */
+.nfr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.65rem;margin:.85rem 0}
+.nfr-card{background:var(--canvas);border:1px solid var(--rule);border-top:3px solid var(--accent);border-radius:5px;padding:.75rem .9rem}
+.nfr-card h4{font-family:var(--sans);font-size:.63rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 .35rem}
+.nfr-card ul{padding-left:.9rem;margin:0}
+.nfr-card li{font-size:.76rem}
+
+/* Phase steps */
+.phases{display:flex;flex-direction:column;gap:.4rem;margin:.85rem 0}
+.phase{display:grid;grid-template-columns:2.5rem 1fr;gap:.75rem;align-items:start}
+.phase-num{width:2rem;height:2rem;border-radius:50%;background:var(--accent);color:#fff;font-family:var(--sans);font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:.1rem}
+.phase-body h4{font-family:var(--sans);font-size:.8rem;font-weight:700;color:var(--ink);margin:.05rem 0 .2rem}
+.phase-body p{font-size:.82rem;margin:0}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+<div class="sb-brand">Arbormind CRM · Integration Spec v2.0</div>
+<div class="sb-cat">Document</div>
+<a href="#cover" class="sb-link">Cover &amp; Metadata</a>
+<a href="#exec" class="sb-link">Executive Summary</a>
+<div class="sb-cat">Sections</div>
+<a href="#s1" class="sb-link">1 · Purpose &amp; Scope</a>
+<a href="#s2" class="sb-link">2 · API Architecture</a>
+<a href="#s3" class="sb-link">3 · Field Mapping Framework</a>
+<a href="#s4" class="sb-link">4 · Data Model Hierarchy</a>
+<a href="#s5" class="sb-link">5 · Config Management</a>
+<a href="#s6" class="sb-link">6 · Implementation Blueprint</a>
+<a href="#s7" class="sb-link">7 · Sample Use Cases</a>
+<a href="#s8" class="sb-link">8 · Non-functional Requirements</a>
+<a href="#s9" class="sb-link">9 · Risks &amp; Constraints</a>
+<div class="sb-cat">Appendices</div>
+<a href="#app-a" class="sb-link">A · Full Mapping Tables</a>
+<a href="#app-b" class="sb-link">B · API Payload Examples</a>
+<a href="#app-c" class="sb-link">C · Field Mapping Model</a>
+<a href="#app-d" class="sb-link">D · Implementation Phases</a>
+<a href="#app-e" class="sb-link">E · Glossary</a>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- COVER -->
+<section id="cover" class="cover">
+  <div class="cover-eye">Enterprise Architecture Specification · Confidential · v2.0</div>
+  <h1>Arbormind CRM — Configurable API Integration Layer</h1>
+  <p class="cover-sub">A complete requirements specification and implementation blueprint for a metadata-driven, multi-partner enterprise integration platform. Prepared for CIO/CTO review.</p>
+  <div class="cover-meta">
+    <span><strong>Version</strong> 2.0.0</span>
+    <span><strong>Status</strong> <span class="pill pa">Draft — CTO Review</span></span>
+    <span><strong>Classification</strong> Internal · Restricted</span>
+    <span><strong>Owner</strong> Platform Engineering</span>
+    <span><strong>Date</strong> July 2026</span>
+    <span><strong>Target</strong> Q4 2026 GA</span>
+  </div>
+</section>
+
+<!-- EXEC SUMMARY -->
+<section id="exec" class="section">
+  <div class="sec-hdr"><span class="sec-num">Executive Summary</span><h2>Strategic Context &amp; Objectives</h2></div>
+  <p>The Arbormind CRM currently operates as a standalone system. To fulfil its role as the system of record for customer relationships, it must exchange data reliably with ERP, billing, identity, case management, and marketing platforms. Ad-hoc, point-to-point integrations are expensive to build, fragile to operate, and impossible to audit. This specification defines a <strong>configurable, metadata-driven Integration Layer</strong> that replaces all point-to-point connections with a single, governed middleware platform.</p>
+  <p>The Integration Layer is configured entirely through an admin UI — no new deployment is required to add a field mapping, onboard a new partner, or change a transformation rule. Every configuration change is versioned, audited, and promotable across environments. Authentication credentials are stored in a secrets vault and never appear in the configuration database or application logs.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Objective</th><th>Metric</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td>Reduce integration development time</td><td>Hours per new integration</td><td>From ~160 h (bespoke) → &lt; 8 h (config only)</td></tr>
+      <tr><td>Eliminate integration-related incidents</td><td>P1/P2 incidents per quarter</td><td>&lt; 2 (from current ~12)</td></tr>
+      <tr><td>Data accuracy across systems</td><td>Sync error rate</td><td>&lt; 0.01%</td></tr>
+      <tr><td>Observability</td><td>Time to detect sync failure</td><td>&lt; 60 seconds</td></tr>
+      <tr><td>Compliance</td><td>Audit trail completeness</td><td>100% of config changes logged</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- SECTION 1 -->
+<section id="s1" class="section">
+  <div class="sec-hdr"><span class="sec-num">Section 01</span><h2>Integration Purpose &amp; Scope</h2></div>
+
+  <h3>1.1 Business Drivers</h3>
+  <p>The primary driver is operational efficiency: customer data created in CRM must flow to downstream systems (ERP, billing) without manual re-entry. Secondary drivers are compliance (a single audit trail for all data movements), cost reduction (eliminating bespoke connectors), and agility (onboarding new partners without engineering sprints).</p>
+
+  <h3>1.2 Target External Systems</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Category</th><th>Example Systems</th><th>Direction</th><th>Pattern</th><th>Priority</th></tr></thead>
+    <tbody>
+      <tr><td>ERP</td><td>SAP S/4HANA, Oracle ERP Cloud, MS Dynamics 365 F&amp;O</td><td>Bi-directional</td><td>Async events + batch</td><td><span class="pill pr">P1</span></td></tr>
+      <tr><td>Billing / Subscription</td><td>Stripe, Zuora, Chargebee, Recurly</td><td>CRM → Billing; events inbound</td><td>Sync REST + webhooks</td><td><span class="pill pr">P1</span></td></tr>
+      <tr><td>Identity Provider</td><td>Okta, Azure AD B2C, Auth0, Google Workspace</td><td>IdP → CRM (user sync)</td><td>Inbound webhooks + SCIM</td><td><span class="pill pr">P1</span></td></tr>
+      <tr><td>Case / Helpdesk</td><td>Zendesk, ServiceNow, Freshdesk, Jira Service Mgmt</td><td>Bi-directional</td><td>Sync REST + webhooks</td><td><span class="pill pa">P2</span></td></tr>
+      <tr><td>Marketing Automation</td><td>HubSpot, Marketo, Salesforce MC, Braze</td><td>Bi-directional</td><td>Batch + webhooks</td><td><span class="pill pa">P2</span></td></tr>
+      <tr><td>E-Commerce</td><td>Shopify, Magento, WooCommerce, BigCommerce</td><td>Inbound orders; product sync outbound</td><td>Webhooks + batch</td><td><span class="pill pa">P2</span></td></tr>
+      <tr><td>Data Warehouse / BI</td><td>Snowflake, BigQuery, Redshift, Databricks</td><td>CRM → DWH (append-only)</td><td>Scheduled batch / CDC</td><td><span class="pill pg">P3</span></td></tr>
+      <tr><td>Communications</td><td>Twilio, SendGrid, Vonage, AWS SES/SNS</td><td>CRM → Send; delivery events inbound</td><td>Sync REST + webhooks</td><td><span class="pill pg">P3</span></td></tr>
+      <tr><td>Document / E-Sign</td><td>DocuSign, Adobe Sign, PandaDoc</td><td>CRM → Send doc; status inbound</td><td>Sync REST + webhooks</td><td><span class="pill pg">P3</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>1.3 Supported Integration Patterns</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Pattern</th><th>Description</th><th>Latency Target</th><th>Delivery Guarantee</th><th>Typical Use Case</th></tr></thead>
+    <tbody>
+      <tr><td>Synchronous REST</td><td>Request/response over HTTPS. Caller blocks until response received.</td><td>p95 &lt; 2 s</td><td>Exactly-once (idempotency key)</td><td>Real-time lookup, immediate record creation confirmation</td></tr>
+      <tr><td>Asynchronous Event</td><td>CRM publishes event to message queue; consumer processes independently.</td><td>End-to-end &lt; 30 s</td><td>At-least-once + dedup</td><td>Order ingestion, bulk lead imports, ERP sync</td></tr>
+      <tr><td>Scheduled Batch</td><td>Time-windowed bulk read/write. Supports delta (changed-since) and full-refresh modes.</td><td>Within SLA window (minutes to hours)</td><td>Checkpoint + restart</td><td>Nightly reconciliation, DWH export, ERP master data</td></tr>
+      <tr><td>Inbound Webhook</td><td>Partner pushes event payload to a CRM Integration Layer endpoint.</td><td>Ack &lt; 200 ms; process &lt; 30 s</td><td>At-least-once (ack queue)</td><td>Payment events, IdP provisioning, case status updates</td></tr>
+      <tr><td>Change Data Capture</td><td>Stream of row-level changes from partner database via Kafka/Debezium.</td><td>&lt; 5 s lag</td><td>Ordered, at-least-once</td><td>ERP master data real-time feed, product catalogue sync</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>1.4 Scope Boundaries</h3>
+  <div class="call ok"><div class="call-lbl">In Scope</div>Integration middleware (gateway, orchestrator, mapping engine, config store, admin UI). CRM-side event publishing hooks. Inbound webhook receiver. Batch scheduler. Observability stack integration.</div>
+  <div class="call warn"><div class="call-lbl">Out of Scope — v1</div>EDI-only partners (EDIFACT/X12). Legacy SOAP without REST adapter. Real-time CDC of CRM database (available v1.1). Mobile SDK integrations. Custom reporting pipelines.</div>
+  <div class="call risk"><div class="call-lbl">Assumption</div>All partner systems expose documented REST or gRPC APIs with sandbox environments available before development begins.</div>
+</section>
+
+<!-- SECTION 2 -->
+<section id="s2" class="section">
+  <div class="sec-hdr"><span class="sec-num">Section 02</span><h2>Configurable API Architecture Requirements</h2></div>
+
+  <h3>2.1 API Gateway Layer</h3>
+  <p>The gateway is the single network entry/exit point for all integration traffic — inbound webhooks from partners and outbound calls to partner APIs. It enforces authentication, rate limits, TLS, and routing before any business logic is touched.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Capability</th><th>Detailed Requirement</th><th>Implementation Guidance</th></tr></thead>
+    <tbody>
+      <tr><td>Request Routing</td><td>Route by path prefix, partner ID header, and HTTP method. Config-driven route table stored in Config DB — no deployment needed to add a route.</td><td>Express Router with partner profiles loaded from DB; cached in Redis (TTL 30 s).</td></tr>
+      <tr><td>Rate Limiting</td><td>Per-partner throttle: requests-per-minute (RPM) and daily quota. Burst allowance: 2× sustained RPM for up to 10 s. Response: 429 with <code>Retry-After</code> header.</td><td>Token-bucket algorithm. Counters in Redis with atomic INCR + TTL. Partner config stores <code>rpm_limit</code>, <code>daily_quota</code>, <code>burst_factor</code>.</td></tr>
+      <tr><td>URI Versioning</td><td>All gateway routes carry a version prefix: <code>/v1/</code>, <code>/v2/</code>. Older versions remain live for 12-month deprecation window. Deprecation warning returned via <code>Deprecation</code> and <code>Sunset</code> response headers.</td><td>Version prefix matched in route; handler resolved from version registry in Config DB.</td></tr>
+      <tr><td>Load Balancing</td><td>Round-robin across orchestration pods. Active health check every 10 s (HTTP GET <code>/health</code>). Unhealthy pods removed from pool within 30 s.</td><td>Kubernetes Service + liveness/readiness probes. No sticky sessions.</td></tr>
+      <tr><td>TLS Termination</td><td>TLS 1.3 required. TLS 1.2 permitted only with explicit partner exception (audit-logged). Certificates managed via cert-manager + Let's Encrypt or ACM.</td><td>Terminate at Ingress controller (nginx / AWS ALB). mTLS connections terminate at gateway sidecar (Envoy).</td></tr>
+      <tr><td>Request/Response Logging</td><td>Full payload capture configurable per partner per direction. PII field paths declared in partner config; those fields are masked (SHA-256 hash) before log write. Log correlation ID: <code>X-Correlation-ID</code> header, generated at gateway if absent.</td><td>Pino structured logger; log records shipped to CloudWatch / Loki asynchronously (fire-and-forget buffer).</td></tr>
+      <tr><td>Timeout Enforcement</td><td>Outbound call timeout default 5 s; configurable per partner (min 1 s, hard cap 30 s). Gateway returns 504 to caller if exceeded; downstream call is cancelled.</td><td>Node.js <code>AbortController</code> with configurable timeout from partner profile.</td></tr>
+      <tr><td>Request Size Limit</td><td>Default 5 MB per request. Webhook payloads capped at 10 MB. Configurable per partner. Reject with 413 above limit.</td><td>Express <code>bodyParser</code> with per-route limit resolved from partner config.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>2.2 Authentication &amp; Authorization</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Method</th><th>Direction</th><th>Use Case</th><th>Credential Storage</th><th>Rotation</th></tr></thead>
+    <tbody>
+      <tr><td>OAuth 2.0 Client Credentials</td><td>Outbound</td><td>CRM → ERP, CRM → Billing (system-to-system)</td><td>Vault secret: <code>client_id</code>, <code>client_secret</code>. Token cached in Redis; refreshed 60 s before expiry.</td><td>Automated via Vault dynamic secrets where supported</td></tr>
+      <tr><td>OAuth 2.0 Auth Code + PKCE</td><td>Outbound</td><td>CRM → Marketing (user-delegated scopes)</td><td>Refresh token stored encrypted (AES-256) in integration DB. Access token in Redis.</td><td>Triggered on 401; refresh token rotated by partner on each use</td></tr>
+      <tr><td>API Key (header)</td><td>Outbound</td><td>Simple partner integrations without OAuth</td><td>Vault secret: <code>api_key</code>. Never stored in config DB or logs.</td><td>Manual rotation; Vault notifies ops via alert on age &gt; 90 days</td></tr>
+      <tr><td>HMAC-SHA256 Webhook</td><td>Inbound</td><td>Verify authenticity of inbound webhooks (billing events, IdP events)</td><td>Vault secret: <code>webhook_secret</code> per partner. Signature verified in gateway before payload forwarded.</td><td>Manual rotation with dual-active 5-minute window</td></tr>
+      <tr><td>mTLS</td><td>Both</td><td>High-sensitivity connections: financial systems, IdP provisioning</td><td>Client certificate + private key in Vault PKI. Partner CA certificate pinned in gateway config.</td><td>Automated via Vault PKI; 90-day cert TTL</td></tr>
+      <tr><td>JWT Bearer (RS256)</td><td>Internal</td><td>Service-to-service calls within Integration Layer</td><td>Private key in Vault; public key published at <code>/.well-known/jwks.json</code>.</td><td>15-minute token TTL; key rotation via Vault key versions</td></tr>
+      <tr><td>Basic Auth (TLS-only)</td><td>Outbound</td><td>Legacy partners only; requires architectural exception</td><td>Vault secret. Exception must be approved and audit-logged.</td><td>Manual; expiry reminder at 30 days</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>2.3 Error Handling, Retries &amp; Idempotency</h3>
+  <h4>Idempotency Key Strategy</h4>
+  <p>Every outbound mutating request (POST, PUT, PATCH, DELETE) carries an <code>X-Idempotency-Key</code> header. The key is derived as <code>sha256(tenantId + entityType + entityId + operationType + timestampBucket)</code> where <code>timestampBucket</code> is truncated to the nearest 5-minute window. Partners that support idempotency keys honour them server-side. For partners that do not, the Integration Layer performs a pre-flight lookup to avoid duplicate creation.</p>
+
+  <h4>Retry Policy</h4>
+  <div class="tw"><table>
+    <thead><tr><th>Condition</th><th>Action</th><th>Max Retries</th><th>Back-off</th></tr></thead>
+    <tbody>
+      <tr><td>HTTP 429 (rate limited)</td><td>Retry after <code>Retry-After</code> header value (or 5 s default)</td><td>5</td><td>Honour partner-specified delay</td></tr>
+      <tr><td>HTTP 500, 502, 503, 504</td><td>Exponential back-off with jitter</td><td>5</td><td>Initial 500 ms, multiplier 2×, jitter ±20%, cap 32 s</td></tr>
+      <tr><td>Network timeout / connection refused</td><td>Exponential back-off</td><td>3</td><td>Initial 1 s, multiplier 2×, cap 8 s</td></tr>
+      <tr><td>HTTP 400, 401, 403, 404, 409, 422</td><td>No retry — log to error queue for manual review</td><td>0</td><td>N/A</td></tr>
+      <tr><td>Authentication 401 (token expired)</td><td>Token refresh once, then retry original request once</td><td>1 (after refresh)</td><td>Immediate</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Dead-Letter Queue (DLQ)</h4>
+  <p>Any record that exhausts retries is moved to a per-partner DLQ topic in Kafka. DLQ entries carry the original payload, all retry attempts with timestamps and HTTP responses, the final error classification, and the mapping template version used. The Ops dashboard surfaces DLQ depth with per-partner breakdown. Operators may <strong>requeue</strong> (replay), <strong>requeue with patch</strong> (modify payload before replay), or <strong>discard</strong> (with mandatory reason code) individual DLQ entries.</p>
+
+  <h4>Circuit Breaker</h4>
+  <div class="tw"><table>
+    <thead><tr><th>State</th><th>Condition to Enter</th><th>Behaviour</th><th>Exit Condition</th></tr></thead>
+    <tbody>
+      <tr><td>Closed (healthy)</td><td>Default</td><td>All requests pass through normally</td><td>—</td></tr>
+      <tr><td>Open (tripped)</td><td>5 failures in 30 s window OR error rate &gt; 50% over 60 s</td><td>Requests immediately rejected with 503; no outbound call made. Alert fired.</td><td>After 60 s cooldown, one probe attempt</td></tr>
+      <tr><td>Half-open</td><td>After cooldown</td><td>Single probe request forwarded. If success → Closed. If fail → Open (reset 60 s timer).</td><td>Probe success</td></tr>
+    </tbody>
+  </table></div>
+  <p>Circuit-breaker state is tracked <strong>per-partner</strong> and persisted in Redis so all orchestrator pods share the same view. State transitions are audit-logged.</p>
+
+  <h3>2.4 Multi-Tenancy Architecture</h3>
+  <p>The Integration Layer is designed for <strong>logical multi-tenancy with physical isolation of secrets and audit data</strong>. All configuration records carry a <code>tenant_id</code> column enforced at the ORM layer (Drizzle row-level filter applied automatically). API gateway resolves tenant from subdomain (<code>{tenant}.api.crm.io</code>) or JWT <code>tid</code> claim. Partner credentials are scoped per-tenant and never shared across tenant boundaries.</p>
+  <div class="call warn"><div class="call-lbl">Architectural Decision Required</div>Initial release targets <strong>single-tenant deployment</strong> (one DB schema per customer). Full logical multi-tenancy (shared schema, RLS) is architected but gated behind a feature flag. Recommend deciding before schema freeze in Sprint 4.</div>
+</section>
+
+<!-- SECTION 3 -->
+<section id="s3" class="section">
+  <div class="sec-hdr"><span class="sec-num">Section 03</span><h2>Configurable Field Mapping Framework</h2></div>
+
+  <p>The mapping framework is the architectural core of the Integration Layer. Field mappings, transformation rules, and validation logic are stored as structured metadata in a versioned configuration database. The Mapping Engine reads this metadata at runtime — <strong>no code change or deployment is required to alter a mapping, add a transformation, or onboard a new field</strong>.</p>
+
+  <h3>3.1 Mapping Object Hierarchy</h3>
+  <div class="arch">
+    <div style="font-family:var(--sans);font-size:.72rem;font-weight:700;color:var(--ink);margin-bottom:.85rem;">Five-Level Mapping Object Model</div>
+    <div class="arch-row al1">
+      <span class="arch-title">Level 1 — Integration Partner Profile</span>
+      <span class="arch-detail">name · base URL · auth method · rate limits · env URLs · PII fields</span>
+    </div>
+    <div class="arch-row al2">
+      <span class="arch-title">Level 2 — Mapping Template (per entity type per partner)</span>
+      <span class="arch-detail">Account · Contact · Case · Opportunity · Quote · Product · Contract</span>
+    </div>
+    <div class="arch-row al3">
+      <span class="arch-title">Level 3 — Entity Field Mappings</span>
+      <span class="arch-detail">CRM JSONPath → partner field path · transform chain · validation rules</span>
+    </div>
+    <div class="arch-row al4">
+      <span class="arch-title">Level 4 — Sub-object &amp; Array Mappings</span>
+      <span class="arch-detail">addresses[] · phoneNumbers[] · attachments[] · notes[] · custom attributes{}</span>
+    </div>
+    <div class="arch-row al5">
+      <span class="arch-title">Level 5 — Lookup Tables &amp; Enum Maps</span>
+      <span class="arch-detail">CRM value → partner value · currency codes · status flags · country codes</span>
+    </div>
+  </div>
+
+  <h3>3.2 Transformation Rules — Full Reference</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Rule Type</th><th>Expression Syntax</th><th>Description</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>Direct</td><td><code>direct</code></td><td>Copy source value verbatim to target field</td><td><code>account.name</code> → <code>KNA1.NAME1</code></td></tr>
+      <tr><td>Concatenate</td><td><code>concat(a, " ", b)</code></td><td>Join multiple source fields with a separator string</td><td><code>firstName</code> + " " + <code>lastName</code> → <code>fullName</code></td></tr>
+      <tr><td>Split</td><td><code>split(field, " ", index)</code></td><td>Split source string on delimiter; take element at index</td><td><code>fullName</code> split on " ", index 0 → <code>firstName</code></td></tr>
+      <tr><td>Conditional</td><td><code>if(expr, then, else)</code></td><td>Return one of two values based on a boolean expression on the source</td><td><code>if(status=="active","","01")</code></td></tr>
+      <tr><td>Nested conditional</td><td><code>switch(field, [val:result, …], default)</code></td><td>Multi-branch value mapping</td><td><code>switch(tier,["gold":"A","silver":"B"],"C")</code></td></tr>
+      <tr><td>Lookup table</td><td><code>lookup(tableName, srcValue)</code></td><td>Resolve source value via a named lookup table stored in config DB</td><td><code>lookup(iso2_to_sap, "GB")</code> → <code>"GB"</code></td></tr>
+      <tr><td>External ID lookup</td><td><code>extId(partner, entityType, crmId)</code></td><td>Resolve CRM ID to partner's own ID via the <code>integration_external_ids</code> table</td><td><code>extId("sap","account",42)</code> → <code>"0000000042"</code></td></tr>
+      <tr><td>Default</td><td><code>default(value)</code></td><td>Use literal value when source field resolves to null or undefined</td><td><code>default("GBP")</code></td></tr>
+      <tr><td>Date format</td><td><code>dateFormat(src, dst)</code></td><td>Reformat date/time string from one format to another (moment.js tokens)</td><td><code>dateFormat("YYYY-MM-DD","DD/MM/YYYY")</code></td></tr>
+      <tr><td>Date to Unix epoch</td><td><code>toEpoch(field)</code></td><td>Convert ISO date string to Unix timestamp integer</td><td><code>toEpoch(contract.startDate)</code> → <code>1753142400</code></td></tr>
+      <tr><td>Math</td><td><code>math(expr)</code></td><td>Arithmetic on source field(s) using safe expression evaluator</td><td><code>math(price * 1.2)</code> — net → gross with 20% VAT</td></tr>
+      <tr><td>Regex extract</td><td><code>regexExtract(field, pattern, group)</code></td><td>Extract a capture group from source string using a regular expression</td><td>Extract postcode from address string</td></tr>
+      <tr><td>Uppercase / Lowercase</td><td><code>upper(field)</code> / <code>lower(field)</code></td><td>Change string case</td><td><code>lower(account.currency)</code> → <code>"gbp"</code> for Stripe</td></tr>
+      <tr><td>Truncate</td><td><code>truncate(field, maxLen)</code></td><td>Limit string to maxLen characters</td><td><code>truncate(name, 35)</code> for SAP NAME1</td></tr>
+      <tr><td>Negate</td><td><code>not(field)</code></td><td>Boolean negation</td><td><code>not(autoRenew)</code> → Stripe <code>cancel_at_period_end</code></td></tr>
+      <tr><td>Constant</td><td><code>const(value)</code></td><td>Hardcode a value regardless of source; useful for required partner fields with no CRM equivalent</td><td><code>const("0001")</code> for SAP account group</td></tr>
+      <tr><td>Array filter</td><td><code>arrayFilter(arr, field, value)</code></td><td>Return first array element where a sub-field equals a value</td><td>Pick primary phone from <code>phoneNumbers[]</code></td></tr>
+      <tr><td>Array map</td><td><code>arrayMap(arr, template)</code></td><td>Transform each element of a source array into a partner sub-object using a mini-template</td><td>Map CRM <code>lineItems[]</code> → Stripe <code>items[]</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>3.3 Validation Rules</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Rule</th><th>Description</th><th>On Failure</th></tr></thead>
+    <tbody>
+      <tr><td>Type check</td><td>Verify source value coerces to declared target type: <code>string</code>, <code>integer</code>, <code>decimal</code>, <code>boolean</code>, <code>date</code>, <code>uuid</code>, <code>email</code>, <code>phone</code></td><td>Reject record; log field-level error with actual vs expected type</td></tr>
+      <tr><td>Format pattern</td><td>Regex pattern check declared per field. Built-in patterns: <code>email</code>, <code>e164_phone</code>, <code>iso_date</code>, <code>postcode_gb</code>, <code>postcode_us</code>, <code>vat_gb</code>, <code>iban</code>. Custom patterns supported.</td><td>Reject or warn depending on severity setting</td></tr>
+      <tr><td>Mandatory</td><td>Target field must resolve to a non-null, non-empty value after transformation. Checked after transforms are applied.</td><td>Reject record with field name in error message</td></tr>
+      <tr><td>Enum membership</td><td>Resolved target value must be in a declared allowed set stored in the mapping template.</td><td>Reject record; log allowed set and actual value</td></tr>
+      <tr><td>Max length</td><td>String length must not exceed declared limit. <code>onExceed</code> policy: <code>reject</code> or <code>truncate</code>.</td><td>Truncate or reject per policy</td></tr>
+      <tr><td>Min / max value</td><td>Numeric range check.</td><td>Reject with out-of-range detail</td></tr>
+      <tr><td>Referential integrity</td><td>Cross-entity lookup: e.g. <code>contact.accountId</code> must resolve to a known account in CRM before syncing. Checked against <code>integration_external_ids</code> table.</td><td>Hold record in pending queue; retry after dependency syncs (configurable TTL)</td></tr>
+      <tr><td>Uniqueness</td><td>For creation flows: verify the record does not already exist in partner system using a pre-flight GET by external identifier.</td><td>Switch to update (UPSERT mode) or skip depending on partner template setting</td></tr>
+      <tr><td>Custom script</td><td>Admin-defined JavaScript snippet evaluated in a sandboxed VM (no I/O). Returns <code>{valid:bool, message:string}</code>.</td><td>Reject if <code>valid === false</code>; log <code>message</code></td></tr>
+    </tbody>
+  </table></div>
+  <div class="call"><div class="call-lbl">Design Principle</div>Validation is <strong>fail-collect, not fail-fast</strong>. All validation errors for a record are gathered before rejection, so the error log shows the complete list of issues — not just the first one encountered. This eliminates iterative fix cycles.</div>
+
+  <h3>3.4 Mapping Templates</h3>
+  <p>Each integration partner has one <strong>Mapping Template Set</strong> — a named, versioned collection of entity templates. Templates may be:</p>
+  <ul>
+    <li><strong>Cloned</strong> from a library of base templates (e.g. "SAP S/4HANA Default", "Stripe Default") and then customised.</li>
+    <li><strong>Exported / imported</strong> as JSON for version control in Git alongside code.</li>
+    <li><strong>Promoted</strong> independently per environment (DEV → QA → PROD) with a mandatory reviewer sign-off in QA and PROD.</li>
+    <li><strong>Rolled back</strong> to any prior version in one click from the admin UI. Rollback is itself an audited event.</li>
+  </ul>
+  <p>When a new template version is saved, the prior version is immutably archived. A version can be marked <strong>deprecated</strong> (still functional, ops alerted) or <strong>locked</strong> (read-only, cannot be promoted).</p>
+
+  <h3>3.5 UI-Driven Mapping Configuration</h3>
+  <p>Non-engineering users (Integration Admins, Business Analysts) configure mappings through the CRM admin panel. The UI presents:</p>
+  <ul>
+    <li>A <strong>source schema browser</strong> — a tree view of all CRM entity fields, auto-populated from the CRM OpenAPI spec.</li>
+    <li>A <strong>target schema browser</strong> — imported from the partner's OpenAPI or JSON Schema spec (uploaded by Integration Admin).</li>
+    <li>A <strong>drag-and-drop mapper</strong> — draw lines from source fields to target fields; transformation rule picker appears inline.</li>
+    <li>A <strong>test runner</strong> — paste a sample CRM record; run the mapping; see the transformed output and any validation errors before saving.</li>
+    <li>A <strong>diff view</strong> — side-by-side comparison between the current version and any prior version.</li>
+  </ul>
+</section>
+
+</main>
+</div>
+<!-- SECTION 4 -->
+<section id="s4" class="section">
+  <div class="sec-hdr"><span class="sec-num">Section 04</span><h2>Data Model Hierarchy Requirements</h2></div>
+
+  <h3>4.1 Entity Coverage Matrix</h3>
+  <div class="tw"><table>
+    <thead><tr><th>CRM Entity</th><th>Sub-objects</th><th>Key Relationships</th><th>Partner Targets (v1)</th></tr></thead>
+    <tbody>
+      <tr><td>Account</td><td>Addresses[], PhoneNumbers[], Attachments[], Notes[], CustomAttributes{}, Tags[]</td><td>Parent Account (self-ref), Contacts (1:M), Opportunities (1:M), Contracts (1:M)</td><td>SAP Customer (KNA1), Stripe Customer, Zendesk Org</td></tr>
+      <tr><td>Contact</td><td>PhoneNumbers[], EmailAddresses[], SocialLinks[], Preferences{}</td><td>Account (M:1), Cases (1:M), Activities (1:M), Opportunities (M:M)</td><td>SAP Contact Person, Okta User, Zendesk User</td></tr>
+      <tr><td>Opportunity</td><td>LineItems[], StageHistory[], Documents[], CompetitorInfo[]</td><td>Account (M:1), Contacts (M:M via OpportunityContact), Products (M:M via LineItem)</td><td>SAP Sales Order Header, HubSpot Deal</td></tr>
+      <tr><td>Quote</td><td>LineItems[], ApprovalHistory[], StageHistory[], Attachments[]</td><td>Opportunity (M:1), Contacts (M:M), Products (M:M via LineItem), PriceBook (M:1)</td><td>SAP Quotation, Stripe PaymentIntent draft</td></tr>
+      <tr><td>Contract</td><td>Clauses[], RenewalDates[], Signatories[], Amendments[]</td><td>Account (M:1), Opportunity (M:1), Contacts (M:M)</td><td>SAP Contract, Stripe Subscription, DocuSign Envelope</td></tr>
+      <tr><td>Product</td><td>PricingTiers[], Attributes[], Media[], Categories[]</td><td>PriceBooks (M:M), ProductFamily (M:1)</td><td>SAP Material Master, Stripe Price/Product, Chargebee Plan</td></tr>
+      <tr><td>Case</td><td>Comments[], Attachments[], SLARecords[], Escalations[]</td><td>Account (M:1), Contact (M:1), Opportunity (optional M:1)</td><td>Zendesk Ticket, ServiceNow Incident, Freshdesk Ticket</td></tr>
+      <tr><td>Activity</td><td>Participants[], Attachments[], Outcomes[]</td><td>Account/Contact/Opportunity/Case (polymorphic M:1)</td><td>SAP Activity, HubSpot Engagement</td></tr>
+      <tr><td>Lead</td><td>ConversionHistory[], Scores[], Tags[]</td><td>Account (optional, on conversion), Contact (on conversion)</td><td>HubSpot Contact, Marketo Lead, Salesforce Lead (import)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.2 Nested Structure Handling</h3>
+  <p>The Mapping Engine supports three strategies for mapping nested CRM structures to partner formats:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Strategy</th><th>Description</th><th>Config Syntax</th><th>Use Case</th></tr></thead>
+    <tbody>
+      <tr><td>Flatten</td><td>Extract a nested field and map it to a flat partner field. Dot-notation path traversal.</td><td><code>sourcePath: "$.address.city"</code></td><td>CRM nested address → SAP flat fields (ORT01, STRAS, etc.)</td></tr>
+      <tr><td>Preserve hierarchy</td><td>Map a CRM sub-object to a nested partner JSON object, preserving structure.</td><td><code>nestAs: "address"</code></td><td>CRM address → Stripe <code>address{}</code> object</td></tr>
+      <tr><td>Array expansion</td><td>Map a CRM array to a partner array. Each element transformed individually using a declared sub-template.</td><td><code>arrayMap: {src:"$.lineItems", dst:"$.items", template:"stripe_line_item"}</code></td><td>CRM <code>lineItems[]</code> → Stripe <code>items[]</code></td></tr>
+      <tr><td>Array filter + pick</td><td>Select specific element(s) from a CRM array based on a field value, then map to flat partner fields.</td><td><code>arrayFilter: {arr:"$.phoneNumbers", where:{type:"primary"}, pick:"$.number"}</code></td><td>Pick primary phone from phone array → SAP TELF1</td></tr>
+      <tr><td>Array index</td><td>Map the Nth element of a CRM array to a specific partner field.</td><td><code>arrayIndex: {arr:"$.addresses", index:0}</code></td><td>Map first address to billing address</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.3 Relationship Mapping Strategies</h3>
+  <p>When a CRM entity references another entity, the Mapping Engine resolves the reference at runtime using one of three strategies, declared per field in the mapping template:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Strategy</th><th>How It Works</th><th>When to Use</th><th>Config</th></tr></thead>
+    <tbody>
+      <tr><td>Key Passthrough</td><td>CRM UUID is passed directly as the partner field value. Partner must accept CRM UUIDs as foreign keys.</td><td>Custom integrations where partner is CRM-aware</td><td><code>referenceStrategy: "passthrough"</code></td></tr>
+      <tr><td>External ID Lookup</td><td>Query <code>integration_external_ids</code> table for the partner's own ID corresponding to the CRM entity. Fail if not found (referential integrity error) or queue for retry.</td><td>ERP sync: Account → SAP Customer; Contract → Stripe Customer</td><td><code>referenceStrategy: "extId", partner: "sap", entityType: "account"</code></td></tr>
+      <tr><td>Inline Embed</td><td>Fetch the referenced entity's fields and embed them inline in the parent payload. Configurable field sub-set.</td><td>Partners requiring denormalised payloads; webhook receivers</td><td><code>referenceStrategy: "embed", fields: ["name","email","phone"]</code></td></tr>
+      <tr><td>Create-if-missing</td><td>If External ID Lookup fails, attempt to create the referenced entity in the partner system first, store its external ID, then proceed.</td><td>ERP sync where CRM is the master record</td><td><code>referenceStrategy: "extId", onMissing: "create"</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4.4 Custom Fields &amp; Dynamic Schema Extension</h3>
+  <p>CRM admins may define custom fields on any entity. The Integration Layer supports custom fields through a <strong>dynamic schema registry</strong>: when a custom field is added to a CRM entity, it immediately appears in the source schema browser and can be mapped without any code change. Custom field metadata (name, data type, entity, validation) is fetched from the CRM API by the Integration Layer admin UI on demand.</p>
+</section>
+
+<!-- SECTION 5 -->
+<section id="s5" class="section">
+  <div class="sec-hdr"><span class="sec-num">Section 05</span><h2>Configuration Management Requirements</h2></div>
+
+  <h3>5.1 Versioning Model</h3>
+  <p>Every save of a mapping template creates an <strong>immutable version record</strong>. The version model follows semantic versioning conventions adapted for configuration:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Version Segment</th><th>Incremented When</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>Major</td><td>Breaking change: a field removed or renamed in a way that would cause partner rejection. Requires explicit acknowledgement.</td><td><code>3.0.0</code></td></tr>
+      <tr><td>Minor</td><td>New field mapping added, new transformation rule added, validation rule relaxed.</td><td><code>2.1.0</code></td></tr>
+      <tr><td>Patch</td><td>Correction to an existing rule (e.g. regex fix, default value change) that does not alter the set of mapped fields.</td><td><code>2.0.1</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>Each version record stores: author user ID, timestamp, version number, change description, full serialised mapping JSON, diff from prior version (unified diff format), and promotion history per environment.</p>
+
+  <h3>5.2 Environment Promotion Workflow</h3>
+  <div class="phases">
+    <div class="phase"><div class="phase-num">1</div><div class="phase-body"><h4>Draft (DEV)</h4><p>Integration Developer creates or edits a mapping template. Test runs against DEV partner sandbox. No approval required. Draft versions cannot be promoted directly to PROD.</p></div></div>
+    <div class="phase"><div class="phase-num">2</div><div class="phase-body"><h4>QA Promotion</h4><p>Developer requests promotion to QA. Integration Admin reviews the diff and approves or rejects with comments. On approval: template deployed to QA environment; automated contract tests run against QA partner sandbox.</p></div></div>
+    <div class="phase"><div class="phase-num">3</div><div class="phase-body"><h4>PROD Promotion</h4><p>After QA sign-off, Integration Admin requests PROD promotion. A second approver (Senior Integration Admin or Engineering Lead) must approve. Promotion is scheduled to a change window. Rollback to prior PROD version available for 30 minutes post-promotion.</p></div></div>
+    <div class="phase"><div class="phase-num">4</div><div class="phase-body"><h4>Rollback</h4><p>Any prior approved version can be re-promoted to PROD by an Integration Admin. Rollback is an audited event. Post-rollback, a blameless incident review is required within 48 hours.</p></div></div>
+  </div>
+
+  <h3>5.3 Environment-Specific Configuration Matrix</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Configuration Item</th><th>DEV</th><th>QA</th><th>PROD</th></tr></thead>
+    <tbody>
+      <tr><td>Partner base URL</td><td>Partner sandbox URL</td><td>Partner UAT URL</td><td>Partner production URL</td></tr>
+      <tr><td>Auth credentials</td><td>Dev credentials in Vault (dev namespace)</td><td>QA credentials in Vault (qa namespace)</td><td>Production credentials in Vault (prod namespace, restricted)</td></tr>
+      <tr><td>Rate limits</td><td>Relaxed (10× production limits)</td><td>Production limits (to catch throttling issues in QA)</td><td>Production limits</td></tr>
+      <tr><td>Log verbosity</td><td>DEBUG — full request/response payloads</td><td>INFO — headers + status only</td><td>WARN — errors and anomalies only; PII masked</td></tr>
+      <tr><td>Retry policy</td><td>1 retry (fast feedback)</td><td>Full production retry policy</td><td>Full production retry policy</td></tr>
+      <tr><td>Mapping template version</td><td>Any draft version</td><td>Approved versions only</td><td>Approved versions only; promoted within change window</td></tr>
+      <tr><td>DLQ retention</td><td>7 days</td><td>30 days</td><td>90 days (compliance)</td></tr>
+      <tr><td>Circuit breaker</td><td>Disabled (allow failure for testing)</td><td>Enabled (production thresholds)</td><td>Enabled (production thresholds)</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>5.4 Audit Log Specification</h3>
+  <p>All configuration changes are written to an append-only audit log table (<code>integration_audit_log</code>) with the following structure:</p>
+  <div class="tw"><table>
+    <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>id</code></td><td>UUID</td><td>Unique audit event identifier</td></tr>
+      <tr><td><code>tenant_id</code></td><td>UUID</td><td>Tenant scope of the change</td></tr>
+      <tr><td><code>actor_id</code></td><td>UUID</td><td>User ID of the person who made the change</td></tr>
+      <tr><td><code>actor_name</code></td><td>string</td><td>Display name at time of action (denormalised for retention)</td></tr>
+      <tr><td><code>action</code></td><td>enum</td><td><code>CREATE</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>PROMOTE</code>, <code>ROLLBACK</code>, <code>APPROVE</code>, <code>REJECT</code></td></tr>
+      <tr><td><code>resource_type</code></td><td>string</td><td><code>partner_profile</code>, <code>mapping_template</code>, <code>lookup_table</code>, <code>partner_credential</code> (action only, no values)</td></tr>
+      <tr><td><code>resource_id</code></td><td>UUID</td><td>ID of the affected resource</td></tr>
+      <tr><td><code>environment</code></td><td>enum</td><td><code>dev</code>, <code>qa</code>, <code>prod</code></td></tr>
+      <tr><td><code>before_state</code></td><td>JSONB</td><td>Serialised resource before change (null for CREATE)</td></tr>
+      <tr><td><code>after_state</code></td><td>JSONB</td><td>Serialised resource after change (null for DELETE)</td></tr>
+      <tr><td><code>diff</code></td><td>text</td><td>Unified diff of before/after JSON</td></tr>
+      <tr><td><code>ip_address</code></td><td>inet</td><td>Actor's IP address</td></tr>
+      <tr><td><code>created_at</code></td><td>timestamptz</td><td>Immutable; server-generated</td></tr>
+    </tbody>
+  </table></div>
+  <p>Audit logs are retained for <strong>7 years</strong> (compliance requirement). Logs older than 90 days are archived to cold storage (S3 Glacier / Azure Archive) and remain queryable via the admin UI with a 30-second retrieval SLA.</p>
+
+  <h3>5.5 Role-Based Access Control</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Role</th><th>Partner Profiles</th><th>Mapping Templates</th><th>Credentials</th><th>Promote (QA)</th><th>Promote (PROD)</th><th>Audit Logs</th><th>DLQ</th></tr></thead>
+    <tbody>
+      <tr><td>Super Admin</td><td>Full CRUD</td><td>Full CRUD all envs</td><td>Full CRUD</td><td>✓</td><td>✓</td><td>Full read</td><td>Full</td></tr>
+      <tr><td>Integration Admin</td><td>Full CRUD</td><td>Full CRUD all envs</td><td>Read key names only</td><td>✓</td><td>✓ (with co-approver)</td><td>Full read</td><td>Full</td></tr>
+      <tr><td>Mapping Developer</td><td>Read only</td><td>CRUD in DEV; read QA/PROD</td><td>No access</td><td>Request only</td><td>No</td><td>Own changes</td><td>View only</td></tr>
+      <tr><td>Ops / Support</td><td>Read only</td><td>Read only</td><td>No access</td><td>No</td><td>No</td><td>Full read</td><td>Requeue / discard</td></tr>
+      <tr><td>Auditor</td><td>No access</td><td>No access</td><td>No access</td><td>No</td><td>No</td><td>Full read (7-yr)</td><td>No</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- SECTION 6 -->
+<section id="s6" class="section">
+  <div class="sec-hdr"><span class="sec-num">Section 06</span><h2>Implementation Blueprint</h2></div>
+
+  <h3>6.1 High-Level Component Architecture</h3>
+  <div class="arch">
+    <div style="font-family:var(--sans);font-size:.72rem;font-weight:700;color:var(--ink);margin-bottom:.85rem;">Integration Layer — Layered Component View (top = external, bottom = CRM platform)</div>
+    <div class="arch-row al1">
+      <span class="arch-title">External Partner Systems</span>
+      <div class="arch-tags"><span class="arch-tag">SAP ERP</span><span class="arch-tag">Stripe</span><span class="arch-tag">Okta</span><span class="arch-tag">Zendesk</span><span class="arch-tag">HubSpot</span><span class="arch-tag">Shopify</span><span class="arch-tag">DocuSign</span><span class="arch-tag">Snowflake</span></div>
+    </div>
+    <div class="arch-row al2">
+      <span class="arch-title">API Gateway (nginx / AWS ALB + Envoy sidecar)</span>
+      <div class="arch-tags"><span class="arch-tag">TLS 1.3 / mTLS</span><span class="arch-tag">Auth enforcement</span><span class="arch-tag">Rate limiting</span><span class="arch-tag">Route table</span><span class="arch-tag">HMAC verify</span><span class="arch-tag">Correlation ID</span></div>
+    </div>
+    <div class="arch-row al3">
+      <span class="arch-title">Orchestration Service (Node.js / TypeScript — stateless, horizontally scaled)</span>
+      <div class="arch-tags"><span class="arch-tag">Sync handler</span><span class="arch-tag">Kafka consumer</span><span class="arch-tag">Batch scheduler</span><span class="arch-tag">Webhook dispatcher</span><span class="arch-tag">Circuit breaker</span><span class="arch-tag">Retry engine</span></div>
+    </div>
+    <div class="arch-row al4">
+      <span class="arch-title">Mapping Engine (shared library — loaded by Orchestrator)</span>
+      <div class="arch-tags"><span class="arch-tag">Config loader (Redis cache)</span><span class="arch-tag">Transform pipeline</span><span class="arch-tag">Validator</span><span class="arch-tag">Reference resolver</span><span class="arch-tag">Lookup table eval</span></div>
+    </div>
+    <div class="arch-row al5">
+      <span class="arch-title">CRM Platform + Integration Support Services</span>
+      <div class="arch-tags"><span class="arch-tag">Arbormind CRM API</span><span class="arch-tag">Config DB (PostgreSQL)</span><span class="arch-tag">External ID Store</span><span class="arch-tag">Secrets Vault</span><span class="arch-tag">Kafka (message bus)</span><span class="arch-tag">Redis (cache + rate limit)</span><span class="arch-tag">Audit Log Store</span></div>
+    </div>
+  </div>
+
+  <h3>6.2 Orchestration Service — Detailed Design</h3>
+  <p>The Orchestration Service is a <strong>stateless Node.js (TypeScript) microservice</strong> deployed as a Kubernetes Deployment with HPA (Horizontal Pod Autoscaler) keyed on Kafka consumer lag and CPU utilisation. It is the only service that makes outbound calls to partner APIs. Key responsibilities:</p>
+  <ul>
+    <li>Receive inbound requests from the gateway (sync) or Kafka consumer messages (async).</li>
+    <li>Determine the integration type and locate the partner profile from Config DB (Redis-cached, TTL 60 s).</li>
+    <li>Load the active mapping template version for the entity type and environment.</li>
+    <li>Invoke the Mapping Engine to produce a transformed, validated payload.</li>
+    <li>Select the appropriate outbound connector (REST, GraphQL, SOAP adapter, Kafka producer).</li>
+    <li>Execute the outbound call with circuit breaker and retry wrapper.</li>
+    <li>On success: persist external ID to <code>integration_external_ids</code>; publish success event; update run log.</li>
+    <li>On failure: classify error; apply retry policy; route to DLQ if exhausted; update run log with full diagnostic.</li>
+  </ul>
+
+  <h3>6.3 Mapping Engine — Five-Phase Pipeline</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Phase</th><th>Input</th><th>Output</th><th>Key Operations</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><strong>Extraction</strong></td><td>Raw CRM entity JSON + mapping template</td><td>Flat key→value map of resolved source fields</td><td>JSONPath traversal; array indexing; null-safe path resolution</td></tr>
+      <tr><td>2</td><td><strong>Enrichment</strong></td><td>Flat map + resolved entity context</td><td>Flat map augmented with external IDs and referenced entity fields</td><td>External ID lookup (DB query); inline embed fetch (CRM API call); lookup table resolution (Redis cached)</td></tr>
+      <tr><td>3</td><td><strong>Transformation</strong></td><td>Enriched flat map</td><td>Transformed flat map</td><td>Execute transform chain per field in declaration order; pure functions only — no I/O at this phase; sandbox VM for custom scripts</td></tr>
+      <tr><td>4</td><td><strong>Assembly</strong></td><td>Transformed flat map + target schema template</td><td>Target JSON object (partner-shaped)</td><td>Re-nest fields into target structure; construct arrays from array-map results; apply conditional inclusion (omit null fields per partner config)</td></tr>
+      <tr><td>5</td><td><strong>Validation</strong></td><td>Assembled target JSON</td><td>Annotated result: <code>{valid, record, errors[]}</code></td><td>Type checks; format patterns; mandatory checks; enum membership; length limits; referential integrity; custom validator scripts</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call ok"><div class="call-lbl">Engine Principle</div>The Mapping Engine is <strong>schema-agnostic</strong>. It operates on any JSON structure. CRM entity schemas are registered as JSON Schema fragments in the Config DB — not hardcoded. Adding a new CRM entity type requires only schema registration, not an engine code change.</div>
+
+  <h3>6.4 Connector Implementations</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Connector Type</th><th>Protocols</th><th>Features</th><th>Partners (examples)</th></tr></thead>
+    <tbody>
+      <tr><td>REST Connector</td><td>HTTP/1.1, HTTP/2</td><td>OAuth2 token management, retry + circuit breaker, idempotency key injection, request/response logging, timeout enforcement</td><td>Stripe, Zendesk, HubSpot, DocuSign, Shopify</td></tr>
+      <tr><td>SOAP/XML Connector</td><td>SOAP 1.1/1.2 over HTTPS</td><td>WSDL-based method resolution, XML↔JSON conversion, WS-Security header injection</td><td>SAP (legacy BAPI), Oracle legacy modules</td></tr>
+      <tr><td>Kafka Connector</td><td>Kafka 3.x (TLS + SASL)</td><td>Exactly-once semantics via idempotent producer, consumer group management, offset commit, DLQ topic routing</td><td>Internal event bus, ERP CDC feeds</td></tr>
+      <tr><td>SFTP / File Connector</td><td>SFTP (SSH), S3, Azure Blob</td><td>Scheduled pick-up, CSV/XML/JSON parsing, row-level transform via mapping engine, checkpoint file for resume</td><td>Legacy ERP batch files, billing export feeds</td></tr>
+      <tr><td>GraphQL Connector</td><td>GraphQL over HTTPS</td><td>Query/mutation template stored in partner config, variable binding from mapping engine output</td><td>Shopify Admin API, GitHub Enterprise</td></tr>
+      <tr><td>SCIM Connector</td><td>SCIM 2.0 over HTTPS</td><td>User/Group provisioning, patch operations, bulk endpoint support</td><td>Okta, Azure AD, Auth0</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>6.5 Observability Stack</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Signal Type</th><th>Tool</th><th>Key Metrics / Data</th><th>Retention</th></tr></thead>
+    <tbody>
+      <tr><td>Structured Logs</td><td>Pino → AWS CloudWatch Logs / Grafana Loki</td><td><code>integration_run_id</code>, <code>partner</code>, <code>entity_type</code>, <code>entity_id</code>, <code>duration_ms</code>, <code>status</code>, <code>error_code</code>, <code>mapping_template_version</code></td><td>90 days hot; 7 years archive</td></tr>
+      <tr><td>Metrics</td><td>Prometheus → Grafana</td><td>Records processed/s per partner; error rate; DLQ depth; p50/p95/p99 latency; circuit breaker state; retry rate; batch completion %</td><td>15 days high-res; 1 year downsampled</td></tr>
+      <tr><td>Distributed Traces</td><td>OpenTelemetry SDK → Grafana Tempo / Jaeger</td><td>Full trace per integration run: gateway → orchestrator → mapping engine → connector → partner response. Span per pipeline phase.</td><td>30 days</td></tr>
+      <tr><td>Alerts</td><td>Grafana Alerting → PagerDuty</td><td>DLQ depth &gt; 100; circuit open; error rate &gt; 5% over 5 min; p95 latency &gt; 3 s; batch overdue; credential expiry &lt; 7 days</td><td>—</td></tr>
+      <tr><td>Ops Dashboard</td><td>Grafana</td><td>Per-partner health tile; sync lag heatmap; daily volume bars; top-10 error types; DLQ table with requeue controls</td><td>—</td></tr>
+      <tr><td>Integration Run Log</td><td>PostgreSQL (<code>integration_run_log</code> table)</td><td>Every run record: partner, entity, mapping version, status, duration, error detail, retry count, DLQ flag</td><td>90 days; queryable from admin UI</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>6.6 Deployment Strategy</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Concern</th><th>Approach</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Container images</td><td>Docker; one image per service</td><td>Multi-stage build: compile → prune devDeps → production image. Signed with cosign. Pushed to private ECR / ACR.</td></tr>
+      <tr><td>Orchestration</td><td>Kubernetes (EKS / AKS)</td><td>Separate Deployment per service. HPA on Orchestration pods: min 2, max 20, scale trigger: Kafka consumer lag &gt; 1000 OR CPU &gt; 60%.</td></tr>
+      <tr><td>CI/CD pipeline</td><td>GitHub Actions</td><td>PR → lint + unit tests → integration tests (docker-compose sandbox) → Docker build → image scan (Trivy) → push → Helm deploy to DEV → auto-promote to QA on passing gate → manual gate → PROD deploy in change window.</td></tr>
+      <tr><td>Database migrations</td><td>Drizzle ORM migrations</td><td>Run as Kubernetes Job (init pattern) on deploy. Migration history in <code>drizzle_migrations</code> table. Rollback migration prepared for every forward migration.</td></tr>
+      <tr><td>Feature flags</td><td>LaunchDarkly / Unleash</td><td>Per-partner integration toggle; new transformation rule types; multi-tenancy mode. Config-driven — no redeploy needed to toggle.</td></tr>
+      <tr><td>Secret management</td><td>HashiCorp Vault / AWS Secrets Manager</td><td>Vault agent sidecar injects secrets as env vars at pod startup. No secrets in config DB, environment files, or container images.</td></tr>
+      <tr><td>Zero-downtime deploy</td><td>Rolling update + readiness probe</td><td>Kubernetes rolling update strategy: maxSurge 1, maxUnavailable 0. New pods must pass readiness probe before old pods terminate.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- SECTION 7 -->
+<section id="s7" class="section">
+  <div class="sec-hdr"><span class="sec-num">Section 07</span><h2>Sample Use Cases</h2></div>
+
+  <h3>Use Case A — CRM → ERP Customer Sync (SAP S/4HANA)</h3>
+  <h4>Business Context</h4>
+  <p>When a new Account is created or updated in Arbormind CRM, the corresponding SAP Customer master record must be created or updated in S/4HANA within 30 seconds. SAP is the system of record for financial transactions; CRM is the system of record for relationship data. The integration is bi-directional: credit limit changes from SAP flow back into CRM as read-only fields.</p>
+  <h4>Trigger</h4>
+  <p>CRM emits a <code>account.created</code> or <code>account.updated</code> event to the Kafka topic <code>crm.accounts.changed</code>.</p>
+  <h4>Flow</h4>
+  <div class="phases">
+    <div class="phase"><div class="phase-num">1</div><div class="phase-body"><h4>Event published</h4><p>CRM API server publishes event with full account payload and idempotency key to Kafka topic.</p></div></div>
+    <div class="phase"><div class="phase-num">2</div><div class="phase-body"><h4>Orchestrator consumes</h4><p>Orchestration Service Kafka consumer picks up the message. Loads SAP partner profile and <code>account→sap_customer</code> mapping template (Redis-cached). Marks run log entry as IN_PROGRESS.</p></div></div>
+    <div class="phase"><div class="phase-num">3</div><div class="phase-body"><h4>Mapping Engine executes</h4><p>Five-phase pipeline transforms CRM account JSON → SAP KNA1 structure. External ID lookup checks if SAP customer already exists for this account. If found: PUT (update). If not found: POST (create).</p></div></div>
+    <div class="phase"><div class="phase-num">4</div><div class="phase-body"><h4>SAP API call</h4><p>REST Connector calls SAP OData endpoint with idempotency key in header. Retries on 5xx with exponential back-off. Circuit breaker monitored.</p></div></div>
+    <div class="phase"><div class="phase-num">5</div><div class="phase-body"><h4>External ID stored</h4><p>SAP Customer number (<code>KUNNR</code>) stored in <code>integration_external_ids</code> table. CRM account record updated with <code>sap_customer_id</code> field via internal CRM API.</p></div></div>
+  </div>
+  <h4>Key Field Mappings</h4>
+  <div class="mflow"><span class="msrc">account.name</span><span class="marr">→</span><span class="mdst">KNA1.NAME1</span><span class="mxfm">truncate(35)</span><span class="mval">mandatory</span></div>
+  <div class="mflow"><span class="msrc">account.address.street</span><span class="marr">→</span><span class="mdst">KNA1.STRAS</span><span class="mxfm">truncate(35)</span><span class="mval">mandatory</span></div>
+  <div class="mflow"><span class="msrc">account.address.city</span><span class="marr">→</span><span class="mdst">KNA1.ORT01</span><span class="mxfm">direct</span><span class="mval">mandatory</span></div>
+  <div class="mflow"><span class="msrc">account.address.postcode</span><span class="marr">→</span><span class="mdst">KNA1.PSTLZ</span><span class="mxfm">direct</span><span class="mval">regex: postcode_gb</span></div>
+  <div class="mflow"><span class="msrc">account.address.countryCode</span><span class="marr">→</span><span class="mdst">KNA1.LAND1</span><span class="mxfm">lookup(iso2_to_sap)</span><span class="mval">enum: SAP country codes</span></div>
+  <div class="mflow"><span class="msrc">account.vatNumber</span><span class="marr">→</span><span class="mdst">KNA1.STCD1</span><span class="mxfm">direct</span><span class="mval">format: vat_gb (optional)</span></div>
+  <div class="mflow"><span class="msrc">account.currency</span><span class="marr">→</span><span class="mdst">KNA1.WAERS</span><span class="mxfm">lookup(crm_to_iso4217)</span><span class="mval">mandatory</span></div>
+  <div class="mflow"><span class="msrc">account.status</span><span class="marr">→</span><span class="mdst">KNA1.AUFSD</span><span class="mxfm">if(active,"","01")</span><span class="mval">enum: "",01,02</span></div>
+  <div class="mflow"><span class="msrc">—</span><span class="marr">→</span><span class="mdst">KNA1.KTOKD</span><span class="mxfm">const("0001")</span><span class="mval">SAP account group</span></div>
+
+  <h3>Use Case B — CRM → Billing Subscription Sync (Stripe)</h3>
+  <h4>Business Context</h4>
+  <p>When a Contract in CRM moves to "Active" status, a corresponding Stripe Subscription must be created. Line items on the CRM contract map to Stripe Subscription Items. The Stripe Customer must already exist (created via Use Case A chain or standalone account sync). Stripe is the system of record for billing; CRM stores the Stripe subscription ID for reference.</p>
+  <h4>Trigger</h4>
+  <p>CRM emits <code>contract.stage_changed</code> event with <code>newStage: "active"</code>. Orchestrator checks stage filter in partner event routing config before processing.</p>
+  <h4>Flow</h4>
+  <div class="phases">
+    <div class="phase"><div class="phase-num">1</div><div class="phase-body"><h4>Stage change event</h4><p>CRM publishes event. Routing config for Stripe partner filters on <code>entity=contract AND newStage=active</code>.</p></div></div>
+    <div class="phase"><div class="phase-num">2</div><div class="phase-body"><h4>Dependency check</h4><p>Orchestrator verifies Stripe Customer ID exists for the contract's account. If not found: triggers Account sync first (chained integration), waits up to 30 s for external ID to appear. If still missing: route to DLQ with reason <code>DEPENDENCY_UNRESOLVED</code>.</p></div></div>
+    <div class="phase"><div class="phase-num">3</div><div class="phase-body"><h4>Payload construction</h4><p>Mapping Engine builds Stripe Subscription create payload. Line items array-mapped: each CRM line item → Stripe Subscription Item with Stripe Price ID (resolved via external ID lookup) and quantity.</p></div></div>
+    <div class="phase"><div class="phase-num">4</div><div class="phase-body"><h4>Stripe API call</h4><p>POST <code>/v1/subscriptions</code> with <code>Idempotency-Key</code> header. On 409 (already exists): fetch existing subscription, compare, PATCH if delta found.</p></div></div>
+    <div class="phase"><div class="phase-num">5</div><div class="phase-body"><h4>Write-back</h4><p>Stripe <code>subscription.id</code> stored in CRM contract <code>stripe_subscription_id</code> field. Stripe customer portal link generated and stored.</p></div></div>
+  </div>
+  <h4>Key Field Mappings</h4>
+  <div class="mflow"><span class="msrc">contract.account.externalId[stripe]</span><span class="marr">→</span><span class="mdst">customer</span><span class="mxfm">extId("stripe","account")</span><span class="mval">mandatory</span></div>
+  <div class="mflow"><span class="msrc">contract.lineItems[*].product.externalId[stripe]</span><span class="marr">→</span><span class="mdst">items[*].price</span><span class="mxfm">extId("stripe","product")</span><span class="mval">mandatory per item</span></div>
+  <div class="mflow"><span class="msrc">contract.lineItems[*].quantity</span><span class="marr">→</span><span class="mdst">items[*].quantity</span><span class="mxfm">direct (integer)</span><span class="mval">min:1</span></div>
+  <div class="mflow"><span class="msrc">contract.startDate</span><span class="marr">→</span><span class="mdst">billing_cycle_anchor</span><span class="mxfm">toEpoch()</span><span class="mval">optional</span></div>
+  <div class="mflow"><span class="msrc">contract.currency</span><span class="marr">→</span><span class="mdst">currency</span><span class="mxfm">lower()</span><span class="mval">enum: ISO 4217 lowercase</span></div>
+  <div class="mflow"><span class="msrc">contract.autoRenew</span><span class="marr">→</span><span class="mdst">cancel_at_period_end</span><span class="mxfm">not(value)</span><span class="mval">boolean</span></div>
+  <div class="mflow"><span class="msrc">contract.id</span><span class="marr">→</span><span class="mdst">metadata.crm_contract_id</span><span class="mxfm">toString()</span><span class="mval">for reconciliation</span></div>
+
+  <h3>Use Case C — CRM ← Identity Provider User Sync (Okta)</h3>
+  <h4>Business Context</h4>
+  <p>When a new user is provisioned in Okta (or an existing user's profile is updated), a corresponding CRM Contact and User record must be created or updated in Arbormind. Okta is the system of record for user identity; CRM inherits display name, department, email, and job title. User deactivation in Okta must trigger CRM user deactivation within 60 seconds (security requirement).</p>
+  <h4>Trigger</h4>
+  <p>Okta sends a signed webhook event to the Integration Layer endpoint <code>POST /v1/webhooks/idp/okta</code>. The gateway verifies the <code>X-Okta-Verification-Challenge</code> HMAC signature before forwarding.</p>
+  <h4>Flow</h4>
+  <div class="phases">
+    <div class="phase"><div class="phase-num">1</div><div class="phase-body"><h4>Webhook received</h4><p>Gateway verifies HMAC-SHA256 signature. Responds 200 immediately (ack). Publishes verified payload to Kafka topic <code>idp.users.changed</code> for async processing.</p></div></div>
+    <div class="phase"><div class="phase-num">2</div><div class="phase-body"><h4>Event classification</h4><p>Orchestrator reads event type: <code>user.lifecycle.create</code>, <code>user.profile.update</code>, or <code>user.lifecycle.deactivate</code>. Routes to appropriate mapping template variant.</p></div></div>
+    <div class="phase"><div class="phase-num">3</div><div class="phase-body"><h4>Deduplication check</h4><p>For create events: check if CRM Contact with matching email already exists. If yes: switch to update path. If no: create path.</p></div></div>
+    <div class="phase"><div class="phase-num">4</div><div class="phase-body"><h4>CRM record create/update</h4><p>Mapping Engine transforms Okta user profile → CRM Contact + User payload. CRM API called to create or patch both records atomically.</p></div></div>
+    <div class="phase"><div class="phase-num">5</div><div class="phase-body"><h4>Deactivation path</h4><p>For <code>deactivate</code> events: CRM User <code>isActive</code> set to false; all active CRM sessions for that user revoked. Audit event written to CRM security log.</p></div></div>
+  </div>
+  <h4>Key Field Mappings</h4>
+  <div class="mflow"><span class="msrc">profile.firstName</span><span class="marr">→</span><span class="mdst">contact.firstName</span><span class="mxfm">direct</span><span class="mval">mandatory</span></div>
+  <div class="mflow"><span class="msrc">profile.lastName</span><span class="marr">→</span><span class="mdst">contact.lastName</span><span class="mxfm">direct</span><span class="mval">mandatory</span></div>
+  <div class="mflow"><span class="msrc">profile.email</span><span class="marr">→</span><span class="mdst">contact.email + user.email</span><span class="mxfm">direct</span><span class="mval">format: email; mandatory</span></div>
+  <div class="mflow"><span class="msrc">profile.department</span><span class="marr">→</span><span class="mdst">contact.department</span><span class="mxfm">default("Unknown")</span><span class="mval">optional</span></div>
+  <div class="mflow"><span class="msrc">profile.title</span><span class="marr">→</span><span class="mdst">contact.jobTitle</span><span class="mxfm">direct</span><span class="mval">optional</span></div>
+  <div class="mflow"><span class="msrc">status</span><span class="marr">→</span><span class="mdst">user.isActive</span><span class="mxfm">if(ACTIVE,true,false)</span><span class="mval">boolean; mandatory</span></div>
+  <div class="mflow"><span class="msrc">id</span><span class="marr">→</span><span class="mdst">user.externalId</span><span class="mxfm">direct</span><span class="mval">stored for reverse lookup</span></div>
+</section>
+
+<!-- SECTION 8 -->
+<section id="s8" class="section">
+  <div class="sec-hdr"><span class="sec-num">Section 08</span><h2>Non-functional Requirements</h2></div>
+  <div class="nfr-grid">
+    <div class="nfr-card"><h4>Throughput</h4><ul><li>≥ 500 sync transactions/s sustained</li><li>≥ 50,000 batch records/min</li><li>≥ 2,000 inbound webhook events/s burst</li><li>Auto-scale to 10× baseline within 90 s</li></ul></div>
+    <div class="nfr-card"><h4>Latency</h4><ul><li>Sync: p95 &lt; 2 s end-to-end</li><li>Sync: p99 &lt; 5 s</li><li>Webhook ack: &lt; 200 ms</li><li>Webhook processing: &lt; 30 s</li><li>Batch: 100k records &lt; 10 min</li></ul></div>
+    <div class="nfr-card"><h4>Availability</h4><ul><li>99.9% uptime (≤ 8.7 h/yr)</li><li>RTO: &lt; 30 s (active/passive failover)</li><li>RPO: zero for queued messages (Kafka replication)</li><li>Planned maintenance: zero-downtime rolling deploy</li></ul></div>
+    <div class="nfr-card"><h4>Security</h4><ul><li>TLS 1.3 in transit; AES-256 at rest</li><li>Secrets in Vault; never in DB or logs</li><li>PII fields masked (SHA-256) in all logs</li><li>mTLS for financial and IdP connections</li><li>HMAC verification on all inbound webhooks</li></ul></div>
+    <div class="nfr-card"><h4>Compliance</h4><ul><li>GDPR: right-to-erasure propagation within 72 h</li><li>ISO 27001 data handling controls</li><li>SOC 2 Type II readiness</li><li>PCI-DSS: no card data transits the Integration Layer</li><li>Audit trail: 7-year retention</li></ul></div>
+    <div class="nfr-card"><h4>Observability SLA</h4><ul><li>Sync errors surfaced within 60 s</li><li>DLQ alert within 5 min of first entry</li><li>Circuit-open alert within 30 s</li><li>Log retention: 90 days hot; 7 yr archive</li><li>Trace retention: 30 days</li></ul></div>
+    <div class="nfr-card"><h4>Scalability</h4><ul><li>Horizontal scale: stateless Orchestration pods</li><li>Kafka partitioning per partner (no cross-partner contention)</li><li>Redis cluster for rate-limit counters</li><li>DB read replicas for Config DB queries</li></ul></div>
+    <div class="nfr-card"><h4>Recoverability</h4><ul><li>DLQ entries replayable up to 90 days</li><li>Batch checkpoint restart from last successful row</li><li>Mapping version rollback: &lt; 2 min from decision to active</li><li>Credential rotation: zero-downtime dual-active window</li></ul></div>
+    <div class="nfr-card"><h4>Data Residency</h4><ul><li>All personal data remains within EEA boundary</li><li>US-based partner endpoints require Standard Contractual Clauses</li><li>Data residency per tenant configurable for future multi-region</li></ul></div>
+  </div>
+</section>
+
+<!-- SECTION 9 -->
+<section id="s9" class="section">
+  <div class="sec-hdr"><span class="sec-num">Section 09</span><h2>Risks, Assumptions &amp; Constraints</h2></div>
+
+  <h3>9.1 Risk Register</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>Risk</th><th>Impact</th><th>Likelihood</th><th>Mitigation</th><th>Owner</th></tr></thead>
+    <tbody>
+      <tr><td>R1</td><td>Partner API schema changes without advance notice</td><td style="color:var(--red)">High</td><td style="color:var(--amber)">Medium</td><td>Schema version pinning in mapping template. Nightly automated contract tests against partner sandbox. Schema diff alert on mismatch. 12-month deprecation window SLA in partner agreements.</td><td>Integration Admin</td></tr>
+      <tr><td>R2</td><td>Mapping misconfiguration causes data corruption in partner system</td><td style="color:var(--red)">High</td><td style="color:var(--amber)">Medium</td><td>Mandatory QA gate + co-approver for PROD promotion. Dry-run mode: transform and validate without sending. Validation pre-send catches type/format errors. Rollback available within 30 min of PROD deploy.</td><td>Integration Admin</td></tr>
+      <tr><td>R3</td><td>DLQ backlog during prolonged partner outage</td><td style="color:var(--amber)">Medium</td><td style="color:var(--red)">High</td><td>Circuit breaker limits backlog growth. DLQ capacity alert at depth 100. Configurable TTL on DLQ entries (default 90 days). Ops dashboard for manual requeue once partner recovers.</td><td>Ops Team</td></tr>
+      <tr><td>R4</td><td>PII leakage in integration logs</td><td style="color:var(--red)">High</td><td style="color:var(--green)">Low</td><td>Centralised PII field registry per partner profile. Automatic SHA-256 masking in log serialiser. Quarterly log audit by Security team. PROD log verbosity set to WARN by default.</td><td>Security Lead</td></tr>
+      <tr><td>R5</td><td>Multi-tenancy data bleed between tenants</td><td style="color:var(--red)">High</td><td style="color:var(--green)">Low</td><td>ORM-level <code>tenant_id</code> filter applied automatically on every query. Automated tenant-isolation test suite runs in CI. Separate Vault namespaces per tenant for credentials.</td><td>Engineering Lead</td></tr>
+      <tr><td>R6</td><td>Kafka broker outage causes event loss</td><td style="color:var(--red)">High</td><td style="color:var(--green)">Low</td><td>Kafka replication factor ≥ 3. Idempotent producers with acks=all. Webhook payloads acked to partner after Kafka write confirmed; re-delivery if write fails. Regular disaster-recovery drills.</td><td>Platform Engineering</td></tr>
+      <tr><td>R7</td><td>API key / OAuth token compromise</td><td style="color:var(--red)">High</td><td style="color:var(--green)">Low</td><td>All credentials in Vault; never in DB or logs. mTLS for sensitive partners. Age alerts at 75 days. Automated rotation where Vault dynamic secrets supported. Incident response runbook for credential compromise.</td><td>Security Lead</td></tr>
+      <tr><td>R8</td><td>Integration Admin misconfiguration — wrong environment promoted</td><td style="color:var(--amber)">Medium</td><td style="color:var(--amber)">Medium</td><td>Promotion UI shows diff with colour-coded environment banner. Second-approver requirement for PROD. 30-minute rollback window post-promotion. All actions audit-logged.</td><td>Process / Integration Admin</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>9.2 Assumptions</h3>
+  <ul>
+    <li>All partner systems expose documented REST or gRPC APIs. EDI-only partners (EDIFACT/X12) are deferred to v1.1 with a dedicated EDI adapter.</li>
+    <li>CRM records carry a stable, immutable UUID primary key that persists through the record lifecycle. This UUID is used as the correlation ID across all integration runs.</li>
+    <li>A Secrets Management infrastructure (HashiCorp Vault or AWS Secrets Manager) is deployed and operational before development Sprint 1 begins.</li>
+    <li>Partner sandbox environments are available and accessible from the DEV Kubernetes cluster within 2 weeks of project kick-off.</li>
+    <li>Each integration partner assigns a named technical contact reachable within 24 hours for schema clarification and sandbox access.</li>
+    <li>Kafka is available as a managed service (Confluent Cloud, AWS MSK, or Azure Event Hubs with Kafka protocol). Self-managed Kafka is not in scope.</li>
+    <li>The existing CRM PostgreSQL database (Neon DB) is available for the Config DB and Audit Log tables. A separate read replica is provisioned for Config DB queries under load.</li>
+    <li>Network connectivity between the Integration Layer Kubernetes cluster and all partner API endpoints is established and firewalled at the start of each environment build.</li>
+  </ul>
+
+  <h3>9.3 Constraints</h3>
+  <ul>
+    <li><strong>Infrastructure boundary:</strong> All services must run within the existing Kubernetes cluster. No new cloud accounts without Infrastructure Board approval (minimum 4-week lead time).</li>
+    <li><strong>Data residency:</strong> All personal data must remain within the EEA data boundary. US-based partner endpoints require SCCs countersigned before integration goes live.</li>
+    <li><strong>Admin UI embedding:</strong> The Integration Layer admin UI must be embedded within the existing Arbormind CRM admin panel. No separate domain or standalone application.</li>
+    <li><strong>No PCI data:</strong> The Integration Layer must never route, store, or log payment card numbers, CVVs, or PANs. Stripe's tokenisation must be used at source; only tokens transit the layer.</li>
+    <li><strong>v1 Partner scope:</strong> General Availability (Q4 2026): ERP (SAP), Billing (Stripe), Identity (Okta) only. Additional partners in v1.1 (Q1 2027).</li>
+    <li><strong>Team capacity:</strong> 3 backend engineers, 1 frontend engineer, 1 DevOps engineer allocated. Scope must be confirmed against this capacity by Sprint 2 planning.</li>
+  </ul>
+</section>
+
+<!-- APPENDIX A -->
+<section id="app-a" class="section">
+  <div class="sec-hdr"><span class="sec-num">Appendix A</span><h2>Full Field Mapping Tables</h2></div>
+
+  <h3>A.1 Account → SAP Customer (KNA1) — Complete</h3>
+  <div class="tw"><table>
+    <thead><tr><th>CRM Field Path</th><th>SAP Field</th><th>Transform Rule</th><th>Mandatory</th><th>Validation</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>account.name</code></td><td><code>KNA1-NAME1</code></td><td>truncate(35)</td><td>Yes</td><td>maxLen:35; onExceed:truncate</td><td>Legal name; truncation logged as warning</td></tr>
+      <tr><td><code>account.tradingName</code></td><td><code>KNA1-NAME2</code></td><td>truncate(35)</td><td>No</td><td>maxLen:35</td><td>Second name line; populated if differs from legal</td></tr>
+      <tr><td><code>account.address.street</code></td><td><code>KNA1-STRAS</code></td><td>direct</td><td>Yes</td><td>maxLen:35</td><td></td></tr>
+      <tr><td><code>account.address.district</code></td><td><code>KNA1-ORT02</code></td><td>direct</td><td>No</td><td>maxLen:35</td><td>Borough/district line</td></tr>
+      <tr><td><code>account.address.city</code></td><td><code>KNA1-ORT01</code></td><td>direct</td><td>Yes</td><td>maxLen:35</td><td></td></tr>
+      <tr><td><code>account.address.county</code></td><td><code>KNA1-REGIO</code></td><td>lookup(county_to_sap_region)</td><td>No</td><td>enum: SAP region codes</td><td></td></tr>
+      <tr><td><code>account.address.postcode</code></td><td><code>KNA1-PSTLZ</code></td><td>direct</td><td>Yes</td><td>regex: postcode_gb</td><td></td></tr>
+      <tr><td><code>account.address.countryCode</code></td><td><code>KNA1-LAND1</code></td><td>lookup(iso2_to_sap)</td><td>Yes</td><td>enum: SAP country codes</td><td></td></tr>
+      <tr><td><code>account.vatNumber</code></td><td><code>KNA1-STCD1</code></td><td>direct</td><td>No</td><td>format: vat_gb</td><td>UK VAT reg number</td></tr>
+      <tr><td><code>account.companyNumber</code></td><td><code>KNA1-STCD2</code></td><td>direct</td><td>No</td><td>maxLen:11</td><td>Companies House number</td></tr>
+      <tr><td><code>account.currency</code></td><td><code>KNA1-WAERS</code></td><td>lookup(crm_to_iso4217)</td><td>Yes</td><td>enum: ISO 4217</td><td></td></tr>
+      <tr><td><code>account.status</code></td><td><code>KNA1-AUFSD</code></td><td>if(active,"","01")</td><td>Yes</td><td>enum: "",01,02</td><td>"" = no block; "01" = delivery block</td></tr>
+      <tr><td><code>account.phone</code></td><td><code>KNA1-TELF1</code></td><td>direct</td><td>No</td><td>maxLen:16; format: e164_phone</td><td></td></tr>
+      <tr><td><code>account.fax</code></td><td><code>KNA1-TELFX</code></td><td>direct</td><td>No</td><td>maxLen:31</td><td></td></tr>
+      <tr><td><code>account.website</code></td><td><code>KNA1-DEAR1</code></td><td>direct</td><td>No</td><td>maxLen:132</td><td></td></tr>
+      <tr><td><code>account.salesOrg</code></td><td><code>KNVV-VKORG</code></td><td>lookup(crm_sales_org_to_sap)</td><td>Yes</td><td>enum: SAP sales org codes</td><td>Sales area extension table KNVV</td></tr>
+      <tr><td><code>account.distributionChannel</code></td><td><code>KNVV-VTWEG</code></td><td>const("10")</td><td>Yes</td><td>enum: SAP dist channel</td><td>Default channel; overridable per partner config</td></tr>
+      <tr><td>—</td><td><code>KNA1-KTOKD</code></td><td>const("0001")</td><td>Yes</td><td>SAP account group (domestic customer)</td><td></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>A.2 Contract → Stripe Subscription — Complete</h3>
+  <div class="tw"><table>
+    <thead><tr><th>CRM Field Path</th><th>Stripe Field</th><th>Transform Rule</th><th>Mandatory</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>contract.account → extId[stripe]</code></td><td><code>customer</code></td><td>extId("stripe","account",accountId)</td><td>Yes</td><td>Must exist before this call</td></tr>
+      <tr><td><code>contract.lineItems[*].product → extId[stripe]</code></td><td><code>items[*].price</code></td><td>arrayMap → extId("stripe","product")</td><td>Yes</td><td>Stripe Price ID per line item</td></tr>
+      <tr><td><code>contract.lineItems[*].quantity</code></td><td><code>items[*].quantity</code></td><td>direct (integer)</td><td>Yes</td><td>min:1; type:integer</td></tr>
+      <tr><td><code>contract.startDate</code></td><td><code>billing_cycle_anchor</code></td><td>toEpoch()</td><td>No</td><td>Omit for immediate billing</td></tr>
+      <tr><td><code>contract.endDate</code></td><td><code>cancel_at</code></td><td>toEpoch()</td><td>No</td><td>Fixed-term contracts only</td></tr>
+      <tr><td><code>contract.currency</code></td><td><code>currency</code></td><td>lower()</td><td>Yes</td><td>Stripe requires lowercase ISO 4217</td></tr>
+      <tr><td><code>contract.autoRenew</code></td><td><code>cancel_at_period_end</code></td><td>not()</td><td>No</td><td>Logical inverse of autoRenew</td></tr>
+      <tr><td><code>contract.paymentTerms</code></td><td><code>collection_method</code></td><td>if(NET30,"send_invoice","charge_automatically")</td><td>No</td><td></td></tr>
+      <tr><td><code>contract.invoiceDueDays</code></td><td><code>days_until_due</code></td><td>direct (integer)</td><td>if send_invoice</td><td>Only sent when collection_method=send_invoice</td></tr>
+      <tr><td><code>contract.id</code></td><td><code>metadata.crm_contract_id</code></td><td>toString()</td><td>Yes</td><td>For reconciliation and write-back</td></tr>
+      <tr><td><code>account.id</code></td><td><code>metadata.crm_account_id</code></td><td>toString()</td><td>Yes</td><td></td></tr>
+      <tr><td><code>contract.description</code></td><td><code>description</code></td><td>truncate(500)</td><td>No</td><td></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>A.3 Okta User → CRM Contact + User</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Okta Field Path</th><th>CRM Target Field</th><th>Transform Rule</th><th>Mandatory</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>profile.firstName</code></td><td><code>contact.firstName</code></td><td>direct</td><td>Yes</td><td></td></tr>
+      <tr><td><code>profile.lastName</code></td><td><code>contact.lastName</code></td><td>direct</td><td>Yes</td><td></td></tr>
+      <tr><td><code>profile.email</code></td><td><code>contact.email</code></td><td>direct</td><td>Yes</td><td>Used as dedup key</td></tr>
+      <tr><td><code>profile.email</code></td><td><code>user.email</code></td><td>direct</td><td>Yes</td><td>Same value; dual-target mapping</td></tr>
+      <tr><td><code>profile.mobilePhone</code></td><td><code>contact.phoneNumbers[0].number</code></td><td>direct</td><td>No</td><td>Sets type="mobile"</td></tr>
+      <tr><td><code>profile.primaryPhone</code></td><td><code>contact.phoneNumbers[1].number</code></td><td>direct</td><td>No</td><td>Sets type="primary"</td></tr>
+      <tr><td><code>profile.title</code></td><td><code>contact.jobTitle</code></td><td>direct</td><td>No</td><td></td></tr>
+      <tr><td><code>profile.department</code></td><td><code>contact.department</code></td><td>default("Unknown")</td><td>No</td><td></td></tr>
+      <tr><td><code>profile.organization</code></td><td><code>contact.accountName</code></td><td>direct</td><td>No</td><td>Used to fuzzy-match to CRM Account</td></tr>
+      <tr><td><code>profile.manager</code></td><td><code>user.managerEmail</code></td><td>direct</td><td>No</td><td>Okta sends manager login (email)</td></tr>
+      <tr><td><code>status</code></td><td><code>user.isActive</code></td><td>if(ACTIVE,true,false)</td><td>Yes</td><td>Deactivation triggers session revoke</td></tr>
+      <tr><td><code>id</code></td><td><code>user.externalId</code></td><td>direct</td><td>Yes</td><td>Stored for reverse lookup and SCIM</td></tr>
+      <tr><td><code>created</code></td><td><code>user.idpCreatedAt</code></td><td>dateFormat(ISO→ISO)</td><td>No</td><td>Informational; read-only in CRM</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- APPENDIX B -->
+<section id="app-b" class="section">
+  <div class="sec-hdr"><span class="sec-num">Appendix B</span><h2>Example API Payloads</h2></div>
+
+  <h3>B.1 CRM Account Change Event (Kafka Message)</h3>
+  <div class="pre-lbl">Kafka topic: crm.accounts.changed — message value (JSON)</div>
+  <pre><span class="p">{</span>
+  <span class="k">"event"</span><span class="p">:</span> <span class="s">"account.updated"</span><span class="p">,</span>
+  <span class="k">"tenant_id"</span><span class="p">:</span> <span class="s">"t_acme_uk_001"</span><span class="p">,</span>
+  <span class="k">"integration_run_id"</span><span class="p">:</span> <span class="s">"run_9f3c2e1a4b"</span><span class="p">,</span>
+  <span class="k">"idempotency_key"</span><span class="p">:</span> <span class="s">"sha256:account:42:20260722T120000"</span><span class="p">,</span>
+  <span class="k">"schema_version"</span><span class="p">:</span> <span class="s">"crm_account_v2"</span><span class="p">,</span>
+  <span class="k">"entity"</span><span class="p">: {</span>
+    <span class="k">"type"</span><span class="p">:</span> <span class="s">"account"</span><span class="p">,</span>
+    <span class="k">"id"</span><span class="p">:</span> <span class="n">42</span><span class="p">,</span>
+    <span class="k">"name"</span><span class="p">:</span> <span class="s">"Acme Manufacturing Ltd"</span><span class="p">,</span>
+    <span class="k">"tradingName"</span><span class="p">:</span> <span class="s">"Acme UK"</span><span class="p">,</span>
+    <span class="k">"status"</span><span class="p">:</span> <span class="s">"active"</span><span class="p">,</span>
+    <span class="k">"currency"</span><span class="p">:</span> <span class="s">"GBP"</span><span class="p">,</span>
+    <span class="k">"vatNumber"</span><span class="p">:</span> <span class="s">"GB123456789"</span><span class="p">,</span>
+    <span class="k">"companyNumber"</span><span class="p">:</span> <span class="s">"01234567"</span><span class="p">,</span>
+    <span class="k">"phone"</span><span class="p">:</span> <span class="s">"+441614960000"</span><span class="p">,</span>
+    <span class="k">"website"</span><span class="p">:</span> <span class="s">"https://acme.co.uk"</span><span class="p">,</span>
+    <span class="k">"address"</span><span class="p">: {</span>
+      <span class="k">"street"</span><span class="p">:</span> <span class="s">"14 Innovation Park"</span><span class="p">,</span>
+      <span class="k">"district"</span><span class="p">:</span> <span class="s">"Salford"</span><span class="p">,</span>
+      <span class="k">"city"</span><span class="p">:</span> <span class="s">"Manchester"</span><span class="p">,</span>
+      <span class="k">"county"</span><span class="p">:</span> <span class="s">"Greater Manchester"</span><span class="p">,</span>
+      <span class="k">"postcode"</span><span class="p">:</span> <span class="s">"M1 2AB"</span><span class="p">,</span>
+      <span class="k">"countryCode"</span><span class="p">:</span> <span class="s">"GB"</span>
+    <span class="p">},</span>
+    <span class="k">"salesOrg"</span><span class="p">:</span> <span class="s">"UK01"</span>
+  <span class="p">},</span>
+  <span class="k">"changed_fields"</span><span class="p">:</span> <span class="p">[</span><span class="s">"address.postcode"</span><span class="p">,</span> <span class="s">"phone"</span><span class="p">],</span>
+  <span class="k">"timestamp"</span><span class="p">:</span> <span class="s">"2026-07-22T12:00:00.000Z"</span>
+<span class="p">}</span></pre>
+
+  <h3>B.2 Transformed SAP Customer Create Payload (Outbound)</h3>
+  <div class="pre-lbl">POST /sap/opu/odata/sap/API_BUSINESS_PARTNER/A_BusinessPartner — after mapping engine</div>
+  <pre><span class="p">{</span>
+  <span class="k">"BusinessPartner"</span><span class="p">:</span> <span class="s">""</span><span class="p">,</span>          <span class="c">// SAP assigns; empty on create</span>
+  <span class="k">"BusinessPartnerCategory"</span><span class="p">:</span> <span class="s">"2"</span><span class="p">,</span>  <span class="c">// 2 = Organisation (const)</span>
+  <span class="k">"BusinessPartnerGrouping"</span><span class="p">:</span> <span class="s">"0001"</span><span class="p">,</span> <span class="c">// KNA1-KTOKD (const)</span>
+  <span class="k">"OrganizationBPName1"</span><span class="p">:</span> <span class="s">"Acme Manufacturing Ltd"</span><span class="p">,</span>
+  <span class="k">"OrganizationBPName2"</span><span class="p">:</span> <span class="s">"Acme UK"</span><span class="p">,</span>
+  <span class="k">"TaxNumber1"</span><span class="p">:</span> <span class="s">"GB123456789"</span><span class="p">,</span>
+  <span class="k">"TaxNumber2"</span><span class="p">:</span> <span class="s">"01234567"</span><span class="p">,</span>
+  <span class="k">"to_BusinessPartnerAddress"</span><span class="p">: {</span>
+    <span class="k">"results"</span><span class="p">: [{</span>
+      <span class="k">"StreetName"</span><span class="p">:</span> <span class="s">"14 Innovation Park"</span><span class="p">,</span>
+      <span class="k">"CityName"</span><span class="p">:</span> <span class="s">"Manchester"</span><span class="p">,</span>
+      <span class="k">"District"</span><span class="p">:</span> <span class="s">"Salford"</span><span class="p">,</span>
+      <span class="k">"PostalCode"</span><span class="p">:</span> <span class="s">"M1 2AB"</span><span class="p">,</span>
+      <span class="k">"Country"</span><span class="p">:</span> <span class="s">"GB"</span><span class="p">,</span>
+      <span class="k">"PhoneNumber"</span><span class="p">:</span> <span class="s">"+441614960000"</span>
+    <span class="p">}]</span>
+  <span class="p">},</span>
+  <span class="k">"to_Customer"</span><span class="p">: {</span>
+    <span class="k">"Customer"</span><span class="p">:</span> <span class="s">""</span><span class="p">,</span>
+    <span class="k">"to_CustomerSalesArea"</span><span class="p">: {</span>
+      <span class="k">"results"</span><span class="p">: [{</span>
+        <span class="k">"SalesOrganization"</span><span class="p">:</span> <span class="s">"UK01"</span><span class="p">,</span>
+        <span class="k">"DistributionChannel"</span><span class="p">:</span> <span class="s">"10"</span><span class="p">,</span>
+        <span class="k">"Division"</span><span class="p">:</span> <span class="s">"00"</span><span class="p">,</span>
+        <span class="k">"Currency"</span><span class="p">:</span> <span class="s">"GBP"</span>
+      <span class="p">}]</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre>
+
+  <h3>B.3 Integration Run Result Object</h3>
+  <div class="pre-lbl">Orchestrator run result — written to integration_run_log and published to crm.integration.results</div>
+  <pre><span class="p">{</span>
+  <span class="k">"run_id"</span><span class="p">:</span> <span class="s">"run_9f3c2e1a4b"</span><span class="p">,</span>
+  <span class="k">"tenant_id"</span><span class="p">:</span> <span class="s">"t_acme_uk_001"</span><span class="p">,</span>
+  <span class="k">"partner"</span><span class="p">:</span> <span class="s">"sap_s4_prod"</span><span class="p">,</span>
+  <span class="k">"entity_type"</span><span class="p">:</span> <span class="s">"account"</span><span class="p">,</span>
+  <span class="k">"entity_id"</span><span class="p">:</span> <span class="n">42</span><span class="p">,</span>
+  <span class="k">"operation"</span><span class="p">:</span> <span class="s">"update"</span><span class="p">,</span>
+  <span class="k">"status"</span><span class="p">:</span> <span class="s">"success"</span><span class="p">,</span>
+  <span class="k">"partner_id"</span><span class="p">:</span> <span class="s">"SAP-BP-0000100042"</span><span class="p">,</span>
+  <span class="k">"duration_ms"</span><span class="p">:</span> <span class="n">412</span><span class="p">,</span>
+  <span class="k">"mapping_template"</span><span class="p">:</span> <span class="s">"account_to_sap_customer"</span><span class="p">,</span>
+  <span class="k">"mapping_version"</span><span class="p">:</span> <span class="s">"3.2.1"</span><span class="p">,</span>
+  <span class="k">"retry_count"</span><span class="p">:</span> <span class="n">0</span><span class="p">,</span>
+  <span class="k">"validation_warnings"</span><span class="p">:</span> <span class="p">[],</span>
+  <span class="k">"changed_fields_sent"</span><span class="p">:</span> <span class="p">[</span><span class="s">"PostalCode"</span><span class="p">,</span> <span class="s">"PhoneNumber"</span><span class="p">],</span>
+  <span class="k">"timestamp"</span><span class="p">:</span> <span class="s">"2026-07-22T12:00:00.412Z"</span>
+<span class="p">}</span></pre>
+
+  <h3>B.4 Stripe Subscription Create Payload (Outbound)</h3>
+  <div class="pre-lbl">POST https://api.stripe.com/v1/subscriptions — after mapping engine, contract ID 99</div>
+  <pre><span class="p">{</span>
+  <span class="k">"customer"</span><span class="p">:</span> <span class="s">"cus_QZab12Xy3456"</span><span class="p">,</span>
+  <span class="k">"currency"</span><span class="p">:</span> <span class="s">"gbp"</span><span class="p">,</span>
+  <span class="k">"collection_method"</span><span class="p">:</span> <span class="s">"send_invoice"</span><span class="p">,</span>
+  <span class="k">"days_until_due"</span><span class="p">:</span> <span class="n">30</span><span class="p">,</span>
+  <span class="k">"cancel_at_period_end"</span><span class="p">:</span> <span class="kw">false</span><span class="p">,</span>
+  <span class="k">"items"</span><span class="p">: [</span>
+    <span class="p">{</span> <span class="k">"price"</span><span class="p">:</span> <span class="s">"price_Enterprise_Monthly_GBP"</span><span class="p">,</span> <span class="k">"quantity"</span><span class="p">:</span> <span class="n">10</span> <span class="p">},</span>
+    <span class="p">{</span> <span class="k">"price"</span><span class="p">:</span> <span class="s">"price_Support_Premium_GBP"</span><span class="p">,</span>   <span class="k">"quantity"</span><span class="p">:</span> <span class="n">1</span>  <span class="p">}</span>
+  <span class="p">],</span>
+  <span class="k">"metadata"</span><span class="p">: {</span>
+    <span class="k">"crm_contract_id"</span><span class="p">:</span> <span class="s">"99"</span><span class="p">,</span>
+    <span class="k">"crm_account_id"</span><span class="p">:</span> <span class="s">"42"</span><span class="p">,</span>
+    <span class="k">"integration_run_id"</span><span class="p">:</span> <span class="s">"run_c8d4a3b2f1"</span>
+  <span class="p">},</span>
+  <span class="k">"description"</span><span class="p">:</span> <span class="s">"Acme UK — Enterprise + Premium Support FY2027"</span>
+<span class="p">}</span></pre>
+
+  <h3>B.5 Okta Webhook Inbound Payload</h3>
+  <div class="pre-lbl">POST /v1/webhooks/idp/okta — raw verified payload, event type: user.lifecycle.create</div>
+  <pre><span class="p">{</span>
+  <span class="k">"eventType"</span><span class="p">:</span> <span class="s">"user.lifecycle.create"</span><span class="p">,</span>
+  <span class="k">"eventId"</span><span class="p">:</span>   <span class="s">"evt_okta_abc123def456"</span><span class="p">,</span>
+  <span class="k">"published"</span><span class="p">:</span> <span class="s">"2026-07-22T09:15:00.000Z"</span><span class="p">,</span>
+  <span class="k">"target"</span><span class="p">: [{</span>
+    <span class="k">"id"</span><span class="p">:</span>            <span class="s">"00u1ab2cd3ef4gh5IJ6"</span><span class="p">,</span>
+    <span class="k">"type"</span><span class="p">:</span>          <span class="s">"User"</span><span class="p">,</span>
+    <span class="k">"alternateId"</span><span class="p">:</span>  <span class="s">"jane.doe@acme.co.uk"</span><span class="p">,</span>
+    <span class="k">"displayName"</span><span class="p">:</span>  <span class="s">"Jane Doe"</span><span class="p">,</span>
+    <span class="k">"detailEntry"</span><span class="p">: {</span>
+      <span class="k">"profile.login"</span><span class="p">:</span>       <span class="s">"jane.doe@acme.co.uk"</span><span class="p">,</span>
+      <span class="k">"profile.firstName"</span><span class="p">:</span>   <span class="s">"Jane"</span><span class="p">,</span>
+      <span class="k">"profile.lastName"</span><span class="p">:</span>    <span class="s">"Doe"</span><span class="p">,</span>
+      <span class="k">"profile.email"</span><span class="p">:</span>       <span class="s">"jane.doe@acme.co.uk"</span><span class="p">,</span>
+      <span class="k">"profile.mobilePhone"</span><span class="p">:</span> <span class="s">"+447700900123"</span><span class="p">,</span>
+      <span class="k">"profile.title"</span><span class="p">:</span>       <span class="s">"Senior Engineer"</span><span class="p">,</span>
+      <span class="k">"profile.department"</span><span class="p">:</span>  <span class="s">"Engineering"</span><span class="p">,</span>
+      <span class="k">"profile.organization"</span><span class="p">:</span><span class="s">"Acme UK"</span><span class="p">,</span>
+      <span class="k">"profile.manager"</span><span class="p">:</span>     <span class="s">"john.smith@acme.co.uk"</span><span class="p">,</span>
+      <span class="k">"status"</span><span class="p">:</span>              <span class="s">"ACTIVE"</span>
+    <span class="p">}</span>
+  <span class="p">}]</span>
+<span class="p">}</span></pre>
+</section>
+
+<!-- APPENDIX C -->
+<section id="app-c" class="section">
+  <div class="sec-hdr"><span class="sec-num">Appendix C</span><h2>Hierarchical Field Mapping JSON Schema Model</h2></div>
+  <p>The following is the canonical JSON structure stored in the Config DB for a mapping template version. All fields shown are enforced by a JSON Schema validator on save.</p>
+  <div class="pre-lbl">Table: mapping_template_versions — column: definition (JSONB)</div>
+  <pre><span class="p">{</span>
+  <span class="k">"partner"</span><span class="p">:</span>       <span class="s">"sap_s4_prod"</span><span class="p">,</span>
+  <span class="k">"templateName"</span><span class="p">:</span>  <span class="s">"account_to_sap_customer"</span><span class="p">,</span>
+  <span class="k">"version"</span><span class="p">:</span>       <span class="s">"3.2.1"</span><span class="p">,</span>
+  <span class="k">"entityType"</span><span class="p">:</span>    <span class="s">"account"</span><span class="p">,</span>
+  <span class="k">"direction"</span><span class="p">:</span>     <span class="s">"crm_to_partner"</span><span class="p">,</span>
+  <span class="k">"targetSchema"</span><span class="p">:</span>  <span class="s">"sap_business_partner_v2"</span><span class="p">,</span>
+  <span class="k">"upsertStrategy"</span><span class="p">:</span><span class="s">"extId_or_create"</span><span class="p">,</span>
+  <span class="k">"deltaMode"</span><span class="p">:</span>     <span class="kw">true</span><span class="p">,</span>   <span class="c">// only send changed fields</span>
+  <span class="k">"fields"</span><span class="p">: [</span>
+    <span class="p">{</span>
+      <span class="k">"id"</span><span class="p">:</span>          <span class="s">"f_name1"</span><span class="p">,</span>
+      <span class="k">"sourcePath"</span><span class="p">:</span>  <span class="s">"$.name"</span><span class="p">,</span>
+      <span class="k">"targetPath"</span><span class="p">:</span>  <span class="s">"$.OrganizationBPName1"</span><span class="p">,</span>
+      <span class="k">"transform"</span><span class="p">: {</span> <span class="k">"type"</span><span class="p">:</span> <span class="s">"truncate"</span><span class="p">,</span> <span class="k">"maxLen"</span><span class="p">:</span> <span class="n">35</span> <span class="p">},</span>
+      <span class="k">"validation"</span><span class="p">: {</span> <span class="k">"mandatory"</span><span class="p">:</span> <span class="kw">true</span><span class="p">,</span> <span class="k">"maxLength"</span><span class="p">:</span> <span class="n">35</span><span class="p">,</span> <span class="k">"onExceed"</span><span class="p">:</span> <span class="s">"truncate"</span> <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="p">{</span>
+      <span class="k">"id"</span><span class="p">:</span>          <span class="s">"f_status"</span><span class="p">,</span>
+      <span class="k">"sourcePath"</span><span class="p">:</span>  <span class="s">"$.status"</span><span class="p">,</span>
+      <span class="k">"targetPath"</span><span class="p">:</span>  <span class="s">"$.to_Customer.DeliveryBlockingReason"</span><span class="p">,</span>
+      <span class="k">"transform"</span><span class="p">: {</span>
+        <span class="k">"type"</span><span class="p">:</span> <span class="s">"conditional"</span><span class="p">,</span>
+        <span class="k">"if"</span><span class="p">: {</span> <span class="k">"eq"</span><span class="p">:</span> <span class="s">"active"</span> <span class="p">},</span>
+        <span class="k">"then"</span><span class="p">:</span> <span class="s">""</span><span class="p">,</span>
+        <span class="k">"else"</span><span class="p">:</span> <span class="s">"01"</span>
+      <span class="p">},</span>
+      <span class="k">"validation"</span><span class="p">: {</span> <span class="k">"enum"</span><span class="p">:</span> <span class="p">[</span><span class="s">""</span><span class="p">,</span> <span class="s">"01"</span><span class="p">,</span> <span class="s">"02"</span><span class="p">] }</span>
+    <span class="p">}</span>
+  <span class="p">],</span>
+  <span class="k">"subObjects"</span><span class="p">: [{</span>
+    <span class="k">"id"</span><span class="p">:</span>               <span class="s">"so_address"</span><span class="p">,</span>
+    <span class="k">"strategy"</span><span class="p">:</span>         <span class="s">"nest"</span><span class="p">,</span>
+    <span class="k">"sourceBasePath"</span><span class="p">:</span>   <span class="s">"$.address"</span><span class="p">,</span>
+    <span class="k">"targetBasePath"</span><span class="p">:</span>   <span class="s">"$.to_BusinessPartnerAddress.results[0]"</span><span class="p">,</span>
+    <span class="k">"fields"</span><span class="p">: [</span>
+      <span class="p">{</span> <span class="k">"sourcePath"</span><span class="p">:</span> <span class="s">"$.street"</span><span class="p">,</span>    <span class="k">"targetPath"</span><span class="p">:</span> <span class="s">"$.StreetName"</span><span class="p">,</span>  <span class="k">"transform"</span><span class="p">:</span> <span class="p">{</span><span class="k">"type"</span><span class="p">:</span><span class="s">"direct"</span><span class="p">} },</span>
+      <span class="p">{</span> <span class="k">"sourcePath"</span><span class="p">:</span> <span class="s">"$.city"</span><span class="p">,</span>      <span class="k">"targetPath"</span><span class="p">:</span> <span class="s">"$.CityName"</span><span class="p">,</span>    <span class="k">"transform"</span><span class="p">:</span> <span class="p">{</span><span class="k">"type"</span><span class="p">:</span><span class="s">"direct"</span><span class="p">} },</span>
+      <span class="p">{</span> <span class="k">"sourcePath"</span><span class="p">:</span> <span class="s">"$.postcode"</span><span class="p">,</span>  <span class="k">"targetPath"</span><span class="p">:</span> <span class="s">"$.PostalCode"</span><span class="p">,</span>  <span class="k">"transform"</span><span class="p">:</span> <span class="p">{</span><span class="k">"type"</span><span class="p">:</span><span class="s">"direct"</span><span class="p">},</span> <span class="k">"validation"</span><span class="p">:{</span><span class="k">"format"</span><span class="p">:</span><span class="s">"postcode_gb"</span><span class="p">} },</span>
+      <span class="p">{</span> <span class="k">"sourcePath"</span><span class="p">:</span> <span class="s">"$.countryCode"</span><span class="p">,</span><span class="k">"targetPath"</span><span class="p">:</span> <span class="s">"$.Country"</span><span class="p">,</span>     <span class="k">"transform"</span><span class="p">:</span> <span class="p">{</span><span class="k">"type"</span><span class="p">:</span><span class="s">"lookup"</span><span class="p">,</span><span class="k">"table"</span><span class="p">:</span><span class="s">"iso2_to_sap"</span><span class="p">} }</span>
+    <span class="p">]</span>
+  <span class="p">}],</span>
+  <span class="k">"lookupTables"</span><span class="p">: {</span>
+    <span class="k">"iso2_to_sap"</span><span class="p">: {</span> <span class="k">"GB"</span><span class="p">:</span><span class="s">"GB"</span><span class="p">,</span> <span class="k">"DE"</span><span class="p">:</span><span class="s">"DE"</span><span class="p">,</span> <span class="k">"FR"</span><span class="p">:</span><span class="s">"FR"</span><span class="p">,</span> <span class="k">"US"</span><span class="p">:</span><span class="s">"US"</span> <span class="p">},</span>
+    <span class="k">"crm_to_iso4217"</span><span class="p">: {</span> <span class="k">"GBP"</span><span class="p">:</span><span class="s">"GBP"</span><span class="p">,</span> <span class="k">"EUR"</span><span class="p">:</span><span class="s">"EUR"</span><span class="p">,</span> <span class="k">"USD"</span><span class="p">:</span><span class="s">"USD"</span> <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre>
+</section>
+
+<!-- APPENDIX D -->
+<section id="app-d" class="section">
+  <div class="sec-hdr"><span class="sec-num">Appendix D</span><h2>Phased Implementation Plan</h2></div>
+  <div class="tw"><table>
+    <thead><tr><th>Phase</th><th>Duration</th><th>Deliverables</th><th>Success Criteria</th></tr></thead>
+    <tbody>
+      <tr><td>Phase 0 — Foundation</td><td>2 weeks</td><td>Kubernetes cluster config; Vault setup; Kafka cluster provisioned; Config DB schema deployed; CI/CD pipeline skeleton; partner sandbox access confirmed</td><td>All infrastructure green in DEV. Pipeline deploys a "hello world" service end-to-end.</td></tr>
+      <tr><td>Phase 1 — Gateway &amp; Orchestrator</td><td>3 weeks</td><td>API Gateway with auth enforcement, rate limiting, routing; Orchestration Service skeleton; health/readiness endpoints; structured logging; circuit breaker; basic DLQ routing</td><td>Gateway correctly routes, authenticates, and rate-limits test requests. Orchestrator logs run records.</td></tr>
+      <tr><td>Phase 2 — Mapping Engine</td><td>4 weeks</td><td>Five-phase pipeline implemented; all 18 transform rule types; all 9 validation rule types; JSON Schema-based target assembly; mapping template loader (from Config DB); test runner API; admin UI mapping editor MVP</td><td>100% of transform and validation rules covered by unit tests. Admin can configure a mapping and run a test against a sample payload.</td></tr>
+      <tr><td>Phase 3 — SAP Connector (P1)</td><td>3 weeks</td><td>REST Connector for SAP Business Partner OData API; account→customer mapping template; external ID store; write-back to CRM; end-to-end integration test against SAP sandbox</td><td>Account create/update in CRM → SAP customer created/updated within 30 s. 99.9% success rate over 1,000 test records.</td></tr>
+      <tr><td>Phase 4 — Stripe Connector (P1)</td><td>2 weeks</td><td>Stripe REST Connector; contract→subscription mapping template; line item array-mapping; dependency chain (account must be synced first); Stripe write-back</td><td>Contract activation → Stripe subscription created within 10 s. Subscription ID written back to CRM contract.</td></tr>
+      <tr><td>Phase 5 — Okta Connector (P1)</td><td>2 weeks</td><td>Inbound webhook receiver with HMAC verify; Okta→CRM Contact+User mapping template; deduplication logic; deactivation flow; session revoke on deactivate</td><td>Okta user create/update → CRM contact+user sync within 60 s. Deactivation revokes CRM session within 60 s.</td></tr>
+      <tr><td>Phase 6 — Config Management UI</td><td>2 weeks</td><td>Full mapping editor with schema browsers; version history and diff view; environment promotion workflow with approval UI; audit log viewer; DLQ dashboard</td><td>Integration Admin can configure, test, and promote a mapping template entirely through the UI without engineering involvement.</td></tr>
+      <tr><td>Phase 7 — Observability &amp; Hardening</td><td>2 weeks</td><td>Grafana dashboards; PagerDuty alert rules; load testing (500 TPS sustained); penetration test; GDPR erasure flow; documentation; runbooks</td><td>Load test passes at 500 TPS with p95 &lt; 2 s. Zero critical findings from pen test. All runbooks reviewed by Ops.</td></tr>
+      <tr><td>Phase 8 — GA Release</td><td>1 week</td><td>PROD deployment in change window; hyper-care period (2 weeks Ops coverage); stakeholder sign-off</td><td>All P1 integrations live in PROD. No P1/P2 incidents in first 72 hours.</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:.75rem"><strong>Total duration:</strong> approximately 21 weeks from Phase 0 kick-off to GA. Assumes 3 backend engineers available from Phase 1; frontend engineer joins Phase 2; DevOps engineer leads Phase 0 and 7.</p>
+</section>
+
+<!-- APPENDIX E -->
+<section id="app-e" class="section">
+  <div class="sec-hdr"><span class="sec-num">Appendix E</span><h2>Glossary</h2></div>
+  <div class="tw"><table>
+    <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+    <tbody>
+      <tr><td>CDC — Change Data Capture</td><td>A pattern where row-level changes to a database are streamed as events, typically via Debezium + Kafka. Used for near-real-time sync of partner master data.</td></tr>
+      <tr><td>Circuit Breaker</td><td>A fault-tolerance pattern that stops outbound calls to a failing partner for a cooldown period, preventing resource exhaustion and cascading failures.</td></tr>
+      <tr><td>Config DB</td><td>The PostgreSQL database (hosted on Neon DB or equivalent) that stores partner profiles, mapping templates, lookup tables, and audit logs.</td></tr>
+      <tr><td>DLQ — Dead-Letter Queue</td><td>A Kafka topic where messages are placed when all retry attempts have been exhausted. Entries are visible in the Ops Dashboard for manual intervention.</td></tr>
+      <tr><td>External ID</td><td>The identifier assigned to a CRM entity by a partner system (e.g. SAP Customer number). Stored in <code>integration_external_ids</code> and used to avoid duplicate creation.</td></tr>
+      <tr><td>Idempotency Key</td><td>A unique token sent with every mutating outbound request. Partners that honour it treat a duplicate request (same key) as a no-op, preventing double-writes on retry.</td></tr>
+      <tr><td>Mapping Engine</td><td>The shared TypeScript library that executes the five-phase transform pipeline (extract → enrich → transform → assemble → validate) against a loaded mapping template.</td></tr>
+      <tr><td>Mapping Template</td><td>A versioned JSON document stored in Config DB that defines how a CRM entity maps to a partner entity, including field paths, transformation rules, and validation rules.</td></tr>
+      <tr><td>mTLS — Mutual TLS</td><td>A TLS configuration where both the client and server present certificates for mutual authentication. Used for high-sensitivity connections.</td></tr>
+      <tr><td>Orchestration Service</td><td>The stateless Node.js microservice that coordinates the end-to-end integration flow: receiving events, loading config, invoking the Mapping Engine, calling partner connectors, and logging results.</td></tr>
+      <tr><td>Partner Profile</td><td>A Config DB record describing a partner system: name, base URL, auth method, rate limits, PII fields, and per-environment overrides.</td></tr>
+      <tr><td>SCIM — System for Cross-domain Identity Management</td><td>A standard protocol (RFC 7643/7644) for user provisioning and deprovisioning between identity providers and service providers.</td></tr>
+      <tr><td>Transformation Rule</td><td>A named, executable function applied to a source field value during the Transform phase of the Mapping Engine pipeline (e.g. concat, lookup, conditional).</td></tr>
+      <tr><td>Write-back</td><td>After a successful outbound sync, writing the partner-assigned ID (external ID) back to the CRM entity record for future correlation.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<script>
+const secs=document.querySelectorAll('section[id]');
+const links=document.querySelectorAll('.sb-link');
+const obs=new IntersectionObserver(e=>{e.forEach(en=>{if(en.isIntersecting){links.forEach(l=>l.classList.remove('active'));const a=document.querySelector(`.sb-link[href="#${en.target.id}"]`);if(a)a.classList.add('active');}});},{rootMargin:'-15% 0px -75% 0px'});
+secs.forEach(s=>obs.observe(s));
+</body>
+</html>

@@ -1,10 +1,12 @@
 import { pgTable, serial, text, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { activitiesTable } from "./activities";
+import { organizationsTable } from "./organizations";
 
 export const emailTrackingTable = pgTable(
   "email_tracking",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
     activityId: integer("activity_id").notNull().references(() => activitiesTable.id, { onDelete: "cascade" }),
     token: text("token").notNull().unique(),
     // RFC 5322 Message-ID of the outbound email (as returned by nodemailer, including angle brackets).

@@ -1,4 +1,5 @@
 import { db, emailSettingsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 export interface SmtpConfig {
   host: string;
@@ -9,10 +10,18 @@ export interface SmtpConfig {
   fromName: string;
 }
 
-/** The single global email_settings row admins configure via the Email Settings page. */
-export async function getEmailSettingsRow(): Promise<Record<string, unknown> | null> {
+/**
+ * The email_settings row admins configure via the Email Settings page — one per org.
+ * Pass orgId when calling from a request context. Background jobs (email poller,
+ * auto-reply) run outside any request and don't yet loop per-org, so they omit it
+ * and fall back to the first row in the table — real per-org background sync is
+ * follow-up work, not attempted here.
+ */
+export async function getEmailSettingsRow(orgId?: number): Promise<Record<string, unknown> | null> {
   try {
-    const rows = await db.select().from(emailSettingsTable).limit(1);
+    const rows = orgId != null
+      ? await db.select().from(emailSettingsTable).where(eq(emailSettingsTable.orgId, orgId)).limit(1)
+      : await db.select().from(emailSettingsTable).limit(1);
     return rows[0] ?? null;
   } catch {
     return null;
@@ -65,7 +74,8 @@ export function resolveSmtpConfig(
 /** Convenience wrapper: fetch the DB row and resolve in one call. */
 export async function getSmtpConfig(
   opts: { defaultFromName: string; fallbackUser?: string; fallbackPass?: string },
+  orgId?: number,
 ): Promise<SmtpConfig | null> {
-  const settings = await getEmailSettingsRow();
+  const settings = await getEmailSettingsRow(orgId);
   return resolveSmtpConfig(settings, opts);
 }

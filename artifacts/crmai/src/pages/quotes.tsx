@@ -218,13 +218,13 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card border-border text-foreground max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-border text-foreground w-[calc(100vw-2rem)] max-w-3xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Create Quote" : "Edit Quote"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5 mt-2">
           {/* Header fields */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2 col-span-2">
               <Label htmlFor="q-name">Quote Name *</Label>
               <Input id="q-name" required className="bg-muted border-border"
@@ -273,8 +273,8 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                 Click "Add Item" or here to add products to this quote
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground uppercase px-1 mb-1">
+              <div className="space-y-2 overflow-x-auto">
+                <div className="grid grid-cols-12 gap-2 text-xs text-muted-foreground uppercase px-1 mb-1 min-w-[520px]">
                   <span className="col-span-3">Product</span>
                   <span className="col-span-2 text-right">Qty</span>
                   <span className="col-span-2 text-right">Unit Price</span>
@@ -284,7 +284,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
                   <span className="col-span-1"></span>
                 </div>
                 {formData.items.map((item, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-muted/50 rounded-lg p-2">
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-center bg-muted/50 rounded-lg p-2 min-w-[520px]">
                     <div className="col-span-3">
                       <select
                         className="w-full h-8 px-2 rounded-md bg-muted border border-border text-foreground text-sm"
@@ -348,7 +348,7 @@ function QuoteFormDialog({ open, onOpenChange, mode, initialData }: QuoteFormDia
           {/* Totals */}
           {formData.items.length > 0 && (
             <div className="border border-border rounded-lg p-4 space-y-2">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Quote Discount %</Label>
                   <Input type="number" min="0" max="100" className="h-8 bg-muted border-border text-sm"
@@ -881,8 +881,46 @@ export default function Quotes() {
           </Button>
         </ListPageHeader>
 
-        {/* Table */}
-        <div className="bg-card rounded-md overflow-hidden shadow-sm">
+        {/* Mobile card view */}
+        <div className="md:hidden space-y-2">
+          {isLoading ? (
+            <div className="text-center text-muted-foreground text-sm py-8">Loading quotes...</div>
+          ) : sortedQuotes.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-8">
+              <FileText className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              {searchQuery ? "No quotes match your search." : "No quotes yet."}
+            </div>
+          ) : sortedQuotes.map((q) => {
+            const total = Number(q.total) || 0;
+            return (
+              <div key={q.id} className="bg-card rounded-lg border border-border shadow-sm p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link href={`/quotes/${q.id}`}>
+                      <span className="font-semibold text-sm text-primary hover:underline">{q.name}</span>
+                    </Link>
+                    <p className="text-xs text-muted-foreground font-mono">{q.quoteNumber}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`text-[10px] font-semibold capitalize px-2 py-0.5 rounded-full border ${
+                      q.status === "accepted" ? "bg-green-50 text-green-700 border-green-200" :
+                      q.status === "rejected" ? "bg-red-50 text-red-700 border-red-200" :
+                      q.status === "draft" ? "bg-gray-100 text-gray-600 border-gray-200" :
+                      "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}>{q.status}</span>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{q.validUntil ? `Valid until ${new Date(q.validUntil).toLocaleDateString()}` : "No expiry"}</span>
+                  <span className="font-semibold text-foreground text-sm">{new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(total)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block bg-card rounded-md overflow-hidden shadow-sm">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end">
             <TablePagination
               variant="inline"

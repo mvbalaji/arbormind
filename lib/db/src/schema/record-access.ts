@@ -1,7 +1,13 @@
 import { pgTable, serial, text, integer, boolean, timestamp, jsonb, uniqueIndex } from "drizzle-orm/pg-core";
+import { organizationsTable } from "./organizations";
 
+// Same caveat as screens/roles in access-control.ts: record_types/record_access
+// are a single shared, global permission matrix (natural-key PK / uniqueness
+// that doesn't include org_id). orgId added for DB accuracy only — excluded
+// from tenant-scoped filtering and RLS.
 export const recordTypesTable = pgTable("record_types", {
   key: text("key").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(100),
 });
@@ -10,6 +16,7 @@ export const recordAccessTable = pgTable(
   "record_access",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
     recordTypeKey: text("record_type_key").notNull().references(() => recordTypesTable.key, { onDelete: "cascade" }),
     roleKey: text("role_key").notNull(),
     canView: boolean("can_view").notNull().default(false),
@@ -25,8 +32,11 @@ export const recordAccessTable = pgTable(
   })
 );
 
+// Genuinely per-tenant (audit trail of who changed access in which org) —
+// normal serial PK, included in tenant scoping/RLS like any other table.
 export const recordAccessAuditLogTable = pgTable("record_access_audit_log", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   recordTypeKey: text("record_type_key").notNull(),
   roleKey: text("role_key").notNull(),
   previousPermissions: jsonb("previous_permissions"),

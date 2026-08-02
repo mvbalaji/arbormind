@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { db, websiteVisitsTable, insertWebsiteVisitSchema } from "@workspace/db";
-import { ilike, or, sql, and, isNotNull } from "drizzle-orm";
+import { ilike, or, sql, and, isNotNull, eq } from "drizzle-orm";
 import { requireScreenAccess } from "../lib/access-control";
+import { getDefaultOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 
@@ -33,6 +34,7 @@ router.post("/website-visits", async (req, res) => {
       .insert(websiteVisitsTable)
       .values({
         ...parsed,
+        orgId: await getDefaultOrgId(),
         userAgent,
         ipAddress: clientIp(req),
         utmSource,
@@ -61,7 +63,8 @@ router.get("/website-visits/stats", async (req, res) => {
         unique: sql<number>`count(distinct ${websiteVisitsTable.sessionId})`,
         today: sql<number>`count(*) filter (where ${websiteVisitsTable.visitedAt} >= date_trunc('day', now()))`,
       })
-      .from(websiteVisitsTable);
+      .from(websiteVisitsTable)
+      .where(eq(websiteVisitsTable.orgId, req.orgId!));
     res.json({
       total: Number(row?.total ?? 0),
       unique: Number(row?.unique ?? 0),
@@ -88,7 +91,7 @@ router.get("/website-visits/by-session", async (req, res) => {
         paths: sql<string[]>`array_agg(path order by visited_at)`,
       })
       .from(websiteVisitsTable)
-      .where(isNotNull(websiteVisitsTable.sessionId))
+      .where(and(isNotNull(websiteVisitsTable.sessionId), eq(websiteVisitsTable.orgId, req.orgId!)))
       .groupBy(websiteVisitsTable.sessionId)
       .orderBy(sql`max(visited_at) desc`)
       .limit(300);
@@ -114,7 +117,7 @@ router.get("/website-visits/by-ip", async (req, res) => {
         paths: sql<string[]>`array_agg(distinct path)`,
       })
       .from(websiteVisitsTable)
-      .where(isNotNull(websiteVisitsTable.ipAddress))
+      .where(and(isNotNull(websiteVisitsTable.ipAddress), eq(websiteVisitsTable.orgId, req.orgId!)))
       .groupBy(websiteVisitsTable.ipAddress)
       .orderBy(sql`max(visited_at) desc`)
       .limit(300);
@@ -132,7 +135,7 @@ router.get("/website-visits", async (req, res) => {
     const limitNum = Math.min(200, Math.max(1, parseInt(limit) || 50));
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [];
+    const conditions = [eq(websiteVisitsTable.orgId, req.orgId!)];
     if (search) {
       conditions.push(
         or(
@@ -143,8 +146,7 @@ router.get("/website-visits", async (req, res) => {
         )!,
       );
     }
-    const whereClause =
-      conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const whereClause = and(...conditions);
 
     const [data, countResult] = await Promise.all([
       db

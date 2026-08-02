@@ -1,7 +1,9 @@
 import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { organizationsTable } from "./organizations";
 
 export const emailSettingsTable = pgTable("email_settings", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   imapHost: text("imap_host").notNull().default("mail.spacemail.com"),
   imapPort: integer("imap_port").notNull().default(993),
   imapUser: text("imap_user"),

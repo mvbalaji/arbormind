@@ -626,7 +626,7 @@ export default function Contracts() {
               />
               <ColumnsMenu columns={CONTRACT_TOGGLEABLE_COLS} isVisible={colVis.isVisible} toggle={colVis.toggle} showAll={colVis.showAll} />
             </div>
-            <div className="overflow-auto max-h-[calc(100vh-260px)]">
+            <div className="overflow-auto max-h-[calc(100dvh-260px)]">
               <table className="w-full text-sm bg-card [&_tbody_td]:whitespace-nowrap">
                 <colgroup>
                   <col style={{ width: "32px" }} />

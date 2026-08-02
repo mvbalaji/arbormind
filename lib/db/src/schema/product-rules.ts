@@ -1,7 +1,9 @@
 import { pgTable, serial, text, boolean, integer, timestamp } from "drizzle-orm/pg-core";
+import { organizationsTable } from "./organizations";
 
 export const productRulesTable = pgTable("product_rules", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   name: text("name").notNull(),
   type: text("type").notNull(), // Validation | Selection | Alert | Filter
   scope: text("scope").notNull().default("Product"), // Product | Quote | Bundle

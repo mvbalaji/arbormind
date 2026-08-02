@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { campaignsTable } from "./campaigns";
 import { leadsTable } from "./leads";
 import { contactsTable } from "./contacts";
+import { organizationsTable } from "./organizations";
 
 // Platforms supported for tracking
 export type EngagementPlatform =
@@ -44,6 +45,7 @@ export const campaignEngagementsTable = pgTable(
   "campaign_engagements",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
 
     // Campaign attribution (nullable — some events may come in before campaign is linked)
     campaignId: integer("campaign_id").references(() => campaignsTable.id, { onDelete: "set null" }),

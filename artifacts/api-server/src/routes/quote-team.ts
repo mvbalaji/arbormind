@@ -13,7 +13,7 @@ router.get("/quotes/:id/team", async (req, res) => {
              u.name, u.email, u.role as user_role, u.team, u.avatar_url
       FROM quote_team_members qtm
       JOIN users u ON u.id = qtm.user_id
-      WHERE qtm.quote_id = ${quoteId}
+      WHERE qtm.quote_id = ${quoteId} AND qtm.org_id = ${req.orgId!}
       ORDER BY qtm.created_at ASC
     `);
     res.json(result.rows);
@@ -29,8 +29,8 @@ router.post("/quotes/:id/team", async (req, res) => {
     const { userId, role = "Team Member" } = req.body;
     if (!userId) return res.status(400).json({ error: "userId required" });
     const result = await db.execute(sql`
-      INSERT INTO quote_team_members (quote_id, user_id, role)
-      VALUES (${quoteId}, ${userId}, ${role})
+      INSERT INTO quote_team_members (quote_id, user_id, role, org_id)
+      VALUES (${quoteId}, ${userId}, ${role}, ${req.orgId!})
       ON CONFLICT (quote_id, user_id) DO UPDATE SET role = EXCLUDED.role
       RETURNING *
     `);
@@ -47,7 +47,7 @@ router.patch("/quotes/:id/team/:memberId", async (req, res) => {
   try {
     const memberId = parseInt(req.params.memberId);
     const { role } = req.body;
-    await db.execute(sql`UPDATE quote_team_members SET role = ${role} WHERE id = ${memberId}`);
+    await db.execute(sql`UPDATE quote_team_members SET role = ${role} WHERE id = ${memberId} AND org_id = ${req.orgId!}`);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: String(err) });
@@ -58,7 +58,7 @@ router.patch("/quotes/:id/team/:memberId", async (req, res) => {
 router.delete("/quotes/:id/team/:memberId", async (req, res) => {
   try {
     const memberId = parseInt(req.params.memberId);
-    await db.execute(sql`DELETE FROM quote_team_members WHERE id = ${memberId}`);
+    await db.execute(sql`DELETE FROM quote_team_members WHERE id = ${memberId} AND org_id = ${req.orgId!}`);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: String(err) });

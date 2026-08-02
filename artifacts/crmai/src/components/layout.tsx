@@ -46,6 +46,7 @@ import {
   Grid3x3,
   X as XIcon,
   Plug,
+  Menu,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AIChatbot } from "@/components/ai-chatbot";
@@ -94,6 +95,7 @@ const BASE_NAV_ITEMS: Array<{ label: string; href: string; icon: any; screenKey?
   { label: "Support", href: "/support", icon: Mail, screenKey: "support" },
   { label: "Product Rules", href: "/admin/product-rules", icon: Sliders, screenKey: "products", adminOnly: true },
   { label: "Integration Studio", href: "/admin/integrations", icon: Plug, adminOnly: true },
+  { label: "Web Lead SLA", href: "/admin/web-lead-sla", icon: SlidersHorizontal, adminOnly: true },
   { label: "System Admin", href: "/users", icon: Settings, screenKey: "users" },
   // STIMS — Sales Performance
   { label: "Sales Performance", href: "/stims/dashboard", icon: BarChart3 },
@@ -328,9 +330,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* ── Main Content Area ── */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top Header */}
-          <header className="h-14 border-b border-sidebar-border bg-card flex items-center justify-between px-4 lg:px-6 z-20 flex-shrink-0 shadow-sm">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <span className="text-sm font-bold text-primary">arbormind<span className="text-muted-foreground font-normal">.in</span></span>
+          <header className="h-14 border-b border-sidebar-border bg-card flex items-center justify-between px-3 lg:px-6 z-20 flex-shrink-0 shadow-sm">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              {/* Mobile hamburger */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+                onClick={() => setIsMobileMenuOpen(true)}
+                aria-label="Open menu"
+              >
+                <Menu className="w-5 h-5" />
+              </Button>
+              <span className="text-sm font-bold text-primary shrink-0">arbormind<span className="text-muted-foreground font-normal">.in</span></span>
               <GlobalSearch />
             </div>
 
@@ -350,13 +362,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 )}
               </Button>
 
-              {/* Display currency switcher */}
+              {/* Display currency switcher — hidden on mobile */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 px-2 text-muted-foreground hover:text-foreground gap-1 font-medium"
+                    className="hidden sm:flex h-8 px-2 text-muted-foreground hover:text-foreground gap-1 font-medium"
                     title="Display currency"
                   >
                     <span className="text-base leading-none">{CURRENCY_META[displayCurrency].symbol}</span>

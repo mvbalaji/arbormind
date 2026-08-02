@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { ordersTable, orderItemsTable, quotesTable, quoteItemsTable, opportunitiesTable, contactsTable, accountsTable } from "@workspace/db";
-import { eq, sql, inArray, desc } from "drizzle-orm";
+import { eq, sql, inArray, desc, and } from "drizzle-orm";
 
 import { requireScreenAccess } from "../lib/access-control";
 
@@ -84,6 +84,7 @@ router.get("/orders", async (req, res) => {
       .leftJoin(contactsTable, eq(ordersTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(ordersTable.accountId, accountsTable.id))
       .leftJoin(quotesTable, eq(ordersTable.quoteId, quotesTable.id))
+      .where(eq(ordersTable.orgId, req.orgId!))
       .orderBy(desc(ordersTable.createdAt))
       .limit(limitNum)
       .offset(offset);
@@ -99,7 +100,7 @@ router.get("/orders", async (req, res) => {
       itemsByOrder.get(item.orderId)!.push(formatItem(item));
     }
 
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(ordersTable);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(ordersTable).where(eq(ordersTable.orgId, req.orgId!));
     res.json({
       data: rawData.map(o => formatOrder(o, itemsByOrder.get(o.id) ?? [])),
       total: Number(countResult.count),
@@ -121,7 +122,7 @@ router.post("/orders", async (req, res) => {
 
     const sessionUserId = (req.session as any)?.user?.id ?? (req as any).user?.id ?? null;
 
-    const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable);
+    const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable).where(eq(ordersTable.orgId, req.orgId!));
     const nextNum = maxOrder?.maxNum ? parseInt(maxOrder.maxNum.replace("ORD-", "")) + 1 : 5001;
     const orderNumber = `ORD-${nextNum}`;
 
@@ -134,6 +135,7 @@ router.post("/orders", async (req, res) => {
     const total = subtotal * (1 - discountPct / 100) * (1 + taxPct / 100);
 
     const [order] = await db.insert(ordersTable).values({
+      orgId: req.orgId!,
       orderNumber,
       quoteId: (orderData.quoteId as number | null) ?? null,
       opportunityId: (orderData.opportunityId as number | null) ?? null,
@@ -150,6 +152,7 @@ router.post("/orders", async (req, res) => {
 
     if (items.length > 0) {
       await db.insert(orderItemsTable).values(items.map(item => ({
+        orgId: req.orgId!,
         orderId: order.id,
         productId: item.productId ?? null,
         productName: item.productName,
@@ -172,22 +175,23 @@ router.post("/orders/from-quote/:quoteId", async (req, res) => {
     const quoteId = parseId(req.params.quoteId);
     if (!quoteId) { res.status(400).json({ error: "Invalid quote ID" }); return; }
 
-    const [quote] = await db.select().from(quotesTable).where(eq(quotesTable.id, quoteId));
+    const [quote] = await db.select().from(quotesTable).where(and(eq(quotesTable.id, quoteId), eq(quotesTable.orgId, req.orgId!)));
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
     if (quote.status !== "accepted") {
       res.status(400).json({ error: "Only accepted quotes can be converted to orders" });
       return;
     }
 
-    const quoteItems = await db.select().from(quoteItemsTable).where(eq(quoteItemsTable.quoteId, quoteId));
+    const quoteItems = await db.select().from(quoteItemsTable).where(and(eq(quoteItemsTable.quoteId, quoteId), eq(quoteItemsTable.orgId, req.orgId!)));
 
     const sessionUserId = (req.session as any)?.user?.id ?? (req as any).user?.id ?? quote.createdByUserId ?? null;
 
-    const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable);
+    const [maxOrder] = await db.select({ maxNum: sql<string>`max(order_number)` }).from(ordersTable).where(eq(ordersTable.orgId, req.orgId!));
     const nextNum = maxOrder?.maxNum ? parseInt(maxOrder.maxNum.replace("ORD-", "")) + 1 : 5001;
     const orderNumber = `ORD-${nextNum}`;
 
     const [order] = await db.insert(ordersTable).values({
+      orgId: req.orgId!,
       orderNumber,
       quoteId: quote.id,
       opportunityId: quote.opportunityId,
@@ -204,6 +208,7 @@ router.post("/orders/from-quote/:quoteId", async (req, res) => {
 
     if (quoteItems.length > 0) {
       await db.insert(orderItemsTable).values(quoteItems.map(item => ({
+        orgId: req.orgId!,
         orderId: order.id,
         productId: item.productId,
         productName: item.productName,
@@ -233,7 +238,7 @@ router.get("/orders/:id", async (req, res) => {
       .leftJoin(contactsTable, eq(ordersTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(ordersTable.accountId, accountsTable.id))
       .leftJoin(quotesTable, eq(ordersTable.quoteId, quotesTable.id))
-      .where(eq(ordersTable.id, id));
+      .where(and(eq(ordersTable.id, id), eq(ordersTable.orgId, req.orgId!)));
 
     if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
@@ -257,7 +262,7 @@ router.put("/orders/:id", async (req, res) => {
       return;
     }
 
-    const [existing] = await db.select().from(ordersTable).where(eq(ordersTable.id, id));
+    const [existing] = await db.select().from(ordersTable).where(and(eq(ordersTable.id, id), eq(ordersTable.orgId, req.orgId!)));
     if (!existing) { res.status(404).json({ error: "Order not found" }); return; }
 
     const { items, ...orderData } = req.body as {
@@ -302,7 +307,7 @@ router.put("/orders/:id", async (req, res) => {
 
     const [order] = await db.update(ordersTable)
       .set(updateData)
-      .where(eq(ordersTable.id, id))
+      .where(and(eq(ordersTable.id, id), eq(ordersTable.orgId, req.orgId!)))
       .returning();
 
     const updatedItems = await db.select().from(orderItemsTable).where(eq(orderItemsTable.orderId, id));
@@ -318,7 +323,7 @@ router.delete("/orders/:id", async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid order ID" }); return; }
     await db.delete(orderItemsTable).where(eq(orderItemsTable.orderId, id));
-    await db.delete(ordersTable).where(eq(ordersTable.id, id));
+    await db.delete(ordersTable).where(and(eq(ordersTable.id, id), eq(ordersTable.orgId, req.orgId!)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

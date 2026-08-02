@@ -5,9 +5,11 @@ import { campaignsTable } from "./campaigns";
 import { contactsTable } from "./contacts";
 import { leadsTable } from "./leads";
 import { usersTable } from "./users";
+import { organizationsTable } from "./organizations";
 
 export const campaignMembersTable = pgTable("campaign_members", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   campaignId: integer("campaign_id").notNull().references(() => campaignsTable.id, { onDelete: "cascade" }),
   contactId: integer("contact_id").references(() => contactsTable.id, { onDelete: "set null" }),
   leadId: integer("lead_id").references(() => leadsTable.id, { onDelete: "set null" }),

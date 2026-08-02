@@ -75,7 +75,7 @@ export const APP_DEFINITIONS: AppDefinition[] = [
     description: "System admin, users, product rules and app management",
     color: "bg-slate-600",
     emoji: "🔧",
-    navHrefs: ["/users", "/admin/product-rules", "/app-management"],
+    navHrefs: ["/users", "/admin/product-rules", "/admin/web-lead-sla", "/admin/integrations", "/admin/quote-workflow", "/app-management"],
   },
 ];
 

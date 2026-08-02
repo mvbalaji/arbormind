@@ -69,7 +69,8 @@ const BUYER_CLASS_COLORS: Record<string, string> = {
 };
 
 const VIEW_OPTIONS = [
-  { label: "All Open Leads", value: "", pinned: true },
+  { label: "All Leads", value: "", pinned: true },
+  { label: "Open Leads", value: "open", pinned: true },
   { label: "My Leads", value: "my", pinned: true },
   { label: "Converted Leads", value: "converted" },
   { label: "Recently Created", value: "recent" },
@@ -279,9 +280,10 @@ export default function Leads() {
   const leads = allLeads.filter((lead) => {
     if (statusFilter && lead.status !== statusFilter) return false;
     if (activeView.value === "converted") return lead.isConverted;
-    if (activeView.value === "my") return lead.assignedTo === user?.id;
+    if (activeView.value === "open") return !lead.isConverted;
+    if (activeView.value === "my") return !lead.isConverted && lead.assignedTo === user?.id;
     if (activeView.value === "recent") return isRecentlyCreated(lead.createdAt);
-    return !lead.isConverted;
+    return true; // "All Leads" — show everything
   });
 
   const total = leads.length;
@@ -395,7 +397,7 @@ export default function Leads() {
                 All Statuses
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              {["new", "contacted", "qualified", "unqualified"].map((s) => (
+              {["new", "contacted", "qualified", "unqualified", "converted"].map((s) => (
                 <DropdownMenuItem
                   key={s}
                   onClick={() => setStatusFilter(s)}
@@ -469,8 +471,63 @@ export default function Leads() {
           })()}
         </ListPageHeader>
 
-        {/* Table */}
-        <div className="bg-card rounded-md overflow-hidden shadow-sm">
+        {/* Mobile card view */}
+        <div className="md:hidden space-y-2">
+          {isLoading ? (
+            <div className="text-center text-muted-foreground text-sm py-8">Loading leads...</div>
+          ) : leads.length === 0 ? (
+            <div className="text-center text-muted-foreground text-sm py-8">No leads found.</div>
+          ) : (
+            leads.map((lead) => (
+              <div key={lead.id} className="bg-card rounded-lg border border-border shadow-sm p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link href={`/leads/${lead.id}`}>
+                      <span className="font-semibold text-sm text-primary hover:underline">{lead.firstName} {lead.lastName}</span>
+                    </Link>
+                    {lead.company && <p className="text-xs text-muted-foreground truncate">{lead.company}</p>}
+                    {lead.title && <p className="text-xs text-muted-foreground truncate">{lead.title}</p>}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {lead.status && (
+                      <span className={cn("text-[10px] font-semibold capitalize px-2 py-0.5 rounded-full border", STATUS_BADGE_COLORS[lead.status] ?? "bg-gray-100 text-gray-600")}>
+                        {lead.status}
+                      </span>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/leads/${lead.id}`} className="flex items-center gap-2 cursor-pointer">
+                            <Eye className="w-4 h-4" /> View Details
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEditingLead({ id: lead.id, firstName: lead.firstName ?? "", lastName: lead.lastName ?? "", email: lead.email ?? "", phone: lead.phone ?? "", website: lead.website ?? "", company: lead.company ?? "", title: lead.title ?? "", source: lead.source ?? "", status: lead.status ?? "new", assignedTo: String(lead.assignedTo ?? ""), score: String(lead.score ?? ""), industry: lead.industry ?? "", employees: String(lead.employees ?? ""), annualRevenue: String(lead.annualRevenue ?? ""), description: lead.description ?? "" })} className="flex items-center gap-2 cursor-pointer">
+                          <Pencil className="w-4 h-4" /> Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setDeletingId(lead.id)} className="text-destructive focus:text-destructive cursor-pointer">
+                          <Trash2 className="w-4 h-4 mr-2" /> Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  {lead.email && <span className="truncate max-w-[180px]">{lead.email}</span>}
+                  {lead.phone && <span>{lead.phone}</span>}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block bg-card rounded-md overflow-hidden shadow-sm">
           <div className="px-3 py-1 border-b border-border bg-muted/20 flex items-center justify-end gap-3">
             <TablePagination
               variant="inline"
@@ -527,7 +584,7 @@ export default function Leads() {
               Reset column widths
             </button>
           </div>
-          <div className="overflow-auto max-h-[calc(100vh-340px)]">
+          <div className="overflow-auto max-h-[calc(100dvh-340px)]">
             <table className="text-sm [&_tbody_td]:truncate" style={{ tableLayout: "fixed", width: "max-content", minWidth: "100%" }}>
               <colgroup>
                 {LEAD_COL_ORDER.filter((k) => k === "select" || k === "actions" || isColVisible(k as LeadToggleableCol)).map((k) => (

@@ -1,5 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, customType, index } from "drizzle-orm/pg-core";
 import { emailTrackingTable } from "./email-tracking";
+import { organizationsTable } from "./organizations";
 
 const bytea = customType<{ data: Buffer; default: false }>({
   dataType() {
@@ -11,6 +12,7 @@ export const emailAttachmentsTable = pgTable(
   "email_attachments",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
     trackingId: integer("tracking_id")
       .notNull()
       .references(() => emailTrackingTable.id, { onDelete: "cascade" }),

@@ -99,6 +99,7 @@ router.put("/admin/access-control/screens/:screenKey/roles/:roleKey", requireAdm
       }
 
       await tx.insert(accessAuditLogTable).values({
+        orgId: req.orgId!,
         screenKey, roleKey,
         previousLevel,
         newLevel: accessLevel,
@@ -124,6 +125,7 @@ router.get("/admin/access-control/audit", requireAdmin, async (req, res) => {
   try {
     const limit = Math.min(parseInt((req.query.limit as string) || "100"), 500);
     const rows = await db.select().from(accessAuditLogTable)
+      .where(eq(accessAuditLogTable.orgId, req.orgId!))
       .orderBy(desc(accessAuditLogTable.createdAt))
       .limit(limit);
     res.json({ data: rows });

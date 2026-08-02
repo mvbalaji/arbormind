@@ -2,9 +2,11 @@ import { pgTable, serial, text, integer, timestamp, index } from "drizzle-orm/pg
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+import { organizationsTable } from "./organizations";
 
 export const entityNotesTable = pgTable("entity_notes", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   entityType: text("entity_type").notNull(),
   entityId: integer("entity_id").notNull(),
   body: text("body").notNull().default(""),

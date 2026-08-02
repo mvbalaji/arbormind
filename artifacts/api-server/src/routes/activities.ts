@@ -51,7 +51,7 @@ router.get("/activities", async (req, res) => {
     const limitNum = parseInt(limit);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [];
+    const conditions = [eq(activitiesTable.orgId, req.orgId!)];
     if (leadId) conditions.push(eq(activitiesTable.leadId, parseInt(leadId)));
     if (contactId) conditions.push(eq(activitiesTable.contactId, parseInt(contactId)));
     if (opportunityId) conditions.push(eq(activitiesTable.opportunityId, parseInt(opportunityId)));
@@ -67,13 +67,10 @@ router.get("/activities", async (req, res) => {
       .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id))
       .leftJoin(emailTrackingTable, eq(emailTrackingTable.activityId, activitiesTable.id));
 
-    const data = await (conditions.length > 0
-      ? baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions))
-      : baseQuery
-    ).orderBy(activitiesTable.createdAt).limit(limitNum).offset(offset);
+    const data = await baseQuery.where(and(...conditions))
+      .orderBy(activitiesTable.createdAt).limit(limitNum).offset(offset);
 
-    const whereClause = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(activitiesTable).where(whereClause);
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(activitiesTable).where(and(...conditions));
     res.json({ data: data.map(formatActivity), total: Number(countResult.count), page: pageNum, limit: limitNum });
   } catch (err) {
     req.log.error(err);
@@ -84,8 +81,7 @@ router.get("/activities", async (req, res) => {
 router.post("/activities", async (req, res) => {
   try {
     const body = { ...req.body } as Record<string, unknown>;
-    const sessionUser = (req as any).session?.user ?? (req as any).user ?? null;
-    const orgId = (body.orgId as number) ?? sessionUser?.orgId ?? 1;
+    const orgId = req.orgId!;
     // Use raw SQL to ensure org_id (not in Drizzle schema) is always included
     const result = await db.execute(sql`
       INSERT INTO activities (
@@ -127,7 +123,9 @@ router.get("/activities/:id", async (req, res) => {
       .leftJoin(contactsTable, eq(activitiesTable.contactId, contactsTable.id))
       .leftJoin(accountsTable, eq(activitiesTable.accountId, accountsTable.id))
       .leftJoin(opportunitiesTable, eq(activitiesTable.opportunityId, opportunitiesTable.id))
-      .where(eq(activitiesTable.id, parseInt(req.params.id)));
+      // activityFields selects email_tracking columns, so this join is required.
+      .leftJoin(emailTrackingTable, eq(emailTrackingTable.activityId, activitiesTable.id))
+      .where(and(eq(activitiesTable.id, parseInt(req.params.id)), eq(activitiesTable.orgId, req.orgId!)));
 
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
@@ -143,8 +141,8 @@ router.get("/activities/:id", async (req, res) => {
 router.put("/activities/:id", async (req, res) => {
   try {
     const [activity] = await db.update(activitiesTable)
-      .set({ ...req.body, updatedAt: new Date() })
-      .where(eq(activitiesTable.id, parseInt(req.params.id)))
+      .set({ ...req.body, orgId: req.orgId!, updatedAt: new Date() })
+      .where(and(eq(activitiesTable.id, parseInt(req.params.id)), eq(activitiesTable.orgId, req.orgId!)))
       .returning();
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
@@ -176,7 +174,7 @@ router.get("/activities/:id/email-body", async (req, res) => {
     const [activity] = await db
       .select()
       .from(activitiesTable)
-      .where(eq(activitiesTable.id, id));
+      .where(and(eq(activitiesTable.id, id), eq(activitiesTable.orgId, req.orgId!)));
     if (!activity) {
       res.status(404).json({ error: "Activity not found" });
       return;
@@ -232,6 +230,7 @@ router.get("/activities/:id/email-body", async (req, res) => {
     const lo = new Date(createdAt.getTime() - windowMs);
     const hi = new Date(createdAt.getTime() + windowMs);
     const linkConditions = [
+      eq(emailsTable.orgId, req.orgId!),
       gte(emailsTable.createdAt, lo),
       lte(emailsTable.createdAt, hi),
     ];
@@ -293,7 +292,7 @@ router.get("/activities/:id/email-body", async (req, res) => {
 router.delete("/activities/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.delete(activitiesTable).where(eq(activitiesTable.id, id));
+    await db.delete(activitiesTable).where(and(eq(activitiesTable.id, id), eq(activitiesTable.orgId, req.orgId!)));
     res.json({ success: true, id });
   } catch (err) {
     req.log.error(err);

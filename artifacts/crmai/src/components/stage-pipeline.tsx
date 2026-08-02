@@ -69,12 +69,13 @@ export function StagePipeline({
   if (idx < 0) return null;
 
   return (
-    <div className="flex items-stretch gap-2">
+    <div className="flex flex-col sm:flex-row items-stretch gap-2">
       <TooltipProvider delayDuration={150}>
+        <div className="flex-1 overflow-x-auto">
         <ol
           role="list"
           aria-label={ariaLabel}
-          className="flex-1 flex items-stretch overflow-hidden rounded-md border border-border bg-muted/30 list-none p-0 m-0"
+          className="flex items-stretch rounded-md border border-border bg-muted/30 list-none p-0 m-0 min-w-max w-full"
         >
           {stages.map((s, i) => {
             const done = i < idx;
@@ -169,13 +170,14 @@ export function StagePipeline({
             );
           })}
         </ol>
+        </div>
       </TooltipProvider>
       {advance && (
         <Button
           size="sm"
           onClick={advance.onClick}
           disabled={advance.disabled}
-          className={`shrink-0 self-center h-8 gap-1.5 text-xs ${ADVANCE_BG[advance.tone ?? "blue"]}`}
+          className={`shrink-0 self-start sm:self-center h-8 gap-1.5 text-xs ${ADVANCE_BG[advance.tone ?? "blue"]}`}
         >
           <advance.icon className="w-3.5 h-3.5" />
           {advance.label}

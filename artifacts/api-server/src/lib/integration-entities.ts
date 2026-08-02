@@ -5,12 +5,7 @@
  * another CRM object — no mapping-engine changes needed.
  */
 import { db, leadsTable, contactsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
-
-// leads/contacts carry an org_id column added by a multi-tenancy retrofit that
-// isn't tracked in the Drizzle schema (see routes/activities.ts for the same
-// pattern) — default to org 1 until the integration framework is tenant-aware.
-const DEFAULT_ORG_ID = 1;
+import { and, eq, sql } from "drizzle-orm";
 
 export interface TargetFieldDescriptor {
   field: string;
@@ -29,10 +24,10 @@ export interface EntityTypeDescriptor {
   label: string;
   dedupeField: string;
   fields: TargetFieldDescriptor[];
-  upsert: (mapped: Record<string, unknown>) => Promise<EntityUpsertResult>;
+  upsert: (mapped: Record<string, unknown>, orgId: number) => Promise<EntityUpsertResult>;
 }
 
-async function upsertLead(mapped: Record<string, unknown>): Promise<EntityUpsertResult> {
+async function upsertLead(mapped: Record<string, unknown>, orgId: number): Promise<EntityUpsertResult> {
   const email = typeof mapped.email === "string" ? mapped.email : undefined;
   const values = {
     firstName: String(mapped.firstName ?? "").trim() || "Unknown",
@@ -47,7 +42,7 @@ async function upsertLead(mapped: Record<string, unknown>): Promise<EntityUpsert
   };
 
   if (email) {
-    const [existing] = await db.select({ id: leadsTable.id }).from(leadsTable).where(eq(leadsTable.email, email)).limit(1);
+    const [existing] = await db.select({ id: leadsTable.id }).from(leadsTable).where(and(eq(leadsTable.email, email), eq(leadsTable.orgId, orgId))).limit(1);
     if (existing) {
       await db.update(leadsTable).set({ ...values, updatedAt: new Date() }).where(eq(leadsTable.id, existing.id));
       return { id: existing.id, created: false };
@@ -56,13 +51,13 @@ async function upsertLead(mapped: Record<string, unknown>): Promise<EntityUpsert
 
   const [created] = await db.execute(sql`
     INSERT INTO leads (first_name, last_name, email, phone, company, title, source, status, description, org_id)
-    VALUES (${values.firstName}, ${values.lastName}, ${values.email}, ${values.phone}, ${values.company}, ${values.title}, ${values.source}, ${values.status}, ${values.description}, ${DEFAULT_ORG_ID})
+    VALUES (${values.firstName}, ${values.lastName}, ${values.email}, ${values.phone}, ${values.company}, ${values.title}, ${values.source}, ${values.status}, ${values.description}, ${orgId})
     RETURNING id
   `).then((r) => r.rows as Array<{ id: number }>);
   return { id: created.id, created: true };
 }
 
-async function upsertContact(mapped: Record<string, unknown>): Promise<EntityUpsertResult> {
+async function upsertContact(mapped: Record<string, unknown>, orgId: number): Promise<EntityUpsertResult> {
   const email = typeof mapped.email === "string" ? mapped.email : undefined;
   const values = {
     firstName: String(mapped.firstName ?? "").trim() || "Unknown",
@@ -78,7 +73,7 @@ async function upsertContact(mapped: Record<string, unknown>): Promise<EntityUps
   };
 
   if (email) {
-    const [existing] = await db.select({ id: contactsTable.id }).from(contactsTable).where(eq(contactsTable.email, email)).limit(1);
+    const [existing] = await db.select({ id: contactsTable.id }).from(contactsTable).where(and(eq(contactsTable.email, email), eq(contactsTable.orgId, orgId))).limit(1);
     if (existing) {
       await db.update(contactsTable).set({ ...values, updatedAt: new Date() }).where(eq(contactsTable.id, existing.id));
       return { id: existing.id, created: false };
@@ -87,7 +82,7 @@ async function upsertContact(mapped: Record<string, unknown>): Promise<EntityUps
 
   const [created] = await db.execute(sql`
     INSERT INTO contacts (first_name, last_name, email, phone, mobile, title, department, city, country, description, org_id)
-    VALUES (${values.firstName}, ${values.lastName}, ${values.email}, ${values.phone}, ${values.mobile}, ${values.title}, ${values.department}, ${values.city}, ${values.country}, ${values.description}, ${DEFAULT_ORG_ID})
+    VALUES (${values.firstName}, ${values.lastName}, ${values.email}, ${values.phone}, ${values.mobile}, ${values.title}, ${values.department}, ${values.city}, ${values.country}, ${values.description}, ${orgId})
     RETURNING id
   `).then((r) => r.rows as Array<{ id: number }>);
   return { id: created.id, created: true };

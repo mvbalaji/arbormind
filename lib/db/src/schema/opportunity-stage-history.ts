@@ -1,10 +1,12 @@
 import { pgTable, serial, text, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { opportunitiesTable } from "./opportunities";
+import { organizationsTable } from "./organizations";
 
 export const opportunityStageHistoryTable = pgTable(
   "opportunity_stage_history",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
     opportunityId: integer("opportunity_id")
       .notNull()
       .references(() => opportunitiesTable.id, { onDelete: "cascade" }),

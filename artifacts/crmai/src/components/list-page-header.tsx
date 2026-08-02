@@ -103,7 +103,7 @@ export function ListPageHeader({
   );
 
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3">
       <div className="flex items-center gap-3 min-w-0">
         <div className="p-2 rounded-xl bg-primary/10 shrink-0">
           <Icon className="w-6 h-6 text-primary" />
@@ -184,15 +184,15 @@ export function ListPageHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap justify-end">
+      <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
         {search && (
-          <div className="relative">
+          <div className="relative w-full sm:w-48">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder={search.placeholder ?? "Search this list..."}
               value={search.value}
               onChange={(e) => search.onChange(e.target.value)}
-              className="pl-8 h-8 w-48 text-sm bg-card border-border"
+              className="pl-8 h-8 w-full text-sm bg-card border-border"
             />
           </div>
         )}

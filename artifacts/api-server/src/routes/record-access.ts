@@ -132,6 +132,7 @@ router.put("/admin/record-access/types/:recordTypeKey/roles/:roleKey", async (re
       }
 
       await tx.insert(recordAccessAuditLogTable).values({
+        orgId: req.orgId!,
         recordTypeKey,
         roleKey,
         previousPermissions: previous,
@@ -163,8 +164,9 @@ router.get("/admin/record-access/audit", async (req, res) => {
     const rows = await db
       .select()
       .from(recordAccessAuditLogTable)
-      .orderBy(desc(recordAccessAuditLogTable.createdAt))
-      .limit(limit);
+      .where(eq(recordAccessAuditLogTable.orgId, req.orgId!))
+      .limit(limit)
+      .orderBy(desc(recordAccessAuditLogTable.createdAt));
     res.json({ data: rows });
   } catch (err) {
     res.status(500).json({ error: "Failed to load audit log" });

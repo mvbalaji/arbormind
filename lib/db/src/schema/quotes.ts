@@ -8,10 +8,11 @@ import { opportunitiesTable } from "./opportunities";
 import { productsTable } from "./products";
 import { priceBooksTable } from "./price-books";
 import { priceBookEntriesTable } from "./price-book-entries";
+import { organizationsTable } from "./organizations";
 
 export const quotesTable = pgTable("quotes", {
   id: serial("id").primaryKey(),
-  orgId: integer("org_id").notNull().default(1),
+  orgId: integer("org_id").notNull().default(1).references(() => organizationsTable.id),
   quoteNumber: text("quote_number").notNull().unique(),
   name: text("name").notNull(),
   version: integer("version").notNull().default(1),
@@ -37,6 +38,7 @@ export const quotesTable = pgTable("quotes", {
 
 export const quoteItemsTable = pgTable("quote_items", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   quoteId: integer("quote_id").notNull().references(() => quotesTable.id),
   productId: integer("product_id").references(() => productsTable.id, { onDelete: "set null" }),
   priceBookEntryId: integer("price_book_entry_id").references(() => priceBookEntriesTable.id, { onDelete: "set null" }),

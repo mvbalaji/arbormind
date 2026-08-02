@@ -3,9 +3,11 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
 import { approvalRolesTable, approvalCriteriaTable } from "./approvals";
+import { organizationsTable } from "./organizations";
 
 export const approvalRequestsTable = pgTable("approval_requests", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   entity: text("entity").notNull(),
   entityId: integer("entity_id").notNull(),
   status: text("status").notNull().default("open"),
@@ -27,6 +29,7 @@ export const approvalRequestsTable = pgTable("approval_requests", {
 
 export const approvalAuditEventsTable = pgTable("approval_audit_events", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   requestId: integer("request_id").notNull().references(() => approvalRequestsTable.id, { onDelete: "cascade" }),
   event: text("event").notNull(),
   actorUserId: integer("actor_user_id").references(() => usersTable.id, { onDelete: "set null" }),

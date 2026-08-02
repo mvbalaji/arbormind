@@ -1,8 +1,10 @@
 import { pgTable, serial, integer, text, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { leadsTable } from "./leads";
+import { organizationsTable } from "./organizations";
 
 export const leadInsightsTable = pgTable("lead_insights", {
   id: serial("id").primaryKey(),
+  orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
   leadId: integer("lead_id").notNull().references(() => leadsTable.id, { onDelete: "cascade" }),
   companySize: text("company_size"),
   industrySegment: text("industry_segment"),

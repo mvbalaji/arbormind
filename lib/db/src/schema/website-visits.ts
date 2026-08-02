@@ -1,11 +1,13 @@
 import { pgTable, serial, text, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { organizationsTable } from "./organizations";
 
 export const websiteVisitsTable = pgTable(
   "website_visits",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
     // Anonymous visitor id generated client-side and persisted in the
     // browser so repeat page views can be attributed to the same visitor.
     sessionId: text("session_id"),

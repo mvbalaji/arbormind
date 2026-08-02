@@ -23,12 +23,12 @@ router.get("/campaign-engagements", async (req, res) => {
     const limitNum = Math.min(200, Math.max(1, parseInt(limit) || 50));
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions: ReturnType<typeof eq>[] = [];
+    const conditions: ReturnType<typeof eq>[] = [eq(campaignEngagementsTable.orgId, req.orgId!)];
     if (campaignId) conditions.push(eq(campaignEngagementsTable.campaignId, parseInt(campaignId)));
     if (platform) conditions.push(eq(campaignEngagementsTable.platform, platform));
     if (category) conditions.push(eq(campaignEngagementsTable.interestCategory, category));
 
-    const where = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
+    const where = and(...conditions);
 
     const [rows, countResult] = await Promise.all([
       db.select().from(campaignEngagementsTable)
@@ -57,8 +57,8 @@ router.get("/campaign-engagements/stats", async (req, res) => {
     const { campaignId } = req.query as Record<string, string>;
 
     const where = campaignId
-      ? eq(campaignEngagementsTable.campaignId, parseInt(campaignId))
-      : undefined;
+      ? and(eq(campaignEngagementsTable.orgId, req.orgId!), eq(campaignEngagementsTable.campaignId, parseInt(campaignId)))
+      : eq(campaignEngagementsTable.orgId, req.orgId!);
 
     const [byPlatform, byCategory, byEventType, totals, dailyTrend] = await Promise.all([
       // Per-platform breakdown
@@ -100,11 +100,7 @@ router.get("/campaign-engagements/stats", async (req, res) => {
         count: sql<number>`count(*)::int`,
         score: sql<number>`sum(engagement_score)::int`,
       }).from(campaignEngagementsTable)
-        .where(
-          where
-            ? and(where, gte(campaignEngagementsTable.occurredAt, sql`now() - interval '30 days'`))
-            : gte(campaignEngagementsTable.occurredAt, sql`now() - interval '30 days'`)
-        )
+        .where(and(where, gte(campaignEngagementsTable.occurredAt, sql`now() - interval '30 days'`)))
         .groupBy(sql`date_trunc('day', occurred_at)`)
         .orderBy(sql`date_trunc('day', occurred_at)`),
     ]);
@@ -148,6 +144,7 @@ router.post("/campaign-engagements", async (req, res) => {
     const category = scoreToCategory(score);
 
     const [row] = await db.insert(campaignEngagementsTable).values({
+      orgId: req.orgId!,
       campaignId: campaignId ?? null,
       platform,
       eventType,

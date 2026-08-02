@@ -150,24 +150,24 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="flex flex-col gap-3">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-display font-bold tracking-tight text-foreground">
+            <h1 className="text-xl sm:text-2xl font-display font-bold tracking-tight text-foreground">
               Sales Command Center
             </h1>
             <p className="text-muted-foreground text-sm mt-0.5">
               {format(new Date(), "EEEE, MMMM d yyyy")} · Real-time overview of your pipeline
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <Link href="/leads">
               <Button variant="outline" size="sm" className="border-border text-foreground hover:bg-muted gap-1.5">
-                <UserPlus className="w-4 h-4" /> Add Lead
+                <UserPlus className="w-4 h-4" /> <span className="hidden sm:inline">Add Lead</span><span className="sm:hidden">Lead</span>
               </Button>
             </Link>
             <Link href="/opportunities">
               <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 shadow-lg shadow-primary/20">
-                <Briefcase className="w-4 h-4" /> View Opportunities
+                <Briefcase className="w-4 h-4" /> <span className="hidden sm:inline">View Opportunities</span><span className="sm:hidden">Opportunities</span>
               </Button>
             </Link>
           </div>

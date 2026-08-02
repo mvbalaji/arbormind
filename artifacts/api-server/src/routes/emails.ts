@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db, emailsTable, leadsTable, opportunitiesTable, contactsTable, activitiesTable, insertEmailSchema, quotesTable } from "@workspace/db";
-import { eq, ilike, desc, sql } from "drizzle-orm";
+import { eq, and, ilike, desc, sql } from "drizzle-orm";
 import { detectEmailApproval, processEmailApprovalDecision } from "./quote-workflow-rules";
-import { getDefaultOrgId, getOrgId } from "../lib/org-context";
+import { getDefaultOrgId } from "../lib/org-context";
 
 // Detect if an email body/subject is a quote rejection and extract reason
 function detectQuoteRejection(subject: string, body: string): { isRejection: boolean; reason: string } {
@@ -34,20 +34,22 @@ function requireAdmin(req: any, res: any): boolean {
   return true;
 }
 
-async function checkIfKnownCustomer(email: string) {
+async function checkIfKnownCustomer(orgId: number, email: string) {
   const [contact] = await db
     .select({ id: contactsTable.id, accountId: contactsTable.accountId })
     .from(contactsTable)
-    .where(ilike(contactsTable.email, email));
+    .where(and(ilike(contactsTable.email, email), eq(contactsTable.orgId, orgId)));
   return contact ?? null;
 }
 
-// POST: Receive email via webhook (from email forwarding / Cloudflare Email Routing)
+// POST: Receive email via webhook (from email forwarding / Cloudflare Email Routing).
+// Public, unauthenticated endpoint — no req.orgId, so everything routes to the
+// Default Organization until per-org public email routing is designed.
 router.post("/emails", async (req, res) => {
   try {
     const orgId = await getDefaultOrgId();
     const parsed = insertEmailSchema.parse(req.body);
-    const knownContact = await checkIfKnownCustomer(parsed.fromEmail);
+    const knownContact = await checkIfKnownCustomer(orgId, parsed.fromEmail);
     const isKnown = !!knownContact;
 
     let relatedLeadId: number | undefined;
@@ -61,12 +63,13 @@ router.post("/emails", async (req, res) => {
       const [opportunity] = await db
         .insert(opportunitiesTable)
         .values({
+          orgId,
           name: `Inquiry: ${parsed.subject}`,
           description: parsed.message,
           stage: "prospecting",
           probability: 30,
-          amount: 0,
-          closeDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          amount: "0",
+          closeDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         })
         .returning();
       relatedOpportunityId = opportunity?.id;
@@ -75,6 +78,7 @@ router.post("/emails", async (req, res) => {
       const [lead] = await db
         .insert(leadsTable)
         .values({
+          orgId,
           firstName: nameParts[0] || "Unknown",
           lastName: nameParts.slice(1).join(" ") || "Unknown",
           email: parsed.fromEmail,
@@ -82,13 +86,13 @@ router.post("/emails", async (req, res) => {
           status: "new",
         })
         .returning();
-      if (lead) await db.execute(sql`UPDATE leads SET org_id = ${orgId} WHERE id = ${lead.id}`);
       relatedLeadId = lead?.id;
     }
 
     const [email] = await db
       .insert(emailsTable)
       .values({
+        orgId,
         fromEmail: parsed.fromEmail,
         fromName: parsed.fromName,
         subject: parsed.subject,
@@ -101,9 +105,9 @@ router.post("/emails", async (req, res) => {
         notes: isKnown ? "Auto-created Opportunity" : "Auto-created Lead",
       })
       .returning();
-    if (email) await db.execute(sql`UPDATE emails SET org_id = ${orgId} WHERE id = ${email.id}`);
 
-    const [activity] = await db.insert(activitiesTable).values({
+    await db.insert(activitiesTable).values({
+      orgId,
       type: "email",
       subject: `Inbound: ${parsed.subject}`,
       description: parsed.message?.substring(0, 500) || "",
@@ -112,8 +116,7 @@ router.post("/emails", async (req, res) => {
       leadId: relatedLeadId ?? null,
       opportunityId: relatedOpportunityId ?? null,
       accountId: relatedAccountId ?? null,
-    }).returning();
-    if (activity) await db.execute(sql`UPDATE activities SET org_id = ${orgId} WHERE id = ${activity.id}`);
+    });
 
     // Detect workflow approval decision from inbound email (reply-based)
     const approvalDetection = await detectEmailApproval(parsed.subject ?? "", parsed.message ?? "");
@@ -133,7 +136,7 @@ router.post("/emails", async (req, res) => {
       const quoteNumber = extractQuoteNumber(parsed.subject ?? "", parsed.message ?? "");
       if (quoteNumber) {
         const [targetQuote] = await db.select({ id: quotesTable.id, status: quotesTable.status })
-          .from(quotesTable).where(eq(quotesTable.quoteNumber, quoteNumber));
+          .from(quotesTable).where(and(eq(quotesTable.quoteNumber, quoteNumber), eq(quotesTable.orgId, orgId)));
         if (targetQuote && targetQuote.status !== "rejected") {
           await db.execute(sql`
             UPDATE quotes SET status = 'rejected', rejection_reason = ${reason}, updated_at = NOW()
@@ -166,41 +169,12 @@ router.post("/emails", async (req, res) => {
 router.get("/emails", async (req, res) => {
   if (!requireAdmin(req, res)) return;
   try {
-    let orgId: number;
-    try {
-      orgId = getOrgId(req);
-    } catch {
-      // OAuth sessions that pre-date the orgId fix don't have it in the token yet;
-      // fall back to the default org so the inbox still loads.
-      const { getDefaultOrgId } = await import("../lib/org-context");
-      orgId = await getDefaultOrgId();
-    }
-    const result = await db.execute(sql`
-      SELECT
-        id,
-        message_uid AS "messageUid",
-        message_id AS "messageId",
-        in_reply_to AS "inReplyTo",
-        from_email AS "fromEmail",
-        from_name AS "fromName",
-        subject,
-        message,
-        body_html AS "bodyHtml",
-        status,
-        related_contact_id AS "relatedContactId",
-        related_lead_id AS "relatedLeadId",
-        related_opportunity_id AS "relatedOpportunityId",
-        is_known_customer AS "isKnownCustomer",
-        notes,
-        auto_replied_at AS "autoRepliedAt",
-        created_at AS "createdAt",
-        updated_at AS "updatedAt",
-        org_id AS "orgId"
-      FROM emails
-      WHERE org_id = ${orgId}
-      ORDER BY created_at DESC
-    `);
-    res.json({ emails: result.rows });
+    const emails = await db
+      .select()
+      .from(emailsTable)
+      .where(eq(emailsTable.orgId, req.orgId!))
+      .orderBy(desc(emailsTable.createdAt));
+    res.json({ emails });
   } catch (err) {
     console.error("Fetch emails error:", err);
     res.status(500).json({ error: "Failed to fetch emails" });
@@ -221,7 +195,7 @@ router.patch("/emails/:id", async (req, res) => {
         notes: notes ?? undefined,
         updatedAt: new Date(),
       })
-      .where(eq(emailsTable.id, emailId))
+      .where(and(eq(emailsTable.id, emailId), eq(emailsTable.orgId, req.orgId!)))
       .returning();
 
     res.json({ success: true, email });

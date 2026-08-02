@@ -56,7 +56,7 @@ export function QuoteStagesAdmin() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, ...body }: { id: number } & Record<string, unknown>) =>
+    mutationFn: ({ id, ...body }: { id: number } & object) =>
       apiFetch(`/api/admin/quote-stages/${id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       }),

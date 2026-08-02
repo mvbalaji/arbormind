@@ -40,16 +40,23 @@ async function ensureAuditTable(): Promise<void> {
   `);
 }
 
-async function logAudit(key: string, oldVal: string | null, newVal: string, userId?: number, userName?: string) {
+async function logAudit(orgId: number, key: string, oldVal: string | null, newVal: string, userId?: number, userName?: string) {
   try {
     await ensureAuditTable();
     await db.execute(sql`
-      INSERT INTO cpq_settings_audit (setting_key, old_value, new_value, changed_by_id, changed_by_name)
-      VALUES (${key}, ${oldVal}, ${newVal}, ${userId ?? null}, ${userName ?? "System"})
+      INSERT INTO cpq_settings_audit (setting_key, old_value, new_value, changed_by_id, changed_by_name, org_id)
+      VALUES (${key}, ${oldVal}, ${newVal}, ${userId ?? null}, ${userName ?? "System"}, ${orgId})
     `);
   } catch (err) {
     console.error("[CPQ audit]", err);
   }
+}
+
+// Per-org business config (pricing tiers, guided selling) is namespaced onto the
+// key itself since `admin_settings` is a global key-value store shared with
+// app-modules.ts's `cpq_enabled` toggle (deliberately kept a single global flag).
+function orgScopedKey(key: string, orgId: number): string {
+  return `${key}:org${orgId}`;
 }
 
 async function getSetting(key: string): Promise<string | null> {
@@ -101,7 +108,7 @@ router.post("/settings/cpq", async (req, res) => {
     const old = await getSetting("cpq_enabled");
     await setSetting("cpq_enabled", String(enabled));
     const { id, name } = getUser(req);
-    await logAudit("cpq_enabled", old, String(enabled), id, name);
+    await logAudit(req.orgId!, "cpq_enabled", old, String(enabled), id, name);
     res.json({ enabled });
   } catch (err) {
     console.error("[CPQ settings]", err);
@@ -112,10 +119,11 @@ router.post("/settings/cpq", async (req, res) => {
 // GET /api/settings/cpq/pricing
 router.get("/settings/cpq/pricing", async (req, res) => {
   try {
+    const orgId = req.orgId!;
     const [vt, at, pt] = await Promise.all([
-      getSetting("cpq_volume_tiers"),
-      getSetting("cpq_approval_thresholds"),
-      getSetting("cpq_partner_tiers"),
+      getSetting(orgScopedKey("cpq_volume_tiers", orgId)),
+      getSetting(orgScopedKey("cpq_approval_thresholds", orgId)),
+      getSetting(orgScopedKey("cpq_partner_tiers", orgId)),
     ]);
     res.json({
       volumeTiers: vt ? JSON.parse(vt) : DEFAULT_VOLUME_TIERS,
@@ -137,25 +145,26 @@ router.post("/settings/cpq/pricing", async (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
   const { volumeTiers, approvalThresholds, partnerTiers } = req.body;
   try {
+    const orgId = req.orgId!;
     const { id, name } = getUser(req);
     const tasks: Promise<void>[] = [];
     if (volumeTiers !== undefined) {
-      const old = await getSetting("cpq_volume_tiers");
+      const old = await getSetting(orgScopedKey("cpq_volume_tiers", orgId));
       const newVal = JSON.stringify(volumeTiers);
-      tasks.push(setSetting("cpq_volume_tiers", newVal));
-      tasks.push(logAudit("cpq_volume_tiers", old, newVal, id, name));
+      tasks.push(setSetting(orgScopedKey("cpq_volume_tiers", orgId), newVal));
+      tasks.push(logAudit(orgId, "cpq_volume_tiers", old, newVal, id, name));
     }
     if (approvalThresholds !== undefined) {
-      const old = await getSetting("cpq_approval_thresholds");
+      const old = await getSetting(orgScopedKey("cpq_approval_thresholds", orgId));
       const newVal = JSON.stringify(approvalThresholds);
-      tasks.push(setSetting("cpq_approval_thresholds", newVal));
-      tasks.push(logAudit("cpq_approval_thresholds", old, newVal, id, name));
+      tasks.push(setSetting(orgScopedKey("cpq_approval_thresholds", orgId), newVal));
+      tasks.push(logAudit(orgId, "cpq_approval_thresholds", old, newVal, id, name));
     }
     if (partnerTiers !== undefined) {
-      const old = await getSetting("cpq_partner_tiers");
+      const old = await getSetting(orgScopedKey("cpq_partner_tiers", orgId));
       const newVal = JSON.stringify(partnerTiers);
-      tasks.push(setSetting("cpq_partner_tiers", newVal));
-      tasks.push(logAudit("cpq_partner_tiers", old, newVal, id, name));
+      tasks.push(setSetting(orgScopedKey("cpq_partner_tiers", orgId), newVal));
+      tasks.push(logAudit(orgId, "cpq_partner_tiers", old, newVal, id, name));
     }
     await Promise.all(tasks);
     res.json({ ok: true });
@@ -440,9 +449,9 @@ const STEEL_FAB_FLOW = {
 const DEFAULT_GUIDED_SELLING_CONFIG = { flows: [STEEL_FLOW, STEEL_FAB_FLOW, IT_FLOW] };
 
 // GET /api/settings/cpq/guided-selling
-router.get("/settings/cpq/guided-selling", async (_req, res) => {
+router.get("/settings/cpq/guided-selling", async (req, res) => {
   try {
-    const val = await getSetting("cpq_guided_selling");
+    const val = await getSetting(orgScopedKey("cpq_guided_selling", req.orgId!));
     if (val) {
       const parsed = JSON.parse(val);
       // Migrate old single-flow format (has steps[] but no flows[])
@@ -466,11 +475,12 @@ router.put("/settings/cpq/guided-selling", async (req, res) => {
   try {
     const config = req.body;
     if (!config || !Array.isArray(config.flows)) return res.status(400).json({ error: "Invalid config" });
-    const old = await getSetting("cpq_guided_selling");
+    const orgId = req.orgId!;
+    const old = await getSetting(orgScopedKey("cpq_guided_selling", orgId));
     const newVal = JSON.stringify(config);
-    await setSetting("cpq_guided_selling", newVal);
+    await setSetting(orgScopedKey("cpq_guided_selling", orgId), newVal);
     const { id, name } = getUser(req);
-    await logAudit("cpq_guided_selling", old, newVal, id, name);
+    await logAudit(orgId, "cpq_guided_selling", old, newVal, id, name);
     res.json({ ok: true });
   } catch (err) {
     console.error("[CPQ guided selling save]", err);
@@ -486,6 +496,7 @@ router.get("/settings/cpq/audit", async (req, res) => {
     const rows = await db.execute(sql`
       SELECT id, setting_key, old_value, new_value, changed_by_name, changed_at
       FROM cpq_settings_audit
+      WHERE org_id = ${req.orgId!}
       ORDER BY changed_at DESC
       LIMIT 50
     `);

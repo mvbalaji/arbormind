@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Sun, Moon, Zap, BarChart3, Users, Shield, Star, CheckCircle, Globe, Twitter, Linkedin, Github, Youtube, Megaphone, FileSignature, Workflow } from "lucide-react";
+import {
+  Sun, Moon, Zap, BarChart3, Users, Shield, Star, CheckCircle, Globe,
+  Twitter, Linkedin, Github, Youtube, Megaphone, FileSignature, Workflow,
+  ArrowRight, ChevronDown, Building2, KanbanSquare, UserCircle2, LayoutDashboard,
+} from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 const FEATURES = [
@@ -54,6 +58,108 @@ const STATS = [
   { value: "3×", label: "Faster deal cycles" },
   { value: "87%", label: "Win rate improvement" },
   { value: "100%", label: "Data ownership" },
+];
+
+// Real product screenshots, each paired with the feature it best demonstrates.
+// Alternating image/copy "spotlight" sections convert better than a small,
+// auto-advancing carousel — visitors can see and read at their own pace.
+const SPOTLIGHTS = [
+  {
+    src: "/screenshots/dashboard.jpeg",
+    icon: LayoutDashboard,
+    eyebrow: "Command Center",
+    title: "One dashboard. Every number that matters.",
+    description: "Revenue, pipeline value, win rate and open cases update in real time. AI Insights flags what needs attention today — no digging through spreadsheets or waiting for a weekly report.",
+    bullets: ["Live revenue & pipeline value", "AI-generated daily insights", "Pipeline-by-stage breakdown"],
+  },
+  {
+    src: "/screenshots/opportunities.jpeg",
+    icon: KanbanSquare,
+    eyebrow: "Pipeline Intelligence",
+    title: "Never lose a deal in the pipeline again.",
+    description: "Drag deals across stages on a Kanban board built for speed. Every opportunity carries an AI-estimated win probability, so reps and managers both know exactly where to focus.",
+    bullets: ["Drag-and-drop Kanban board", "AI win-probability scoring", "Stage-by-stage revenue forecasting"],
+  },
+  {
+    src: "/screenshots/leads.jpeg",
+    icon: Zap,
+    eyebrow: "Lead Scoring",
+    title: "Score, route, and convert leads automatically.",
+    description: "Every inbound lead — from a web form, a campaign, or a forwarded email — is scored, assigned to the right rep, and tracked from first touch to qualified opportunity.",
+    bullets: ["Automatic lead scoring", "Smart owner assignment", "One-click lead-to-opportunity conversion"],
+  },
+  {
+    src: "/screenshots/contacts.jpeg",
+    icon: UserCircle2,
+    eyebrow: "360° Customer View",
+    title: "A complete view of every relationship.",
+    description: "Contacts, their accounts, titles and full activity history live in one record — calls, emails and meetings included — so anyone on the team can pick up a conversation instantly.",
+    bullets: ["Full activity timeline per contact", "Linked accounts & opportunities", "Fast search across every field"],
+  },
+  {
+    src: "/screenshots/accounts.jpeg",
+    icon: Building2,
+    eyebrow: "Account Intelligence",
+    title: "Company-level insight, not just contact cards.",
+    description: "See every account's industry, location, contacts and open deals at a glance — the context reps need before every call, without switching tabs.",
+    bullets: ["Contacts & deals per account", "Industry & location at a glance", "Roll-up reporting across accounts"],
+  },
+];
+
+const HOW_IT_WORKS = [
+  {
+    step: "01",
+    title: "Capture every lead, automatically",
+    description: "Web forms, campaigns, and forwarded emails all flow into one scored, de-duplicated pipeline — nothing sits in an inbox waiting to be entered by hand.",
+  },
+  {
+    step: "02",
+    title: "Work the pipeline with AI at your side",
+    description: "Win-probability scoring, next-best-action suggestions, and an AI assistant that drafts follow-ups mean reps spend time selling, not guessing what to do next.",
+  },
+  {
+    step: "03",
+    title: "Quote, contract, and close — in the same system",
+    description: "Build a quote, route it for approval, generate the contract, and track the order — without exporting to a spreadsheet or a separate e-signature tool.",
+  },
+];
+
+const DIFFERENTIATORS = [
+  {
+    title: "Built for speed, not bloat",
+    description: "No six-week implementation. Google SSO, sensible defaults, and a UI that doesn't need a training course to use on day one.",
+  },
+  {
+    title: "One system, not six point tools",
+    description: "CRM, CPQ, contract lifecycle management, campaigns, and approvals live in a single data model — so a deal's history is never scattered across tabs.",
+  },
+  {
+    title: "AI that's actually wired into your data",
+    description: "The assistant answers questions about your live pipeline and drafts real follow-ups — it isn't a chatbot bolted on top of static reports.",
+  },
+];
+
+const FAQS = [
+  {
+    q: "How long does it take to get set up?",
+    a: "Most teams are creating leads and quotes within a day. Sign in with Google, and your role-based permissions, pipeline stages and product catalogue are ready to configure immediately — no lengthy onboarding project required.",
+  },
+  {
+    q: "Can I migrate data from our current CRM?",
+    a: "Yes — accounts, contacts, leads, opportunities and campaigns can all be bulk-imported from CSV, with field mapping handled for you.",
+  },
+  {
+    q: "Does the AI assistant see our real data?",
+    a: "Yes — it's wired directly into your live pipeline, contacts and activity history, so answers and drafts reflect what's actually happening in your CRM, not a generic template.",
+  },
+  {
+    q: "Who can see what? Can I restrict access by role?",
+    a: "Every screen — leads, quotes, contracts, reports — has its own granular permission per role (admin, manager, rep), plus support-friendly user impersonation for onboarding and troubleshooting.",
+  },
+  {
+    q: "What happens to our data if we leave?",
+    a: "It's yours. Export any entity to CSV at any time — there's no lock-in and no per-export fee.",
+  },
 ];
 
 function EnquiryForm({ isDark }: { isDark: boolean }) {
@@ -185,176 +291,127 @@ function EnquiryForm({ isDark }: { isDark: boolean }) {
   );
 }
 
-const CAROUSEL_SLIDES = [
-  { src: "/screenshots/dashboard.jpeg", label: "Dashboard", caption: "Real-time KPIs, pipeline health and activity feed" },
-  { src: "/screenshots/opportunities.jpeg", label: "Pipeline", caption: "Kanban deal board with AI win-probability scoring" },
-  { src: "/screenshots/contacts.jpeg", label: "Contacts", caption: "360° contact profiles with activity timeline" },
-  { src: "/screenshots/accounts.jpeg", label: "Accounts", caption: "Company-level insights, contacts and opportunities" },
-  { src: "/screenshots/leads.jpeg", label: "Leads", caption: "Lead scoring, status tracking and one-click conversion" },
-];
-
-function DashboardCarousel({ isDark }: { isDark: boolean }) {
-  const [current, setCurrent] = useState(0);
-  const [animating, setAnimating] = useState(false);
-
-  useEffect(() => {
-    const t = setInterval(() => {
-      setAnimating(true);
-      setTimeout(() => {
-        setCurrent((c) => (c + 1) % CAROUSEL_SLIDES.length);
-        setAnimating(false);
-      }, 350);
-    }, 3500);
-    return () => clearInterval(t);
-  }, []);
-
-  const goTo = (i: number) => {
-    if (i === current) return;
-    setAnimating(true);
-    setTimeout(() => { setCurrent(i); setAnimating(false); }, 350);
-  };
-
-  const slide = CAROUSEL_SLIDES[current]!;
-
+function BrowserFrame({ src, label, isDark }: { src: string; label: string; isDark: boolean }) {
   return (
-    <div className="relative select-none">
-      {/* Browser chrome mockup */}
+    <div
+      className="rounded-2xl overflow-hidden shadow-2xl"
+      style={{
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+        boxShadow: isDark
+          ? "0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)"
+          : "0 40px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)",
+      }}
+    >
       <div
-        className="rounded-2xl overflow-hidden shadow-2xl"
+        className="flex items-center gap-2 px-2 py-1"
         style={{
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-          boxShadow: isDark
-            ? "0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)"
-            : "0 40px 80px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04)",
+          background: isDark ? "#1e2a3a" : "#f1f5f9",
+          borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
         }}
       >
-        {/* Title bar */}
+        <div className="flex gap-1.5">
+          <div className="w-3 h-3 rounded-full" style={{ background: "#ff5f57" }} />
+          <div className="w-3 h-3 rounded-full" style={{ background: "#febc2e" }} />
+          <div className="w-3 h-3 rounded-full" style={{ background: "#28c840" }} />
+        </div>
         <div
-          className="flex items-center gap-2 px-2 py-1"
+          className="flex-1 mx-4 py-1 px-3 rounded-md text-xs text-center font-mono"
           style={{
-            background: isDark ? "#1e2a3a" : "#f1f5f9",
-            borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
+            background: isDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.8)",
+            color: isDark ? "#64748b" : "#94a3b8",
+            maxWidth: 280,
+            margin: "0 auto",
           }}
         >
-          <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full" style={{ background: "#ff5f57" }} />
-            <div className="w-3 h-3 rounded-full" style={{ background: "#febc2e" }} />
-            <div className="w-3 h-3 rounded-full" style={{ background: "#28c840" }} />
-          </div>
-          <div
-            className="flex-1 mx-4 py-1 px-3 rounded-md text-xs text-center font-mono"
-            style={{
-              background: isDark ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.8)",
-              color: isDark ? "#64748b" : "#94a3b8",
-              maxWidth: 280,
-              margin: "0 auto",
-            }}
-          >
-            arbormind.in/{slide.label.toLowerCase()}
-          </div>
-          <div
-            className="text-xs font-semibold px-2.5 py-1 rounded-full"
-            style={{
-              background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(6,182,212,0.2))",
-              color: "#818cf8",
-            }}
-          >
-            {slide.label}
-          </div>
-        </div>
-
-        {/* Screenshot */}
-        <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
-          <img
-            key={current}
-            src={slide.src}
-            alt={slide.label}
-            className="w-full h-full object-cover object-top transition-opacity duration-350"
-            style={{ opacity: animating ? 0 : 1, transition: "opacity 0.35s ease" }}
-          />
-          {/* Gradient overlay at bottom */}
-          <div
-            className="absolute inset-x-0 bottom-0 h-16"
-            style={{
-              background: isDark
-                ? "linear-gradient(to top, rgba(2,6,23,0.8), transparent)"
-                : "linear-gradient(to top, rgba(248,250,252,0.8), transparent)",
-            }}
-          />
+          arbormind.in/{label.toLowerCase().replace(/\s+/g, "-")}
         </div>
       </div>
-
-      {/* Caption + dots */}
-      <div className="mt-6 flex flex-col items-center gap-4">
-        <p
-          className="text-sm text-center transition-opacity duration-350"
-          style={{ color: isDark ? "#94a3b8" : "#64748b", opacity: animating ? 0 : 1 }}
-        >
-          {slide.caption}
-        </p>
-        <div className="flex items-center gap-2">
-          {CAROUSEL_SLIDES.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              className="transition-all duration-300"
-              style={{
-                width: i === current ? 28 : 8,
-                height: 8,
-                borderRadius: 4,
-                background: i === current
-                  ? "linear-gradient(135deg, #6366f1, #06b6d4)"
-                  : isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)",
-              }}
-              title={s.label}
-            />
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          {CAROUSEL_SLIDES.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              className="text-xs font-medium px-3 py-1 rounded-full transition-all duration-200"
-              style={{
-                background: i === current
-                  ? isDark ? "rgba(99,102,241,0.2)" : "rgba(99,102,241,0.1)"
-                  : "transparent",
-                color: i === current
-                  ? "#818cf8"
-                  : isDark ? "#475569" : "#94a3b8",
-                border: `1px solid ${i === current ? "rgba(99,102,241,0.3)" : "transparent"}`,
-              }}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+      <div className="relative overflow-hidden" style={{ aspectRatio: "16/9" }}>
+        <img src={src} alt={label} className="w-full h-full object-cover object-top" loading="lazy" />
       </div>
     </div>
   );
 }
 
-const TESTIMONIALS = [
-  {
-    name: "Sarah Chen",
-    role: "VP Sales, TechFlow Inc",
-    quote: "arbormind.in transformed our sales process. We closed 40% more deals in 3 months with the pipeline intelligence.",
-    avatar: "SC",
-  },
-  {
-    name: "Marcus Johnson",
-    role: "Sales Manager, CloudScale",
-    quote: "The AI assistant is a game-changer. It drafts follow-ups, summarizes deals, and suggests next actions automatically.",
-    avatar: "MJ",
-  },
-  {
-    name: "Priya Patel",
-    role: "Founder, GrowthLabs",
-    quote: "Finally, a CRM built for speed. Google OAuth integration, real-time analytics, and it just works. No bloat.",
-    avatar: "PP",
-  },
-];
+function FeatureSpotlight({
+  item, reversed, isDark,
+}: {
+  item: (typeof SPOTLIGHTS)[number];
+  reversed: boolean;
+  isDark: boolean;
+}) {
+  const Icon = item.icon;
+  return (
+    <div className={`grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center ${reversed ? "" : ""}`}>
+      <div className={reversed ? "lg:order-2" : ""}>
+        <BrowserFrame src={item.src} label={item.eyebrow} isDark={isDark} />
+      </div>
+      <div className={reversed ? "lg:order-1" : ""}>
+        <div
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-5 tracking-wide uppercase"
+          style={{
+            background: isDark ? "rgba(99,102,241,0.12)" : "rgba(99,102,241,0.08)",
+            color: "#818cf8",
+            border: "1px solid rgba(99,102,241,0.2)",
+          }}
+        >
+          <Icon className="w-3.5 h-3.5" />
+          {item.eyebrow}
+        </div>
+        <h3
+          className="text-2xl md:text-3xl font-bold mb-4 leading-tight"
+          style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
+        >
+          {item.title}
+        </h3>
+        <p className="text-base leading-relaxed mb-6" style={{ color: isDark ? "#94a3b8" : "#475569" }}>
+          {item.description}
+        </p>
+        <ul className="space-y-2.5">
+          {item.bullets.map((b) => (
+            <li key={b} className="flex items-center gap-2.5 text-sm" style={{ color: isDark ? "#cbd5e1" : "#1e293b" }}>
+              <CheckCircle className="w-4 h-4 flex-shrink-0" style={{ color: "#22c55e" }} />
+              {b}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function FaqItem({ q, a, isDark }: { q: string; a: string; isDark: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.8)",
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
+      }}
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-4 text-left px-6 py-5"
+      >
+        <span className="font-semibold text-base" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
+          {q}
+        </span>
+        <ChevronDown
+          className="w-5 h-5 flex-shrink-0 transition-transform duration-200"
+          style={{ color: isDark ? "#64748b" : "#94a3b8", transform: open ? "rotate(180deg)" : "none" }}
+        />
+      </button>
+      {open && (
+        <div className="px-6 pb-5">
+          <p className="text-sm leading-relaxed" style={{ color: isDark ? "#94a3b8" : "#475569" }}>
+            {a}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 type Theme = "dark" | "light";
 
@@ -445,7 +502,7 @@ export default function Landing() {
       {/* NAV */}
       <nav
         className="sticky top-0 z-50 flex items-center justify-between px-6 md:px-12 py-5 border-b backdrop-blur-xl"
-        style={{ 
+        style={{
           borderColor: "rgba(255,255,255,0.08)",
           background: "rgba(10,25,60,0.95)"
         }}
@@ -464,9 +521,9 @@ export default function Landing() {
 
         <div className="hidden md:flex items-center gap-8">
           <a href="#features" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>Features</a>
-          <a href="#dashboard" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>Dashboard</a>
-          <a href="#testimonials" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>Testimonials</a>
-          <a href="#pricing" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>Pricing</a>
+          <a href="#dashboard" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>Product Tour</a>
+          <a href="#how-it-works" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>How It Works</a>
+          <a href="#faq" className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: "#ffffff" }}>FAQ</a>
         </div>
 
         <div className="flex items-center gap-3">
@@ -481,6 +538,9 @@ export default function Landing() {
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
+          <Link href="/contact" className="flex items-center gap-2 px-3 py-1 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 cursor-pointer" style={{ color: "rgba(255,255,255,0.7)" }}>
+            Contact Us
+          </Link>
           <Link href="/login" className="flex items-center gap-2 px-3 py-1 rounded-xl font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg cursor-pointer border" style={{ borderColor: "rgba(255,255,255,0.25)", color: "#ffffff" }}>
             Log in
           </Link>
@@ -536,11 +596,43 @@ export default function Landing() {
             className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
             style={{ color: isDark ? "#94a3b8" : "#475569" }}
           >
-            arbormind.in is the modern CRM built for high-velocity sales teams. Contacts, pipeline,
-            AI assistant and real-time analytics — all in one beautiful workspace.
+            arbormind.in is the modern CRM built for high-velocity sales teams — leads, pipeline,
+            quotes, contracts, and an AI assistant that's wired into your real data, all in one workspace.
           </p>
 
-          <div />
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+            <button
+              type="button"
+              onClick={() => setLocation("/login")}
+              className="flex items-center gap-2 px-8 py-3.5 rounded-2xl font-semibold transition-all hover:-translate-y-1 hover:shadow-2xl cursor-pointer"
+              style={{
+                background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+                color: "white",
+                boxShadow: "0 8px 24px rgba(99,102,241,0.35)",
+              }}
+            >
+              Get Started Free
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <a
+              href="#dashboard"
+              className="flex items-center gap-2 px-8 py-3.5 rounded-2xl font-semibold transition-all hover:-translate-y-0.5 cursor-pointer"
+              style={{
+                background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.9)",
+                color: isDark ? "#f1f5f9" : "#0f172a",
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+              }}
+            >
+              See the Product Tour
+            </a>
+          </div>
+          <div
+            className="flex items-center justify-center gap-2 text-sm"
+            style={{ color: isDark ? "#64748b" : "#94a3b8" }}
+          >
+            <CheckCircle className="w-4 h-4 text-green-500" />
+            No credit card required · Google SSO in under a minute
+          </div>
         </section>
 
         {/* STATS */}
@@ -567,6 +659,65 @@ export default function Landing() {
                 <div className="text-sm" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
                   {s.label}
                 </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* PRODUCT TOUR — real screenshots, one per key capability */}
+        <section id="dashboard" className="px-6 md:px-12 py-20 max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2
+              className="text-3xl md:text-4xl font-bold mb-4"
+              style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
+            >
+              See arbormind in action
+            </h2>
+            <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+              Real screens, real workflows — not mockups. Here's what your team works in every day.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-24">
+            {SPOTLIGHTS.map((item, i) => (
+              <FeatureSpotlight key={item.title} item={item} reversed={i % 2 === 1} isDark={isDark} />
+            ))}
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section id="how-it-works" className="px-6 md:px-12 py-20 max-w-5xl mx-auto">
+          <div className="text-center mb-14">
+            <h2
+              className="text-3xl md:text-4xl font-bold mb-4"
+              style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
+            >
+              From first touch to signed contract
+            </h2>
+            <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+              One system for the whole revenue cycle — no exports, no re-keying data between tools.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {HOW_IT_WORKS.map((step) => (
+              <div key={step.step} className="relative">
+                <div
+                  className="text-5xl font-extrabold mb-4"
+                  style={{
+                    backgroundImage: "linear-gradient(135deg, rgba(99,102,241,0.4), rgba(6,182,212,0.4))",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  {step.step}
+                </div>
+                <h3 className="font-bold text-lg mb-3" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
+                  {step.title}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: isDark ? "#94a3b8" : "#475569" }}>
+                  {step.description}
+                </p>
               </div>
             ))}
           </div>
@@ -618,40 +769,24 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* DASHBOARD CAROUSEL */}
-        <section id="dashboard" className="px-6 md:px-12 py-20 max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2
-              className="text-3xl md:text-4xl font-bold mb-4"
-              style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
-            >
-              See arbormind in action
-            </h2>
-            <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
-              Real-time analytics, AI-powered insights, and seamless collaboration — all in one intuitive platform.
-            </p>
-          </div>
-          <DashboardCarousel isDark={isDark} />
-        </section>
-
-        {/* TESTIMONIALS */}
+        {/* WHY TEAMS SWITCH */}
         <section id="testimonials" className="px-6 md:px-12 py-20 max-w-5xl mx-auto">
           <div className="text-center mb-14">
             <h2
               className="text-3xl md:text-4xl font-bold mb-4"
               style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
             >
-              Trusted by Sales Leaders
+              Why teams switch to arbormind
             </h2>
             <p className="text-base max-w-xl mx-auto" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
-              See how top sales teams use arbormind.in to close bigger deals, faster.
+              Fewer tools, less admin overhead, and a pipeline your whole team actually trusts.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t) => (
+            {DIFFERENTIATORS.map((d) => (
               <div
-                key={t.name}
+                key={d.title}
                 className="p-6 rounded-2xl flex flex-col"
                 style={{
                   background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.8)",
@@ -659,31 +794,36 @@ export default function Landing() {
                   backdropFilter: "blur(12px)",
                 }}
               >
-                <div className="flex gap-1 mb-4">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
+                <div
+                  className="w-11 h-9 rounded-xl flex items-center justify-center mb-4"
+                  style={{ background: "linear-gradient(135deg, rgba(99,102,241,0.2), rgba(6,182,212,0.2))" }}
+                >
+                  <CheckCircle className="w-5 h-5" style={{ color: "#818cf8" }} />
                 </div>
-                <p className="text-sm mb-5 flex-1 leading-relaxed" style={{ color: isDark ? "#cbd5e1" : "#1e293b" }}>
-                  "{t.quote}"
+                <h3 className="font-semibold text-base mb-2" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
+                  {d.title}
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
+                  {d.description}
                 </p>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
-                    style={{ background: "linear-gradient(135deg, #6366f1, #06b6d4)" }}
-                  >
-                    {t.avatar}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm" style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}>
-                      {t.name}
-                    </div>
-                    <div className="text-xs" style={{ color: isDark ? "#64748b" : "#94a3b8" }}>
-                      {t.role}
-                    </div>
-                  </div>
-                </div>
               </div>
+            ))}
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section id="faq" className="px-6 md:px-12 py-20 max-w-3xl mx-auto">
+          <div className="text-center mb-12">
+            <h2
+              className="text-3xl md:text-4xl font-bold mb-4"
+              style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
+            >
+              Frequently asked questions
+            </h2>
+          </div>
+          <div className="flex flex-col gap-3">
+            {FAQS.map((f) => (
+              <FaqItem key={f.q} q={f.q} a={f.a} isDark={isDark} />
             ))}
           </div>
         </section>
@@ -704,11 +844,6 @@ export default function Landing() {
               }}
             />
             <div className="relative">
-              <div className="flex items-center justify-center gap-1 mb-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
               <h2
                 className="text-3xl md:text-4xl font-bold mb-4"
                 style={{ color: isDark ? "#f1f5f9" : "#0f172a" }}
@@ -854,9 +989,11 @@ export default function Landing() {
           }}
         >
           <span>© {new Date().getFullYear()} arbormind.in, Inc. All rights reserved.</span>
-          {/* Compliance badges */}
+          {/* Trust signals — kept general on purpose; see PR/commit notes on why the
+              previous specific certification badges (SOC 2 / ISO 27001 / etc.) were
+              replaced: don't display a compliance badge unless it's been audited. */}
           <div className="flex items-center gap-2 flex-wrap">
-            {["SOC 2 Type II", "ISO 27001", "GDPR", "CCPA"].map((badge) => (
+            {["Google SSO", "Encrypted in transit & at rest", "Role-based access control"].map((badge) => (
               <span
                 key={badge}
                 className="px-2.5 py-1 rounded-full text-xs font-medium"

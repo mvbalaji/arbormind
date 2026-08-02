@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { socialMessagesTable, usersTable } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { getDefaultOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 
@@ -14,7 +15,7 @@ router.get("/social-messages", async (req, res) => {
       return;
     }
 
-    const conditions = [];
+    const conditions = [eq(socialMessagesTable.orgId, req.orgId!)];
     if (leadId) conditions.push(eq(socialMessagesTable.leadId, parseInt(leadId)));
     if (contactId) conditions.push(eq(socialMessagesTable.contactId, parseInt(contactId)));
     if (platform) conditions.push(eq(socialMessagesTable.platform, platform));
@@ -45,7 +46,7 @@ router.get("/social-messages", async (req, res) => {
       })
       .from(socialMessagesTable)
       .leftJoin(usersTable, eq(socialMessagesTable.sentByUserId, usersTable.id))
-      .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      .where(and(...conditions))
       .orderBy(desc(socialMessagesTable.createdAt))
       .limit(parseInt(limit));
 
@@ -56,6 +57,7 @@ router.get("/social-messages", async (req, res) => {
         .set({ isRead: true, readAt: new Date() })
         .where(
           and(
+            eq(socialMessagesTable.orgId, req.orgId!),
             eq(socialMessagesTable.leadId, parseInt(leadId)),
             eq(socialMessagesTable.direction, "inbound"),
             eq(socialMessagesTable.isRead, false),
@@ -94,6 +96,7 @@ router.post("/social-messages", async (req, res) => {
     const [row] = await db
       .insert(socialMessagesTable)
       .values({
+        orgId: req.orgId!,
         leadId: leadId ? Number(leadId) : null,
         contactId: contactId ? Number(contactId) : null,
         sentByUserId: direction === "outbound" && user?.id ? user.id : null,
@@ -134,8 +137,9 @@ router.patch("/social-messages/:id", async (req, res) => {
     const [row] = await db
       .update(socialMessagesTable)
       .set(updates)
-      .where(eq(socialMessagesTable.id, parseInt(id)))
+      .where(and(eq(socialMessagesTable.id, parseInt(id)), eq(socialMessagesTable.orgId, req.orgId!)))
       .returning();
+    if (!row) { res.status(404).json({ error: "Message not found" }); return; }
     res.json(row);
   } catch (err) {
     console.error("[social-messages] PATCH error:", err);
@@ -161,6 +165,7 @@ router.post("/social-messages/inbound-webhook", async (req, res) => {
     const [row] = await db
       .insert(socialMessagesTable)
       .values({
+        orgId: await getDefaultOrgId(),
         leadId: leadId ? Number(leadId) : null,
         contactId: contactId ? Number(contactId) : null,
         platform: String(platform),
@@ -196,7 +201,7 @@ router.get("/social-messages/stats", async (req, res) => {
         count: sql<number>`count(*)::int`,
       })
       .from(socialMessagesTable)
-      .where(eq(socialMessagesTable.leadId, parseInt(leadId)))
+      .where(and(eq(socialMessagesTable.orgId, req.orgId!), eq(socialMessagesTable.leadId, parseInt(leadId))))
       .groupBy(socialMessagesTable.platform, socialMessagesTable.direction);
 
     // Reshape into { linkedin: { inbound: 2, outbound: 3 }, ... }

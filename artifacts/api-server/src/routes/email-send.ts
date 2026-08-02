@@ -38,7 +38,7 @@ const MAX_ATTACH_TOTAL_BYTES = 18 * 1024 * 1024;
 const MAX_ATTACHMENTS = 10;
 const BASE64_RE = /^[A-Za-z0-9+/]+=*$/;
 
-interface SessionUser { id: number; email?: string; name?: string; orgId?: number }
+interface SessionUser { id: number; email?: string; name?: string }
 
 function getSessionUser(req: Request): SessionUser | null {
   const sess = req.session as unknown as { user?: SessionUser };
@@ -141,17 +141,20 @@ router.post("/email/send", async (req, res) => {
 
   // Insert activity as "pending" first (so tracking can link to it), then only mark
   // "completed" after SMTP succeeds. On failure, mark "failed" so audit history is honest.
-  // Use raw SQL so org_id (added via migration, not in Drizzle schema) is always included.
-  const orgId = user.orgId ?? 1;
   let activity: typeof activitiesTable.$inferSelect;
   try {
-    const actResult = await db.execute(sql`
-      INSERT INTO activities (type, subject, status, description, lead_id, contact_id, opportunity_id, account_id, assigned_to, org_id)
-      VALUES ('email', ${subject}, 'pending', ${`To: ${to}${cc ? `\nCc: ${cc}` : ""}\n\n${body}`},
-              ${leadId ?? null}, ${contactId ?? null}, ${opportunityId ?? null}, ${accountId ?? null}, null, ${orgId})
-      RETURNING *
-    `);
-    activity = actResult.rows[0] as typeof activitiesTable.$inferSelect;
+    [activity] = await db.insert(activitiesTable).values({
+      orgId: req.orgId!,
+      type: "email",
+      subject,
+      status: "pending",
+      description: `To: ${to}${cc ? `\nCc: ${cc}` : ""}\n\n${body}`,
+      leadId: leadId ?? null,
+      contactId: contactId ?? null,
+      opportunityId: opportunityId ?? null,
+      accountId: accountId ?? null,
+      assignedTo: null,
+    }).returning();
   } catch (insertErr) {
     req.log.error(insertErr, "[email-send] activity insert failed");
     res.status(500).json({ error: "Failed to log email activity" });
@@ -160,6 +163,7 @@ router.post("/email/send", async (req, res) => {
 
   const token = crypto.randomBytes(16).toString("hex");
   const [tracking] = await db.insert(emailTrackingTable).values({
+    orgId: req.orgId!,
     activityId: activity.id,
     token,
     toEmail: to,
@@ -176,6 +180,7 @@ router.post("/email/send", async (req, res) => {
     for (const a of decodedAttachments) {
       const aToken = crypto.randomBytes(16).toString("hex");
       await db.insert(emailAttachmentsTable).values({
+        orgId: req.orgId!,
         trackingId: tracking.id,
         token: aToken,
         filename: a.filename,
@@ -271,6 +276,7 @@ router.post("/email/send", async (req, res) => {
             .where(and(
               eq(activitiesTable.type, "task"),
               eq(activitiesTable.status, "pending"),
+              eq(activitiesTable.orgId, req.orgId!),
               recordCond,
               ilike(activitiesTable.description, `%Subject: %${coreSubject}%`),
             ));
@@ -293,13 +299,19 @@ router.post("/email/send", async (req, res) => {
         body,
         counterpartEmail: to,
       });
-      const taskResult = await db.execute(sql`
-        INSERT INTO activities (type, subject, description, status, completed_at, lead_id, contact_id, opportunity_id, account_id, assigned_to, org_id)
-        VALUES ('task', ${aiTitle}, ${`Email sent to ${to}${cc ? ` (cc: ${cc})` : ""}\n\nSubject: ${subject}`},
-                'completed', now(), ${leadId ?? null}, ${contactId ?? null}, ${opportunityId ?? null}, ${accountId ?? null}, null, ${orgId})
-        RETURNING id
-      `);
-      const task = taskResult.rows[0] as { id: number } | undefined;
+      const [task] = await db.insert(activitiesTable).values({
+        orgId: req.orgId!,
+        type: "task",
+        subject: aiTitle,
+        description: `Email sent to ${to}${cc ? ` (cc: ${cc})` : ""}\n\nSubject: ${subject}`,
+        status: "completed",
+        completedAt: new Date(),
+        leadId: leadId ?? null,
+        contactId: contactId ?? null,
+        opportunityId: opportunityId ?? null,
+        accountId: accountId ?? null,
+        assignedTo: null,
+      }).returning({ id: activitiesTable.id });
       taskId = task?.id ?? null;
     } catch (taskErr) {
       // Task creation is non-critical — log and continue so the user still
@@ -441,7 +453,7 @@ router.post("/email/mark-opened/:activityId", async (req: Request, res: Response
         lastOpenedAt: new Date(),
         lastUserAgent: "Manual/Admin",
       })
-      .where(eq(emailTrackingTable.activityId, activityId))
+      .where(and(eq(emailTrackingTable.activityId, activityId), eq(emailTrackingTable.orgId, req.orgId!)))
       .returning({ openCount: emailTrackingTable.openCount });
 
     if (!row) { res.status(404).json({ error: "No tracking record for this activity" }); return; }

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { activitiesTable, approvalRequestsTable, approvalAuditEventsTable, usersTable } from "@workspace/db";
-import { eq, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import nodemailer from "nodemailer";
 import { getEmailSettingsRow, resolveSmtpConfig } from "../lib/smtp-config";
 
@@ -39,6 +39,7 @@ router.get("/admin/quote-workflow-rules", async (req, res) => {
       FROM quote_workflow_rules qwr
       LEFT JOIN users u1 ON u1.id = qwr.assign_to_user_id
       LEFT JOIN users u2 ON u2.id = qwr.approver_user_id
+      WHERE qwr.org_id = ${req.orgId!}
       ORDER BY qwr.stage, qwr.rule_type
     `)).rows as any[];
     res.json({ data: rows.map(formatRule) });
@@ -56,14 +57,14 @@ router.post("/admin/quote-workflow-rules", async (req, res) => {
         (stage, rule_type, activity_type, activity_title, activity_due_days,
          assign_to_role, assign_to_user_id,
          approval_required, approval_email_subject, approval_email_body,
-         approver_role, approver_user_id, advance_to_stage, enabled)
+         approver_role, approver_user_id, advance_to_stage, enabled, org_id)
       VALUES (
         ${b.stage}, ${b.ruleType},
         ${b.activityType ?? null}, ${b.activityTitle ?? null}, ${b.activityDueDays ?? 1},
         ${b.assignToRole ?? null}, ${b.assignToUserId ?? null},
         ${b.approvalRequired ?? false}, ${b.approvalEmailSubject ?? null}, ${b.approvalEmailBody ?? null},
         ${b.approverRole ?? null}, ${b.approverUserId ?? null}, ${b.advanceToStage ?? null},
-        ${b.enabled ?? true}
+        ${b.enabled ?? true}, ${req.orgId!}
       )
       RETURNING *
     `)).rows as any[];
@@ -91,7 +92,7 @@ router.put("/admin/quote-workflow-rules/:id", async (req, res) => {
         advance_to_stage = ${b.advanceToStage ?? null},
         enabled = ${b.enabled ?? true},
         updated_at = NOW()
-      WHERE id = ${id} RETURNING *
+      WHERE id = ${id} AND org_id = ${req.orgId!} RETURNING *
     `)).rows as any[];
     if (!row) { res.status(404).json({ error: "Rule not found" }); return; }
     res.json(formatRule(row));
@@ -104,7 +105,7 @@ router.put("/admin/quote-workflow-rules/:id", async (req, res) => {
 router.delete("/admin/quote-workflow-rules/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.execute(sql`DELETE FROM quote_workflow_rules WHERE id = ${id}`);
+    await db.execute(sql`DELETE FROM quote_workflow_rules WHERE id = ${id} AND org_id = ${req.orgId!}`);
     res.json({ success: true });
   } catch (err: any) {
     console.error(err);
@@ -117,7 +118,8 @@ router.delete("/admin/quote-workflow-rules/:id", async (req, res) => {
 router.get("/admin/quote-workflow-rules/users", async (req, res) => {
   try {
     const users = await db.select({ id: usersTable.id, name: usersTable.name, email: usersTable.email, role: usersTable.role })
-      .from(usersTable);
+      .from(usersTable)
+      .where(eq(usersTable.orgId, req.orgId!));
     res.json({ data: users });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch users" });
@@ -127,6 +129,7 @@ router.get("/admin/quote-workflow-rules/users", async (req, res) => {
 // ── Rule execution: called from quotes.ts on stage change ─────────────────────
 
 export async function executeQuoteWorkflowRules(
+  orgId: number,
   quoteId: number,
   newStage: string,
   quote: { name: string; quoteNumber: string; opportunityId?: number | null; contactId?: number | null; accountId?: number | null },
@@ -136,7 +139,7 @@ export async function executeQuoteWorkflowRules(
   try {
     const rules = (await db.execute(sql`
       SELECT * FROM quote_workflow_rules
-      WHERE stage = ${newStage} AND enabled = true
+      WHERE stage = ${newStage} AND enabled = true AND org_id = ${orgId}
       ORDER BY rule_type, id
     `)).rows as any[];
 
@@ -144,9 +147,9 @@ export async function executeQuoteWorkflowRules(
 
     for (const rule of rules) {
       if (rule.rule_type === "activity") {
-        await executeActivityRule(rule, quoteId, quote, actor);
+        await executeActivityRule(orgId, rule, quoteId, quote, actor);
       } else if (rule.rule_type === "approval") {
-        await executeApprovalRule(rule, quoteId, quote, actor, log);
+        await executeApprovalRule(orgId, rule, quoteId, quote, actor, log);
       }
     }
   } catch (err) {
@@ -154,24 +157,26 @@ export async function executeQuoteWorkflowRules(
   }
 }
 
-async function resolveAssignee(role: string | null, userId: number | null): Promise<number | null> {
+async function resolveAssignee(orgId: number, role: string | null, userId: number | null): Promise<number | null> {
   if (userId) return userId;
   if (!role) return null;
-  const [user] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.role, role));
+  const [user] = await db.select({ id: usersTable.id }).from(usersTable).where(and(eq(usersTable.role, role), eq(usersTable.orgId, orgId)));
   return user?.id ?? null;
 }
 
 async function executeActivityRule(
+  orgId: number,
   rule: any,
   quoteId: number,
   quote: { name: string; quoteNumber: string; opportunityId?: number | null; contactId?: number | null; accountId?: number | null },
   actor: { id: number | null; name: string | null },
 ) {
-  const assignedTo = await resolveAssignee(rule.assign_to_role, rule.assign_to_user_id);
+  const assignedTo = await resolveAssignee(orgId, rule.assign_to_role, rule.assign_to_user_id);
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + (rule.activity_due_days ?? 1));
 
   await db.insert(activitiesTable).values({
+    orgId,
     type: rule.activity_type ?? "task",
     subject: rule.activity_title ?? `[Auto] ${quote.quoteNumber} — stage: ${rule.stage}`,
     description: `Auto-created by quote workflow rule when ${quote.quoteNumber} entered "${rule.stage}" stage.`,
@@ -185,6 +190,7 @@ async function executeActivityRule(
 }
 
 async function executeApprovalRule(
+  orgId: number,
   rule: any,
   quoteId: number,
   quote: { name: string; quoteNumber: string; opportunityId?: number | null; contactId?: number | null; accountId?: number | null },
@@ -193,10 +199,11 @@ async function executeApprovalRule(
 ) {
   if (!rule.approval_required) return;
 
-  const approverUserId = await resolveAssignee(rule.approver_role, rule.approver_user_id);
+  const approverUserId = await resolveAssignee(orgId, rule.approver_role, rule.approver_user_id);
 
   // Create approval request record
   const [approvalReq] = await db.insert(approvalRequestsTable).values({
+    orgId,
     entity: "quote",
     entityId: quoteId,
     status: "open",
@@ -207,6 +214,7 @@ async function executeApprovalRule(
   }).returning();
 
   await db.insert(approvalAuditEventsTable).values({
+    orgId,
     requestId: approvalReq.id,
     event: "created",
     actorUserId: actor.id ?? undefined,
@@ -217,7 +225,7 @@ async function executeApprovalRule(
   // Send approval email if configured
   if (rule.approval_email_subject && approverUserId) {
     const [approver] = await db.select({ email: usersTable.email, name: usersTable.name })
-      .from(usersTable).where(eq(usersTable.id, approverUserId));
+      .from(usersTable).where(and(eq(usersTable.id, approverUserId), eq(usersTable.orgId, orgId)));
 
     if (approver?.email) {
       await sendApprovalEmail({
@@ -309,18 +317,20 @@ export async function processEmailApprovalDecision(
     `)).rows as any[];
 
     if (!req) return;
+    const orgId = req.org_id as number;
 
     const [actor] = await db.select({ id: usersTable.id, name: usersTable.name })
-      .from(usersTable).where(eq(usersTable.email, actorEmail));
+      .from(usersTable).where(and(eq(usersTable.email, actorEmail), eq(usersTable.orgId, orgId)));
 
     await db.execute(sql`
       UPDATE approval_requests
       SET status = ${decision}, decided_by = ${actor?.id ?? null}, decided_at = NOW(),
           comment = ${reason}, updated_at = NOW()
-      WHERE id = ${approvalId}
+      WHERE id = ${approvalId} AND org_id = ${orgId}
     `);
 
     await db.insert(approvalAuditEventsTable).values({
+      orgId,
       requestId: approvalId,
       event: decision,
       actorUserId: actor?.id ?? undefined,
@@ -330,7 +340,7 @@ export async function processEmailApprovalDecision(
 
     // Advance quote stage on approval
     if (decision === "approved" && req.entity === "quote") {
-      const [currentQuote] = (await db.execute(sql`SELECT status FROM quotes WHERE id = ${req.entity_id}`)).rows as any[];
+      const [currentQuote] = (await db.execute(sql`SELECT status FROM quotes WHERE id = ${req.entity_id} AND org_id = ${orgId}`)).rows as any[];
       // Use explicit advance_to_stage from workflow rule, or derive next stage from progression map
       const QUOTE_APPROVAL_NEXT: Record<string, string> = {
         draft: "in_review", needs_review: "in_review", in_review: "approved",
@@ -339,9 +349,9 @@ export async function processEmailApprovalDecision(
       const nextStage = req.advance_to_stage ?? (currentQuote ? QUOTE_APPROVAL_NEXT[currentQuote.status as string] : null);
       if (nextStage && currentQuote) {
         const now = new Date();
-        await db.execute(sql`UPDATE quotes SET status = ${nextStage}, updated_at = ${now} WHERE id = ${req.entity_id}`);
-        await db.execute(sql`UPDATE quote_stage_history SET left_at = ${now} WHERE quote_id = ${req.entity_id} AND stage = ${currentQuote.status} AND left_at IS NULL`);
-        await db.execute(sql`INSERT INTO quote_stage_history (quote_id, stage, entered_at) VALUES (${req.entity_id}, ${nextStage}, ${now})`);
+        await db.execute(sql`UPDATE quotes SET status = ${nextStage}, updated_at = ${now} WHERE id = ${req.entity_id} AND org_id = ${orgId}`);
+        await db.execute(sql`UPDATE quote_stage_history SET left_at = ${now} WHERE quote_id = ${req.entity_id} AND stage = ${currentQuote.status} AND left_at IS NULL AND org_id = ${orgId}`);
+        await db.execute(sql`INSERT INTO quote_stage_history (quote_id, stage, entered_at, org_id) VALUES (${req.entity_id}, ${nextStage}, ${now}, ${orgId})`);
       }
     }
   } catch (err) {

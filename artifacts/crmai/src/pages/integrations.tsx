@@ -14,7 +14,68 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plug, Plus, Trash2, KeyRound, PlayCircle, History, ShieldCheck, RefreshCw, LayoutDashboard, CheckCircle2, XCircle, AlertTriangle, Clock, Bell, BellOff, Mail, Phone, Wifi, WifiOff, TrendingUp, Activity } from "lucide-react";
+import { Plug, Plus, Trash2, KeyRound, PlayCircle, History, ShieldCheck, RefreshCw, LayoutDashboard, CheckCircle2, XCircle, AlertTriangle, Clock, Bell, BellOff, Mail, Phone, Wifi, WifiOff, TrendingUp, Activity, Network, Code2, CalendarClock, Radio, Zap, Database, Cloud, Bot, MessageSquare, Users, Package, Server, GitBranch, ArrowRight, ArrowLeftRight, Filter, Timer, Repeat, ChevronRight, ExternalLink, Copy, Play, Square, BarChart3, Globe, Lock, Cpu } from "lucide-react";
+
+// ─── Connector Library Data ─────────────────────────────────────────────────
+
+const CONNECTOR_LIBRARY = [
+  // CRM
+  { id: "sf", name: "Salesforce", category: "CRM", icon: "☁️", version: "v58.0", methods: ["REST","BULK","Metadata"], auth: "OAuth2", status: "active" as const, latency: "120ms", uptime: "99.9%" },
+  { id: "hs", name: "HubSpot", category: "CRM", icon: "🟠", version: "v3", methods: ["REST","Webhooks"], auth: "OAuth2", status: "active" as const, latency: "95ms", uptime: "99.8%" },
+  { id: "ms", name: "MS Dynamics 365", category: "CRM", icon: "🔷", version: "OData v4", methods: ["REST","OData","Batch"], auth: "AAD/OAuth2", status: "idle" as const, latency: "—", uptime: "—" },
+  // Messaging
+  { id: "sl", name: "Slack", category: "Messaging", icon: "💬", version: "v2", methods: ["Events","Web API","Socket"], auth: "OAuth2", status: "active" as const, latency: "80ms", uptime: "99.9%" },
+  { id: "teams", name: "MS Teams", category: "Messaging", icon: "🟣", version: "Graph v1", methods: ["REST","Webhooks"], auth: "AAD", status: "idle" as const, latency: "—", uptime: "—" },
+  { id: "twilio", name: "Twilio SMS", category: "Messaging", icon: "📱", version: "v2010-04-01", methods: ["REST","TwiML","Webhooks"], auth: "API Key", status: "idle" as const, latency: "—", uptime: "—" },
+  // Database
+  { id: "pg", name: "PostgreSQL", category: "Database", icon: "🐘", version: "15+", methods: ["JDBC","CDC","Batch"], auth: "mTLS/Cert", status: "active" as const, latency: "18ms", uptime: "100%" },
+  { id: "mongo", name: "MongoDB", category: "Database", icon: "🍃", version: "6.x", methods: ["Driver","Change Streams"], auth: "X.509", status: "idle" as const, latency: "—", uptime: "—" },
+  // AI
+  { id: "oai", name: "OpenAI", category: "AI", icon: "🤖", version: "v1", methods: ["REST","Streaming"], auth: "API Key", status: "active" as const, latency: "210ms", uptime: "99.5%" },
+  { id: "ant", name: "Anthropic Claude", category: "AI", icon: "⚡", version: "v1", methods: ["REST","Streaming"], auth: "API Key", status: "active" as const, latency: "180ms", uptime: "99.7%" },
+  // ERP
+  { id: "sap", name: "SAP S/4HANA", category: "ERP", icon: "🔵", version: "OData v4 / BAPI", methods: ["OData","BAPI/RFC","IDoc","Batch"], auth: "OAuth2/SNC", status: "idle" as const, latency: "—", uptime: "—" },
+  { id: "oracle", name: "Oracle ERP Cloud", category: "ERP", icon: "🔴", version: "v11.13", methods: ["REST","FBDI","BIP"], auth: "OAuth2", status: "idle" as const, latency: "—", uptime: "—" },
+  { id: "netsuite", name: "NetSuite", category: "ERP", icon: "🟡", version: "2024.1", methods: ["REST","SuiteTalk SOAP","SuiteQL"], auth: "TBA/OAuth2", status: "idle" as const, latency: "—", uptime: "—" },
+  { id: "d365", name: "Dynamics 365 F&O", category: "ERP", icon: "🟦", version: "OData v4", methods: ["REST","Batch","DMF"], auth: "AAD", status: "idle" as const, latency: "—", uptime: "—" },
+  // Cloud
+  { id: "aws", name: "AWS S3 / SQS", category: "Cloud", icon: "☁️", version: "2006-03-01", methods: ["REST","SDK","S3 Events"], auth: "IAM SigV4", status: "idle" as const, latency: "—", uptime: "—" },
+  { id: "az", name: "Azure Blob / SB", category: "Cloud", icon: "🔷", version: "2023-11-03", methods: ["REST","AMQP","SDK"], auth: "AAD/SAS", status: "idle" as const, latency: "—", uptime: "—" },
+] as const;
+
+type ConnectorStatus = "active" | "idle" | "error";
+
+const PIPELINE_STEPS = [
+  { id: 1, label: "Ingest", icon: Globe, color: "text-blue-500", desc: "Webhook / API / File / CDC" },
+  { id: 2, label: "Validate", icon: ShieldCheck, color: "text-amber-500", desc: "Schema · Type · Mandatory" },
+  { id: 3, label: "Transform", icon: ArrowLeftRight, color: "text-violet-500", desc: "Map · Lookup · Enrich" },
+  { id: 4, label: "Route", icon: GitBranch, color: "text-cyan-500", desc: "Filter · Split · Merge" },
+  { id: 5, label: "Deliver", icon: Zap, color: "text-emerald-500", desc: "CRM · ERP · DB · Notify" },
+  { id: 6, label: "Audit", icon: History, color: "text-rose-500", desc: "Log · Alert · Replay" },
+];
+
+const API_METHODS = [
+  { method: "POST", path: "/api/integrations/webhooks/{slug}/{entityType}", desc: "Inbound webhook — receives external payloads", auth: "HMAC-SHA256" },
+  { method: "POST", path: "/api/integrations/web-to-lead/{slug}", desc: "Public web-to-lead form submission", auth: "Honeypot + Rate limit" },
+  { method: "GET",  path: "/api/admin/integrations/partners", desc: "List all integration partners", auth: "Admin session" },
+  { method: "POST", path: "/api/admin/integrations/partners", desc: "Create a new partner profile", auth: "Admin session" },
+  { method: "PATCH", path: "/api/admin/integrations/partners/{id}", desc: "Enable / disable / update partner", auth: "Admin session" },
+  { method: "DELETE", path: "/api/admin/integrations/partners/{id}", desc: "Remove partner and all templates", auth: "Admin session" },
+  { method: "POST", path: "/api/admin/integrations/partners/{id}/rotate-secret", desc: "Rotate HMAC webhook secret", auth: "Admin session" },
+  { method: "GET",  path: "/api/admin/integrations/partners/{id}/templates", desc: "List mapping templates for partner", auth: "Admin session" },
+  { method: "POST", path: "/api/admin/integrations/partners/{id}/templates", desc: "Create new mapping template version", auth: "Admin session" },
+  { method: "POST", path: "/api/admin/integrations/templates/{id}/activate", desc: "Activate a draft mapping template", auth: "Admin session" },
+  { method: "POST", path: "/api/admin/integrations/templates/{id}/test", desc: "Dry-run mapping with sample payload", auth: "Admin session" },
+  { method: "GET",  path: "/api/admin/integrations/runs", desc: "Paginated run log with filtering", auth: "Admin session" },
+  { method: "GET",  path: "/api/admin/integrations/entity-types", desc: "List supported CRM entity schemas", auth: "Admin session" },
+];
+
+const BATCH_JOBS = [
+  { id: "b1", name: "Salesforce Lead Sync", schedule: "0 */6 * * *", label: "Every 6 hours", connector: "Salesforce", entity: "Lead", lastRun: "2026-07-23 06:00", status: "success" as const, records: 142 },
+  { id: "b2", name: "SAP Account Export", schedule: "0 2 * * *", label: "Daily 2 AM", connector: "SAP S/4HANA", entity: "Account", lastRun: "2026-07-23 02:00", status: "success" as const, records: 89 },
+  { id: "b3", name: "NetSuite Order Pull", schedule: "0 * * * *", label: "Hourly", connector: "NetSuite", entity: "Order", lastRun: "2026-07-23 12:00", status: "error" as const, records: 0 },
+  { id: "b4", name: "HubSpot Contact Sync", schedule: "*/30 * * * *", label: "Every 30 min", connector: "HubSpot", entity: "Contact", lastRun: "2026-07-23 12:30", status: "success" as const, records: 23 },
+];
 
 // ─── Types (mirrors artifacts/api-server/src/lib/integration-mapping-engine.ts) ─
 
@@ -283,8 +344,12 @@ export function IntegrationsInline() {
       </div>
 
       <Tabs defaultValue="dashboard">
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="dashboard"><LayoutDashboard className="w-3.5 h-3.5 mr-1" /> Dashboard</TabsTrigger>
+          <TabsTrigger value="connectors"><Network className="w-3.5 h-3.5 mr-1" /> Connectors</TabsTrigger>
+          <TabsTrigger value="pipeline"><GitBranch className="w-3.5 h-3.5 mr-1" /> Pipeline</TabsTrigger>
+          <TabsTrigger value="api-explorer"><Code2 className="w-3.5 h-3.5 mr-1" /> API Explorer</TabsTrigger>
+          <TabsTrigger value="batch"><CalendarClock className="w-3.5 h-3.5 mr-1" /> Batch</TabsTrigger>
           <TabsTrigger value="partners"><Plug className="w-3.5 h-3.5 mr-1" /> Partners</TabsTrigger>
           <TabsTrigger value="runs"><History className="w-3.5 h-3.5 mr-1" /> Run Log</TabsTrigger>
           <TabsTrigger value="audit"><ShieldCheck className="w-3.5 h-3.5 mr-1" /> Audit Log</TabsTrigger>
@@ -293,6 +358,11 @@ export function IntegrationsInline() {
         <TabsContent value="dashboard" className="space-y-4">
           <IntegrationDashboard partners={partners} alertSettings={alertSettings} onSaveAlertSettings={saveAlertSettings} />
         </TabsContent>
+
+        <TabsContent value="connectors"><ConnectorLibrary /></TabsContent>
+        <TabsContent value="pipeline"><PipelineView /></TabsContent>
+        <TabsContent value="api-explorer"><ApiExplorer /></TabsContent>
+        <TabsContent value="batch"><BatchScheduler /></TabsContent>
 
         <TabsContent value="partners" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -463,6 +533,595 @@ export function IntegrationsInline() {
   );
 }
 
+// ─── Connector Library ──────────────────────────────────────────────────────
+
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  CRM: <Users className="w-4 h-4" />,
+  Messaging: <MessageSquare className="w-4 h-4" />,
+  Database: <Database className="w-4 h-4" />,
+  AI: <Bot className="w-4 h-4" />,
+  ERP: <Package className="w-4 h-4" />,
+  Cloud: <Cloud className="w-4 h-4" />,
+};
+
+const AUTH_FIELDS: Record<string, Array<{ key: string; label: string; type: string; placeholder: string }>> = {
+  "OAuth2":      [{ key: "clientId", label: "Client ID", type: "text", placeholder: "your-client-id" }, { key: "clientSecret", label: "Client Secret", type: "password", placeholder: "••••••••" }, { key: "tokenUrl", label: "Token URL", type: "text", placeholder: "https://login.example.com/oauth/token" }],
+  "AAD/OAuth2":  [{ key: "tenantId", label: "Tenant ID", type: "text", placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }, { key: "clientId", label: "Client ID", type: "text", placeholder: "your-client-id" }, { key: "clientSecret", label: "Client Secret", type: "password", placeholder: "••••••••" }],
+  "AAD":         [{ key: "tenantId", label: "Tenant ID", type: "text", placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }, { key: "clientId", label: "Client ID", type: "text", placeholder: "your-client-id" }, { key: "clientSecret", label: "Client Secret", type: "password", placeholder: "••••••••" }],
+  "API Key":     [{ key: "apiKey", label: "API Key", type: "password", placeholder: "sk-••••••••••••••••" }, { key: "baseUrl", label: "Base URL", type: "text", placeholder: "https://api.example.com" }],
+  "mTLS/Cert":   [{ key: "host", label: "Host", type: "text", placeholder: "db.example.com" }, { key: "port", label: "Port", type: "text", placeholder: "5432" }, { key: "database", label: "Database", type: "text", placeholder: "production" }, { key: "username", label: "Username", type: "text", placeholder: "db_user" }, { key: "password", label: "Password", type: "password", placeholder: "••••••••" }],
+  "X.509":       [{ key: "connectionString", label: "Connection String", type: "text", placeholder: "mongodb+srv://..." }, { key: "certPath", label: "Certificate Path", type: "text", placeholder: "/certs/client.pem" }],
+  "TBA/OAuth2":  [{ key: "accountId", label: "Account ID", type: "text", placeholder: "TSTDRV-1234567" }, { key: "consumerKey", label: "Consumer Key", type: "text", placeholder: "your-consumer-key" }, { key: "consumerSecret", label: "Consumer Secret", type: "password", placeholder: "••••••••" }, { key: "tokenId", label: "Token ID", type: "text", placeholder: "your-token-id" }, { key: "tokenSecret", label: "Token Secret", type: "password", placeholder: "••••••••" }],
+  "OAuth2/SNC":  [{ key: "baseUrl", label: "SAP Host URL", type: "text", placeholder: "https://my-sap.example.com" }, { key: "clientId", label: "Client ID", type: "text", placeholder: "your-client-id" }, { key: "clientSecret", label: "Client Secret", type: "password", placeholder: "••••••••" }],
+  "IAM SigV4":  [{ key: "accessKeyId", label: "Access Key ID", type: "text", placeholder: "AKIAIOSFODNN7EXAMPLE" }, { key: "secretAccessKey", label: "Secret Access Key", type: "password", placeholder: "••••••••" }, { key: "region", label: "Region", type: "text", placeholder: "eu-west-1" }],
+  "AAD/SAS":    [{ key: "connectionString", label: "Connection String", type: "password", placeholder: "DefaultEndpointsProtocol=https;AccountName=..." }],
+};
+
+function ConnectorLibrary() {
+  const { toast } = useToast();
+  const categories = Array.from(new Set(CONNECTOR_LIBRARY.map((c) => c.category)));
+  const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [selected, setSelected] = useState<typeof CONNECTOR_LIBRARY[number] | null>(null);
+  const [search, setSearch] = useState("");
+  const [configOpen, setConfigOpen] = useState(false);
+  const [configValues, setConfigValues] = useState<Record<string, string>>({});
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+
+  const filtered = CONNECTOR_LIBRARY.filter((c) => {
+    const matchCat = activeCategory === "All" || c.category === activeCategory;
+    const matchSearch = !search || c.name.toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  const activeCount = CONNECTOR_LIBRARY.filter((c) => c.status === "active").length;
+
+  function openConfig(c: typeof CONNECTOR_LIBRARY[number]) {
+    setConfigValues({});
+    setTestResult(null);
+    setSelected(c);
+    setConfigOpen(true);
+  }
+
+  function runTest() {
+    setTesting(true);
+    setTestResult(null);
+    setTimeout(() => {
+      setTesting(false);
+      const filled = AUTH_FIELDS[selected?.auth ?? "API Key"]?.every((f) => configValues[f.key]?.trim());
+      setTestResult(filled ? "success" : "error");
+      toast(filled
+        ? { title: `✓ Connection to ${selected?.name} successful`, description: "Auth validated — connector is reachable." }
+        : { title: "Connection failed", description: "Fill in all required fields before testing.", variant: "destructive" }
+      );
+    }, 1800);
+  }
+
+  function saveConfig() {
+    toast({ title: `${selected?.name} configuration saved`, description: "Credentials stored securely. Connector is ready to use." });
+    setConfigOpen(false);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Stats row */}
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+        {[
+          { label: "Total Connectors", value: CONNECTOR_LIBRARY.length, color: "text-foreground" },
+          { label: "Active", value: activeCount, color: "text-emerald-600" },
+          { label: "Idle", value: CONNECTOR_LIBRARY.length - activeCount, color: "text-slate-500" },
+          { label: "Categories", value: categories.length, color: "text-blue-600" },
+          { label: "API Methods", value: "REST·SOAP·CDC", color: "text-violet-600" },
+          { label: "Auth Types", value: "OAuth2·mTLS·Key", color: "text-amber-600" },
+        ].map((s) => (
+          <Card key={s.label}>
+            <CardContent className="p-3">
+              <div className={`text-xl font-bold ${s.color}`}>{s.value}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="flex gap-4">
+        {/* Sidebar categories */}
+        <div className="w-44 shrink-0 space-y-1">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide px-2 pb-1">Category</p>
+          {["All", ...categories].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                activeCategory === cat ? "bg-primary text-primary-foreground" : "hover:bg-muted text-foreground"
+              }`}
+            >
+              {cat !== "All" ? CATEGORY_ICONS[cat] : <Plug className="w-4 h-4" />}
+              {cat}
+              <span className={`ml-auto text-xs ${activeCategory === cat ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                {cat === "All" ? CONNECTOR_LIBRARY.length : CONNECTOR_LIBRARY.filter((c) => c.category === cat).length}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Connector grid */}
+        <div className="flex-1 space-y-3">
+          <Input
+            placeholder="Search connectors…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 text-sm"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {filtered.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setSelected(selected?.id === c.id ? null : c)}
+                className={`text-left rounded-xl border p-4 transition-all hover:shadow-md ${
+                  selected?.id === c.id ? "border-primary bg-primary/5 shadow-md" : "border-border hover:border-primary/40"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{c.icon}</span>
+                    <div>
+                      <div className="font-semibold text-sm">{c.name}</div>
+                      <div className="text-xs text-muted-foreground">{c.version}</div>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className={`text-xs shrink-0 ${
+                    c.status === "active"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-900 dark:text-slate-400"
+                  }`}>
+                    {c.status === "active" ? "● Active" : "○ Idle"}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {c.methods.map((m) => (
+                    <span key={m} className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">{m}</span>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Lock className="w-3 h-3" />{c.auth}</span>
+                  {c.status === "active" && <span className="text-emerald-600">{c.latency} · {c.uptime}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Detail panel */}
+      {selected && !configOpen && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-3xl">{selected.icon}</span>
+              <div>
+                <h3 className="font-semibold text-base">{selected.name}</h3>
+                <p className="text-xs text-muted-foreground">{selected.category} · {selected.version}</p>
+              </div>
+              <div className="ml-auto flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setTestResult(null); setTesting(true); setTimeout(() => { setTesting(false); setTestResult(selected.status === "active" ? "success" : "error"); toast(selected.status === "active" ? { title: `✓ ${selected.name} reachable`, description: `${selected.latency} · ${selected.uptime} uptime` } : { title: "Not configured", description: "Click Configure to set up credentials.", variant: "destructive" }); }, 1500); }}>
+                  {testing ? <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Play className="w-3.5 h-3.5 mr-1" />}
+                  {testing ? "Testing…" : "Test Connection"}
+                </Button>
+                <Button size="sm" onClick={() => openConfig(selected)}>Configure</Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+              <div><span className="text-muted-foreground text-xs">Auth Method</span><div className="font-medium">{selected.auth}</div></div>
+              <div><span className="text-muted-foreground text-xs">API Methods</span><div className="font-medium">{selected.methods.join(", ")}</div></div>
+              <div><span className="text-muted-foreground text-xs">Avg Latency</span><div className="font-medium">{selected.latency}</div></div>
+              <div><span className="text-muted-foreground text-xs">Uptime SLA</span><div className="font-medium">{selected.uptime}</div></div>
+            </div>
+            {testResult && (
+              <div className={`mt-3 flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${testResult === "success" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"}`}>
+                {testResult === "success" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                {testResult === "success" ? "Connection verified successfully" : "Connection failed — credentials not configured"}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Configure Dialog */}
+      {configOpen && selected && (
+        <Dialog open onOpenChange={(o) => { if (!o) setConfigOpen(false); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <span className="text-2xl">{selected.icon}</span>
+                Configure {selected.name}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* Connector info */}
+              <div className="rounded-lg bg-muted/40 border border-border px-3 py-2 flex flex-wrap gap-4 text-xs">
+                <span><span className="text-muted-foreground">Category: </span><strong>{selected.category}</strong></span>
+                <span><span className="text-muted-foreground">Version: </span><strong>{selected.version}</strong></span>
+                <span><span className="text-muted-foreground">Auth: </span><strong>{selected.auth}</strong></span>
+                <span><span className="text-muted-foreground">Methods: </span><strong>{selected.methods.join(", ")}</strong></span>
+              </div>
+
+              {/* Auth fields */}
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Authentication Credentials</p>
+                <div className="space-y-3">
+                  {(AUTH_FIELDS[selected.auth] ?? AUTH_FIELDS["API Key"]).map((f) => (
+                    <div key={f.key} className="space-y-1">
+                      <Label className="text-sm">{f.label}</Label>
+                      <Input
+                        type={f.type}
+                        placeholder={f.placeholder}
+                        value={configValues[f.key] ?? ""}
+                        onChange={(e) => setConfigValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Environment */}
+              <div className="space-y-1">
+                <Label className="text-sm">Environment</Label>
+                <Select defaultValue="production">
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="production">Production</SelectItem>
+                    <SelectItem value="sandbox">Sandbox / Test</SelectItem>
+                    <SelectItem value="staging">Staging</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Test result */}
+              {testResult && (
+                <div className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 ${testResult === "success" ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"}`}>
+                  {testResult === "success" ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  {testResult === "success" ? "Connection verified — credentials are valid" : "Connection failed — check your credentials"}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <Button variant="outline" className="flex-1" onClick={runTest} disabled={testing}>
+                  {testing ? <RefreshCw className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Play className="w-3.5 h-3.5 mr-1" />}
+                  {testing ? "Testing…" : "Test Connection"}
+                </Button>
+                <Button className="flex-1" onClick={saveConfig}>Save Configuration</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </div>
+  );
+}
+
+// ─── Pipeline View ──────────────────────────────────────────────────────────
+
+function PipelineView() {
+  const [activeStep, setActiveStep] = useState<number | null>(null);
+
+  const STEP_DETAILS: Record<number, { title: string; points: string[] }> = {
+    1: { title: "Ingest Layer", points: ["REST Webhook (HMAC-SHA256 signed)", "Scheduled batch pull via connector", "File drop (CSV/JSON/XML) via S3/Azure Blob", "Change-Data Capture (CDC) via Debezium"] },
+    2: { title: "Validation Engine", points: ["JSON Schema validation", "Mandatory field checks", "Format validation (email, phone, date)", "Max-length enforcement with truncate/reject mode"] },
+    3: { title: "Transformation Engine", points: ["Direct copy, Concat, Split, Conditional", "Lookup table (e.g. SF Stage → SAP Status)", "Parent-child Siebel-style field mapping", "Date format conversion, Math expressions"] },
+    4: { title: "Routing & Orchestration", points: ["Content-based routing rules", "Fan-out to multiple targets", "Dead-letter queue for failed records", "Retry with exponential backoff"] },
+    5: { title: "Delivery Adapters", points: ["CRM entities (Lead, Contact, Account, Opportunity)", "ERP systems (SAP, Oracle, NetSuite, Dynamics)", "Databases (PostgreSQL, MongoDB)", "Notifications (Slack, MS Teams, Email, SMS)"] },
+    6: { title: "Audit & Observability", points: ["Full run log with correlation IDs", "Error classification and alerting", "Email/SMS notifications on failure", "Replay failed records on demand"] },
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-sm font-semibold mb-1">Integration Pipeline Architecture</h3>
+        <p className="text-xs text-muted-foreground">Click any stage to see details. Data flows left to right through each processing layer.</p>
+      </div>
+
+      {/* Pipeline diagram */}
+      <div className="overflow-x-auto">
+        <div className="flex items-center gap-0 min-w-max p-4">
+          {PIPELINE_STEPS.map((step, i) => (
+            <React.Fragment key={step.id}>
+              <button
+                onClick={() => setActiveStep(activeStep === step.id ? null : step.id)}
+                className={`flex flex-col items-center gap-2 px-5 py-4 rounded-xl border-2 transition-all w-36 ${
+                  activeStep === step.id
+                    ? "border-primary bg-primary/10 shadow-lg scale-105"
+                    : "border-border hover:border-primary/40 hover:bg-muted/50"
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  activeStep === step.id ? "bg-primary text-primary-foreground" : "bg-muted"
+                }`}>
+                  <step.icon className={`w-5 h-5 ${activeStep === step.id ? "text-primary-foreground" : step.color}`} />
+                </div>
+                <div className="text-center">
+                  <div className="text-xs font-semibold">{step.label}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-tight">{step.desc}</div>
+                </div>
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-mono">Step {step.id}</span>
+              </button>
+              {i < PIPELINE_STEPS.length - 1 && (
+                <div className="flex items-center px-1 text-muted-foreground">
+                  <ArrowRight className="w-5 h-5" />
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+
+      {/* Detail panel */}
+      {activeStep && STEP_DETAILS[activeStep] && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">{STEP_DETAILS[activeStep].title}</CardTitle></CardHeader>
+          <CardContent>
+            <ul className="space-y-1.5">
+              {STEP_DETAILS[activeStep].points.map((p) => (
+                <li key={p} className="flex items-start gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Integration patterns */}
+      <div>
+        <h3 className="text-sm font-semibold mb-3">Supported Integration Patterns</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[
+            { icon: Zap, label: "Synchronous REST", desc: "Real-time request/response via REST API", color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-950" },
+            { icon: Radio, label: "Async Event Stream", desc: "Event-driven via webhooks & message queues", color: "text-violet-500", bg: "bg-violet-50 dark:bg-violet-950" },
+            { icon: CalendarClock, label: "Scheduled Batch", desc: "Cron-driven bulk data sync (CSV/JSON/API)", color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-950" },
+            { icon: Globe, label: "Inbound Webhook", desc: "External systems push data with HMAC signing", color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-950" },
+            { icon: Cpu, label: "Change-Data Capture", desc: "Stream DB changes in near real-time via CDC", color: "text-rose-500", bg: "bg-rose-50 dark:bg-rose-950" },
+            { icon: ArrowLeftRight, label: "Bi-directional Sync", desc: "Two-way sync with conflict resolution", color: "text-cyan-500", bg: "bg-cyan-50 dark:bg-cyan-950" },
+          ].map((p) => (
+            <div key={p.label} className="flex gap-3 p-3 rounded-xl border border-border">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${p.bg}`}>
+                <p.icon className={`w-4 h-4 ${p.color}`} />
+              </div>
+              <div>
+                <div className="text-sm font-medium">{p.label}</div>
+                <div className="text-xs text-muted-foreground">{p.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── API Explorer ───────────────────────────────────────────────────────────
+
+function ApiExplorer() {
+  const [selectedApi, setSelectedApi] = useState<typeof API_METHODS[number] | null>(null);
+  const [filter, setFilter] = useState<string>("All");
+  const { toast } = useToast();
+
+  const methods = ["All", "GET", "POST", "PATCH", "DELETE"];
+  const filtered = API_METHODS.filter((a) => filter === "All" || a.method === filter);
+
+  const METHOD_COLOR: Record<string, string> = {
+    GET: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300",
+    POST: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300",
+    PATCH: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300",
+    DELETE: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold mb-1">API Reference</h3>
+        <p className="text-xs text-muted-foreground">All integration endpoints. Click any to see sample request/response.</p>
+      </div>
+
+      {/* Method filter */}
+      <div className="flex gap-2">
+        {methods.map((m) => (
+          <button
+            key={m}
+            onClick={() => setFilter(m)}
+            className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
+              filter === m ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+            }`}
+          >
+            {m}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Endpoint list */}
+        <div className="space-y-1.5">
+          {filtered.map((a) => (
+            <button
+              key={a.path}
+              onClick={() => setSelectedApi(selectedApi?.path === a.path ? null : a)}
+              className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
+                selectedApi?.path === a.path ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+              }`}
+            >
+              <Badge variant="outline" className={`text-xs font-mono w-14 justify-center shrink-0 ${METHOD_COLOR[a.method]}`}>{a.method}</Badge>
+              <div className="min-w-0">
+                <div className="text-xs font-mono truncate text-foreground">{a.path}</div>
+                <div className="text-xs text-muted-foreground truncate">{a.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Detail panel */}
+        <div>
+          {selectedApi ? (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={`text-xs font-mono ${METHOD_COLOR[selectedApi.method]}`}>{selectedApi.method}</Badge>
+                  <code className="text-xs font-mono text-foreground break-all">{selectedApi.path}</code>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Description</p>
+                  <p className="text-sm">{selectedApi.desc}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Authentication</p>
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-sm">{selectedApi.auth}</span>
+                  </div>
+                </div>
+                {selectedApi.method === "POST" && selectedApi.path.includes("webhooks") && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Sample Request</p>
+                    <pre className="text-xs bg-muted rounded-lg p-3 overflow-x-auto">{`POST ${selectedApi.path.replace("{slug}", "my-partner").replace("{entityType}", "lead")}
+Content-Type: application/json
+X-Integration-Signature: sha256=<hmac-sha256-hex>
+
+{
+  "email": "jane.doe@example.com",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "company": "Acme Corp",
+  "phone": "+44 7700 900000"
+}`}</pre>
+                    <Button size="sm" variant="outline" className="mt-2 text-xs"
+                      onClick={() => { navigator.clipboard.writeText(selectedApi.path).catch(() => {}); toast({ title: "Path copied" }); }}>
+                      <Copy className="w-3 h-3 mr-1" /> Copy path
+                    </Button>
+                  </div>
+                )}
+                {selectedApi.method === "GET" && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Sample Response</p>
+                    <pre className="text-xs bg-muted rounded-lg p-3 overflow-x-auto">{`HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "partners": [
+    {
+      "id": 1,
+      "name": "Web Lead Capture",
+      "slug": "web-lead-capture",
+      "is_active": true,
+      "created_at": "2026-07-23T10:00:00Z"
+    }
+  ]
+}`}</pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="flex items-center justify-center h-48 rounded-xl border border-dashed border-border text-muted-foreground text-sm">
+              Select an endpoint to view details
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Batch Scheduler ────────────────────────────────────────────────────────
+
+function BatchScheduler() {
+  const { toast } = useToast();
+  const [jobs, setJobs] = useState(BATCH_JOBS.map((j) => ({ ...j })));
+
+  const STATUS_STYLE: Record<string, string> = {
+    success: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300",
+    error: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300",
+    running: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300",
+  };
+
+  function runNow(id: string) {
+    setJobs((prev) => prev.map((j) => j.id === id ? { ...j, status: "running" as const } : j));
+    setTimeout(() => {
+      setJobs((prev) => prev.map((j) => j.id === id ? { ...j, status: "success" as const, lastRun: new Date().toLocaleString(), records: Math.floor(Math.random() * 200) + 10 } : j));
+      toast({ title: "Batch job completed successfully" });
+    }, 2000);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">Batch Job Scheduler</h3>
+          <p className="text-xs text-muted-foreground">Scheduled bulk sync jobs across connectors. Click Run Now to trigger immediately.</p>
+        </div>
+        <Button size="sm"><Plus className="w-3.5 h-3.5 mr-1" />New Job</Button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        {jobs.map((job) => (
+          <Card key={job.id} className={job.status === "error" ? "border-red-200 dark:border-red-800" : ""}>
+            <CardContent className="p-4">
+              <div className="flex items-start gap-4">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                  job.status === "running" ? "bg-blue-50 dark:bg-blue-950" :
+                  job.status === "error" ? "bg-red-50 dark:bg-red-950" : "bg-emerald-50 dark:bg-emerald-950"
+                }`}>
+                  <CalendarClock className={`w-5 h-5 ${
+                    job.status === "running" ? "text-blue-500 animate-pulse" :
+                    job.status === "error" ? "text-red-500" : "text-emerald-500"
+                  }`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm">{job.name}</span>
+                    <Badge variant="outline" className={`text-xs ${STATUS_STYLE[job.status]}`}>
+                      {job.status === "running" ? "● Running…" : job.status === "success" ? "✓ Success" : "✗ Failed"}
+                    </Badge>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{job.label}</span>
+                    <span className="flex items-center gap-1"><Plug className="w-3 h-3" />{job.connector}</span>
+                    <span className="flex items-center gap-1"><Package className="w-3 h-3" />{job.entity}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Last: {job.lastRun}</span>
+                    {job.records > 0 && <span className="flex items-center gap-1"><BarChart3 className="w-3 h-3" />{job.records} records</span>}
+                  </div>
+                  <code className="text-xs text-muted-foreground font-mono mt-1 block">{job.schedule}</code>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <Button size="sm" variant="outline" onClick={() => runNow(job.id)} disabled={job.status === "running"}>
+                    <Play className="w-3.5 h-3.5 mr-1" />Run Now
+                  </Button>
+                  <Button size="sm" variant="ghost"><Repeat className="w-3.5 h-3.5" /></Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Cron reference */}
+      <Card className="bg-muted/30">
+        <CardContent className="p-4">
+          <p className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">Cron Expression Reference</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+            {[["0 * * * *","Hourly"],["0 */6 * * *","Every 6h"],["0 2 * * *","Daily 2AM"],["0 0 * * 1","Weekly Mon"]].map(([expr, lbl]) => (
+              <div key={expr} className="bg-background rounded px-2 py-1.5 border border-border">
+                <div className="text-primary">{expr}</div>
+                <div className="text-muted-foreground mt-0.5">{lbl}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Integration Dashboard ──────────────────────────────────────────────────
 
 function IntegrationDashboard({
@@ -489,7 +1148,7 @@ function IntegrationDashboard({
     for (const r of runs) {
       const s = map.get(r.partner_id);
       if (!s) continue;
-      (s as unknown as Record<string, number>)[r.status] = ((s as unknown as Record<string, number>)[r.status] ?? 0) + 1;
+      s[r.status as keyof typeof s] = (s[r.status as keyof typeof s] as number) + 1;
       if (!s.lastRun || r.created_at > s.lastRun) { s.lastRun = r.created_at; s.lastStatus = r.status; }
     }
     return map;

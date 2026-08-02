@@ -49,41 +49,42 @@ function normaliseHeader(raw: Record<string, string>) {
 }
 
 /** Find or create account by name. Returns accountId or null. */
-async function resolveAccount(name: string | undefined) {
+async function resolveAccount(orgId: number, name: string | undefined) {
   if (!name?.trim()) return null;
   const norm = name.trim();
   const [existing] = await db.select({ id: accountsTable.id })
     .from(accountsTable)
-    .where(ilike(accountsTable.name, norm))
+    .where(and(ilike(accountsTable.name, norm), eq(accountsTable.orgId, orgId)))
     .limit(1);
   if (existing) return existing.id;
   const [created] = await db.insert(accountsTable)
-    .values({ name: norm } as typeof accountsTable.$inferInsert)
+    .values({ orgId, name: norm } as typeof accountsTable.$inferInsert)
     .returning({ id: accountsTable.id });
   return created?.id ?? null;
 }
 
 /** Find existing contact/lead by email, or create new contact. Returns { contactId, leadId } */
-async function resolveEmail(email: string, firstName: string, lastName: string, companyName?: string, role?: string) {
+async function resolveEmail(orgId: number, email: string, firstName: string, lastName: string, companyName?: string, role?: string) {
   const normEmail = email.toLowerCase().trim();
 
   // 1. Check existing contact
   const [contact] = await db.select({ id: contactsTable.id })
     .from(contactsTable)
-    .where(ilike(contactsTable.email, normEmail))
+    .where(and(ilike(contactsTable.email, normEmail), eq(contactsTable.orgId, orgId)))
     .limit(1);
   if (contact) return { contactId: contact.id, leadId: null };
 
   // 2. Check existing lead
   const [lead] = await db.select({ id: leadsTable.id })
     .from(leadsTable)
-    .where(ilike(leadsTable.email, normEmail))
+    .where(and(ilike(leadsTable.email, normEmail), eq(leadsTable.orgId, orgId)))
     .limit(1);
   if (lead) return { contactId: null, leadId: lead.id };
 
   // 3. Create new contact
-  const accountId = await resolveAccount(companyName);
+  const accountId = await resolveAccount(orgId, companyName);
   const [newContact] = await db.insert(contactsTable).values({
+    orgId,
     firstName,
     lastName,
     email: normEmail,
@@ -105,7 +106,7 @@ router.get("/campaigns/:id/members", async (req, res) => {
     const limitNum = Math.min(500, parseInt(limit) || 100);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions: ReturnType<typeof eq>[] = [eq(campaignMembersTable.campaignId, campaignId)];
+    const conditions: ReturnType<typeof eq>[] = [eq(campaignMembersTable.campaignId, campaignId), eq(campaignMembersTable.orgId, req.orgId!)];
     if (status) conditions.push(eq(campaignMembersTable.status, status));
 
     let whereClause = and(...conditions);
@@ -133,7 +134,7 @@ router.get("/campaigns/:id/members", async (req, res) => {
         status: campaignMembersTable.status,
         count: sql<number>`count(*)`,
       }).from(campaignMembersTable)
-        .where(eq(campaignMembersTable.campaignId, campaignId))
+        .where(and(eq(campaignMembersTable.campaignId, campaignId), eq(campaignMembersTable.orgId, req.orgId!)))
         .groupBy(campaignMembersTable.status),
     ]);
 
@@ -175,9 +176,10 @@ router.post("/campaigns/:id/members", async (req, res) => {
 
     // If adding by existing contactId
     if (contactId) {
-      const [c] = await db.select().from(contactsTable).where(eq(contactsTable.id, contactId)).limit(1);
+      const [c] = await db.select().from(contactsTable).where(and(eq(contactsTable.id, contactId), eq(contactsTable.orgId, req.orgId!))).limit(1);
       if (!c) { res.status(404).json({ error: "Contact not found" }); return; }
       const member = await db.insert(campaignMembersTable).values({
+        orgId: req.orgId!,
         campaignId,
         contactId: c.id,
         firstName: c.firstName,
@@ -197,9 +199,10 @@ router.post("/campaigns/:id/members", async (req, res) => {
 
     // If adding by existing leadId
     if (leadId) {
-      const [l] = await db.select().from(leadsTable).where(eq(leadsTable.id, leadId)).limit(1);
+      const [l] = await db.select().from(leadsTable).where(and(eq(leadsTable.id, leadId), eq(leadsTable.orgId, req.orgId!))).limit(1);
       if (!l) { res.status(404).json({ error: "Lead not found" }); return; }
       const member = await db.insert(campaignMembersTable).values({
+        orgId: req.orgId!,
         campaignId,
         leadId: l.id,
         firstName: l.firstName,
@@ -224,9 +227,10 @@ router.post("/campaigns/:id/members", async (req, res) => {
     }
 
     const { contactId: resolvedContactId, leadId: resolvedLeadId } =
-      await resolveEmail(email, firstName, lastName, companyName, role);
+      await resolveEmail(req.orgId!, email, firstName, lastName, companyName, role);
 
     const member = await db.insert(campaignMembersTable).values({
+      orgId: req.orgId!,
       campaignId,
       contactId: resolvedContactId,
       leadId: resolvedLeadId,
@@ -282,8 +286,9 @@ router.post("/campaigns/:id/members/import", async (req, res) => {
         continue;
       }
       try {
-        const { contactId, leadId } = await resolveEmail(email, firstName, lastName, companyName, role);
+        const { contactId, leadId } = await resolveEmail(req.orgId!, email, firstName, lastName, companyName, role);
         await db.insert(campaignMembersTable).values({
+          orgId: req.orgId!,
           campaignId,
           contactId,
           leadId,
@@ -327,7 +332,7 @@ router.delete("/campaigns/:id/members/:memberId", async (req, res) => {
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const memberId = parseInt(req.params.memberId);
-    await db.delete(campaignMembersTable).where(eq(campaignMembersTable.id, memberId));
+    await db.delete(campaignMembersTable).where(and(eq(campaignMembersTable.id, memberId), eq(campaignMembersTable.orgId, req.orgId!)));
     res.json({ success: true, id: memberId });
   } catch (err) {
     req.log.error(err);
@@ -350,11 +355,14 @@ router.get("/campaigns/contacts-search", async (req, res) => {
       email: contactsTable.email,
       title: contactsTable.title,
     }).from(contactsTable)
-      .where(q ? or(
-        ilike(contactsTable.firstName, s),
-        ilike(contactsTable.lastName, s),
-        ilike(contactsTable.email, s),
-      )! : sql`1=1`)
+      .where(and(
+        eq(contactsTable.orgId, req.orgId!),
+        q ? or(
+          ilike(contactsTable.firstName, s),
+          ilike(contactsTable.lastName, s),
+          ilike(contactsTable.email, s),
+        )! : sql`1=1`,
+      ))
       .limit(20)
       .orderBy(contactsTable.firstName);
     res.json(contacts);
@@ -379,12 +387,15 @@ router.get("/campaigns/leads-search", async (req, res) => {
       company: leadsTable.company,
       title: leadsTable.title,
     }).from(leadsTable)
-      .where(q ? or(
-        ilike(leadsTable.firstName, s),
-        ilike(leadsTable.lastName, s),
-        ilike(leadsTable.email, s),
-        ilike(leadsTable.company, s),
-      )! : sql`1=1`)
+      .where(and(
+        eq(leadsTable.orgId, req.orgId!),
+        q ? or(
+          ilike(leadsTable.firstName, s),
+          ilike(leadsTable.lastName, s),
+          ilike(leadsTable.email, s),
+          ilike(leadsTable.company, s),
+        )! : sql`1=1`,
+      ))
       .limit(20)
       .orderBy(leadsTable.firstName);
     res.json(leads);

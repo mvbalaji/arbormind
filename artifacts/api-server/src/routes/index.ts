@@ -47,6 +47,8 @@ import quoteStagesAdminRouter from "./quote-stages-admin";
 import integrationsRouter from "./integrations";
 import integrationWebhooksRouter from "./integration-webhooks";
 import integrationWebToLeadRouter from "./integration-web-to-lead";
+import webToLeadRouter from "./web-to-lead";
+import webLeadSlaRouter from "./web-lead-sla";
 import { seedAccessControl } from "../lib/access-control";
 import { seedRecordAccess } from "../lib/record-access";
 import { seedStandardPricing } from "../lib/pricing";
@@ -105,6 +107,8 @@ router.use(quoteStagesAdminRouter);
 router.use(integrationsRouter);
 router.use(integrationWebhooksRouter);
 router.use(integrationWebToLeadRouter);
+router.use(webToLeadRouter);
+router.use(webLeadSlaRouter);
 
 // Idempotent seed of roles, screens, record types, and default admin
 // access on startup.
@@ -748,6 +752,16 @@ void (async () => {
   } catch (err) { console.error("[Migrate] quote_workflow_rules:", err); }
 })();
 
+// contract_documents.is_active — marks the current version of a contract document
+void (async () => {
+  try {
+    await db.execute(sql`ALTER TABLE contract_documents ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true`);
+    console.log("[Migrate] contract_documents.is_active column ready");
+  } catch (err) {
+    console.error("[Migrate] contract_documents.is_active:", err);
+  }
+})();
+
 // Add rejection_reason column to quotes table (idempotent)
 void (async () => {
   try {
@@ -857,6 +871,243 @@ void (async () => {
     console.log("[Migrate] integration framework tables ready");
   } catch (err) {
     console.error("[Migrate] integration framework:", err);
+  }
+})();
+
+// Web-to-Lead SLA config table (idempotent)
+void (async () => {
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS web_lead_sla_config (
+        id SERIAL PRIMARY KEY,
+        region TEXT NOT NULL DEFAULT 'Global',
+        task_name TEXT NOT NULL,
+        sla_hours NUMERIC NOT NULL DEFAULT 24,
+        description TEXT,
+        is_active BOOLEAN NOT NULL DEFAULT true,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    // Seed default SLA tasks for each region (idempotent)
+    await db.execute(sql`
+      INSERT INTO web_lead_sla_config (region, task_name, sla_hours, description, sort_order) VALUES
+        ('Global',          'Initial outreach call',         1,   'Call the lead within 1 hour of submission. Introduce Arbormind and understand their immediate needs. SLA: 1 hour.', 10),
+        ('Global',          'Send introductory email',        4,   'Send a personalised intro email with company overview and relevant case studies. SLA: 4 hours.', 20),
+        ('Global',          'Qualification call',             24,  'Conduct a structured qualification call (BANT/MEDDIC). Assess budget, authority, need and timeline. SLA: 24 hours.', 30),
+        ('Global',          'Product demo / discovery meeting',72, 'Schedule and run a product demonstration tailored to their service interest. SLA: 3 business days.', 40),
+        ('Global',          'Proposal & follow-up',           168, 'Send a formal proposal and follow up to confirm receipt and address any questions. SLA: 7 days.', 50),
+        ('India',           'Initial outreach call',          2,   'Call the lead within 2 hours (IST business hours). SLA: 2 hours.', 10),
+        ('India',           'Send introductory email',        8,   'Send personalised intro email in English. SLA: 8 hours.', 20),
+        ('India',           'Qualification call',             48,  'Conduct qualification call. SLA: 2 business days.', 30),
+        ('India',           'Product demo / discovery meeting',120,'Schedule a product demo. SLA: 5 business days.', 40),
+        ('India',           'Proposal & follow-up',           240, 'Send formal proposal and follow up. SLA: 10 days.', 50),
+        ('United Kingdom',  'Initial outreach call',          1,   'Call the lead within 1 hour (GMT/BST business hours). SLA: 1 hour.', 10),
+        ('United Kingdom',  'Send introductory email',        4,   'Send a tailored intro email highlighting UK case studies. SLA: 4 hours.', 20),
+        ('United Kingdom',  'Qualification call',             24,  'Conduct qualification call. SLA: 24 hours.', 30),
+        ('United Kingdom',  'Product demo / discovery meeting',72, 'Schedule and run product demo. SLA: 3 business days.', 40),
+        ('United Kingdom',  'Proposal & follow-up',           120, 'Send formal proposal and follow up. SLA: 5 days.', 50)
+      ON CONFLICT DO NOTHING
+    `);
+    console.log("[Migrate] web_lead_sla_config table ready");
+  } catch (err) {
+    console.error("[Migrate] web_lead_sla_config:", err);
+  }
+})();
+
+// Multi-tenancy backfill: add org_id to the handful of tables that predate the
+// org_id migration and are managed via raw SQL (no Drizzle schema). DEFAULT 1
+// is safe — every existing row today belongs to the single "Default
+// Organization" tenant.
+void (async () => {
+  const tables = [
+    "cpq_settings_audit",
+    "integration_audit_log",
+    "integration_mapping_templates",
+    "integration_partners",
+    "integration_run_log",
+    "lead_stage_history",
+    "quote_stage_config",
+    "quote_stage_history",
+    "quote_workflow_rules",
+    "web_lead_sla_config",
+    "clm_templates",
+    "clm_reviews",
+    "clm_signers",
+    "clm_redlines",
+    "clm_workflow_rules",
+    "clm_notification_rules",
+    "stims_fiscal_periods",
+    "stims_target_cycles",
+    "stims_quotas",
+    "stims_incentive_plans",
+    "stims_plan_tiers",
+    "stims_plan_assignments",
+    "stims_attainment",
+    "stims_calc_runs",
+    "stims_payout_lines",
+    "stims_disputes",
+    "stims_ramp_templates",
+    "product_bundles",
+    "product_bundle_items",
+    "social_messages",
+  ];
+  for (const table of tables) {
+    try {
+      await db.execute(sql.raw(
+        `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS org_id INTEGER NOT NULL DEFAULT 1 REFERENCES organizations(id)`,
+      ));
+      console.log(`[Migrate] ${table}.org_id column ready`);
+    } catch (err) {
+      console.error(`[Migrate] ${table}.org_id:`, err);
+    }
+  }
+})();
+
+// Multi-tenancy: widen unique constraints that were global-only so each org
+// can have its own independent values instead of colliding with other tenants.
+void (async () => {
+  try {
+    await db.execute(sql`DROP INDEX IF EXISTS approval_roles_name_idx`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS approval_roles_name_idx ON approval_roles (org_id, name)`);
+
+    await db.execute(sql`DROP INDEX IF EXISTS approval_configs_entity_idx`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS approval_configs_entity_idx ON approval_configs (org_id, entity)`);
+
+    await db.execute(sql`ALTER TABLE lead_scoring_rules DROP CONSTRAINT IF EXISTS lead_scoring_rules_key_key`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS lead_scoring_rules_org_key_unique ON lead_scoring_rules (org_id, key)`);
+
+    await db.execute(sql`DROP INDEX IF EXISTS emails_message_uid_unique`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS emails_message_uid_unique ON emails (org_id, message_uid)`);
+
+    await db.execute(sql`DROP INDEX IF EXISTS price_books_single_standard_unique`);
+    await db.execute(sql`
+      CREATE UNIQUE INDEX IF NOT EXISTS price_books_single_standard_unique
+      ON price_books (org_id, is_standard) WHERE is_standard = true
+    `);
+
+    await db.execute(sql`ALTER TABLE quote_stage_config DROP CONSTRAINT IF EXISTS quote_stage_config_stage_id_key`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS quote_stage_config_org_stage_unique ON quote_stage_config (org_id, stage_id)`);
+
+    // Human-readable sequence numbers (QT-####, CNTR-####, CASE-####, ORD-####)
+    // were globally unique — each org generates its own sequence independently
+    // (see quotes.ts/contracts.ts/cases.ts/orders.ts), so two orgs' first quote
+    // both being "QT-0001" must not collide.
+    await db.execute(sql`ALTER TABLE quotes DROP CONSTRAINT IF EXISTS quotes_quote_number_key`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS quotes_org_quote_number_unique ON quotes (org_id, quote_number)`);
+    await db.execute(sql`ALTER TABLE contracts DROP CONSTRAINT IF EXISTS contracts_contract_number_key`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS contracts_org_contract_number_unique ON contracts (org_id, contract_number)`);
+    await db.execute(sql`ALTER TABLE cases DROP CONSTRAINT IF EXISTS cases_case_number_key`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS cases_org_case_number_unique ON cases (org_id, case_number)`);
+    await db.execute(sql`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_order_number_key`);
+    await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS orders_org_order_number_unique ON orders (org_id, order_number)`);
+    console.log("[Migrate] per-org unique constraints ready");
+  } catch (err) {
+    console.error("[Migrate] per-org unique constraints:", err);
+  }
+})();
+
+// Row-Level Security (RLS): the hard backstop for tenant isolation, enforced by
+// Postgres itself independent of whether application code remembered to filter
+// by org_id. `neondb_owner` (used by `db`/`pool` outside a request — migrations,
+// the seed script, background jobs) is the table owner and bypasses RLS by
+// design; only the non-owner `app_runtime` role is actually subject to these
+// policies (see lib/db's runtimePool + app.ts's per-request connection-leasing
+// middleware, which sets `app.current_org_id` on the leased connection).
+//
+// `current_setting(..., true)` (missing_ok=true) returns NULL, not an error,
+// when the session var isn't set — `org_id = NULL` is never true, so a query
+// that somehow runs without it set simply sees zero rows (fail closed).
+//
+// Excluded on purpose: `organizations` (the tenant registry itself — has no
+// org_id of its own), and `screens` / `roles` / `record_types` / `app_modules`
+// (carry an org_id column for DB-schema accuracy only — the app treats them as
+// shared global config, not per-tenant data; see the comments in
+// access-control.ts / record-access.ts / app-modules.ts).
+void (async () => {
+  const tenantTables = [
+    "access_audit_log", "accounts", "activities", "allowed_users",
+    "approval_requests", "approval_audit_events", "approval_roles", "approval_configs", "approval_criteria",
+    "campaign_engagements", "campaign_members", "campaigns", "cases", "contacts",
+    "contracts", "contract_line_items", "contract_documents",
+    "email_settings", "email_attachments", "email_tracking", "emails",
+    "enquiries", "entity_notes",
+    "lead_contacts", "lead_insights", "lead_score_milestones", "lead_scoring_rules", "leads", "lead_stage_history",
+    "opportunities", "opportunity_items", "opportunity_stage_history",
+    "orders", "order_items",
+    "price_book_entries", "price_books",
+    "product_rules", "products", "product_bundles", "product_bundle_items",
+    "quote_team_members", "quotes", "quote_items", "quote_stage_config", "quote_stage_history", "quote_workflow_rules",
+    "record_access", "record_access_audit_log",
+    "screen_access", "social_messages", "users", "website_visits",
+    "cpq_settings_audit",
+    "integration_audit_log", "integration_mapping_templates", "integration_partners", "integration_run_log",
+    "web_lead_sla_config",
+    "clm_templates", "clm_reviews", "clm_signers", "clm_redlines", "clm_workflow_rules", "clm_notification_rules",
+    "stims_fiscal_periods", "stims_target_cycles", "stims_quotas", "stims_incentive_plans",
+    "stims_plan_tiers", "stims_plan_assignments", "stims_attainment", "stims_calc_runs",
+    "stims_payout_lines", "stims_disputes", "stims_ramp_templates",
+  ];
+  let ready = 0;
+  for (const table of tenantTables) {
+    try {
+      await db.execute(sql.raw(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY`));
+      await db.execute(sql.raw(`
+        DO $pol$ BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = '${table}' AND policyname = 'tenant_isolation') THEN
+            CREATE POLICY tenant_isolation ON ${table}
+              USING (org_id = current_setting('app.current_org_id', true)::int)
+              WITH CHECK (org_id = current_setting('app.current_org_id', true)::int);
+          END IF;
+        END $pol$;
+      `));
+      ready++;
+    } catch (err) {
+      console.error(`[Migrate] RLS policy for ${table}:`, err);
+    }
+  }
+  console.log(`[Migrate] RLS policies ready for ${ready}/${tenantTables.length} tenant tables`);
+})();
+
+// Grants for the app_runtime role itself (idempotent — safe to re-run every
+// boot). Table owner and DDL rights stay with neondb_owner; app_runtime only
+// gets ordinary row-level DML, which is exactly what RLS policies above then
+// constrain per-tenant. ALTER DEFAULT PRIVILEGES covers tables/sequences
+// created by neondb_owner *after* this runs too, not just the ones that exist
+// right now.
+void (async () => {
+  if (!process.env.APP_DATABASE_URL) {
+    console.log("[Migrate] APP_DATABASE_URL not set — skipping app_runtime role setup");
+    return;
+  }
+  try {
+    const appRuntimeUrl = new URL(process.env.APP_DATABASE_URL);
+    const roleName = decodeURIComponent(appRuntimeUrl.username) || "app_runtime";
+    const rolePassword = decodeURIComponent(appRuntimeUrl.password);
+
+    const [{ exists }] = (await db.execute(
+      sql`SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${roleName}) AS exists`,
+    )).rows as unknown as { exists: boolean }[];
+
+    if (!exists) {
+      await db.execute(sql.raw(`CREATE ROLE ${roleName} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS`));
+    }
+    if (rolePassword) {
+      // Escape single quotes for the literal password in this DDL statement — pg
+      // doesn't support bind params inside ALTER ROLE ... PASSWORD.
+      await db.execute(sql.raw(`ALTER ROLE ${roleName} WITH PASSWORD '${rolePassword.replace(/'/g, "''")}'`));
+    }
+
+    await db.execute(sql.raw(`GRANT USAGE ON SCHEMA public TO ${roleName}`));
+    await db.execute(sql.raw(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${roleName}`));
+    await db.execute(sql.raw(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${roleName}`));
+    await db.execute(sql.raw(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${roleName}`));
+    await db.execute(sql.raw(`ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ${roleName}`));
+
+    console.log(`[Migrate] ${roleName} role ready (login, no bypass-RLS, granted DML on all current + future tables)`);
+  } catch (err) {
+    console.error("[Migrate] app_runtime role setup:", err);
   }
 })();
 

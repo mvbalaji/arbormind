@@ -29,6 +29,7 @@ import { OrganizationSettingsInline } from "@/components/organization-settings-i
 import { QuoteWorkflowAdminInline } from "@/pages/quote-workflow-admin";
 import { QuoteStagesAdmin } from "@/components/quote-stages-admin";
 import { IntegrationsInline } from "./integrations";
+import { WebLeadSlaAdminInline } from "./web-lead-sla-admin";
 
 interface AppUser {
   id: number;
@@ -126,7 +127,7 @@ export default function Users() {
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("sales_rep");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail" | "apps" | "scoring" | "product-rules" | "organization" | "quote-workflow" | "integrations">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "access" | "approvals" | "import" | "mail" | "apps" | "scoring" | "product-rules" | "organization" | "quote-workflow" | "integrations" | "web-lead-sla">("team");
 
   // Edit dialog state
   const [editName, setEditName] = useState("");
@@ -378,6 +379,7 @@ export default function Users() {
             { id: "product-rules", label: "Product Rules", icon: ShieldCheck },
             { id: "quote-workflow", label: "Quote Workflow", icon: GitBranch },
             { id: "integrations", label: "Admin Integration", icon: Settings2 },
+            { id: "web-lead-sla", label: "Web Lead SLA", icon: Clock },
             { id: "import", label: "Data Import", icon: Upload },
             { id: "mail", label: "Mail Settings", icon: Mail },
           ] as const).map((tab) => (
@@ -420,6 +422,9 @@ export default function Users() {
 
         {/* Quote Workflow Tab (includes Stage Config sub-tab) */}
         {activeTab === "quote-workflow" && <QuoteWorkflowAdminInline />}
+
+        {/* Web Lead SLA Tab */}
+        {activeTab === "web-lead-sla" && <WebLeadSlaAdminInline />}
 
         {/* Data Import Tab */}
         {activeTab === "import" && <DataImport />}

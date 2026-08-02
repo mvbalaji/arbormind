@@ -16,25 +16,28 @@
 
 import { Router, type IRouter } from "express";
 import { db, campaignEngagementsTable, leadsTable, campaignsTable, EVENT_SCORES, scoreToCategory } from "@workspace/db";
-import { eq, ilike } from "drizzle-orm";
+import { eq, and, ilike } from "drizzle-orm";
 import crypto from "crypto";
+import { getDefaultOrgId } from "../lib/org-context";
 
 const router: IRouter = Router();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// These webhooks are public (platforms call them server-to-server, no session) —
+// everything routes to the Default Organization until per-org social integrations exist.
 
-async function resolveLeadByEmail(email: string): Promise<number | null> {
+async function resolveLeadByEmail(orgId: number, email: string): Promise<number | null> {
   const rows = await db.select({ id: leadsTable.id })
     .from(leadsTable)
-    .where(ilike(leadsTable.email, email))
+    .where(and(ilike(leadsTable.email, email), eq(leadsTable.orgId, orgId)))
     .limit(1);
   return rows[0]?.id ?? null;
 }
 
-async function resolveCampaignByUtm(utmCampaign: string): Promise<number | null> {
+async function resolveCampaignByUtm(orgId: number, utmCampaign: string): Promise<number | null> {
   const rows = await db.select({ id: campaignsTable.id })
     .from(campaignsTable)
-    .where(ilike(campaignsTable.name, `%${utmCampaign}%`))
+    .where(and(ilike(campaignsTable.name, `%${utmCampaign}%`), eq(campaignsTable.orgId, orgId)))
     .limit(1);
   return rows[0]?.id ?? null;
 }
@@ -61,7 +64,9 @@ async function recordEngagement(params: {
 }) {
   const score = EVENT_SCORES[params.eventType] ?? 1;
   const category = scoreToCategory(score);
+  const orgId = await getDefaultOrgId();
   await db.insert(campaignEngagementsTable).values({
+    orgId,
     campaignId: params.campaignId ?? null,
     platform: params.platform,
     eventType: params.eventType,
@@ -173,7 +178,7 @@ router.post("/webhooks/meta", async (req, res) => {
           const email = emailField?.values?.[0] ?? null;
           const name = nameField?.values?.[0] ?? null;
           let leadId: number | null = null;
-          if (email) leadId = await resolveLeadByEmail(email);
+          if (email) leadId = await resolveLeadByEmail(await getDefaultOrgId(), email);
           await recordEngagement({
             platform,
             eventType,

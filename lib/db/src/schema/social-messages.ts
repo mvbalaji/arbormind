@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 import { leadsTable } from "./leads";
 import { contactsTable } from "./contacts";
 import { usersTable } from "./users";
+import { organizationsTable } from "./organizations";
 
 export type SocialPlatform = "linkedin" | "facebook" | "whatsapp" | "instagram";
 export type MessageDirection = "inbound" | "outbound";
@@ -13,6 +14,7 @@ export const socialMessagesTable = pgTable(
   "social_messages",
   {
     id: serial("id").primaryKey(),
+    orgId: integer("org_id").notNull().$defaultFn(() => 1).references(() => organizationsTable.id),
 
     // CRM entity links
     leadId: integer("lead_id").references(() => leadsTable.id, { onDelete: "cascade" }),

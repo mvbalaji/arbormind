@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { productRulesTable } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import { requireScreenAccess } from "../lib/access-control";
 
 const router: IRouter = Router();
@@ -15,7 +15,7 @@ function parseId(raw: string): number | null {
 // GET /admin/product-rules
 router.get("/admin/product-rules", async (req, res) => {
   try {
-    const rules = await db.select().from(productRulesTable).orderBy(asc(productRulesTable.sortOrder), asc(productRulesTable.name));
+    const rules = await db.select().from(productRulesTable).where(eq(productRulesTable.orgId, req.orgId!)).orderBy(asc(productRulesTable.sortOrder), asc(productRulesTable.name));
     res.json({ rules });
   } catch (err) {
     req.log?.error(err);
@@ -34,6 +34,7 @@ router.post("/admin/product-rules", async (req, res) => {
     if (!type) { res.status(400).json({ error: "Type is required" }); return; }
 
     const [rule] = await db.insert(productRulesTable).values({
+      orgId: req.orgId!,
       name: name.trim(),
       type,
       scope: scope ?? "Product",
@@ -56,7 +57,7 @@ router.get("/admin/product-rules/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
-    const [rule] = await db.select().from(productRulesTable).where(eq(productRulesTable.id, id));
+    const [rule] = await db.select().from(productRulesTable).where(and(eq(productRulesTable.id, id), eq(productRulesTable.orgId, req.orgId!)));
     if (!rule) { res.status(404).json({ error: "Rule not found" }); return; }
     res.json(rule);
   } catch (err) {
@@ -70,7 +71,7 @@ router.put("/admin/product-rules/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
-    const [existing] = await db.select().from(productRulesTable).where(eq(productRulesTable.id, id));
+    const [existing] = await db.select().from(productRulesTable).where(and(eq(productRulesTable.id, id), eq(productRulesTable.orgId, req.orgId!)));
     if (!existing) { res.status(404).json({ error: "Rule not found" }); return; }
 
     const { name, type, scope, conditionsMet, conditions, actions, errorMessage, active, sortOrder } = req.body as {
@@ -88,7 +89,7 @@ router.put("/admin/product-rules/:id", async (req, res) => {
     if (active !== undefined) update.active = active;
     if (sortOrder !== undefined) update.sortOrder = sortOrder;
 
-    const [rule] = await db.update(productRulesTable).set(update).where(eq(productRulesTable.id, id)).returning();
+    const [rule] = await db.update(productRulesTable).set(update).where(and(eq(productRulesTable.id, id), eq(productRulesTable.orgId, req.orgId!))).returning();
     res.json(rule);
   } catch (err) {
     req.log?.error(err);
@@ -101,7 +102,7 @@ router.delete("/admin/product-rules/:id", async (req, res) => {
   try {
     const id = parseId(req.params.id);
     if (!id) { res.status(400).json({ error: "Invalid ID" }); return; }
-    await db.delete(productRulesTable).where(eq(productRulesTable.id, id));
+    await db.delete(productRulesTable).where(and(eq(productRulesTable.id, id), eq(productRulesTable.orgId, req.orgId!)));
     res.json({ success: true, id });
   } catch (err) {
     req.log?.error(err);

@@ -63,6 +63,9 @@ cert/
 # Data dumps (may contain real customer/lead PII — never commit)
 crmai_dump_*.sql
 
+# Local test script with a pasted-in real webhook secret — never commit
+/test-webhook.js
+
 # Office lock files
 ~$*.docx
 ~$*.xlsx
@@ -72,3 +75,6 @@ crmai_dump_*.sql
 tests/.auth/
 tests/test-results/
 tests/playwright-report/
+
+# Claude Code local settings
+.claude/
